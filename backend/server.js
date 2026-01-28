@@ -20,16 +20,18 @@ const limiter = rateLimit({
   max: 100, // 100 בקשות לכל IP
   message: {
     success: false,
-    message: 'יותר מדי בקשות, נסה שוב מאוחר יותר'
-  }
+    message: 'יותר מדי בקשות, נסה שוב מאוחר יותר',
+  },
 });
 
 // Middleware
 app.use(limiter);
-app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:5173',
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:5173',
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -38,7 +40,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     success: true,
     message: 'Server is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -49,7 +51,7 @@ app.use('/api/auth', authRoutes);
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: 'Route not found',
   });
 });
 
@@ -65,7 +67,7 @@ const server = app.listen(PORT, () => {
 });
 
 // טיפול בשגיאות לא צפויות
-process.on('unhandledRejection', (err) => {
+process.on('unhandledRejection', err => {
   console.error('❌ Unhandled Rejection:', err);
   server.close(() => {
     process.exit(1);

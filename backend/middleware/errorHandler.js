@@ -6,7 +6,7 @@
 /**
  * טיפול בשגיאות Mongoose
  */
-const handleMongooseError = (err) => {
+const handleMongooseError = err => {
   let error = { ...err };
   error.message = err.message;
 
@@ -16,7 +16,7 @@ const handleMongooseError = (err) => {
     const message = `${field} כבר קיים במערכת`;
     error = {
       message,
-      statusCode: 400
+      statusCode: 400,
     };
   }
 
@@ -25,7 +25,7 @@ const handleMongooseError = (err) => {
     const messages = Object.values(err.errors).map(val => val.message);
     error = {
       message: messages.join(', '),
-      statusCode: 400
+      statusCode: 400,
     };
   }
 
@@ -33,7 +33,7 @@ const handleMongooseError = (err) => {
   if (err.name === 'CastError') {
     error = {
       message: 'משאב לא נמצא',
-      statusCode: 404
+      statusCode: 404,
     };
   }
 
@@ -43,12 +43,16 @@ const handleMongooseError = (err) => {
 /**
  * Error Handler Middleware
  */
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res) => {
   let error = { ...err };
   error.message = err.message;
 
   // טיפול בשגיאות Mongoose
-  if (err.name === 'ValidationError' || err.name === 'CastError' || err.code === 11000) {
+  if (
+    err.name === 'ValidationError' ||
+    err.name === 'CastError' ||
+    err.code === 11000
+  ) {
     error = handleMongooseError(err);
   }
 
@@ -56,14 +60,14 @@ const errorHandler = (err, req, res, next) => {
   if (err.name === 'JsonWebTokenError') {
     error = {
       message: 'Token לא תקין',
-      statusCode: 401
+      statusCode: 401,
     };
   }
 
   if (err.name === 'TokenExpiredError') {
     error = {
       message: 'Token פג תוקף',
-      statusCode: 401
+      statusCode: 401,
     };
   }
 
@@ -76,7 +80,7 @@ const errorHandler = (err, req, res, next) => {
   res.status(error.statusCode || 500).json({
     success: false,
     message: error.message || 'שגיאת שרת',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
 

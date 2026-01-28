@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const { validationResult } = require('express-validator');
 const User = require('../models/User');
 
 /**
@@ -7,11 +6,10 @@ const User = require('../models/User');
  * @param {string} userId - ID המשתמש
  * @returns {string} JWT token
  */
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '7d'
+const generateToken = (userId) =>
+  jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '7d',
   });
-};
 
 /**
  * @route   POST /api/auth/register
@@ -20,16 +18,6 @@ const generateToken = (userId) => {
  */
 const register = async (req, res, next) => {
   try {
-    // בדיקת שגיאות validation
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'שגיאות validation',
-        errors: errors.array()
-      });
-    }
-
     const { name, email, password } = req.body;
 
     // בדיקה אם המשתמש כבר קיים
@@ -37,7 +25,7 @@ const register = async (req, res, next) => {
     if (userExists) {
       return res.status(400).json({
         success: false,
-        message: 'משתמש עם אימייל זה כבר קיים'
+        message: 'משתמש עם אימייל זה כבר קיים',
       });
     }
 
@@ -45,7 +33,7 @@ const register = async (req, res, next) => {
     const user = await User.create({
       name,
       email,
-      password
+      password,
     });
 
     // יצירת token
@@ -57,11 +45,11 @@ const register = async (req, res, next) => {
         user: {
           id: user._id,
           name: user.name,
-          email: user.email
+          email: user.email,
         },
-        token
+        token,
       },
-      message: 'ההרשמה בוצעה בהצלחה'
+      message: 'ההרשמה בוצעה בהצלחה',
     });
   } catch (error) {
     next(error);
@@ -75,16 +63,6 @@ const register = async (req, res, next) => {
  */
 const login = async (req, res, next) => {
   try {
-    // בדיקת שגיאות validation
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: 'שגיאות validation',
-        errors: errors.array()
-      });
-    }
-
     const { email, password } = req.body;
 
     // מציאת משתמש עם הסיסמה (select: false דורש select מפורש)
@@ -93,7 +71,7 @@ const login = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'אימייל או סיסמה לא נכונים'
+        message: 'אימייל או סיסמה לא נכונים',
       });
     }
 
@@ -102,7 +80,7 @@ const login = async (req, res, next) => {
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'אימייל או סיסמה לא נכונים'
+        message: 'אימייל או סיסמה לא נכונים',
       });
     }
 
@@ -115,11 +93,11 @@ const login = async (req, res, next) => {
         user: {
           id: user._id,
           name: user.name,
-          email: user.email
+          email: user.email,
         },
-        token
+        token,
       },
-      message: 'התחברות בוצעה בהצלחה'
+      message: 'התחברות בוצעה בהצלחה',
     });
   } catch (error) {
     next(error);
@@ -139,7 +117,7 @@ const getMe = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'משתמש לא נמצא'
+        message: 'משתמש לא נמצא',
       });
     }
 
@@ -150,9 +128,9 @@ const getMe = async (req, res, next) => {
           id: user._id,
           name: user.name,
           email: user.email,
-          createdAt: user.createdAt
-        }
-      }
+          createdAt: user.createdAt,
+        },
+      },
     });
   } catch (error) {
     next(error);
@@ -162,5 +140,5 @@ const getMe = async (req, res, next) => {
 module.exports = {
   register,
   login,
-  getMe
+  getMe,
 };
