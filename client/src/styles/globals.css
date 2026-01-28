@@ -1,0 +1,129 @@
+@import 'tailwindcss' layer(theme) {
+  :root {
+    /* Color Palette */
+    --primary-blue: #0052FF;
+    --electric-blue: #0066FF;
+    --deep-tech-blue: #003D99;
+    --accent-teal: #00D9FF;
+    --accent-purple: #A855F7;
+    --dark-charcoal: #1a1f2e;
+    --dark-bg: #0f1218;
+    --light-gray: #f5f7fa;
+    --card-bg: rgba(255, 255, 255, 0.05);
+    --card-bg-light: rgba(255, 255, 255, 1);
+    
+    /* Typography */
+    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: var(--font-family);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: #ffffff;
+    color: #1a1f2e;
+  }
+
+  h1 {
+    font-size: 3.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  h3 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+
+  p {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+
+  button {
+    font-family: inherit;
+    cursor: pointer;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 82, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 82, 255, 0.5);
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+/* Gradient backgrounds */
+.gradient-blue {
+  background: linear-gradient(135deg, #0052FF 0%, #00D9FF 100%);
+}
+
+.gradient-purple {
+  background: linear-gradient(135deg, #0052FF 0%, #A855F7 100%);
+}
+
+.gradient-dark {
+  background: linear-gradient(180deg, #0f1218 0%, #1a1f2e 100%);
+}
+
+/* Glow effect */
+.glow-blue {
+  box-shadow: 0 0 30px rgba(0, 82, 255, 0.3);
+}
+
+.glow-teal {
+  box-shadow: 0 0 30px rgba(0, 217, 255, 0.3);
+}
+
+.glow-purple {
+  box-shadow: 0 0 30px rgba(168, 85, 247, 0.3);
+}
