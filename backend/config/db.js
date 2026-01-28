@@ -12,9 +12,9 @@ const connectDB = async () => {
     });
 
     console.log(`✅ MongoDB מחובר: ${conn.connection.host}`);
-    
+
     // טיפול באירועי חיבור
-    mongoose.connection.on('error', (err) => {
+    mongoose.connection.on('error', err => {
       console.error('❌ שגיאת MongoDB:', err);
     });
 
@@ -28,7 +28,6 @@ const connectDB = async () => {
       console.log('MongoDB connection closed due to app termination');
       process.exit(0);
     });
-
   } catch (error) {
     console.error('❌ שגיאה בחיבור ל-MongoDB:', error.message);
     process.exit(1);
