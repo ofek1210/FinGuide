@@ -233,3 +233,163 @@ curl -X POST http://localhost:5000/api/auth/register \
 ```
 
 ---
+
+## Document Management
+
+כל endpoints של מסמכים דורשים authentication.
+
+---
+
+### Upload Document
+
+**POST** `/documents/upload`
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+```
+
+**Form Data:**
+
+- `document`: [PDF file]
+
+**Request Example (curl):**
+
+```bash
+curl -X POST http://localhost:5000/api/documents/upload \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -F "document=@/path/to/payslip.pdf"
+```
+
+**Success Response 201:**
+
+```json
+{
+  "success": true,
+  "message": "הקובץ הועלה בהצלחה",
+  "data": {
+    "_id": "507f1f77bcf86cd799439011",
+    "originalName": "payslip-jan-2025.pdf",
+    "fileSize": 245678,
+    "uploadedAt": "2025-01-28T12:00:00.000Z",
+    "status": "pending"
+  }
+}
+```
+
+**Error Responses:**
+
+- **400**: No file selected
+- **400**: File too large (max 10MB)
+- **400**: Invalid file type (PDF only)
+- **401**: No token or invalid token
+
+---
+
+### Get All Documents
+
+**GET** `/documents`
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+```
+
+**Success Response 200:**
+
+```json
+{
+  "success": true,
+  "count": 3,
+  "data": [
+    {
+      "_id": "507f1f77bcf86cd799439011",
+      "originalName": "payslip-jan-2025.pdf",
+      "filename": "uuid-generated-name.pdf",
+      "fileSize": 245678,
+      "mimeType": "application/pdf",
+      "status": "completed",
+      "uploadedAt": "2025-01-28T12:00:00.000Z",
+      "processedAt": "2025-01-28T12:05:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+### Get Single Document
+
+**GET** `/documents/:id`
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+```
+
+**Success Response 200:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "_id": "507f1f77bcf86cd799439011",
+    "originalName": "payslip-jan-2025.pdf",
+    "fileSize": 245678,
+    "status": "completed",
+    "uploadedAt": "2025-01-28T12:00:00.000Z",
+    "analysisData": {}
+  }
+}
+```
+
+**Error Responses:**
+
+- **404**: Document not found
+- **403**: Not authorized (not your document)
+
+---
+
+### Delete Document
+
+**DELETE** `/documents/:id`
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+```
+
+**Success Response 200:**
+
+```json
+{
+  "success": true,
+  "message": "המסמך נמחק בהצלחה"
+}
+```
+
+**Error Responses:**
+
+- **404**: Document not found
+- **403**: Not authorized
+
+---
+
+### Download Document
+
+**GET** `/documents/:id/download`
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+```
+
+Returns the original PDF file for download.
+
+---
