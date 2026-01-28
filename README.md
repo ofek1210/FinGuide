@@ -128,7 +128,7 @@ curl -X GET http://localhost:5000/api/auth/me \
 
 ## 👥 צוות
 
-Backend Lead: [שם]
+Backend Lead: SegevPartush
 
 ---
 
