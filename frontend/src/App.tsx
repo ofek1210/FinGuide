@@ -4,6 +4,7 @@ import AuthScreen from "./components/AuthScreen";
 import DashboardPlaceholder from "./components/DashboardPlaceholder";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import BackButton from "./components/BackButton";
+import DocumentsPage from "./pages/DocumentsPage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
@@ -45,6 +46,14 @@ export default function App() {
           element={
             <RequireAuth>
               <DashboardPlaceholder />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/documents"
+          element={
+            <RequireAuth>
+              <DocumentsPage />
             </RequireAuth>
           }
         />
