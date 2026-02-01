@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login, register } from "../api/auth.api";
+import Toast from "./ui/Toast";
+import ToastContainer from "./ui/ToastContainer";
+import Loader from "./ui/Loader";
 
 interface AuthScreenProps {
   mode: "login" | "register";
@@ -153,6 +156,12 @@ export default function AuthScreen({
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isRegister = mode === "register";
+
+  useEffect(() => {
+    if (!error) return undefined;
+    const timer = window.setTimeout(() => setError(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -311,16 +320,8 @@ export default function AuthScreen({
               </button>
             )}
 
-            {error && <div className="auth-error">{error}</div>}
-
             <button className="auth-button" type="submit" disabled={isSubmitting}>
-              {isSubmitting
-                ? isRegister
-                  ? "נרשמים..."
-                  : "מתחברים..."
-                : isRegister
-                  ? "יצירת חשבון"
-                  : "התחברות"}
+              {isSubmitting ? <Loader /> : isRegister ? "יצירת חשבון" : "התחברות"}
             </button>
 
             <div className="auth-divider">
@@ -399,6 +400,9 @@ export default function AuthScreen({
           </div>
         </aside>
       </div>
+      <ToastContainer>
+        {error ? <Toast message={error} onDismiss={() => setError(null)} /> : null}
+      </ToastContainer>
     </div>
   );
 }

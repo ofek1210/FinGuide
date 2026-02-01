@@ -4,6 +4,11 @@ import AuthScreen from "./components/AuthScreen";
 import DashboardPlaceholder from "./components/DashboardPlaceholder";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import BackButton from "./components/BackButton";
+import Error400 from "./pages/errors/Error400";
+import Error401 from "./pages/errors/Error401";
+import Error403 from "./pages/errors/Error403";
+import Error404 from "./pages/errors/Error404";
+import Error500 from "./pages/errors/Error500";
 import "./App.css";
 
 export default function App() {
@@ -43,6 +48,11 @@ export default function App() {
             </RequireAuth>
           }
         />
+        <Route path="/400" element={<Error400 />} />
+        <Route path="/401" element={<Error401 />} />
+        <Route path="/403" element={<Error403 />} />
+        <Route path="/500" element={<Error500 />} />
+        <Route path="*" element={<Error404 />} />
       </Routes>
     </>
   );
