@@ -1,29 +1,49 @@
-import { useState } from "react";
+import { Routes, Route } from "react-router-dom";
+import LandingPage from "./components/LandingPage";
 import AuthScreen from "./components/AuthScreen";
-import type { Page } from "./types/navigation";
+import DashboardPlaceholder from "./components/DashboardPlaceholder";
+import { RequireAuth, RequireGuest } from "./components/RouteGuards";
+import BackButton from "./components/BackButton";
+import "./App.css";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<Page>("auth");
-
-  const handleNavigate = (page: Page) => {
-    setCurrentPage(page);
-  };
-
   return (
-    <div className="min-h-screen">
-      {currentPage === "auth" && <AuthScreen onNavigate={handleNavigate} />}
-      {currentPage === "dashboard" && (
-        <div className="auth-page">
-          <div className="auth-shell">
-            <section className="auth-card">
-              <header className="auth-card-header">
-                <h1>התחברות הושלמה</h1>
-                <p>הדאשבורד יתחבר כאן בהמשך.</p>
-              </header>
-            </section>
-          </div>
-        </div>
-      )}
-    </div>
+    <>
+      <BackButton />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <RequireGuest>
+              <LandingPage />
+            </RequireGuest>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <RequireGuest>
+              <AuthScreen mode="login" />
+            </RequireGuest>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <RequireGuest>
+              <AuthScreen mode="register" />
+            </RequireGuest>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <RequireAuth>
+              <DashboardPlaceholder />
+            </RequireAuth>
+          }
+        />
+      </Routes>
+    </>
   );
 }
