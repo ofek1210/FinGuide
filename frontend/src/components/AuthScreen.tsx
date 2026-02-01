@@ -1,0 +1,301 @@
+import { useState } from "react";
+import type { Page } from "../types/navigation";
+import { login } from "../api/auth.api";
+
+interface AuthScreenProps {
+  onNavigate: (page: Page) => void;
+}
+
+const MailIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path
+      d="M4 6.5h16a1.5 1.5 0 0 1 1.5 1.5v8a1.5 1.5 0 0 1-1.5 1.5H4A1.5 1.5 0 0 1 2.5 16V8A1.5 1.5 0 0 1 4 6.5Z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    />
+    <path
+      d="M3.5 8.5 12 13.5 20.5 8.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const LockIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <rect
+      x="5"
+      y="10"
+      width="14"
+      height="10"
+      rx="2"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    />
+    <path
+      d="M8 10V8a4 4 0 0 1 8 0v2"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const EyeIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path
+      d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" strokeWidth="1.6" />
+  </svg>
+);
+
+const EyeOffIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path
+      d="M4 4 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+    />
+    <path
+      d="M6.2 6.7C4 8.3 2.5 12 2.5 12s3.5 6 9.5 6c2 0 3.7-.6 5.2-1.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M9.8 9.3a3 3 0 0 0 4 4"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path
+      d="M12 6c4 0 7.2 2.7 9.2 6-.6 1-1.4 2.1-2.5 3.1"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const SparkleIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path
+      d="m12 3 1.6 4.2 4.4 1.1-4.4 1.1L12 13.7 10.4 9.4 6 8.3l4.4-1.1L12 3Z"
+      fill="currentColor"
+    />
+    <path
+      d="m18.2 14.2.8 2.1 2.2.5-2.2.6-.8 2.1-.8-2.1-2.2-.6 2.2-.5.8-2.1Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+const ShieldIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path
+      d="M12 3 4.5 6.5v5.2c0 4.1 3 7.6 7.5 9.3 4.5-1.7 7.5-5.2 7.5-9.3V6.5L12 3Z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export default function AuthScreen({ onNavigate }: AuthScreenProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitting) return;
+
+    setError(null);
+    setIsSubmitting(true);
+
+    try {
+      if (!email.trim() || !password.trim()) {
+        setError("נא למלא אימייל וסיסמה");
+        return;
+      }
+
+      const response = await login(email.trim(), password);
+
+      if (!response.success || !response.data?.token) {
+        setError(response.message || "לא הצלחנו להתחבר, נסו שוב.");
+        return;
+      }
+
+      localStorage.setItem("auth_token", response.data.token);
+      localStorage.setItem("auth_user", JSON.stringify(response.data.user));
+
+      onNavigate("dashboard");
+    } catch {
+      setError("אירעה שגיאה בהתחברות, נסו שוב בהמשך.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="auth-page">
+      <div className="auth-shell">
+        <section className="auth-card">
+          <header className="auth-card-header">
+            <h1>ברוכים השבים</h1>
+            <p>היכנסו כדי לגשת ללוח הבקרה הפיננסי שלכם</p>
+          </header>
+
+          <form className="auth-form" onSubmit={handleSubmit} noValidate>
+            <label className="auth-field">
+              <span>כתובת אימייל</span>
+              <div className="auth-input">
+                <input
+                  className="auth-input-control is-ltr"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                />
+                <span className="auth-input-icon" aria-hidden="true">
+                  <MailIcon />
+                </span>
+              </div>
+            </label>
+
+            <label className="auth-field">
+              <span>סיסמה</span>
+              <div className="auth-input has-action">
+                <input
+                  className="auth-input-control"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                />
+                <span className="auth-input-icon" aria-hidden="true">
+                  <LockIcon />
+                </span>
+                <button
+                  className="auth-input-action"
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  aria-label={showPassword ? "הסתר סיסמה" : "הצג סיסמה"}
+                >
+                  {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+            </label>
+
+            <button className="auth-link" type="button">
+              שכחתם את הסיסמה?
+            </button>
+
+            {error && <div className="auth-error">{error}</div>}
+
+            <button className="auth-button" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "מתחברים..." : "התחברות"}
+            </button>
+
+            <div className="auth-divider">
+              <span>או המשיכו עם</span>
+            </div>
+
+            <div className="auth-socials">
+              <button className="auth-social" type="button">
+                <span className="auth-social-icon" aria-hidden="true">
+                  <MailIcon />
+                </span>
+                Outlook
+              </button>
+              <button className="auth-social" type="button">
+                <span className="auth-social-icon" aria-hidden="true">
+                  <MailIcon />
+                </span>
+                Gmail
+              </button>
+            </div>
+
+            <div className="auth-register">
+              <span>אין לכם חשבון?</span>
+              <button className="auth-link is-inline" type="button">
+                הרשמו
+              </button>
+            </div>
+          </form>
+
+          <div className="auth-note">
+            <span className="auth-note-icon" aria-hidden="true">
+              <ShieldIcon />
+            </span>
+            המידע שלכם מוצפן ומאובטח. אנחנו לעולם לא משתפים את המידע שלכם עם
+            צדדים שלישיים.
+          </div>
+        </section>
+
+        <aside className="auth-side">
+          <div className="auth-logo">
+            <span className="auth-logo-badge" aria-hidden="true">
+              <SparkleIcon />
+            </span>
+            <span>FinGuide</span>
+          </div>
+
+          <h2>העוזר הפיננסי המבוסס על AI שלכם</h2>
+          <p>
+            העלו מסמכים, קבלו תובנות מיידיות מבוססות בינה מלאכותית, וקחו שליטה
+            על העתיד הפיננסי שלכם.
+          </p>
+
+          <div className="auth-features">
+            <div className="auth-feature">
+              <span className="auth-feature-icon" aria-hidden="true">
+                <SparkleIcon />
+              </span>
+              ניתוח מסמכים מבוסס בינה מלאכותית
+            </div>
+            <div className="auth-feature">
+              <span className="auth-feature-icon" aria-hidden="true">
+                <ShieldIcon />
+              </span>
+              אבטחה והצפנה ברמת בנק
+            </div>
+            <div className="auth-feature">
+              <span className="auth-feature-icon" aria-hidden="true">
+                <MailIcon />
+              </span>
+              אינטגרציה אוטומטית לתיבת המייל
+            </div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
