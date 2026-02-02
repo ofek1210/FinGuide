@@ -8,6 +8,7 @@ const errorHandler = require('./middleware/errorHandler');
 // Routes
 const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documents');
+const devRoutes = require('./routes/dev');
 
 // חיבור ל-MongoDB
 connectDB();
@@ -48,6 +49,9 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/dev', devRoutes);
+}
 
 // 404 handler
 app.use((req, res) => {
@@ -61,17 +65,40 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // הפעלת השרת
-const PORT = process.env.PORT || 5000;
+const DEFAULT_PORT = 5001;
+const MAX_PORT_ATTEMPTS = 1;
+let server;
 
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+const startServer = (port, attempt = 0) => {
+  server = app.listen(port, () => {
+    console.log(`🚀 Server running on port ${port}`);
+    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+
+  server.on('error', err => {
+    if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
+      const nextPort = port + 1;
+      console.warn(`⚠️ Port ${port} in use, trying ${nextPort}...`);
+      startServer(nextPort, attempt + 1);
+      return;
+    }
+
+    console.error('❌ Server failed to start:', err);
+    process.exit(1);
+  });
+};
+
+const basePort = Number(process.env.PORT) || DEFAULT_PORT;
+startServer(basePort);
 
 // טיפול בשגיאות לא צפויות
 process.on('unhandledRejection', err => {
   console.error('❌ Unhandled Rejection:', err);
-  server.close(() => {
+  if (server) {
+    server.close(() => {
+      process.exit(1);
+    });
+  } else {
     process.exit(1);
-  });
+  }
 });

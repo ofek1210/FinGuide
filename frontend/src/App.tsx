@@ -1,5 +1,6 @@
 import { useState } from "react";
 import AuthScreen from "./components/AuthScreen";
+import NumericDevPanel from "./components/NumericDevPanel";
 import type { Page } from "./types/navigation";
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
           </div>
         </div>
       )}
+      {import.meta.env.DEV && <NumericDevPanel />}
     </div>
   );
 }
