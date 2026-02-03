@@ -8,6 +8,7 @@ const errorHandler = require('./middleware/errorHandler');
 // Routes
 const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documents');
+const aiRoutes = require('./routes/ai');
 
 // חיבור ל-MongoDB
 connectDB();
@@ -48,6 +49,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 handler
 app.use((req, res) => {
