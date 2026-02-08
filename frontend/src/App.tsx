@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import AuthScreen from "./components/AuthScreen";
-import DashboardPlaceholder from "./components/DashboardPlaceholder";
+import DashboardPage from "./pages/DashboardPage";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import BackButton from "./components/BackButton";
 import DocumentsPage from "./pages/DocumentsPage";
@@ -45,7 +45,7 @@ export default function App() {
           path="/dashboard"
           element={
             <RequireAuth>
-              <DashboardPlaceholder />
+              <DashboardPage />
             </RequireAuth>
           }
         />

@@ -26,6 +26,12 @@ export type UploadDocumentResponse = {
   data?: DocumentItem;
 };
 
+export type DocumentResponse = {
+  success: boolean;
+  message?: string;
+  data?: DocumentItem;
+};
+
 export type RemoveDocumentResponse = {
   success: boolean;
   message?: string;
@@ -41,7 +47,7 @@ export type DownloadDocumentResponse = {
 const parseJson = async (response: Response) => {
   try {
     return await response.json();
-  } catch (error) {
+  } catch {
     return null;
   }
 };
@@ -133,6 +139,34 @@ export const uploadDocument = async (file: File) => {
     success: false,
     message: "תגובה לא תקינה.",
   }) as UploadDocumentResponse;
+};
+
+export const getDocument = async (id: string) => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as DocumentResponse;
+  }
+
+  const response = await fetch(`/api/documents/${id}`, {
+    headers: {
+      Accept: "application/json",
+      ...getAuthHeaders(),
+    },
+  });
+
+  const payload = await parseJson(response);
+
+  if (!response.ok) {
+    return (payload || {
+      success: false,
+      message: "לא הצלחנו לטעון את המסמך.",
+    }) as DocumentResponse;
+  }
+
+  return (payload || {
+    success: false,
+    message: "תגובה לא תקינה.",
+  }) as DocumentResponse;
 };
 
 export const removeDocument = async (id: string) => {
