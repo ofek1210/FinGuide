@@ -1,24 +1,57 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/ui/Loader";
+import {
+  listDocuments,
+  uploadDocument,
+  downloadDocument,
+  removeDocument,
+  type DocumentItem as ApiDocumentItem,
+} from "../api/documents.api";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
 
-type DocumentStatus = "uploaded" | "uploading" | "failed";
+type DocumentStatus =
+  | "uploading"
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed";
 
 interface DocumentItem {
   id: string;
   name: string;
   status: DocumentStatus;
+  fileSize?: number;
+  uploadedAt?: string;
 }
 
-const mockDocuments: DocumentItem[] = [];
-const STORAGE_KEY = "documents_uploads";
+const addUniqueId = (ids: string[], id: string) =>
+  ids.includes(id) ? ids : [...ids, id];
+
+const removeId = (ids: string[], id: string) => ids.filter((item) => item !== id);
+
+const mapStatus = (status?: ApiDocumentItem["status"]): DocumentStatus => {
+  if (status === "completed") return "completed";
+  if (status === "processing") return "processing";
+  if (status === "failed") return "failed";
+  return "pending";
+};
+
+const mapApiDocument = (document: ApiDocumentItem): DocumentItem => ({
+  id: document._id,
+  name: document.originalName,
+  status: mapStatus(document.status),
+  fileSize: document.fileSize,
+  uploadedAt: document.uploadedAt,
+});
 
 const statusLabels: Record<DocumentStatus, string> = {
-  uploaded: "הקובץ עלה בהצלחה",
   uploading: "מעלה קובץ...",
+  pending: "הקובץ הועלה - ממתין לעיבוד",
+  processing: "המסמך בעיבוד",
+  completed: "העיבוד הושלם",
   failed: "העלאת הקובץ נכשלה",
 };
 
@@ -92,21 +125,66 @@ function UploadArea({
   );
 }
 
-function DocumentCard({ document }: { document: DocumentItem }) {
+interface DocumentCardProps {
+  document: DocumentItem;
+  onDownload: (document: DocumentItem) => void;
+  onDelete: (document: DocumentItem) => void;
+  isDeleting: boolean;
+  isDownloading: boolean;
+}
+
+function DocumentCard({
+  document,
+  onDownload,
+  onDelete,
+  isDeleting,
+  isDownloading,
+}: DocumentCardProps) {
+  const statusClass =
+    document.status === "completed"
+      ? "uploaded"
+      : document.status === "pending" || document.status === "processing"
+        ? "uploading"
+        : document.status;
+  const isTemp = document.id.startsWith("temp-");
+  const isUploading = document.status === "uploading";
+  const isFailed = document.status === "failed";
+  const disableDownload = isTemp || isUploading || isFailed || isDownloading;
+  const disableDelete = isTemp || isUploading || isDeleting;
   const statusIcon =
-    document.status === "uploading" ? (
+    document.status === "uploading" ||
+    document.status === "pending" ||
+    document.status === "processing" ? (
       <span className="status-spinner" aria-hidden="true" />
     ) : (
       <span className="status-symbol" aria-hidden="true">
-        {document.status === "uploaded" ? "✓" : "!"}
+        {document.status === "completed" ? "✓" : "!"}
       </span>
     );
 
   return (
     <div className="document-row">
-      <span className={`status-icon status-${document.status}`}>{statusIcon}</span>
+      <span className={`status-icon status-${statusClass}`}>{statusIcon}</span>
       <span className="document-name">{document.name}</span>
       <span className="document-status">{statusLabels[document.status]}</span>
+      <div className="document-actions">
+        <button
+          className="document-action"
+          type="button"
+          onClick={() => onDownload(document)}
+          disabled={disableDownload}
+        >
+          {isDownloading ? "מוריד..." : "הורדה"}
+        </button>
+        <button
+          className="document-action danger"
+          type="button"
+          onClick={() => onDelete(document)}
+          disabled={disableDelete}
+        >
+          {isDeleting ? "מוחק..." : "מחיקה"}
+        </button>
+      </div>
     </div>
   );
 }
@@ -125,46 +203,36 @@ function EmptyState() {
 
 export default function DocumentsPage() {
   const navigate = useNavigate();
-  const [documents, setDocuments] = useState<DocumentItem[]>(() => {
-    // TODO: Replace localStorage persistence with backend data once available.
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) {
-        return mockDocuments;
-      }
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        return mockDocuments;
-      }
-      return parsed.filter((item) => {
-        if (!item || typeof item !== "object") {
-          return false;
-        }
-        const status = (item as DocumentItem).status;
-        return (
-          typeof (item as DocumentItem).id === "string" &&
-          typeof (item as DocumentItem).name === "string" &&
-          (status === "uploaded" || status === "uploading" || status === "failed")
-        );
-      }) as DocumentItem[];
-    } catch {
-      return mockDocuments;
-    }
-  });
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [uploadMessage, setUploadMessage] = useState("");
+  const [listError, setListError] = useState("");
+  const [isLoadingList, setIsLoadingList] = useState(true);
+  const [actionError, setActionError] = useState("");
+  const [deletingIds, setDeletingIds] = useState<string[]>([]);
+  const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const timersRef = useRef<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
-    // TODO: Replace localStorage persistence with backend data once available.
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(documents));
-    } catch {
-      // Ignore storage errors to keep UX stable.
+  const loadDocuments = useCallback(async () => {
+    const response = await listDocuments();
+
+    if (response.success && Array.isArray(response.data)) {
+      setDocuments(response.data.map(mapApiDocument));
+      setListError("");
+    } else {
+      setDocuments([]);
+      setListError(response.message || "לא הצלחנו לטעון את המסמכים.");
     }
-  }, [documents]);
+
+    setIsLoadingList(false);
+  }, []);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadDocuments();
+  }, [loadDocuments]);
 
   useEffect(() => {
     return () => {
@@ -190,11 +258,19 @@ export default function DocumentsPage() {
 
     const isPdf =
       file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const maxSize = 10 * 1024 * 1024;
 
     if (!isPdf) {
       setSelectedFile(null);
       setUploadState("error");
-      setUploadMessage("ניתן להעלות רק קובצי פי-די-אף.");
+      setUploadMessage("ניתן להעלות רק קובצי PDF.");
+      return;
+    }
+
+    if (file.size > maxSize) {
+      setSelectedFile(null);
+      setUploadState("error");
+      setUploadMessage("הקובץ גדול מדי. מקסימום 10MB.");
       return;
     }
 
@@ -202,7 +278,7 @@ export default function DocumentsPage() {
     setUploadState("idle");
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     clearTimers();
 
     if (!selectedFile) {
@@ -212,46 +288,98 @@ export default function DocumentsPage() {
     }
 
     const file = selectedFile;
-    const newDoc: DocumentItem = {
-      id: `doc-${Date.now()}`,
+    const tempId = `temp-${Date.now()}`;
+    const tempDoc: DocumentItem = {
+      id: tempId,
       name: file.name,
       status: "uploading",
+      fileSize: file.size,
+      uploadedAt: new Date().toISOString(),
     };
 
-    setDocuments((prev) => [newDoc, ...prev]);
+    setDocuments((prev) => [tempDoc, ...prev]);
     setUploadState("uploading");
     setUploadMessage("מעלה קובץ...");
     setSelectedFile(null);
 
-    const uploadTimer = window.setTimeout(() => {
-      setUploadState("uploaded");
-      setUploadMessage("הקובץ עלה בהצלחה");
+    const response = await uploadDocument(file);
 
+    if (!response.success || !response.data) {
+      setUploadState("error");
+      setUploadMessage(response.message || "שגיאה בהעלאת הקובץ.");
       setDocuments((prev) =>
         prev.map((doc) =>
-          doc.id === newDoc.id ? { ...doc, status: "uploaded" } : doc,
+          doc.id === tempId ? { ...doc, status: "failed" } : doc,
         ),
       );
+      return;
+    }
 
-      const finalizeTimer = window.setTimeout(() => {
-        setUploadMessage("");
-        setUploadState("idle");
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-      }, 400);
+    const uploadedDoc = response.data;
+    setUploadState("uploaded");
+    setUploadMessage("הקובץ עלה בהצלחה");
+    setDocuments((prev) =>
+      prev.map((doc) => (doc.id === tempId ? mapApiDocument(uploadedDoc) : doc)),
+    );
 
-      timersRef.current.push(finalizeTimer);
-    }, 900);
+    const finalizeTimer = window.setTimeout(() => {
+      setUploadMessage("");
+      setUploadState("idle");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }, 400);
 
-    timersRef.current.push(uploadTimer);
+    timersRef.current.push(finalizeTimer);
+  };
+
+  const handleDelete = async (doc: DocumentItem) => {
+    if (doc.id.startsWith("temp-")) return;
+    if (!window.confirm(`למחוק את המסמך "${doc.name}"?`)) return;
+
+    setActionError("");
+    setDeletingIds((prev) => addUniqueId(prev, doc.id));
+
+    const response = await removeDocument(doc.id);
+    if (!response.success) {
+      setActionError(response.message || "שגיאה במחיקת המסמך.");
+      setDeletingIds((prev) => removeId(prev, doc.id));
+      return;
+    }
+
+    setDocuments((prev) => prev.filter((item) => item.id !== doc.id));
+    setDeletingIds((prev) => removeId(prev, doc.id));
+  };
+
+  const handleDownload = async (doc: DocumentItem) => {
+    if (doc.id.startsWith("temp-")) return;
+
+    setActionError("");
+    setDownloadingIds((prev) => addUniqueId(prev, doc.id));
+
+    const response = await downloadDocument(doc.id);
+    if (!response.success || !response.blob) {
+      setActionError(response.message || "שגיאה בהורדת המסמך.");
+      setDownloadingIds((prev) => removeId(prev, doc.id));
+      return;
+    }
+
+    const url = window.URL.createObjectURL(response.blob);
+    const link = window.document.createElement("a");
+    link.href = url;
+    link.download = response.filename || doc.name || "document.pdf";
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    setDownloadingIds((prev) => removeId(prev, doc.id));
   };
 
   const handleBrowse = () => {
     fileInputRef.current?.click();
   };
 
-  const hasUploadedDocuments = documents.some((doc) => doc.status === "uploaded");
+  const hasUploadedDocuments = documents.some((doc) => doc.status !== "failed");
 
   return (
     <div className="documents-page" dir="rtl">
@@ -292,13 +420,33 @@ export default function DocumentsPage() {
             <h2>המסמכים שלכם</h2>
             <span>{documents.length} קבצים</span>
           </div>
+          {actionError ? (
+            <div className="documents-inline-error">{actionError}</div>
+          ) : null}
 
-          {documents.length === 0 ? (
+          {listError ? (
+            <div className="documents-card empty-state">
+              <h3>לא הצלחנו לטעון מסמכים</h3>
+              <p>{listError}</p>
+            </div>
+          ) : isLoadingList ? (
+            <div className="documents-card empty-state">
+              <h3>טוענים מסמכים...</h3>
+              <p>עוד רגע ונציג את הרשימה.</p>
+            </div>
+          ) : documents.length === 0 ? (
             <EmptyState />
           ) : (
             <div className="documents-list-rows">
               {documents.map((doc) => (
-                <DocumentCard key={doc.id} document={doc} />
+                <DocumentCard
+                  key={doc.id}
+                  document={doc}
+                  onDelete={handleDelete}
+                  onDownload={handleDownload}
+                  isDeleting={deletingIds.includes(doc.id)}
+                  isDownloading={downloadingIds.includes(doc.id)}
+                />
               ))}
             </div>
           )}

@@ -35,7 +35,7 @@ export type RegisterResponse = {
 const parseJson = async (response: Response) => {
   try {
     return await response.json();
-  } catch (error) {
+  } catch {
     return null;
   }
 };
