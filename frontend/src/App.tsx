@@ -1,29 +1,68 @@
-import { useState } from "react";
+import { Routes, Route } from "react-router-dom";
+import LandingPage from "./components/LandingPage";
 import AuthScreen from "./components/AuthScreen";
-import type { Page } from "./types/navigation";
+import DashboardPlaceholder from "./components/DashboardPlaceholder";
+import { RequireAuth, RequireGuest } from "./components/RouteGuards";
+import BackButton from "./components/BackButton";
+import DocumentsPage from "./pages/DocumentsPage";
+import Error400 from "./pages/errors/Error400";
+import Error401 from "./pages/errors/Error401";
+import Error403 from "./pages/errors/Error403";
+import Error404 from "./pages/errors/Error404";
+import Error500 from "./pages/errors/Error500";
+import "./App.css";
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<Page>("auth");
-
-  const handleNavigate = (page: Page) => {
-    setCurrentPage(page);
-  };
-
   return (
-    <div className="min-h-screen">
-      {currentPage === "auth" && <AuthScreen onNavigate={handleNavigate} />}
-      {currentPage === "dashboard" && (
-        <div className="auth-page">
-          <div className="auth-shell">
-            <section className="auth-card">
-              <header className="auth-card-header">
-                <h1>התחברות הושלמה</h1>
-                <p>הדאשבורד יתחבר כאן בהמשך.</p>
-              </header>
-            </section>
-          </div>
-        </div>
-      )}
-    </div>
+    <>
+      <BackButton />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <RequireGuest>
+              <LandingPage />
+            </RequireGuest>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <RequireGuest>
+              <AuthScreen mode="login" />
+            </RequireGuest>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <RequireGuest>
+              <AuthScreen mode="register" />
+            </RequireGuest>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <RequireAuth>
+              <DashboardPlaceholder />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/documents"
+          element={
+            <RequireAuth>
+              <DocumentsPage />
+            </RequireAuth>
+          }
+        />
+        <Route path="/400" element={<Error400 />} />
+        <Route path="/401" element={<Error401 />} />
+        <Route path="/403" element={<Error403 />} />
+        <Route path="/500" element={<Error500 />} />
+        <Route path="*" element={<Error404 />} />
+      </Routes>
+    </>
   );
 }
