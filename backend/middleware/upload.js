@@ -2,6 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
+const { FileUploadError } = require('../utils/appErrors');
 
 // ודא שתיקיית uploads קיימת
 const uploadDir = path.join(__dirname, '..', 'uploads');
@@ -42,27 +43,25 @@ const upload = multer({
 
 // Middleware לטיפול בשגיאות multer
 const handleUploadError = (err, req, res, next) => {
+  if (!err) {
+    return next();
+  }
+
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
-      return res.status(400).json({
-        success: false,
-        message: 'הקובץ גדול מדי. מקסימום 10MB',
-      });
+      return next(
+        new FileUploadError('הקובץ גדול מדי. מקסימום 10MB', [
+          { code: err.code },
+        ])
+      );
     }
-    return res.status(400).json({
-      success: false,
-      message: 'שגיאה בהעלאת הקובץ',
-    });
+
+    return next(
+      new FileUploadError('שגיאה בהעלאת הקובץ', [{ code: err.code }])
+    );
   }
 
-  if (err) {
-    return res.status(400).json({
-      success: false,
-      message: err.message,
-    });
-  }
-
-  next();
+  return next(new FileUploadError(err.message || 'שגיאה בהעלאת הקובץ'));
 };
 
 module.exports = { upload, handleUploadError };

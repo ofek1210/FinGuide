@@ -4,6 +4,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const { NotFoundError } = require('./utils/appErrors');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -54,11 +55,8 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found',
-  });
+app.use((req, res, next) => {
+  next(new NotFoundError('Route not found'));
 });
 
 // Error handler (חייב להיות אחרון)
