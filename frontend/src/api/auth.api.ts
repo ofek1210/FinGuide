@@ -32,12 +32,38 @@ export type RegisterResponse = {
   };
 };
 
+export type AuthUser = {
+  id: string;
+  name: string;
+  email: string;
+  createdAt?: string;
+};
+
+export type MeResponse = {
+  success: boolean;
+  message?: string;
+  data?: {
+    user: AuthUser;
+  };
+};
+
 const parseJson = async (response: Response) => {
   try {
     return await response.json();
-  } catch (error) {
+  } catch {
     return null;
   }
+};
+
+const getToken = () => localStorage.getItem("token");
+
+const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
 };
 
 export const login = async (email: string, password: string) => {
@@ -78,4 +104,32 @@ export const register = async (name: string, email: string, password: string) =>
   }
 
   return (payload || { success: false, message: "תגובה לא תקינה." }) as RegisterResponse;
+};
+
+export const getMe = async () => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as MeResponse;
+  }
+
+  const response = await fetch("/api/auth/me", {
+    headers: {
+      Accept: "application/json",
+      ...getAuthHeaders(),
+    },
+  });
+
+  const payload = await parseJson(response);
+
+  if (!response.ok) {
+    return (payload || {
+      success: false,
+      message: "לא הצלחנו לטעון את פרטי המשתמש.",
+    }) as MeResponse;
+  }
+
+  return (payload || {
+    success: false,
+    message: "תגובה לא תקינה.",
+  }) as MeResponse;
 };
