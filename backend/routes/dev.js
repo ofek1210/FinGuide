@@ -4,6 +4,7 @@ const {
   normalizeAmount,
   enforceAmountBounds,
 } = require('../utils/numeric');
+const { validateSalary } = require('../utils/validateSalary');
 
 const router = express.Router();
 
@@ -24,6 +25,20 @@ router.post('/normalize-number', (req, res) => {
       success: false,
       message: error.message || 'Invalid numeric input',
     });
+  }
+});
+
+router.post('/validate-salary', (req, res, next) => {
+  try {
+    const { grossSalary, netSalary } = req.body || {};
+    const validated = validateSalary({ grossSalary, netSalary });
+
+    res.json({
+      success: true,
+      data: validated,
+    });
+  } catch (error) {
+    next(error);
   }
 });
 
