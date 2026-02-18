@@ -9,12 +9,13 @@ const errorHandler = require('./middleware/errorHandler');
 const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documents');
 const aiRoutes = require('./routes/ai');
-
-// חיבור ל-MongoDB
-connectDB();
+const findingsRoutes = require('./routes/findings');
 
 // יצירת Express app
 const app = express();
+
+// חיבור ל-MongoDB (מדולל כדי לאפשר overriding בטסטים)
+connectDB();
 
 // Rate limiting
 const limiter = rateLimit({
@@ -50,6 +51,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/findings', findingsRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -77,3 +79,5 @@ process.on('unhandledRejection', err => {
     process.exit(1);
   });
 });
+
+module.exports = app;
