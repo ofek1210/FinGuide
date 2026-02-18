@@ -21,6 +21,7 @@ import {
   type DocumentItem,
   type DocumentStatus,
 } from "../api/documents.api";
+import { listFindings, type FindingItem, type FindingSeverity } from "../api/findings.api";
 import { getHealth } from "../api/health.api";
 import Loader from "../components/ui/Loader";
 
@@ -63,6 +64,11 @@ const statusLabels: Record<DocumentStatus, string> = {
   failed: "שגיאה",
 };
 
+const findingSeverityLabels: Record<FindingSeverity, string> = {
+  info: "מידע",
+  warning: "אזהרה",
+};
+
 const addUniqueId = (ids: string[], id: string) =>
   ids.includes(id) ? ids : [...ids, id];
 
@@ -86,6 +92,10 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [documentsError, setDocumentsError] = useState("");
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
+
+  const [findings, setFindings] = useState<FindingItem[]>([]);
+  const [findingsError, setFindingsError] = useState("");
+  const [isFindingsLoading, setIsFindingsLoading] = useState(true);
 
   const [healthStatus, setHealthStatus] = useState<"online" | "offline" | "checking">(
     "checking",
@@ -133,6 +143,19 @@ export default function DashboardPage() {
     setIsDocumentsLoading(false);
   }, []);
 
+  const loadFindings = useCallback(async () => {
+    setIsFindingsLoading(true);
+    const response = await listFindings();
+    if (response.success && Array.isArray(response.data)) {
+      setFindings(response.data);
+      setFindingsError("");
+    } else {
+      setFindings([]);
+      setFindingsError(response.message || "לא הצלחנו לטעון את הממצאים.");
+    }
+    setIsFindingsLoading(false);
+  }, []);
+
   const loadHealth = useCallback(async () => {
     const response = await getHealth();
     if (response.success) {
@@ -143,8 +166,8 @@ export default function DashboardPage() {
   }, []);
 
   const loadDashboard = useCallback(async () => {
-    await Promise.all([loadUser(), loadDocuments(), loadHealth()]);
-  }, [loadDocuments, loadHealth, loadUser]);
+    await Promise.all([loadUser(), loadDocuments(), loadFindings(), loadHealth()]);
+  }, [loadDocuments, loadFindings, loadHealth, loadUser]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -436,6 +459,7 @@ export default function DashboardPage() {
         {actionError ? <div className="dashboard-inline-error">{actionError}</div> : null}
         {userError ? <div className="dashboard-inline-error">{userError}</div> : null}
         {documentsError ? <div className="dashboard-inline-error">{documentsError}</div> : null}
+        {findingsError ? <div className="dashboard-inline-error">{findingsError}</div> : null}
 
         <section className="dashboard-grid">
           <div className="dashboard-column">
@@ -579,6 +603,43 @@ export default function DashboardPage() {
               >
                 מעבר למסמכים
               </button>
+            </article>
+
+            <article className="dashboard-card findings-card">
+              <div className="findings-header">
+                <div>
+                  <h3>ממצאים</h3>
+                  <p>תובנות לוגיות קצרות על המסמכים שלך.</p>
+                </div>
+                <span className="findings-count">{findings.length}</span>
+              </div>
+              {isFindingsLoading ? (
+                <div className="findings-placeholder">
+                  <Loader />
+                  טוענים ממצאים...
+                </div>
+              ) : findings.length === 0 ? (
+                <div className="findings-placeholder">אין ממצאים כרגע.</div>
+              ) : (
+                <ul className="findings-list">
+                  {findings.map((finding) => (
+                    <li
+                      key={finding.id}
+                      className={`finding-item severity-${finding.severity}`}
+                    >
+                      <div className="finding-text">
+                        <span className="finding-title">{finding.title}</span>
+                        <span className="finding-details">{finding.details}</span>
+                      </div>
+                      <span
+                        className={`finding-badge severity-${finding.severity}`}
+                      >
+                        {findingSeverityLabels[finding.severity]}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </article>
 
             <article className="dashboard-card dashboard-documents-card">
