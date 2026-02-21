@@ -457,7 +457,7 @@ export default function DocumentsPage() {
             className="landing-primary"
             type="button"
             disabled={!hasUploadedDocuments}
-            onClick={() => navigate("/404")}
+            onClick={() => navigate("/documents/scan")}
           >
             סריקת הקבצים שהועלו
           </button>

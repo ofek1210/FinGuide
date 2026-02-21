@@ -5,6 +5,8 @@ import DashboardPage from "./pages/DashboardPage";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import BackButton from "./components/BackButton";
 import DocumentsPage from "./pages/DocumentsPage";
+import ScanStatusPage from "./pages/ScanStatusPage";
+import ScanCompletePage from "./pages/ScanCompletePage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
@@ -54,6 +56,22 @@ export default function App() {
           element={
             <RequireAuth>
               <DocumentsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/documents/scan"
+          element={
+            <RequireAuth>
+              <ScanStatusPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/documents/scan/complete"
+          element={
+            <RequireAuth>
+              <ScanCompletePage />
             </RequireAuth>
           }
         />
