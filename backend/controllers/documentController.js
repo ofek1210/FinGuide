@@ -1,15 +1,13 @@
 const fs = require('fs').promises;
 const Document = require('../models/Document');
+const { FileUploadError } = require('../utils/appErrors');
 
 // העלאת מסמך
 exports.uploadDocument = async (req, res, next) => {
   try {
     // בדוק שקובץ הועלה
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: 'לא נבחר קובץ',
-      });
+      return next(new FileUploadError('לא נבחר קובץ'));
     }
 
     // יצירת רכורד במונגו
@@ -20,12 +18,13 @@ exports.uploadDocument = async (req, res, next) => {
       filePath: req.file.path,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
+      status: 'uploaded',
     });
 
     res.status(201).json({
       success: true,
-      message: 'הקובץ הועלה בהצלחה',
       data: {
+        id: document._id,
         _id: document._id,
         originalName: document.originalName,
         fileSize: document.fileSize,
