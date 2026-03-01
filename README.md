@@ -51,6 +51,49 @@ npm start
 
 השרת ירוץ על `http://localhost:5000`
 
+## ⚡ הרצה מאוחדת (Backend + Frontend)
+
+ניתן להרים את כל הפרויקט מהתיקייה הראשית בפקודה אחת.
+
+### התקנה (פעם ראשונה)
+מהתיקייה הראשית של הפרויקט:
+
+```bash
+npm run install:all
+```
+
+### הרצה
+
+```bash
+npm run dev
+```
+
+ברירת מחדל לאחר עלייה:
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:5000`
+
+### חשוב
+- MongoDB נשאר שירות חיצוני ולא מורם אוטומטית.
+- ודאו ש־MongoDB רץ לפני `npm run dev`.
+
+### פקודות נוספות ברמת ה-root
+
+```bash
+# הרצת כל צד בנפרד
+npm run dev:backend
+npm run dev:frontend
+
+# בדיקות עזר
+npm run lint
+npm run test
+```
+
+### Troubleshooting קצר
+- אם ה־backend נופל בגלל `MONGODB_URI` או `JWT_SECRET`:
+  בדקו את `backend/.env`.
+- אם פורט תפוס (`5000` או `5173`):
+  שחררו את הפורט התפוס או עדכנו הגדרות פורט בהתאם.
+
 ## 📁 מבנה הפרויקט
 
 ```
