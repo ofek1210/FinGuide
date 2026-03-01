@@ -301,6 +301,30 @@ input {
   color: rgba(27, 36, 50, 0.7);
 }
 
+.auth-google-slot {
+  display: flex;
+  justify-content: center;
+}
+
+.auth-google-button {
+  min-height: 44px;
+  min-width: 240px;
+}
+
+.auth-google-state {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.auth-google-state-error {
+  border-radius: 12px;
+  border: 1px solid rgba(222, 85, 65, 0.3);
+  background: rgba(222, 85, 65, 0.12);
+  color: #a3321e;
+  padding: 10px 12px;
+}
+
 .auth-register {
   display: flex;
   align-items: center;

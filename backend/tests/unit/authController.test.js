@@ -2,10 +2,24 @@ const httpMocks = require('node-mocks-http');
 const jwt = require('jsonwebtoken');
 
 const User = require('../../models/User');
-const { register, getMe } = require('../../controllers/authController');
+
+let mockGoogleVerifyIdToken;
 
 jest.mock('../../models/User');
 jest.mock('jsonwebtoken');
+jest.mock('google-auth-library', () => {
+  mockGoogleVerifyIdToken = jest.fn();
+  return {
+    OAuth2Client: jest.fn().mockImplementation(() => ({
+      verifyIdToken: mockGoogleVerifyIdToken,
+    })),
+  };
+});
+const {
+  register,
+  getMe,
+  googleLogin,
+} = require('../../controllers/authController');
 
 describe('authController - register', () => {
   beforeEach(() => {
@@ -76,7 +90,144 @@ describe('authController - register', () => {
     expect(data.message).toBe('משתמש עם אימייל זה כבר קיים');
     expect(next).not.toHaveBeenCalled();
   });
+});
 
+describe('authController - googleLogin', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGoogleVerifyIdToken.mockReset();
+    process.env.GOOGLE_CLIENT_ID = 'google-client-id';
+  });
+
+  const buildReqRes = body => {
+    const req = httpMocks.createRequest({
+      method: 'POST',
+      url: '/api/auth/google',
+      body,
+    });
+    const res = httpMocks.createResponse();
+    return { req, res };
+  };
+
+  it('should return 500 when GOOGLE_CLIENT_ID is missing', async () => {
+    delete process.env.GOOGLE_CLIENT_ID;
+
+    const { req, res } = buildReqRes({ credential: 'fake-token' });
+
+    await googleLogin(req, res);
+
+    expect(res.statusCode).toBe(500);
+    expect(res._getJSONData()).toEqual({
+      success: false,
+      message: 'Google auth לא הוגדר בשרת',
+    });
+  });
+
+  it('should return 401 when Google payload is not verified', async () => {
+    mockGoogleVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        sub: 'google-user-id',
+        email: 'test@example.com',
+        email_verified: false,
+      }),
+    });
+
+    const { req, res } = buildReqRes({ credential: 'fake-token' });
+
+    await googleLogin(req, res);
+
+    expect(res.statusCode).toBe(401);
+    expect(res._getJSONData()).toEqual({
+      success: false,
+      message: 'Google credential לא תקף',
+    });
+  });
+
+  it('should link an existing account by email and return token', async () => {
+    const existingUser = {
+      _id: 'existing-user-id',
+      name: 'Existing User',
+      email: 'existing@example.com',
+      googleId: undefined,
+      save: jest.fn().mockResolvedValue(true),
+    };
+
+    mockGoogleVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        sub: 'google-user-id',
+        email: 'existing@example.com',
+        email_verified: true,
+        name: 'Existing User',
+      }),
+    });
+    User.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(existingUser);
+    jwt.sign.mockReturnValue('jwt-from-google');
+
+    const { req, res } = buildReqRes({ credential: 'valid-token' });
+
+    await googleLogin(req, res);
+
+    expect(existingUser.googleId).toBe('google-user-id');
+    expect(existingUser.save).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      success: true,
+      data: {
+        user: {
+          id: 'existing-user-id',
+          name: 'Existing User',
+          email: 'existing@example.com',
+        },
+        token: 'jwt-from-google',
+      },
+      message: 'התחברות בוצעה בהצלחה',
+    });
+  });
+
+  it('should create a new user when no matching account exists', async () => {
+    const createdUser = {
+      _id: 'new-user-id',
+      name: 'New User',
+      email: 'new@example.com',
+      googleId: 'google-new-id',
+    };
+
+    mockGoogleVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({
+        sub: 'google-new-id',
+        email: 'new@example.com',
+        email_verified: true,
+        name: 'New User',
+      }),
+    });
+    User.findOne.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
+    User.create.mockResolvedValue(createdUser);
+    jwt.sign.mockReturnValue('jwt-for-new-user');
+
+    const { req, res } = buildReqRes({ credential: 'valid-token' });
+
+    await googleLogin(req, res);
+
+    expect(User.create).toHaveBeenCalledWith({
+      name: 'New User',
+      email: 'new@example.com',
+      googleId: 'google-new-id',
+      password: expect.any(String),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      success: true,
+      data: {
+        user: {
+          id: 'new-user-id',
+          name: 'New User',
+          email: 'new@example.com',
+        },
+        token: 'jwt-for-new-user',
+      },
+      message: 'התחברות בוצעה בהצלחה',
+    });
+  });
 });
 
 describe('authController - getMe', () => {

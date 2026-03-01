@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { login, register } from "../api/auth.api";
+import { login, loginWithGoogle, register } from "../api/auth.api";
 import Toast from "./ui/Toast";
 import ToastContainer from "./ui/ToastContainer";
 import Loader from "./ui/Loader";
@@ -9,6 +9,8 @@ import { APP_ROUTES } from "../types/navigation";
 interface AuthScreenProps {
   mode: "login" | "register";
 }
+
+const GOOGLE_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
 
 const MailIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -150,19 +152,146 @@ export default function AuthScreen({
   mode,
 }: AuthScreenProps) {
   const navigate = useNavigate();
+  const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleReady, setIsGoogleReady] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const isRegister = mode === "register";
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
     if (!error) return undefined;
     const timer = window.setTimeout(() => setError(null), 4000);
     return () => window.clearTimeout(timer);
   }, [error]);
+
+  const persistSession = useCallback(
+    (token: string, user?: { id: string; name: string; email: string }) => {
+      localStorage.setItem("token", token);
+      if (user) {
+        localStorage.setItem("auth_user", JSON.stringify(user));
+      }
+      navigate(APP_ROUTES.dashboard);
+    },
+    [navigate],
+  );
+
+  const handleGoogleCredential = useCallback(
+    async (credential: string) => {
+      setError(null);
+      setIsGoogleSubmitting(true);
+
+      try {
+        const response = await loginWithGoogle(credential);
+        const token = response.data?.token ?? response.token;
+
+        if (!response.success || !token) {
+          setError(response.message || "לא הצלחנו להתחבר עם Google.");
+          return;
+        }
+
+        persistSession(token, response.data?.user);
+      } catch {
+        setError("אירעה שגיאה בהתחברות עם Google, נסו שוב בהמשך.");
+      } finally {
+        setIsGoogleSubmitting(false);
+      }
+    },
+    [persistSession],
+  );
+
+  useEffect(() => {
+    if (!googleClientId) {
+      setIsGoogleReady(false);
+      return undefined;
+    }
+
+    setIsGoogleReady(false);
+    let isCancelled = false;
+    const scriptSelector = "script[data-google-identity='true']";
+    let attachedScript: HTMLScriptElement | null = null;
+
+    const renderGoogleButton = () => {
+      if (
+        isCancelled ||
+        !googleButtonRef.current ||
+        !window.google?.accounts?.id
+      ) {
+        return;
+      }
+
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: (googleResponse) => {
+          const credential = googleResponse.credential;
+          if (!credential) {
+            setError("לא התקבל אישור התחברות מ-Google.");
+            return;
+          }
+
+          void handleGoogleCredential(credential);
+        },
+      });
+
+      googleButtonRef.current.innerHTML = "";
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "outline",
+        size: "large",
+        text: isRegister ? "signup_with" : "signin_with",
+        shape: "pill",
+        width: 320,
+        locale: "he",
+        logo_alignment: "left",
+      });
+      setIsGoogleReady(true);
+    };
+
+    const handleScriptLoad = () => {
+      renderGoogleButton();
+    };
+
+    const handleScriptError = () => {
+      if (!isCancelled) {
+        setError("טעינת התחברות Google נכשלה. נסו לרענן את הדף.");
+      }
+    };
+
+    if (window.google?.accounts?.id) {
+      renderGoogleButton();
+      return () => {
+        isCancelled = true;
+      };
+    }
+
+    const existingScript = document.querySelector<HTMLScriptElement>(scriptSelector);
+    if (existingScript) {
+      existingScript.addEventListener("load", handleScriptLoad);
+      existingScript.addEventListener("error", handleScriptError);
+    } else {
+      attachedScript = document.createElement("script");
+      attachedScript.src = GOOGLE_SCRIPT_SRC;
+      attachedScript.async = true;
+      attachedScript.defer = true;
+      attachedScript.dataset.googleIdentity = "true";
+      attachedScript.addEventListener("load", handleScriptLoad);
+      attachedScript.addEventListener("error", handleScriptError);
+      document.head.appendChild(attachedScript);
+    }
+
+    return () => {
+      isCancelled = true;
+      const script = attachedScript || document.querySelector<HTMLScriptElement>(scriptSelector);
+      if (script) {
+        script.removeEventListener("load", handleScriptLoad);
+        script.removeEventListener("error", handleScriptError);
+      }
+    };
+  }, [googleClientId, handleGoogleCredential, isRegister]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -190,13 +319,7 @@ export default function AuthScreen({
           return;
         }
 
-        localStorage.setItem("token", token);
-
-        if (response.data?.user) {
-          localStorage.setItem("auth_user", JSON.stringify(response.data.user));
-        }
-
-        navigate(APP_ROUTES.dashboard);
+        persistSession(token, response.data?.user);
         return;
       }
 
@@ -213,13 +336,7 @@ export default function AuthScreen({
         return;
       }
 
-      localStorage.setItem("token", token);
-
-      if (response.data?.user) {
-        localStorage.setItem("auth_user", JSON.stringify(response.data.user));
-      }
-
-      navigate(APP_ROUTES.dashboard);
+      persistSession(token, response.data?.user);
     } catch {
       setError(
         isRegister
@@ -321,7 +438,11 @@ export default function AuthScreen({
               </button>
             )}
 
-            <button className="auth-button" type="submit" disabled={isSubmitting}>
+            <button
+              className="auth-button"
+              type="submit"
+              disabled={isSubmitting || isGoogleSubmitting}
+            >
               {isSubmitting ? <Loader /> : isRegister ? "יצירת חשבון" : "התחברות"}
             </button>
 
@@ -329,20 +450,31 @@ export default function AuthScreen({
               <span>או המשיכו עם</span>
             </div>
 
-            <div className="auth-socials">
-              <button className="auth-social" type="button">
-                <span className="auth-social-icon" aria-hidden="true">
-                  <MailIcon />
-                </span>
-                Outlook
-              </button>
-              <button className="auth-social" type="button">
-                <span className="auth-social-icon" aria-hidden="true">
-                  <MailIcon />
-                </span>
-                Gmail
-              </button>
-            </div>
+            {!googleClientId ? (
+              <div className="auth-google-state auth-google-state-error">
+                התחברות Google לא זמינה: חסר VITE_GOOGLE_CLIENT_ID בצד הלקוח.
+              </div>
+            ) : (
+              <>
+                <div className="auth-google-slot">
+                  <div
+                    ref={googleButtonRef}
+                    className="auth-google-button"
+                    aria-label="Google Sign-In"
+                  />
+                </div>
+                {!isGoogleReady ? (
+                  <div className="auth-google-state">
+                    טוענים התחברות עם Google...
+                  </div>
+                ) : null}
+                {isGoogleSubmitting ? (
+                  <div className="auth-google-state">
+                    מאמתים התחברות עם Google...
+                  </div>
+                ) : null}
+              </>
+            )}
 
             <div className="auth-register">
               <span>{isRegister ? "כבר יש לכם חשבון?" : "אין לכם חשבון?"}</span>

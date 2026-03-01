@@ -36,6 +36,7 @@ MONGODB_URI=mongodb://localhost:27017/finguide
 JWT_SECRET=your-super-secret-key-change-this
 JWT_EXPIRE=7d
 CLIENT_URL=http://localhost:5173
+GOOGLE_CLIENT_ID=your-google-web-client-id
 ```
 
 **חשוב:** שנה את `JWT_SECRET` למפתח אקראי וחזק!
@@ -93,6 +94,9 @@ npm run test
   בדקו את `backend/.env`.
 - אם פורט תפוס (`5000` או `5173`):
   שחררו את הפורט התפוס או עדכנו הגדרות פורט בהתאם.
+- אם התחברות Google לא עובדת:
+  ודאו ש־`GOOGLE_CLIENT_ID` מוגדר ב־`backend/.env` וש־`VITE_GOOGLE_CLIENT_ID`
+  מוגדר ב־`frontend/.env` עם אותו ערך.
 
 ## 📁 מבנה הפרויקט
 
@@ -116,7 +120,29 @@ FinGuide/
 ### Authentication
 - `POST /api/auth/register` - הרשמה
 - `POST /api/auth/login` - התחברות
+- `POST /api/auth/google` - התחברות עם Google ID Token
 - `GET /api/auth/me` - קבלת משתמש נוכחי (דורש JWT)
+
+## 🔐 Google Sign-In Setup
+
+1. ב־Google Cloud Console צרו OAuth Client מסוג `Web application`.
+2. הגדירו Authorized JavaScript Origins:
+   - `http://localhost:5173`
+   - דומיין production (אם קיים).
+3. הגדירו ב־backend (`backend/.env`):
+```env
+GOOGLE_CLIENT_ID=your-google-web-client-id
+```
+4. הגדירו ב־frontend (`frontend/.env`):
+```env
+VITE_GOOGLE_CLIENT_ID=your-google-web-client-id
+```
+5. ודאו שהערך זהה בשני הצדדים.
+
+### תקלות נפוצות ב-Google Login
+- `origin_mismatch`: ה-Origin של הפרונט לא הוגדר ב־Google Console.
+- `Google credential לא תקף`: token לא תקין/פג תוקף או Client ID לא תואם.
+- `Google auth לא הוגדר בשרת`: חסר `GOOGLE_CLIENT_ID` בצד backend.
 
 ## 📝 דוגמאות שימוש
 
