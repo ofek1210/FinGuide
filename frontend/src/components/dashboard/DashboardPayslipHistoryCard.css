@@ -1,0 +1,116 @@
+.payslip-history-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.payslip-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.payslip-history-header h3 {
+  margin: 0 0 4px;
+}
+
+.payslip-history-header p {
+  margin: 0;
+  color: var(--landing-muted);
+  font-size: 0.9rem;
+}
+
+.payslip-history-link {
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--landing-text);
+  padding: 8px 12px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.payslip-history-link svg {
+  width: 16px;
+  height: 16px;
+}
+
+.payslip-history-list {
+  display: grid;
+  gap: 12px;
+}
+
+.payslip-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.payslip-history-period {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+}
+
+.payslip-history-date {
+  font-size: 0.8rem;
+  color: var(--landing-muted);
+  font-weight: 400;
+}
+
+.payslip-history-latest {
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(30, 123, 255, 0.2);
+  color: #8bbcff;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.payslip-history-amounts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: right;
+}
+
+.payslip-history-net {
+  color: #a7d2ff;
+  font-weight: 600;
+}
+
+.payslip-history-gross {
+  color: var(--landing-muted);
+  font-size: 0.85rem;
+}
+
+.payslip-history-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--landing-muted);
+}
+
+.payslip-history-state.is-error {
+  color: #f2a3a3;
+}
+
+.payslip-history-state button {
+  border: none;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--landing-text);
+  padding: 6px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
