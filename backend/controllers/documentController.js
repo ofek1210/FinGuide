@@ -61,7 +61,9 @@ exports.getDocuments = async (req, res, next) => {
 // קבלת מסמך בודד
 exports.getDocument = async (req, res, next) => {
   try {
-    const document = await Document.findById(req.params.id);
+    const document = await Document.findById(req.params.id).select(
+      '-filePath -__v'
+    );
 
     // בדיקה שהמסמך קיים
     if (!document) {

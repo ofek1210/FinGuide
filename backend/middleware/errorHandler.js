@@ -45,7 +45,8 @@ const handleMongooseError = err => {
 /**
  * Error Handler Middleware
  */
-const errorHandler = (err, req, res) => {
+// eslint-disable-next-line no-unused-vars
+const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
@@ -77,6 +78,9 @@ const errorHandler = (err, req, res) => {
   if (err instanceof AppError || (err.statusCode && err.statusCode >= 400 && err.statusCode < 600)) {
     error.statusCode = err.statusCode;
     error.message = err.message || error.message;
+    if (Array.isArray(err.errors) && err.errors.length > 0) {
+      error.errors = err.errors;
+    }
   }
 
   // תאימות לשגיאות שמשתמשות ב-status במקום statusCode (למשל aiService)
@@ -90,11 +94,17 @@ const errorHandler = (err, req, res) => {
   }
 
   // תגובה
-  res.status(error.statusCode || 500).json({
+  const statusCode = error.statusCode || 500;
+  const payload = {
     success: false,
     message: error.message || 'שגיאת שרת',
+    ...(Array.isArray(error.errors) && error.errors.length > 0 && {
+      errors: error.errors,
+    }),
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-  });
+  };
+
+  res.status(statusCode).json(payload);
 };
 
 module.exports = errorHandler;

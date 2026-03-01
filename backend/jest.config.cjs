@@ -1,8 +1,6 @@
 module.exports = {
   testEnvironment: 'node',
-  // בשלב ראשון מריצים רק unit tests; integration אפשר להוסיף מאוחר יותר
-  testMatch: ['**/tests/unit/**/*.test.js'],
+  testMatch: ['**/__tests__/**/*.test.js', '**/tests/**/*.test.js'],
   verbose: true,
   setupFilesAfterEnv: [],
 };
-
