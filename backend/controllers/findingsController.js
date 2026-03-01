@@ -52,7 +52,7 @@ exports.getFindings = async (req, res, next) => {
       const duplicateKey = `${doc.originalName || ''}::${doc.fileSize ?? ''}`;
       duplicateMap.set(duplicateKey, (duplicateMap.get(duplicateKey) || 0) + 1);
 
-      if (doc.status === 'pending' || doc.status === 'uploaded') {
+      if (doc.status === 'pending' || doc.status === 'processing') {
         pendingCount += 1;
       }
 

@@ -13,11 +13,31 @@ const parseJson = async (response: Response) => {
   }
 };
 
+const getToken = () => localStorage.getItem("token");
+
+const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+  return headers;
+};
+
 export const chatWithAI = async (message: string) => {
+  const token = getToken();
+  if (!token) {
+    return {
+      success: false,
+      message: "אין הרשאה. נא להתחבר.",
+    } as ChatResponse;
+  }
+
   const response = await fetch("/api/ai/chat", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({ message }),
   });
@@ -36,3 +56,4 @@ export const chatWithAI = async (message: string) => {
     message: "תגובה לא תקינה.",
   }) as ChatResponse;
 };
+

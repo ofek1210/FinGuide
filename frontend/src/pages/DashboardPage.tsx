@@ -362,7 +362,16 @@ export default function DashboardPage() {
             >
               מסמכים
             </button>
-            <button className="dashboard-nav-link" type="button">
+            <button
+              className="dashboard-nav-link"
+              type="button"
+              onClick={() => {
+                const el = document.querySelector(".findings-card");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }}
+            >
               תובנות
             </button>
           </nav>

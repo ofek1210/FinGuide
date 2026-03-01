@@ -18,7 +18,7 @@ exports.uploadDocument = async (req, res, next) => {
       filePath: req.file.path,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
-      status: 'uploaded',
+      // ברירת מחדל: pending (עולה מתוך הסכמה)
     });
 
     res.status(201).json({
