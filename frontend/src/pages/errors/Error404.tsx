@@ -1,4 +1,5 @@
 import ErrorLayout from "./ErrorLayout";
+import { APP_ROUTES } from "../../types/navigation";
 
 export default function Error404() {
   return (
@@ -6,7 +7,7 @@ export default function Error404() {
       title="404"
       message="העמוד שחיפשת לא קיים."
       actionLabel="חזרה לדף הבית"
-      actionTo="/"
+      actionTo={APP_ROUTES.home}
     />
   );
 }

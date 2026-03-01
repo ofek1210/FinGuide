@@ -8,6 +8,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { APP_ROUTES } from "../types/navigation";
 
 const features = [
   {
@@ -41,6 +42,7 @@ const securityPoints = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const hasToken = Boolean(localStorage.getItem("token"));
 
   return (
     <div className="landing-page" dir="rtl">
@@ -52,10 +54,10 @@ export default function LandingPage() {
           <span>FinGuide</span>
         </div>
         <div className="landing-nav-actions">
-          <button className="landing-link" type="button" onClick={() => navigate("/login")}>
+          <button className="landing-link" type="button" onClick={() => navigate(APP_ROUTES.login)}>
             התחברות
           </button>
-          <button className="landing-primary" type="button" onClick={() => navigate("/register")}>
+          <button className="landing-primary" type="button" onClick={() => navigate(APP_ROUTES.register)}>
             יצירת חשבון
           </button>
         </div>
@@ -84,11 +86,21 @@ export default function LandingPage() {
               וברורים שתוכלו להבין.
             </p>
             <div className="hero-actions">
-              <button className="landing-primary" type="button">
+              <button
+                className="landing-primary"
+                type="button"
+                onClick={() =>
+                  navigate(hasToken ? APP_ROUTES.documents : APP_ROUTES.register)
+                }
+              >
                 העלאת מסמך חדש
                 <ArrowUpRight aria-hidden="true" />
               </button>
-              <button className="landing-secondary" type="button">
+              <button
+                className="landing-secondary"
+                type="button"
+                onClick={() => navigate(APP_ROUTES.integrationsEmail)}
+              >
                 <Mail aria-hidden="true" />
                 חיבור לתיבת מייל
               </button>
@@ -148,7 +160,11 @@ export default function LandingPage() {
         <section className="landing-cta landing-container">
           <h2>מוכנים להבין את המצב הפיננסי שלכם?</h2>
           <p>הצטרפו לאלפים שכבר השיגו בהירות במצבם הפיננסי.</p>
-          <button className="landing-primary" type="button">
+          <button
+            className="landing-primary"
+            type="button"
+            onClick={() => navigate(APP_ROUTES.register)}
+          >
             התחלה בחינם
           </button>
         </section>

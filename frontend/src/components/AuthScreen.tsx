@@ -4,6 +4,7 @@ import { login, register } from "../api/auth.api";
 import Toast from "./ui/Toast";
 import ToastContainer from "./ui/ToastContainer";
 import Loader from "./ui/Loader";
+import { APP_ROUTES } from "../types/navigation";
 
 interface AuthScreenProps {
   mode: "login" | "register";
@@ -195,7 +196,7 @@ export default function AuthScreen({
           localStorage.setItem("auth_user", JSON.stringify(response.data.user));
         }
 
-        navigate("/dashboard");
+        navigate(APP_ROUTES.dashboard);
         return;
       }
 
@@ -218,7 +219,7 @@ export default function AuthScreen({
         localStorage.setItem("auth_user", JSON.stringify(response.data.user));
       }
 
-      navigate("/dashboard");
+      navigate(APP_ROUTES.dashboard);
     } catch {
       setError(
         isRegister
@@ -348,7 +349,9 @@ export default function AuthScreen({
               <button
                 className="auth-link is-inline"
                 type="button"
-                onClick={() => navigate(isRegister ? "/login" : "/register")}
+                onClick={() =>
+                  navigate(isRegister ? APP_ROUTES.login : APP_ROUTES.register)
+                }
               >
                 {isRegister ? "התחברו" : "הרשמו"}
               </button>

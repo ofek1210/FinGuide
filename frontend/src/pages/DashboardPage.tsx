@@ -24,6 +24,7 @@ import {
 import { listFindings, type FindingItem, type FindingSeverity } from "../api/findings.api";
 import { getHealth } from "../api/health.api";
 import Loader from "../components/ui/Loader";
+import { APP_ROUTES } from "../types/navigation";
 
 type ChatMessage = {
   id: string;
@@ -351,28 +352,37 @@ export default function DashboardPage() {
             <button
               className="dashboard-nav-link is-active"
               type="button"
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(APP_ROUTES.dashboard)}
             >
               לוח בקרה
             </button>
             <button
               className="dashboard-nav-link"
               type="button"
-              onClick={() => navigate("/documents")}
+              onClick={() => navigate(APP_ROUTES.documents)}
             >
               מסמכים
             </button>
             <button
               className="dashboard-nav-link"
               type="button"
-              onClick={() => {
-                const el = document.querySelector(".findings-card");
-                if (el) {
-                  el.scrollIntoView({ behavior: "smooth", block: "start" });
-                }
-              }}
+              onClick={() => navigate(APP_ROUTES.findings)}
             >
-              תובנות
+              ממצאים
+            </button>
+            <button
+              className="dashboard-nav-link"
+              type="button"
+              onClick={() => navigate(APP_ROUTES.assistant)}
+            >
+              עוזר AI
+            </button>
+            <button
+              className="dashboard-nav-link"
+              type="button"
+              onClick={() => navigate(APP_ROUTES.settings)}
+            >
+              הגדרות
             </button>
           </nav>
 
@@ -414,7 +424,7 @@ export default function DashboardPage() {
           <button
             className="dashboard-hero-action"
             type="button"
-            onClick={() => navigate("/documents")}
+            onClick={() => navigate(APP_ROUTES.documents)}
           >
             צפייה במסמכים
             <ArrowUpRight aria-hidden="true" />
@@ -503,7 +513,7 @@ export default function DashboardPage() {
               <button
                 className="summary-action"
                 type="button"
-                onClick={() => navigate("/documents")}
+                onClick={() => navigate(APP_ROUTES.documents)}
               >
                 מעבר למסמכים
               </button>
@@ -588,9 +598,17 @@ export default function DashboardPage() {
                   <Upload aria-hidden="true" />
                   העלאת מסמך חדש
                 </button>
-                <button type="button" onClick={() => navigate("/documents")}>
+                <button type="button" onClick={() => navigate(APP_ROUTES.documents)}>
                   <FileText aria-hidden="true" />
                   צפייה בכל המסמכים
+                </button>
+                <button type="button" onClick={() => navigate(APP_ROUTES.findings)}>
+                  <ShieldCheck aria-hidden="true" />
+                  מעבר לממצאים
+                </button>
+                <button type="button" onClick={() => navigate(APP_ROUTES.assistant)}>
+                  <MessageSquare aria-hidden="true" />
+                  צ׳אט במסך מלא
                 </button>
               </div>
             </article>
@@ -608,7 +626,7 @@ export default function DashboardPage() {
               <button
                 className="alert-action"
                 type="button"
-                onClick={() => navigate("/documents")}
+                onClick={() => navigate(APP_ROUTES.documents)}
               >
                 מעבר למסמכים
               </button>
@@ -657,7 +675,7 @@ export default function DashboardPage() {
                 <button
                   className="dashboard-documents-link"
                   type="button"
-                  onClick={() => navigate("/documents")}
+                  onClick={() => navigate(APP_ROUTES.documents)}
                 >
                   צפייה בהכל
                 </button>

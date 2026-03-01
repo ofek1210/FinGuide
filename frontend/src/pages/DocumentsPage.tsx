@@ -9,6 +9,7 @@ import {
   removeDocument,
   type DocumentItem as ApiDocumentItem,
 } from "../api/documents.api";
+import { APP_ROUTES } from "../types/navigation";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
 
@@ -390,7 +391,11 @@ export default function DocumentsPage() {
           </span>
           <span>FinGuide</span>
         </div>
-        <button className="landing-secondary" type="button" onClick={() => navigate("/dashboard")}>
+        <button
+          className="landing-secondary"
+          type="button"
+          onClick={() => navigate(APP_ROUTES.dashboard)}
+        >
           חזרה ללוח הבקרה
         </button>
       </header>
