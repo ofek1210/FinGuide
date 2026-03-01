@@ -4,6 +4,7 @@ import { getMe } from "../api/auth.api";
 import PrivateTopbar from "../components/PrivateTopbar";
 import Loader from "../components/ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
+import { logoutWithConfirm } from "../utils/logout";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -35,9 +36,7 @@ export default function SettingsPage() {
   }, [loadUser]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("auth_user");
-    navigate(APP_ROUTES.login);
+    logoutWithConfirm(navigate);
   };
 
   return (

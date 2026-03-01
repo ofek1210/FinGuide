@@ -10,6 +10,7 @@ import {
   type DocumentItem as ApiDocumentItem,
 } from "../api/documents.api";
 import { APP_ROUTES } from "../types/navigation";
+import { logoutWithConfirm } from "../utils/logout";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
 
@@ -391,13 +392,22 @@ export default function DocumentsPage() {
           </span>
           <span>FinGuide</span>
         </div>
-        <button
-          className="landing-secondary"
-          type="button"
-          onClick={() => navigate(APP_ROUTES.dashboard)}
-        >
-          חזרה ללוח הבקרה
-        </button>
+        <div className="documents-nav-actions">
+          <button
+            className="landing-secondary"
+            type="button"
+            onClick={() => navigate(APP_ROUTES.dashboard)}
+          >
+            חזרה ללוח הבקרה
+          </button>
+          <button
+            className="landing-secondary documents-logout-action"
+            type="button"
+            onClick={() => logoutWithConfirm(navigate)}
+          >
+            התנתקות
+          </button>
+        </div>
       </header>
 
       <main className="documents-main landing-container">

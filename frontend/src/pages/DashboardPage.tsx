@@ -25,6 +25,7 @@ import { listFindings, type FindingItem, type FindingSeverity } from "../api/fin
 import { getHealth } from "../api/health.api";
 import Loader from "../components/ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
+import { logoutWithConfirm } from "../utils/logout";
 
 type ChatMessage = {
   id: string;
@@ -403,6 +404,13 @@ export default function DashboardPage() {
                   ? "השרת זמין"
                   : "השרת לא זמין"}
             </span>
+            <button
+              className="dashboard-logout-action"
+              type="button"
+              onClick={() => logoutWithConfirm(navigate)}
+            >
+              התנתקות
+            </button>
             <input
               ref={fileInputRef}
               className="dashboard-upload-input"

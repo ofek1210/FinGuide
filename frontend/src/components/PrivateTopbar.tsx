@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { APP_ROUTES } from "../types/navigation";
+import { logoutWithConfirm } from "../utils/logout";
 
 interface PrivateTopbarProps {
   rightSlot?: ReactNode;
@@ -17,6 +18,9 @@ const navItems = [
 export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const handleLogout = () => {
+    logoutWithConfirm(navigate);
+  };
 
   return (
     <header className="dashboard-topbar">
@@ -52,6 +56,13 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
             עזרה
           </button>
         )}
+        <button
+          className="dashboard-logout-action"
+          type="button"
+          onClick={handleLogout}
+        >
+          התנתקות
+        </button>
       </div>
     </header>
   );
