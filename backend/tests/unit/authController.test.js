@@ -84,54 +84,30 @@ describe('authController - getMe', () => {
     jest.clearAllMocks();
   });
 
-  it('should return current user when exists', async () => {
-    const req = httpMocks.createRequest({
-      method: 'GET',
-      url: '/api/auth/me',
-      user: { id: 'user-id-1' },
-    });
-    const res = httpMocks.createResponse();
-    const next = jest.fn();
-
-    const userFromDb = {
+  it('should return current user from req.user (set by protect middleware)', async () => {
+    const userFromProtect = {
       _id: 'user-id-1',
       name: 'Test User',
       email: 'test@test.com',
       createdAt: new Date('2024-01-01T00:00:00.000Z'),
     };
 
-    User.findById.mockResolvedValue(userFromDb);
+    const req = httpMocks.createRequest({
+      method: 'GET',
+      url: '/api/auth/me',
+      user: userFromProtect,
+    });
+    const res = httpMocks.createResponse();
 
-    await getMe(req, res, next);
+    await getMe(req, res);
 
-    expect(User.findById).toHaveBeenCalledWith('user-id-1');
+    expect(User.findById).not.toHaveBeenCalled();
     const data = res._getJSONData();
     expect(res.statusCode).toBe(200);
     expect(data.success).toBe(true);
     expect(data.data.user.id).toBe('user-id-1');
+    expect(data.data.user.name).toBe('Test User');
     expect(data.data.user.email).toBe('test@test.com');
-    expect(next).not.toHaveBeenCalled();
   });
-
-  it('should return 404 when user not found', async () => {
-    const req = httpMocks.createRequest({
-      method: 'GET',
-      url: '/api/auth/me',
-      user: { id: 'missing-id' },
-    });
-    const res = httpMocks.createResponse();
-    const next = jest.fn();
-
-    User.findById.mockResolvedValue(null);
-
-    await getMe(req, res, next);
-
-    expect(res.statusCode).toBe(404);
-    const data = res._getJSONData();
-    expect(data.success).toBe(false);
-    expect(data.message).toBe('משתמש לא נמצא');
-    expect(next).not.toHaveBeenCalled();
-  });
-
 });
 

@@ -1,3 +1,5 @@
+const { AppError } = require('../utils/appErrors');
+
 /**
  * Error Handler Middleware
  * מטפל בכל השגיאות בצורה מרכזית
@@ -69,6 +71,17 @@ const errorHandler = (err, req, res) => {
       message: 'Token פג תוקף',
       statusCode: 401,
     };
+  }
+
+  // טיפול בשגיאות מותאמות (AppError, FileUploadError, ValidationError)
+  if (err instanceof AppError || (err.statusCode && err.statusCode >= 400 && err.statusCode < 600)) {
+    error.statusCode = err.statusCode;
+    error.message = err.message || error.message;
+  }
+
+  // תאימות לשגיאות שמשתמשות ב-status במקום statusCode (למשל aiService)
+  if (err.status && !error.statusCode) {
+    error.statusCode = err.status;
   }
 
   // Log שגיאה ל-console (בפיתוח)

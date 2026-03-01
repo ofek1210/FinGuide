@@ -109,32 +109,19 @@ const login = async (req, res, next) => {
  * @desc    קבלת משתמש נוכחי
  * @access  Private (דורש JWT)
  */
-const getMe = async (req, res, next) => {
-  try {
-    // המשתמש כבר נוסף ל-request על ידי middleware auth
-    const user = await User.findById(req.user.id);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'משתמש לא נמצא',
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          createdAt: user.createdAt,
-        },
+const getMe = async (req, res) => {
+  // המשתמש כבר נטען על ידי middleware protect
+  res.json({
+    success: true,
+    data: {
+      user: {
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        createdAt: req.user.createdAt,
       },
-    });
-  } catch (error) {
-    next(error);
-  }
+    },
+  });
 };
 
 module.exports = {

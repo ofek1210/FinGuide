@@ -32,7 +32,9 @@ const protect = async (req, res, next) => {
 
       next();
     } catch (error) {
-      console.error('שגיאת אימות:', error);
+      if (process.env.NODE_ENV === 'development') {
+        console.error('שגיאת אימות:', error);
+      }
       return res.status(401).json({
         success: false,
         message: 'לא מורשה, token לא תקין',

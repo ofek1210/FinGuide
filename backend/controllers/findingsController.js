@@ -135,7 +135,7 @@ exports.getFindings = async (req, res, next) => {
           'documents_pending',
           'מסמכים בסטטוס לא סופי',
           'info',
-          `יש ${pendingCount} מסמכים בסטטוס pending או uploaded.`
+          `יש ${pendingCount} מסמכים בסטטוס pending או processing.`
         )
       );
     }
