@@ -52,7 +52,7 @@ exports.getFindings = async (req, res, next) => {
       const duplicateKey = `${doc.originalName || ''}::${doc.fileSize ?? ''}`;
       duplicateMap.set(duplicateKey, (duplicateMap.get(duplicateKey) || 0) + 1);
 
-      if (doc.status === 'pending' || doc.status === 'uploaded') {
+      if (doc.status === 'pending' || doc.status === 'processing') {
         pendingCount += 1;
       }
 
@@ -135,7 +135,7 @@ exports.getFindings = async (req, res, next) => {
           'documents_pending',
           'מסמכים בסטטוס לא סופי',
           'info',
-          `יש ${pendingCount} מסמכים בסטטוס pending או uploaded.`
+          `יש ${pendingCount} מסמכים בסטטוס pending או processing.`
         )
       );
     }

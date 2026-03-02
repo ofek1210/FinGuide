@@ -25,13 +25,13 @@ router.post(
 // GET /api/documents - קבלת כל המסמכים
 router.get('/', getDocuments);
 
+// GET /api/documents/:id/download - הורדת מסמך (לפני /:id כדי שלא יתפוס "id/download")
+router.get('/:id/download', downloadDocument);
+
 // GET /api/documents/:id - קבלת מסמך בודד
 router.get('/:id', getDocument);
 
 // DELETE /api/documents/:id - מחיקת מסמך
 router.delete('/:id', deleteDocument);
-
-// GET /api/documents/:id/download - הורדת מסמך
-router.get('/:id/download', downloadDocument);
 
 module.exports = router;

@@ -5,6 +5,11 @@ const mongoose = require('mongoose');
  * תומך ב-local MongoDB ו-MongoDB Atlas
  */
 const connectDB = async () => {
+  if (!process.env.MONGODB_URI) {
+    console.error('❌ MONGODB_URI חסר');
+    process.exit(1);
+  }
+
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       // אופציות מומלצות ל-Mongoose 6+

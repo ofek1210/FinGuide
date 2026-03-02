@@ -1,8 +1,17 @@
-export type ChatResponse = {
+export type FindingSeverity = "info" | "warning";
+
+export type FindingItem = {
+  id: string;
+  title: string;
+  severity: FindingSeverity;
+  details: string;
+};
+
+export type ListFindingsResponse = {
   success: boolean;
-  answer?: string;
-  model?: string;
   message?: string;
+  count?: number;
+  data?: FindingItem[];
 };
 
 const parseJson = async (response: Response) => {
@@ -24,22 +33,17 @@ const getAuthHeaders = (): Record<string, string> => {
   return headers;
 };
 
-export const chatWithAI = async (message: string) => {
+export const listFindings = async () => {
   const token = getToken();
   if (!token) {
-    return {
-      success: false,
-      message: "אין הרשאה. נא להתחבר.",
-    } as ChatResponse;
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as ListFindingsResponse;
   }
 
-  const response = await fetch("/api/ai/chat", {
-    method: "POST",
+  const response = await fetch("/api/findings", {
     headers: {
-      "Content-Type": "application/json",
+      Accept: "application/json",
       ...getAuthHeaders(),
     },
-    body: JSON.stringify({ message }),
   });
 
   const payload = await parseJson(response);
@@ -47,13 +51,12 @@ export const chatWithAI = async (message: string) => {
   if (!response.ok) {
     return (payload || {
       success: false,
-      message: "שגיאה בשיחה עם הבוט.",
-    }) as ChatResponse;
+      message: "לא הצלחנו לטעון את הממצאים.",
+    }) as ListFindingsResponse;
   }
 
   return (payload || {
     success: false,
     message: "תגובה לא תקינה.",
-  }) as ChatResponse;
+  }) as ListFindingsResponse;
 };
-

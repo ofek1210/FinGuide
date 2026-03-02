@@ -51,7 +51,7 @@ async function generateAnswer(message) {
       const text = await resp.text().catch(() => "");
       const err = new Error(`Ollama error: HTTP ${resp.status}`);
       err.details = text;
-      err.status = 500;
+      err.statusCode = 500;
       throw err;
     }
 
@@ -65,7 +65,7 @@ async function generateAnswer(message) {
   } catch (err) {
     if (err.name === "AbortError") {
       const e = new Error("Ollama request timed out");
-      e.status = 500;
+      e.statusCode = 500;
       throw e;
     }
     throw err;
