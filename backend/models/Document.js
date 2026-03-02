@@ -6,6 +6,7 @@ const DocumentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
       required: true,
+      index: true,
     },
     originalName: {
       type: String,
@@ -30,8 +31,8 @@ const DocumentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'processing', 'completed', 'failed'],
-      default: 'pending',
+      enum: ['uploaded', 'pending', 'processing', 'completed', 'failed'],
+      default: 'uploaded',
     },
     uploadedAt: {
       type: Date,
