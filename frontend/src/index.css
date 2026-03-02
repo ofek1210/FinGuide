@@ -475,3 +475,68 @@ input {
     font-size: 2rem;
   }
 }
+
+.dev-panel {
+  margin: 24px auto 40px;
+  max-width: 560px;
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #1b2432;
+  box-shadow: 0 12px 30px rgba(7, 11, 20, 0.2);
+}
+
+.dev-panel h3 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+}
+
+.dev-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #5c6470;
+}
+
+.dev-field input {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(27, 36, 50, 0.2);
+  font-size: 1rem;
+}
+
+.numeric-input-error {
+  color: #a3321e;
+  font-size: 0.85rem;
+}
+
+.dev-results,
+.dev-backend {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: #1b2432;
+}
+
+.dev-submit {
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: none;
+  background: #1a6bff;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dev-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.dev-error {
+  margin-top: 10px;
+  color: #a3321e;
+}

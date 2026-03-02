@@ -5,7 +5,7 @@ const DEFAULT_MAX_AMOUNT = 1_000_000_000;
 const CURRENCY_SYMBOLS_REGEX = /[₪$€]/g;
 const WHITESPACE_REGEX = /\s+/g;
 
-const normalizeNumericString = raw => {
+const normalizeNumericString = (raw: string) => {
   let value = raw.replace(CURRENCY_SYMBOLS_REGEX, '');
   value = value.replace(WHITESPACE_REGEX, '');
 
@@ -33,7 +33,7 @@ const normalizeNumericString = raw => {
   return value;
 };
 
-const parseNumericInput = input => {
+export const parseNumericInput = (input: string | number): number => {
   if (typeof input === 'number') {
     if (!Number.isFinite(input)) {
       throw new Error('Invalid numeric input');
@@ -86,7 +86,7 @@ const parseNumericInput = input => {
   return parsed;
 };
 
-const normalizeAmount = (value, precision = DEFAULT_PRECISION) => {
+export const normalizeAmount = (value: number, precision = DEFAULT_PRECISION) => {
   if (!Number.isFinite(value)) {
     throw new Error('Invalid numeric value');
   }
@@ -95,7 +95,7 @@ const normalizeAmount = (value, precision = DEFAULT_PRECISION) => {
   return Math.round((value + Number.EPSILON) * factor) / factor;
 };
 
-const toScaledInt = (value, precision = DEFAULT_PRECISION) => {
+const toScaledInt = (value: number, precision = DEFAULT_PRECISION) => {
   if (!Number.isFinite(value)) {
     throw new Error('Invalid numeric value');
   }
@@ -104,37 +104,28 @@ const toScaledInt = (value, precision = DEFAULT_PRECISION) => {
   return Math.round(value * factor);
 };
 
-const fromScaledInt = (value, precision = DEFAULT_PRECISION) => {
+const fromScaledInt = (value: number, precision = DEFAULT_PRECISION) => {
   const factor = 10 ** precision;
   return value / factor;
 };
 
-const safeAdd = (a, b) =>
+export const safeAdd = (a: number, b: number) =>
   fromScaledInt(toScaledInt(a, DEFAULT_PRECISION) + toScaledInt(b, DEFAULT_PRECISION));
 
-const safeSub = (a, b) =>
+export const safeSub = (a: number, b: number) =>
   fromScaledInt(toScaledInt(a, DEFAULT_PRECISION) - toScaledInt(b, DEFAULT_PRECISION));
 
-const isValidAmount = (
-  value,
+export const isValidAmount = (
+  value: number,
   { min = DEFAULT_MIN_AMOUNT, max = DEFAULT_MAX_AMOUNT } = {}
 ) => Number.isFinite(value) && value >= min && value <= max;
 
-const enforceAmountBounds = (
-  value,
+export const enforceAmountBounds = (
+  value: number,
   { min = DEFAULT_MIN_AMOUNT, max = DEFAULT_MAX_AMOUNT } = {}
 ) => {
   if (!isValidAmount(value, { min, max })) {
     throw new Error(`Amount out of bounds (${min}..${max})`);
   }
   return value;
-};
-
-module.exports = {
-  parseNumericInput,
-  normalizeAmount,
-  safeAdd,
-  safeSub,
-  isValidAmount,
-  enforceAmountBounds,
 };

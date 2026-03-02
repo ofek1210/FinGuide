@@ -396,16 +396,16 @@ export default function DocumentsPage() {
           <button
             className="landing-secondary"
             type="button"
-            onClick={() => navigate(APP_ROUTES.dashboard)}
+            onClick={() => navigate("/documents/history")}
           >
-            חזרה ללוח הבקרה
+            היסטוריית תלושים
           </button>
           <button
-            className="landing-secondary documents-logout-action"
+            className="landing-secondary"
             type="button"
-            onClick={() => logoutWithConfirm(navigate)}
+            onClick={() => navigate("/dashboard")}
           >
-            התנתקות
+            חזרה ללוח הבקרה
           </button>
         </div>
       </header>
@@ -472,9 +472,7 @@ export default function DocumentsPage() {
             className="landing-primary"
             type="button"
             disabled={!hasUploadedDocuments}
-            onClick={() => {
-              // שלב הסריקה טרם הוטמע – נשמור על כפתור זמין ונתעדכן בהמשך.
-            }}
+            onClick={() => navigate("/documents/scan")}
           >
             סריקת הקבצים שהועלו
           </button>

@@ -1,110 +1,120 @@
 const { AppError } = require('../utils/appErrors');
 
-/**
- * Error Handler Middleware
- * מטפל בכל השגיאות בצורה מרכזית
- */
+const buildDetailsFromMongoose = err =>
+  Object.values(err.errors || {}).map(item => ({
+    field: item.path,
+    message: item.message,
+    value: item.value,
+  }));
 
-/**
- * טיפול בשגיאות Mongoose
- */
-const handleMongooseError = err => {
-  let error = { ...err };
-  error.message = err.message;
-
-  // שגיאת duplicate key (למשל אימייל כפול)
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
-    const message = `${field} כבר קיים במערכת`;
-    error = {
-      message,
-      statusCode: 400,
+const normalizeError = err => {
+  if (err instanceof AppError) {
+    return {
+      statusCode: err.statusCode,
+      type: err.type || err.name,
+      message: err.message,
+      details: err.details || [],
     };
   }
 
-  // שגיאת validation
-  if (err.name === 'ValidationError') {
-    const messages = Object.values(err.errors).map(val => val.message);
-    error = {
-      message: messages.join(', '),
+  if (err && err.name === 'ValidationError' && err.errors) {
+    return {
       statusCode: 400,
+      type: 'ValidationError',
+      message: 'שגיאות בולידציה',
+      details: buildDetailsFromMongoose(err),
     };
   }
 
-  // שגיאת Cast (ObjectId לא תקין)
-  if (err.name === 'CastError') {
-    error = {
-      message: 'משאב לא נמצא',
+  if (err && err.name === 'CastError') {
+    return {
       statusCode: 404,
+      type: 'NotFoundError',
+      message: 'משאב לא נמצא',
+      details: err.path ? [{ field: err.path, value: err.value }] : [],
     };
   }
 
-  return error;
+  if (err && err.code === 11000) {
+    const field = Object.keys(err.keyValue || {})[0];
+    return {
+      statusCode: 400,
+      type: 'DuplicateKeyError',
+      message: `${field} כבר קיים במערכת`,
+      details: field ? [{ field, value: err.keyValue[field] }] : [],
+    };
+  }
+
+  if (err && err.name === 'JsonWebTokenError') {
+    return {
+      statusCode: 401,
+      type: 'AuthError',
+      message: 'Token לא תקין',
+      details: [],
+    };
+  }
+
+  if (err && err.name === 'TokenExpiredError') {
+    return {
+      statusCode: 401,
+      type: 'AuthError',
+      message: 'Token פג תוקף',
+      details: [],
+    };
+  }
+
+  if (err && err.name === 'MulterError') {
+    const isLargeFile = err.code === 'LIMIT_FILE_SIZE';
+    return {
+      statusCode: 400,
+      type: 'FileUploadError',
+      message: isLargeFile
+        ? 'הקובץ גדול מדי. מקסימום 10MB'
+        : 'שגיאה בהעלאת הקובץ',
+      details: err.code ? [{ code: err.code }] : [],
+    };
+  }
+
+  if (err && err.type === 'entity.parse.failed') {
+    return {
+      statusCode: 400,
+      type: 'BadRequestError',
+      message: 'בקשה לא תקינה',
+      details: [],
+    };
+  }
+
+  return {
+    statusCode: err.statusCode || 500,
+    type: err.type || err.name || 'InternalServerError',
+    message: err.message || 'שגיאת שרת',
+    details: err.details || [],
+  };
 };
 
-/**
- * Error Handler Middleware
- */
-// eslint-disable-next-line no-unused-vars
 const errorHandler = (err, req, res, next) => {
-  let error = { ...err };
-  error.message = err.message;
+  const normalized = normalizeError(err);
 
-  // טיפול בשגיאות Mongoose
-  if (
-    err.name === 'ValidationError' ||
-    err.name === 'CastError' ||
-    err.code === 11000
-  ) {
-    error = handleMongooseError(err);
-  }
-
-  // טיפול בשגיאות JWT
-  if (err.name === 'JsonWebTokenError') {
-    error = {
-      message: 'Token לא תקין',
-      statusCode: 401,
-    };
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    error = {
-      message: 'Token פג תוקף',
-      statusCode: 401,
-    };
-  }
-
-  // טיפול בשגיאות מותאמות (AppError, FileUploadError, ValidationError)
-  if (err instanceof AppError || (err.statusCode && err.statusCode >= 400 && err.statusCode < 600)) {
-    error.statusCode = err.statusCode;
-    error.message = err.message || error.message;
-    if (Array.isArray(err.errors) && err.errors.length > 0) {
-      error.errors = err.errors;
-    }
-  }
-
-  // תאימות לשגיאות שמשתמשות ב-status במקום statusCode (למשל aiService)
-  if (err.status && !error.statusCode) {
-    error.statusCode = err.status;
-  }
-
-  // Log שגיאה ל-console (בפיתוח)
   if (process.env.NODE_ENV === 'development') {
     console.error('❌ שגיאה:', err);
   }
 
-  // תגובה
-  const statusCode = error.statusCode || 500;
   const payload = {
     success: false,
-    message: error.message || 'שגיאת שרת',
-    ...(Array.isArray(error.errors) && error.errors.length > 0 && {
-      errors: error.errors,
-    }),
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    message: normalized.message,
+    error: {
+      type: normalized.type,
+      message: normalized.message,
+      details: normalized.details || [],
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    },
   };
 
-  res.status(statusCode).json(payload);
+  if (payload.error.details && payload.error.details.length > 0) {
+    payload.errors = payload.error.details;
+  }
+
+  res.status(normalized.statusCode).json(payload);
 };
 
 module.exports = errorHandler;

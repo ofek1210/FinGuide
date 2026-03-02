@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { AuthError } = require('../utils/appErrors');
 
 /**
  * Middleware לאימות JWT
@@ -24,27 +25,16 @@ const protect = async (req, res, next) => {
       req.user = await User.findById(decoded.id).select('-password');
 
       if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: 'משתמש לא נמצא',
-        });
+        return next(new AuthError('משתמש לא נמצא', 401));
       }
 
-      next();
+      return next();
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('שגיאת אימות:', error);
-      }
-      return res.status(401).json({
-        success: false,
-        message: 'לא מורשה, token לא תקין',
-      });
+      console.error('שגיאת אימות:', error);
+      return next(new AuthError('לא מורשה, token לא תקין', 401));
     }
   } else {
-    return res.status(401).json({
-      success: false,
-      message: 'לא מורשה, אין token',
-    });
+    return next(new AuthError('לא מורשה, אין token', 401));
   }
 };
 

@@ -1,55 +1,117 @@
-const { parseNumericInput } = require('./numeric');
+const { parseNumericInput, normalizeAmount } = require('./numeric');
 const { ValidationError } = require('./appErrors');
 
-const toNumber = value => {
-  if (typeof value === 'number') {
-    return value;
-  }
+const DEFAULT_MIN_GROSS = 0;
+const DEFAULT_MAX_GROSS = 1_000_000;
+const DEFAULT_MIN_NET = 0;
 
-  return parseNumericInput(value);
-};
+const buildError = (field, message, value, rule) => ({
+  field,
+  message,
+  value,
+  ...(rule ? { rule } : {}),
+});
 
-/**
- * מאמת זוג ערכי שכר (ברוטו/נטו) ומחזיר אותם כמספרים תקינים.
- * הפונקציה מאוד שמרנית כדי לא לשבור שימושים קיימים:
- * - דורשת ערכים סופיים וחיוביים
- * - אינה משנה את היחס בין ברוטו לנטו
- */
-const validateSalary = ({ grossSalary, netSalary }) => {
+const validateSalary = (
+  { grossSalary, netSalary },
+  {
+    minGross = DEFAULT_MIN_GROSS,
+    maxGross = DEFAULT_MAX_GROSS,
+    minNet = DEFAULT_MIN_NET,
+  } = {}
+) => {
+  const errors = [];
+
+  let grossValue;
+  let netValue;
+
   if (grossSalary === undefined || grossSalary === null) {
-    throw new ValidationError('grossSalary is required', [
-      { field: 'grossSalary', message: 'grossSalary is required', value: grossSalary },
-    ]);
+    errors.push(buildError('grossSalary', 'grossSalary הוא שדה חובה', grossSalary, 'required'));
+  } else {
+    try {
+      grossValue = parseNumericInput(grossSalary);
+    } catch {
+      errors.push(buildError('grossSalary', 'grossSalary חייב להיות מספר תקין', grossSalary, 'number'));
+    }
   }
 
   if (netSalary === undefined || netSalary === null) {
-    throw new ValidationError('netSalary is required', [
-      { field: 'netSalary', message: 'netSalary is required', value: netSalary },
-    ]);
+    errors.push(buildError('netSalary', 'netSalary הוא שדה חובה', netSalary, 'required'));
+  } else {
+    try {
+      netValue = parseNumericInput(netSalary);
+    } catch {
+      errors.push(buildError('netSalary', 'netSalary חייב להיות מספר תקין', netSalary, 'number'));
+    }
   }
 
-  const gross = toNumber(grossSalary);
-  const net = toNumber(netSalary);
-
-  if (!Number.isFinite(gross) || gross <= 0) {
-    throw new ValidationError('grossSalary must be a positive number', [
-      { field: 'grossSalary', message: 'grossSalary must be a positive number', value: grossSalary },
-    ]);
+  if (Number.isFinite(grossValue)) {
+    const normalizedGross = normalizeAmount(grossValue);
+    if (normalizedGross <= minGross) {
+      errors.push(
+        buildError(
+          'grossSalary',
+          'grossSalary חייב להיות מספר חיובי',
+          normalizedGross,
+          'positive'
+        )
+      );
+    }
+    if (normalizedGross > maxGross) {
+      errors.push(
+        buildError(
+          'grossSalary',
+          `grossSalary חייב להיות קטן או שווה ל-${maxGross}`,
+          normalizedGross,
+          'max'
+        )
+      );
+    }
+    grossValue = normalizedGross;
   }
 
-  if (!Number.isFinite(net) || net <= 0) {
-    throw new ValidationError('netSalary must be a positive number', [
-      { field: 'netSalary', message: 'netSalary must be a positive number', value: netSalary },
-    ]);
+  if (Number.isFinite(netValue)) {
+    const normalizedNet = normalizeAmount(netValue);
+    if (normalizedNet < minNet) {
+      errors.push(
+        buildError(
+          'netSalary',
+          'netSalary חייב להיות גדול או שווה ל-0',
+          normalizedNet,
+          'min'
+        )
+      );
+    }
+    netValue = normalizedNet;
+  }
+
+  if (Number.isFinite(grossValue) && Number.isFinite(netValue)) {
+    if (netValue >= grossValue) {
+      errors.push(
+        buildError(
+          'netSalary',
+          'netSalary חייב להיות קטן מ-grossSalary',
+          netValue,
+          'relation'
+        )
+      );
+    }
+  }
+
+  if (errors.length > 0) {
+    const message = errors.length === 1 ? errors[0].message : 'שגיאות בולידציה';
+    throw new ValidationError(message, errors);
   }
 
   return {
-    grossSalary: gross,
-    netSalary: net,
+    grossSalary: grossValue,
+    netSalary: netValue,
   };
 };
 
 module.exports = {
   validateSalary,
+  DEFAULT_MIN_GROSS,
+  DEFAULT_MAX_GROSS,
+  DEFAULT_MIN_NET,
 };
-

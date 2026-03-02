@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
+const { AuthError } = require('../utils/appErrors');
 
 const googleClient = new OAuth2Client();
 
@@ -85,19 +86,13 @@ const login = async (req, res, next) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'אימייל או סיסמה לא נכונים',
-      });
+      return next(new AuthError('אימייל או סיסמה לא נכונים', 401));
     }
 
     // בדיקת סיסמה
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'אימייל או סיסמה לא נכונים',
-      });
+      return next(new AuthError('אימייל או סיסמה לא נכונים', 401));
     }
 
     // יצירת token

@@ -5,12 +5,9 @@ import DashboardPage from "./pages/DashboardPage";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import BackButton from "./components/BackButton";
 import DocumentsPage from "./pages/DocumentsPage";
-import FindingsPage from "./pages/FindingsPage";
-import AssistantPage from "./pages/AssistantPage";
-import SettingsPage from "./pages/SettingsPage";
-import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
-import StatusPage from "./pages/StatusPage";
-import HelpPage from "./pages/HelpPage";
+import ScanStatusPage from "./pages/ScanStatusPage";
+import ScanCompletePage from "./pages/ScanCompletePage";
+import PayslipHistoryPage from "./pages/PayslipHistoryPage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
@@ -65,57 +62,33 @@ export default function App() {
           }
         />
         <Route
-          path={APP_ROUTES.findings}
+          path="/documents/scan"
           element={
             <RequireAuth>
-              <FindingsPage />
+              <ScanStatusPage />
             </RequireAuth>
           }
         />
         <Route
-          path={APP_ROUTES.assistant}
+          path="/documents/scan/complete"
           element={
             <RequireAuth>
-              <AssistantPage />
+              <ScanCompletePage />
             </RequireAuth>
           }
         />
         <Route
-          path={APP_ROUTES.settings}
+          path="/documents/history"
           element={
             <RequireAuth>
-              <SettingsPage />
+              <PayslipHistoryPage />
             </RequireAuth>
           }
         />
-        <Route
-          path={APP_ROUTES.integrationsEmail}
-          element={
-            <RequireAuth>
-              <IntegrationsEmailPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={APP_ROUTES.status}
-          element={
-            <RequireAuth>
-              <StatusPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={APP_ROUTES.help}
-          element={
-            <RequireAuth>
-              <HelpPage />
-            </RequireAuth>
-          }
-        />
-        <Route path={APP_ROUTES.error400} element={<Error400 />} />
-        <Route path={APP_ROUTES.error401} element={<Error401 />} />
-        <Route path={APP_ROUTES.error403} element={<Error403 />} />
-        <Route path={APP_ROUTES.error500} element={<Error500 />} />
+        <Route path="/400" element={<Error400 />} />
+        <Route path="/401" element={<Error401 />} />
+        <Route path="/403" element={<Error403 />} />
+        <Route path="/500" element={<Error500 />} />
         <Route path="*" element={<Error404 />} />
       </Routes>
     </>
