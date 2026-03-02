@@ -24,6 +24,11 @@ const userSchema = new mongoose.Schema(
         'אנא הזן אימייל תקין',
       ],
     },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
     password: {
       type: String,
       required: [true, 'סיסמה היא שדה חובה'],

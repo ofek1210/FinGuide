@@ -1,6 +1,17 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+
+let mockGoogleVerifyIdToken;
+
+jest.mock('google-auth-library', () => {
+  mockGoogleVerifyIdToken = jest.fn();
+  return {
+    OAuth2Client: jest.fn().mockImplementation(() => ({
+      verifyIdToken: mockGoogleVerifyIdToken,
+    })),
+  };
+});
 const createApp = require('../../app');
 
 let app;
@@ -16,6 +27,7 @@ describe('Auth routes integration', () => {
     process.env.JWT_SECRET = 'test-secret';
     process.env.JWT_EXPIRE = '7d';
     process.env.MONGODB_URI = mongoUri;
+    process.env.GOOGLE_CLIENT_ID = 'google-client-id';
     process.env.NODE_ENV = 'test';
 
     // Connect mongoose
@@ -32,6 +44,8 @@ describe('Auth routes integration', () => {
   });
 
   afterEach(async () => {
+    mockGoogleVerifyIdToken.mockReset();
+
     // Cleanup users collection between tests
     const { collections } = mongoose.connection;
     const userCollection = collections.users;
@@ -140,6 +154,81 @@ describe('Auth routes integration', () => {
       expect(res.statusCode).toBe(401);
       expect(res.body.success).toBe(false);
       expect(res.body.message).toBe('לא מורשה, אין token');
+    });
+  });
+
+  describe('POST /api/auth/google', () => {
+    it('should create a new user with valid Google credential', async () => {
+      mockGoogleVerifyIdToken.mockResolvedValue({
+        getPayload: () => ({
+          sub: 'google-user-1',
+          email: 'google-user@test.com',
+          email_verified: true,
+          name: 'Google User',
+        }),
+      });
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ credential: 'google-valid-token' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.user.email).toBe('google-user@test.com');
+      expect(res.body.data.token).toBeDefined();
+    });
+
+    it('should link existing email/password account to googleId', async () => {
+      await request(app).post('/api/auth/register').send({
+        name: 'Linked User',
+        email: 'linked@test.com',
+        password: 'Test123',
+      });
+
+      mockGoogleVerifyIdToken.mockResolvedValue({
+        getPayload: () => ({
+          sub: 'google-linked-user',
+          email: 'linked@test.com',
+          email_verified: true,
+          name: 'Linked User',
+        }),
+      });
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ credential: 'google-link-token' });
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.user.email).toBe('linked@test.com');
+      expect(res.body.data.token).toBeDefined();
+    });
+
+    it('should return 401 for invalid Google credential', async () => {
+      mockGoogleVerifyIdToken.mockRejectedValue(new Error('invalid token'));
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ credential: 'bad-token' });
+
+      expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Google credential לא תקף');
+    });
+
+    it('should return 500 when GOOGLE_CLIENT_ID is missing', async () => {
+      const previousGoogleClientId = process.env.GOOGLE_CLIENT_ID;
+      delete process.env.GOOGLE_CLIENT_ID;
+
+      const res = await request(app)
+        .post('/api/auth/google')
+        .send({ credential: 'google-token' });
+
+      process.env.GOOGLE_CLIENT_ID = previousGoogleClientId;
+
+      expect(res.statusCode).toBe(500);
+      expect(res.body.success).toBe(false);
+      expect(res.body.message).toBe('Google auth לא הוגדר בשרת');
     });
   });
 });

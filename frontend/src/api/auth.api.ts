@@ -106,6 +106,31 @@ export const register = async (name: string, email: string, password: string) =>
   return (payload || { success: false, message: "תגובה לא תקינה." }) as RegisterResponse;
 };
 
+export const loginWithGoogle = async (credential: string) => {
+  const response = await fetch("/api/auth/google", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ credential }),
+  });
+
+  const payload = await parseJson(response);
+
+  if (!response.ok) {
+    return {
+      success: false,
+      message:
+        (payload && payload.message) || "לא הצלחנו להתחבר עם Google.",
+    } as LoginResponse;
+  }
+
+  return (payload || {
+    success: false,
+    message: "תגובה לא תקינה.",
+  }) as LoginResponse;
+};
+
 export const getMe = async () => {
   const token = getToken();
   if (!token) {

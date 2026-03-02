@@ -67,7 +67,7 @@ const getFilenameFromDisposition = (response: Response) => {
   const disposition = response.headers.get("content-disposition");
   if (!disposition) return null;
 
-  const match = /filename\*?=(?:UTF-8''|")?([^\";]+)/i.exec(disposition);
+  const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(disposition);
   if (!match || !match[1]) return null;
 
   try {

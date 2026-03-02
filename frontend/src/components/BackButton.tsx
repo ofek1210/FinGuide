@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { APP_ROUTES } from "../types/navigation";
 
 export default function BackButton() {
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ export default function BackButton() {
     <button
       className="back-button"
       type="button"
-      onClick={() => navigate("/")}
+      onClick={() => navigate(APP_ROUTES.home)}
       aria-label="חזרה לדף הקודם"
       title="חזרה"
     >

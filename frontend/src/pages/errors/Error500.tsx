@@ -1,4 +1,5 @@
 import ErrorLayout from "./ErrorLayout";
+import { APP_ROUTES } from "../../types/navigation";
 
 export default function Error500() {
   return (
@@ -6,7 +7,7 @@ export default function Error500() {
       title="500"
       message="משהו השתבש בשרת. נסו שוב מאוחר יותר."
       actionLabel="חזרה לדף הבית"
-      actionTo="/"
+      actionTo={APP_ROUTES.home}
     />
   );
 }

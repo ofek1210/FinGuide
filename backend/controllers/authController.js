@@ -1,6 +1,10 @@
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const { AuthError } = require('../utils/appErrors');
+
+const googleClient = new OAuth2Client();
 
 /**
  * יצירת JWT Token
@@ -11,6 +15,18 @@ const generateToken = (userId) =>
   jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE || '7d',
   });
+
+const buildAuthResponse = user => ({
+  success: true,
+  data: {
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+    },
+  },
+  message: 'התחברות בוצעה בהצלחה',
+});
 
 /**
  * @route   POST /api/auth/register
@@ -81,21 +97,104 @@ const login = async (req, res, next) => {
 
     // יצירת token
     const token = generateToken(user._id);
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-        },
-        token,
-      },
-      message: 'התחברות בוצעה בהצלחה',
-    });
+    const response = buildAuthResponse(user);
+    response.data.token = token;
+    res.json(response);
   } catch (error) {
     next(error);
+  }
+};
+
+/**
+ * @route   POST /api/auth/google
+ * @desc    התחברות משתמש באמצעות Google ID Token
+ * @access  Public
+ */
+const googleLogin = async (req, res, next) => {
+  const { credential } = req.body;
+
+  if (!credential) {
+    return res.status(400).json({
+      success: false,
+      message: 'Google credential הוא שדה חובה',
+    });
+  }
+
+  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  if (!googleClientId) {
+    return res.status(500).json({
+      success: false,
+      message: 'Google auth לא הוגדר בשרת',
+    });
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: googleClientId,
+    });
+    payload = ticket.getPayload();
+  } catch (error) {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('Google auth verification failed:', error.message);
+    }
+
+    return res.status(401).json({
+      success: false,
+      message: 'Google credential לא תקף',
+    });
+  }
+
+  if (!payload || !payload.sub || !payload.email || payload.email_verified !== true) {
+    return res.status(401).json({
+      success: false,
+      message: 'Google credential לא תקף',
+    });
+  }
+
+  try {
+    const googleId = payload.sub;
+    const email = payload.email.trim().toLowerCase();
+    const name = payload.name && payload.name.trim()
+      ? payload.name.trim()
+      : email.split('@')[0];
+
+    let user = await User.findOne({ googleId });
+
+    if (!user) {
+      user = await User.findOne({ email });
+      if (user) {
+        if (user.googleId && user.googleId !== googleId) {
+          return res.status(401).json({
+            success: false,
+            message: 'חשבון Google לא תואם למשתמש הקיים',
+          });
+        }
+
+        if (!user.googleId) {
+          user.googleId = googleId;
+          await user.save();
+        }
+      }
+    }
+
+    if (!user) {
+      const generatedPassword = `${crypto.randomUUID()}Aa1`;
+      user = await User.create({
+        name,
+        email,
+        googleId,
+        password: generatedPassword,
+      });
+    }
+
+    const token = generateToken(user._id);
+    const response = buildAuthResponse(user);
+    response.data.token = token;
+    return res.json(response);
+  } catch (error) {
+    return next(error);
   }
 };
 
@@ -122,5 +221,6 @@ const getMe = async (req, res) => {
 module.exports = {
   register,
   login,
+  googleLogin,
   getMe,
 };

@@ -13,6 +13,7 @@ import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
 import Error404 from "./pages/errors/Error404";
 import Error500 from "./pages/errors/Error500";
+import { APP_ROUTES } from "./types/navigation";
 import "./App.css";
 
 export default function App() {
@@ -21,7 +22,7 @@ export default function App() {
       <BackButton />
       <Routes>
         <Route
-          path="/"
+          path={APP_ROUTES.home}
           element={
             <RequireGuest>
               <LandingPage />
@@ -29,7 +30,7 @@ export default function App() {
           }
         />
         <Route
-          path="/login"
+          path={APP_ROUTES.login}
           element={
             <RequireGuest>
               <AuthScreen mode="login" />
@@ -37,7 +38,7 @@ export default function App() {
           }
         />
         <Route
-          path="/register"
+          path={APP_ROUTES.register}
           element={
             <RequireGuest>
               <AuthScreen mode="register" />
@@ -45,7 +46,7 @@ export default function App() {
           }
         />
         <Route
-          path="/dashboard"
+          path={APP_ROUTES.dashboard}
           element={
             <RequireAuth>
               <DashboardPage />
@@ -53,7 +54,7 @@ export default function App() {
           }
         />
         <Route
-          path="/documents"
+          path={APP_ROUTES.documents}
           element={
             <RequireAuth>
               <DocumentsPage />

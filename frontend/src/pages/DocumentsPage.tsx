@@ -9,6 +9,8 @@ import {
   removeDocument,
   type DocumentItem as ApiDocumentItem,
 } from "../api/documents.api";
+import { APP_ROUTES } from "../types/navigation";
+import { logoutWithConfirm } from "../utils/logout";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
 

@@ -1,6 +1,11 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { register, login, getMe } = require('../controllers/authController');
+const {
+  register,
+  login,
+  googleLogin,
+  getMe,
+} = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
@@ -45,9 +50,17 @@ const loginValidation = [
   body('password').notEmpty().withMessage('סיסמה היא שדה חובה'),
 ];
 
+const googleLoginValidation = [
+  body('credential')
+    .trim()
+    .notEmpty()
+    .withMessage('Google credential הוא שדה חובה'),
+];
+
 // Routes עם validation
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
+router.post('/google', googleLoginValidation, validate, googleLogin);
 router.get('/me', protect, getMe);
 
 module.exports = router;
