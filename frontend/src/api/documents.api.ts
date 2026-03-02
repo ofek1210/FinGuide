@@ -1,4 +1,9 @@
-export type DocumentStatus = "pending" | "processing" | "completed" | "failed";
+export type DocumentStatus =
+  | "uploaded"
+  | "pending"
+  | "processing"
+  | "completed"
+  | "failed";
 
 export interface DocumentItem {
   _id: string;
