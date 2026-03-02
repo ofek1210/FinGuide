@@ -39,6 +39,7 @@ export type AuthUser = {
   name: string;
   email: string;
   createdAt?: string;
+  avatarUrl?: string;
 };
 
 export type MeResponse = {
