@@ -9,7 +9,7 @@ const { NotFoundError } = require('./utils/appErrors');
 // Routes
 const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documents');
-const devRoutes = require('./routes/dev');
+const aiRoutes = require('./routes/ai');
 
 // חיבור ל-MongoDB
 connectDB();
@@ -50,9 +50,7 @@ app.get('/api/health', (req, res) => {
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentRoutes);
-if (process.env.NODE_ENV !== 'production') {
-  app.use('/api/dev', devRoutes);
-}
+app.use('/api/ai', aiRoutes);
 
 // 404 handler
 app.use((req, res, next) => {
@@ -63,9 +61,7 @@ app.use((req, res, next) => {
 app.use(errorHandler);
 
 // הפעלת השרת
-const DEFAULT_PORT = 5001;
-const MAX_PORT_ATTEMPTS = 1;
-let server;
+const PORT = process.env.PORT || 3000;
 
 const startServer = (port, attempt = 0) => {
   server = app.listen(port, () => {

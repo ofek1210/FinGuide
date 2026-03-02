@@ -4,6 +4,11 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const { FileUploadError } = require('../utils/appErrors');
 
+const MAX_UPLOAD_SIZE_MB = (() => {
+  const raw = Number(process.env.MAX_UPLOAD_SIZE_MB);
+  return Number.isFinite(raw) && raw > 0 ? raw : 10;
+})();
+
 // ודא שתיקיית uploads קיימת
 const uploadDir = path.join(__dirname, '..', 'uploads');
 if (!fs.existsSync(uploadDir)) {
@@ -24,12 +29,15 @@ const storage = multer.diskStorage({
 
 // בדיקת סוג קובץ
 const fileFilter = (req, file, cb) => {
-  // רק PDF
-  if (file.mimetype === 'application/pdf') {
-    cb(null, true);
-  } else {
-    cb(new Error('רק קבצי PDF מורשים'), false);
+  const isPdfMime = file.mimetype === 'application/pdf';
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  const isPdfExt = ext === '.pdf';
+
+  if (isPdfMime && isPdfExt) {
+    return cb(null, true);
   }
+
+  return cb(new FileUploadError('רק קבצי PDF מורשים'), false);
 };
 
 // הגדרות multer
@@ -37,7 +45,7 @@ const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB
+    fileSize: MAX_UPLOAD_SIZE_MB * 1024 * 1024,
   },
 });
 
@@ -47,15 +55,18 @@ const handleUploadError = (err, req, res, next) => {
     return next();
   }
 
+  if (err instanceof FileUploadError) {
+    return next(err);
+  }
+
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return next(
-        new FileUploadError('הקובץ גדול מדי. מקסימום 10MB', [
+        new FileUploadError(`הקובץ גדול מדי. מקסימום ${MAX_UPLOAD_SIZE_MB}MB`, [
           { code: err.code },
         ])
       );
     }
-
     return next(
       new FileUploadError('שגיאה בהעלאת הקובץ', [{ code: err.code }])
     );

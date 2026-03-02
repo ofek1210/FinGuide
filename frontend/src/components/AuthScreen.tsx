@@ -1,9 +1,12 @@
-import { useState } from "react";
-import type { Page } from "../types/navigation";
-import { login } from "../api/auth.api";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { login, register } from "../api/auth.api";
+import Toast from "./ui/Toast";
+import ToastContainer from "./ui/ToastContainer";
+import Loader from "./ui/Loader";
 
 interface AuthScreenProps {
-  onNavigate: (page: Page) => void;
+  mode: "login" | "register";
 }
 
 const MailIcon = () => (
@@ -122,12 +125,43 @@ const ShieldIcon = () => (
   </svg>
 );
 
-export default function AuthScreen({ onNavigate }: AuthScreenProps) {
+const UserIcon = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <circle
+      cx="12"
+      cy="8"
+      r="3.5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+    />
+    <path
+      d="M5 19c1.8-3.6 12.2-3.6 14 0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+export default function AuthScreen({
+  mode,
+}: AuthScreenProps) {
+  const navigate = useNavigate();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isRegister = mode === "register";
+
+  useEffect(() => {
+    if (!error) return undefined;
+    const timer = window.setTimeout(() => setError(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [error]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -137,24 +171,60 @@ export default function AuthScreen({ onNavigate }: AuthScreenProps) {
     setIsSubmitting(true);
 
     try {
+      if (isRegister) {
+        if (!name.trim() || !email.trim() || !password.trim()) {
+          setError("נא למלא שם, אימייל וסיסמה");
+          return;
+        }
+
+        const response = await register(name.trim(), email.trim(), password);
+        const token = response.token ?? response.data?.token;
+
+        if (!response.success || !token) {
+          const serverMessage =
+            response.errors?.[0]?.message ||
+            response.errors?.[0]?.msg ||
+            response.message;
+          setError(serverMessage || "לא הצלחנו להשלים את ההרשמה.");
+          return;
+        }
+
+        localStorage.setItem("token", token);
+
+        if (response.data?.user) {
+          localStorage.setItem("auth_user", JSON.stringify(response.data.user));
+        }
+
+        navigate("/dashboard");
+        return;
+      }
+
       if (!email.trim() || !password.trim()) {
         setError("נא למלא אימייל וסיסמה");
         return;
       }
 
       const response = await login(email.trim(), password);
+      const token = response.data?.token ?? response.token;
 
-      if (!response.success || !response.data?.token) {
+      if (!response.success || !token) {
         setError(response.message || "לא הצלחנו להתחבר, נסו שוב.");
         return;
       }
 
-      localStorage.setItem("auth_token", response.data.token);
-      localStorage.setItem("auth_user", JSON.stringify(response.data.user));
+      localStorage.setItem("token", token);
 
-      onNavigate("dashboard");
+      if (response.data?.user) {
+        localStorage.setItem("auth_user", JSON.stringify(response.data.user));
+      }
+
+      navigate("/dashboard");
     } catch {
-      setError("אירעה שגיאה בהתחברות, נסו שוב בהמשך.");
+      setError(
+        isRegister
+          ? "אירעה שגיאה בהרשמה, נסו שוב בהמשך."
+          : "אירעה שגיאה בהתחברות, נסו שוב בהמשך.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -165,11 +235,34 @@ export default function AuthScreen({ onNavigate }: AuthScreenProps) {
       <div className="auth-shell">
         <section className="auth-card">
           <header className="auth-card-header">
-            <h1>ברוכים השבים</h1>
-            <p>היכנסו כדי לגשת ללוח הבקרה הפיננסי שלכם</p>
+            <h1>{isRegister ? "יצירת חשבון" : "ברוכים השבים"}</h1>
+            <p>
+              {isRegister
+                ? "צרו חשבון חדש כדי להתחיל לנתח את המסמכים שלכם"
+                : "היכנסו כדי לגשת ללוח הבקרה הפיננסי שלכם"}
+            </p>
           </header>
 
           <form className="auth-form" onSubmit={handleSubmit} noValidate>
+            {isRegister && (
+              <label className="auth-field">
+                <span>שם מלא</span>
+                <div className="auth-input">
+                  <input
+                    className="auth-input-control"
+                    type="text"
+                    placeholder="השם שלכם"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    autoComplete="name"
+                    required
+                  />
+                  <span className="auth-input-icon" aria-hidden="true">
+                    <UserIcon />
+                  </span>
+                </div>
+              </label>
+            )}
             <label className="auth-field">
               <span>כתובת אימייל</span>
               <div className="auth-input">
@@ -214,14 +307,21 @@ export default function AuthScreen({ onNavigate }: AuthScreenProps) {
               </div>
             </label>
 
-            <button className="auth-link" type="button">
-              שכחתם את הסיסמה?
-            </button>
-
-            {error && <div className="auth-error">{error}</div>}
+            {isRegister ? (
+              <span
+                className="auth-link"
+                style={{ visibility: "hidden", pointerEvents: "none" }}
+              >
+                placeholder
+              </span>
+            ) : (
+              <button className="auth-link" type="button">
+                שכחתם את הסיסמה?
+              </button>
+            )}
 
             <button className="auth-button" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "מתחברים..." : "התחברות"}
+              {isSubmitting ? <Loader /> : isRegister ? "יצירת חשבון" : "התחברות"}
             </button>
 
             <div className="auth-divider">
@@ -244,9 +344,13 @@ export default function AuthScreen({ onNavigate }: AuthScreenProps) {
             </div>
 
             <div className="auth-register">
-              <span>אין לכם חשבון?</span>
-              <button className="auth-link is-inline" type="button">
-                הרשמו
+              <span>{isRegister ? "כבר יש לכם חשבון?" : "אין לכם חשבון?"}</span>
+              <button
+                className="auth-link is-inline"
+                type="button"
+                onClick={() => navigate(isRegister ? "/login" : "/register")}
+              >
+                {isRegister ? "התחברו" : "הרשמו"}
               </button>
             </div>
           </form>
@@ -296,6 +400,9 @@ export default function AuthScreen({ onNavigate }: AuthScreenProps) {
           </div>
         </aside>
       </div>
+      <ToastContainer>
+        {error ? <Toast message={error} onDismiss={() => setError(null)} /> : null}
+      </ToastContainer>
     </div>
   );
 }
