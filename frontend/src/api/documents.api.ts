@@ -1,3 +1,5 @@
+import { apiBlob, apiJson } from "./client";
+
 export type DocumentStatus =
   | "uploaded"
   | "pending"
@@ -49,24 +51,7 @@ export type DownloadDocumentResponse = {
   filename?: string;
 };
 
-const parseJson = async (response: Response) => {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-};
-
 const getToken = () => localStorage.getItem("token");
-
-const getAuthHeaders = (): Record<string, string> => {
-  const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
-};
 
 const getFilenameFromDisposition = (response: Response) => {
   const disposition = response.headers.get("content-disposition");
@@ -88,26 +73,16 @@ export const listDocuments = async () => {
     return { success: false, message: "אין הרשאה. נא להתחבר." } as ListDocumentsResponse;
   }
 
-  const response = await fetch("/api/documents", {
-    headers: {
-      Accept: "application/json",
-      ...getAuthHeaders(),
-    },
+  const result = await apiJson<ListDocumentsResponse>("/api/documents", {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לטעון את המסמכים.",
   });
 
-  const payload = await parseJson(response);
-
-  if (!response.ok) {
-    return (payload || {
-      success: false,
-      message: "לא הצלחנו לטעון את המסמכים.",
-    }) as ListDocumentsResponse;
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as ListDocumentsResponse;
   }
 
-  return (payload || {
-    success: false,
-    message: "תגובה לא תקינה.",
-  }) as ListDocumentsResponse;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
 };
 
 export const uploadDocument = async (file: File) => {
@@ -123,27 +98,16 @@ export const uploadDocument = async (file: File) => {
   const formData = new FormData();
   formData.append("document", file);
 
-  const response = await fetch("/api/documents/upload", {
+  const result = await apiJson<UploadDocumentResponse>("/api/documents/upload", {
     method: "POST",
-    headers: {
-      ...getAuthHeaders(),
-    },
+    auth: true,
     body: formData,
+    fallbackErrorMessage: "שגיאה בהעלאת הקובץ.",
   });
-
-  const payload = await parseJson(response);
-
-  if (!response.ok) {
-    return (payload || {
-      success: false,
-      message: "שגיאה בהעלאת הקובץ.",
-    }) as UploadDocumentResponse;
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as UploadDocumentResponse;
   }
-
-  return (payload || {
-    success: false,
-    message: "תגובה לא תקינה.",
-  }) as UploadDocumentResponse;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as UploadDocumentResponse);
 };
 
 export const getDocument = async (id: string) => {
@@ -152,26 +116,16 @@ export const getDocument = async (id: string) => {
     return { success: false, message: "אין הרשאה. נא להתחבר." } as DocumentResponse;
   }
 
-  const response = await fetch(`/api/documents/${id}`, {
-    headers: {
-      Accept: "application/json",
-      ...getAuthHeaders(),
-    },
+  const result = await apiJson<DocumentResponse>(`/api/documents/${id}`, {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לטעון את המסמך.",
   });
 
-  const payload = await parseJson(response);
-
-  if (!response.ok) {
-    return (payload || {
-      success: false,
-      message: "לא הצלחנו לטעון את המסמך.",
-    }) as DocumentResponse;
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as DocumentResponse;
   }
 
-  return (payload || {
-    success: false,
-    message: "תגובה לא תקינה.",
-  }) as DocumentResponse;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
 };
 
 export const removeDocument = async (id: string) => {
@@ -180,27 +134,15 @@ export const removeDocument = async (id: string) => {
     return { success: false, message: "אין הרשאה. נא להתחבר." } as RemoveDocumentResponse;
   }
 
-  const response = await fetch(`/api/documents/${id}`, {
+  const result = await apiJson<RemoveDocumentResponse>(`/api/documents/${id}`, {
     method: "DELETE",
-    headers: {
-      Accept: "application/json",
-      ...getAuthHeaders(),
-    },
+    auth: true,
+    fallbackErrorMessage: "שגיאה במחיקת המסמך.",
   });
-
-  const payload = await parseJson(response);
-
-  if (!response.ok) {
-    return (payload || {
-      success: false,
-      message: "שגיאה במחיקת המסמך.",
-    }) as RemoveDocumentResponse;
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as RemoveDocumentResponse;
   }
-
-  return (payload || {
-    success: false,
-    message: "תגובה לא תקינה.",
-  }) as RemoveDocumentResponse;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as RemoveDocumentResponse);
 };
 
 export const downloadDocument = async (id: string) => {
@@ -209,39 +151,14 @@ export const downloadDocument = async (id: string) => {
     return { success: false, message: "אין הרשאה. נא להתחבר." } as DownloadDocumentResponse;
   }
 
-  const response = await fetch(`/api/documents/${id}/download`, {
-    headers: {
-      ...getAuthHeaders(),
-    },
+  const result = await apiBlob(`/api/documents/${id}/download`, {
+    auth: true,
+    fallbackErrorMessage: "שגיאה בהורדת המסמך.",
   });
-
-  const contentType = response.headers.get("content-type") ?? "";
-
-  if (!response.ok) {
-    const payload = contentType.includes("application/json")
-      ? await parseJson(response)
-      : null;
-
-    return (payload || {
-      success: false,
-      message: "שגיאה בהורדת המסמך.",
-    }) as DownloadDocumentResponse;
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as DownloadDocumentResponse;
   }
 
-  if (contentType.includes("application/json")) {
-    const payload = await parseJson(response);
-    return (payload || {
-      success: false,
-      message: "תגובה לא תקינה.",
-    }) as DownloadDocumentResponse;
-  }
-
-  const blob = await response.blob();
-  const filename = getFilenameFromDisposition(response) || "document.pdf";
-
-  return {
-    success: true,
-    blob,
-    filename,
-  } as DownloadDocumentResponse;
+  const filename = getFilenameFromDisposition(result.response) || "document.pdf";
+  return { success: true, blob: result.blob, filename } as DownloadDocumentResponse;
 };

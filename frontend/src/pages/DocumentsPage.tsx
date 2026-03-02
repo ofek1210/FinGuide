@@ -473,11 +473,10 @@ export default function DocumentsPage() {
             disabled={!hasUploadedDocuments}
             onClick={() => navigate("/documents/scan")}
           >
-            סריקת הקבצים שהועלו
+            סריקת הקבצים שהועלו (דמו)
           </button>
           <span className="documents-note">
-            {/* TODO: Wire scanning step once OCR backend is available. */}
-            שלב הסריקה יופעל לאחר חיבור מנוע זיהוי התווים.
+            שלב הסריקה כרגע במצב דמו (ללא OCR). יופעל לאחר חיבור מנוע זיהוי תווים.
           </span>
         </section>
       </main>
