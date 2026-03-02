@@ -4,6 +4,7 @@ const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const errorHandler = require('./middleware/errorHandler');
+const { NotFoundError } = require('./utils/appErrors');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -52,11 +53,8 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/ai', aiRoutes);
 
 // 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found',
-  });
+app.use((req, res, next) => {
+  next(new NotFoundError('Route not found'));
 });
 
 // Error handler (חייב להיות אחרון)
@@ -65,15 +63,36 @@ app.use(errorHandler);
 // הפעלת השרת
 const PORT = process.env.PORT || 3000;
 
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+const startServer = (port, attempt = 0) => {
+  server = app.listen(port, () => {
+    console.log(`🚀 Server running on port ${port}`);
+    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+  });
+
+  server.on('error', err => {
+    if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
+      const nextPort = port + 1;
+      console.warn(`⚠️ Port ${port} in use, trying ${nextPort}...`);
+      startServer(nextPort, attempt + 1);
+      return;
+    }
+
+    console.error('❌ Server failed to start:', err);
+    process.exit(1);
+  });
+};
+
+const basePort = Number(process.env.PORT) || DEFAULT_PORT;
+startServer(basePort);
 
 // טיפול בשגיאות לא צפויות
 process.on('unhandledRejection', err => {
   console.error('❌ Unhandled Rejection:', err);
-  server.close(() => {
+  if (server) {
+    server.close(() => {
+      process.exit(1);
+    });
+  } else {
     process.exit(1);
-  });
+  }
 });

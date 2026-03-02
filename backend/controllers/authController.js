@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { AuthError } = require('../utils/appErrors');
 
 /**
  * יצירת JWT Token
@@ -69,19 +70,13 @@ const login = async (req, res, next) => {
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'אימייל או סיסמה לא נכונים',
-      });
+      return next(new AuthError('אימייל או סיסמה לא נכונים', 401));
     }
 
     // בדיקת סיסמה
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
-      return res.status(401).json({
-        success: false,
-        message: 'אימייל או סיסמה לא נכונים',
-      });
+      return next(new AuthError('אימייל או סיסמה לא נכונים', 401));
     }
 
     // יצירת token

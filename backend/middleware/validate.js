@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const { ValidationError } = require('../utils/appErrors');
 
 /**
  * Middleware לבדיקת שגיאות validation
@@ -14,14 +15,10 @@ const validate = (req, res, next) => {
       value: error.value,
     }));
 
-    return res.status(400).json({
-      success: false,
-      message: 'שגיאות בולידציה',
-      errors: formattedErrors,
-    });
+    return next(new ValidationError('שגיאות בולידציה', formattedErrors));
   }
 
-  next();
+  return next();
 };
 
 module.exports = validate;
