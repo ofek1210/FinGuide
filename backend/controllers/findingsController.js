@@ -85,11 +85,12 @@ exports.getFindings = async (req, res, next) => {
     });
 
     if (shouldCheckBasicMetadata && missingMetadataCount > 0) {
-      const missingFieldsLabel = hasTypeField && hasDateField
-        ? 'type או date'
-        : hasTypeField
-          ? 'type'
-          : 'date';
+      let missingFieldsLabel = 'date';
+      if (hasTypeField && hasDateField) {
+        missingFieldsLabel = 'type או date';
+      } else if (hasTypeField) {
+        missingFieldsLabel = 'type';
+      }
 
       findings.push(
         buildFinding(

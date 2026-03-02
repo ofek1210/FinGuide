@@ -1,6 +1,7 @@
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const createApp = require('../../app');
 
 let app;
 let mongoServer;
@@ -14,16 +15,13 @@ describe('Auth routes integration', () => {
     // Set env vars required by the app
     process.env.JWT_SECRET = 'test-secret';
     process.env.JWT_EXPIRE = '7d';
-    process.env.MONGO_URI = mongoUri;
+    process.env.MONGODB_URI = mongoUri;
     process.env.NODE_ENV = 'test';
 
     // Connect mongoose
     await mongoose.connect(mongoUri);
 
-    // Require the app after env & DB are ready
-    // eslint-disable-next-line global-require
-    const expressApp = require('../../server');
-    app = expressApp;
+    app = createApp();
   });
 
   afterAll(async () => {
@@ -145,4 +143,3 @@ describe('Auth routes integration', () => {
     });
   });
 });
-

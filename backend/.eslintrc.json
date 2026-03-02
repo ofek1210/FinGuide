@@ -13,5 +13,23 @@
     "consistent-return": "off",
     "func-names": "off",
     "import/no-unresolved": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.js", "**/__tests__/**/*.js"],
+      "env": {
+        "jest": true
+      },
+      "rules": {
+        "no-underscore-dangle": "off",
+        "prefer-destructuring": "off"
+      }
+    },
+    {
+      "files": ["utils/appErrors.js"],
+      "rules": {
+        "max-classes-per-file": "off"
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 const multer = require('multer');
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const fs = require('fs');
 const { FileUploadError } = require('../utils/appErrors');
 
@@ -22,7 +22,7 @@ const storage = multer.diskStorage({
   },
   filename(req, file, cb) {
     // יצירת שם קובץ ייחודי
-    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    const uniqueName = `${randomUUID()}${path.extname(file.originalname)}`;
     cb(null, uniqueName);
   },
 });

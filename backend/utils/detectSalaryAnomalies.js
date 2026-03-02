@@ -6,6 +6,7 @@ const DEFAULTS = {
   lowGrossThreshold: 3_000,
   roundIncrement: 1_000,
   minRoundCheck: 5_000,
+  checkRoundGross: false,
 };
 
 const buildAnomaly = (code, message, severity, meta = {}) => ({
@@ -88,18 +89,20 @@ const detectSalaryAnomalies = (
     );
   }
 
-  const isRoundGross =
-    normalizedGross >= config.minRoundCheck &&
-    normalizedGross % config.roundIncrement === 0;
-  if (isRoundGross) {
-    anomalies.push(
-      buildAnomaly(
-        'GROSS_SUSPICIOUSLY_ROUND',
-        'Gross salary is a round number',
-        'low',
-        { increment: config.roundIncrement }
-      )
-    );
+  if (config.checkRoundGross) {
+    const isRoundGross =
+      normalizedGross >= config.minRoundCheck &&
+      normalizedGross % config.roundIncrement === 0;
+    if (isRoundGross) {
+      anomalies.push(
+        buildAnomaly(
+          'GROSS_SUSPICIOUSLY_ROUND',
+          'Gross salary is a round number',
+          'low',
+          { increment: config.roundIncrement }
+        )
+      );
+    }
   }
 
   return {

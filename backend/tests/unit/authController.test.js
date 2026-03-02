@@ -2,7 +2,7 @@ const httpMocks = require('node-mocks-http');
 const jwt = require('jsonwebtoken');
 
 const User = require('../../models/User');
-const { register, login, getMe } = require('../../controllers/authController');
+const { register, getMe } = require('../../controllers/authController');
 
 jest.mock('../../models/User');
 jest.mock('jsonwebtoken');
@@ -110,4 +110,3 @@ describe('authController - getMe', () => {
     expect(data.data.user.email).toBe('test@test.com');
   });
 });
-

@@ -20,7 +20,6 @@ describe('detectSalaryAnomalies', () => {
     expect(codes).toContain('NET_TOO_CLOSE_TO_GROSS');
     expect(codes).toContain('GROSS_UNUSUALLY_HIGH');
     expect(codes).toContain('ZERO_DEDUCTIONS');
-    expect(codes).toContain('GROSS_SUSPICIOUSLY_ROUND');
   });
 
   test('edge: low gross triggers low flag', () => {
@@ -35,8 +34,22 @@ describe('detectSalaryAnomalies', () => {
     const result = detectSalaryAnomalies({
       grossSalary: DEFAULTS.minRoundCheck - DEFAULTS.roundIncrement,
       netSalary: 1000,
-    });
+    }, { checkRoundGross: true });
     expect(result.anomalies.map(item => item.code)).not.toContain('GROSS_SUSPICIOUSLY_ROUND');
+  });
+
+  test('round gross anomaly is optional and disabled by default', () => {
+    const withoutFlag = detectSalaryAnomalies({
+      grossSalary: 12_000,
+      netSalary: 7_500,
+    });
+    expect(withoutFlag.anomalies.map(item => item.code)).not.toContain('GROSS_SUSPICIOUSLY_ROUND');
+
+    const withFlag = detectSalaryAnomalies({
+      grossSalary: 12_000,
+      netSalary: 7_500,
+    }, { checkRoundGross: true });
+    expect(withFlag.anomalies.map(item => item.code)).toContain('GROSS_SUSPICIOUSLY_ROUND');
   });
 
   test('non-numeric values -> returns invalid input anomaly', () => {
