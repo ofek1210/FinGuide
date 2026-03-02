@@ -61,22 +61,13 @@ exports.getDocuments = async (req, res, next) => {
 // קבלת מסמך בודד
 exports.getDocument = async (req, res, next) => {
   try {
-    const document = await Document.findById(req.params.id);
+    const document = await Document.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    });
 
-    // בדיקה שהמסמך קיים
     if (!document) {
-      return res.status(404).json({
-        success: false,
-        message: 'מסמך לא נמצא',
-      });
-    }
-
-    // בדיקה שהמסמך שייך למשתמש
-    if (document.user.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'אין הרשאה לגשת למסמך זה',
-      });
+      return next(new NotFoundError('מסמך לא נמצא'));
     }
 
     res.status(200).json({
@@ -91,21 +82,13 @@ exports.getDocument = async (req, res, next) => {
 // מחיקת מסמך
 exports.deleteDocument = async (req, res, next) => {
   try {
-    const document = await Document.findById(req.params.id);
+    const document = await Document.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    });
 
     if (!document) {
-      return res.status(404).json({
-        success: false,
-        message: 'מסמך לא נמצא',
-      });
-    }
-
-    // בדיקה שהמסמך שייך למשתמש
-    if (document.user.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'אין הרשאה למחוק מסמך זה',
-      });
+      return next(new NotFoundError('מסמך לא נמצא'));
     }
 
     // מחיקת הקובץ מהדיסק
@@ -128,20 +111,13 @@ exports.deleteDocument = async (req, res, next) => {
 // הורדת מסמך
 exports.downloadDocument = async (req, res, next) => {
   try {
-    const document = await Document.findById(req.params.id);
+    const document = await Document.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    });
 
     if (!document) {
-      return res.status(404).json({
-        success: false,
-        message: 'מסמך לא נמצא',
-      });
-    }
-
-    if (document.user.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: 'אין הרשאה להוריד מסמך זה',
-      });
+      return next(new NotFoundError('מסמך לא נמצא'));
     }
 
     // שליחת הקובץ

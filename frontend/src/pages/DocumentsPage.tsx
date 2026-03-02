@@ -390,9 +390,22 @@ export default function DocumentsPage() {
           </span>
           <span>FinGuide</span>
         </div>
-        <button className="landing-secondary" type="button" onClick={() => navigate("/dashboard")}>
-          חזרה ללוח הבקרה
-        </button>
+        <div className="documents-nav-actions">
+          <button
+            className="landing-secondary"
+            type="button"
+            onClick={() => navigate("/documents/history")}
+          >
+            היסטוריית תלושים
+          </button>
+          <button
+            className="landing-secondary"
+            type="button"
+            onClick={() => navigate("/dashboard")}
+          >
+            חזרה ללוח הבקרה
+          </button>
+        </div>
       </header>
 
       <main className="documents-main landing-container">
@@ -457,9 +470,7 @@ export default function DocumentsPage() {
             className="landing-primary"
             type="button"
             disabled={!hasUploadedDocuments}
-            onClick={() => {
-              // שלב הסריקה טרם הוטמע – נשמור על כפתור זמין ונתעדכן בהמשך.
-            }}
+            onClick={() => navigate("/documents/scan")}
           >
             סריקת הקבצים שהועלו
           </button>
