@@ -1,20 +1,13 @@
 require('dotenv').config();
 
 const connectDB = require('./config/db');
-const errorHandler = require('./middleware/errorHandler');
-const { NotFoundError } = require('./utils/appErrors');
+const createApp = require('./app');
 
-// Routes
-const authRoutes = require('./routes/auth');
-const documentRoutes = require('./routes/documents');
-const aiRoutes = require('./routes/ai');
-const findingsRoutes = require('./routes/findings');
+const DEFAULT_PORT = 5000;
+const MAX_PORT_ATTEMPTS = 10;
 
-// יצירת Express app
-const app = express();
-
-// חיבור ל-MongoDB (מדולל כדי לאפשר overriding בטסטים)
-connectDB();
+let server;
+let app;
 
 // ולידציה של משתני סביבה קריטיים בהפעלה
 const validateEnv = () => {
@@ -27,50 +20,40 @@ const validateEnv = () => {
   }
 };
 
-const startServer = async () => {
-  validateEnv();
-  await connectDB();
-
-  const app = createApp();
-  const PORT = process.env.PORT || 5000;
-
-  const server = app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
-
-// 404 handler
-app.use((req, res, next) => {
-  next(new NotFoundError('Route not found'));
-});
-
-  return { app, server };
-};
-
 // הפעלת השרת
-const PORT = process.env.PORT || 5000;
+const startServer = async (port, attempt = 0) => {
+  try {
+    validateEnv();
+    await connectDB();
 
-const startServer = (port, attempt = 0) => {
-  server = app.listen(port, () => {
-    console.log(`🚀 Server running on port ${port}`);
-    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
+    app = createApp();
 
-  server.on('error', err => {
-    if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
-      const nextPort = port + 1;
-      console.warn(`⚠️ Port ${port} in use, trying ${nextPort}...`);
-      startServer(nextPort, attempt + 1);
-      return;
-    }
+    server = app.listen(port, () => {
+      console.log(`🚀 Server running on port ${port}`);
+      console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
 
-    console.error('❌ Server failed to start:', err);
+    server.on('error', err => {
+      if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
+        const nextPort = port + 1;
+        console.warn(`⚠️ Port ${port} in use, trying ${nextPort}...`);
+        // ניסיון מחדש על פורט אחר
+        startServer(nextPort, attempt + 1);
+        return;
+      }
+
+      console.error('❌ Server failed to start:', err);
+      process.exit(1);
+    });
+  } catch (err) {
+    console.error('❌ Failed to initialize server:', err);
     process.exit(1);
-  });
+  }
 };
 
 const basePort = Number(process.env.PORT) || DEFAULT_PORT;
-startServer(basePort);
+// הרצה מיידית כאשר הקובץ נטען
+void startServer(basePort);
 
 // טיפול בשגיאות לא צפויות
 process.on('unhandledRejection', err => {
