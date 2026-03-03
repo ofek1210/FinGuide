@@ -8,6 +8,12 @@ import DocumentsPage from "./pages/DocumentsPage";
 import ScanStatusPage from "./pages/ScanStatusPage";
 import ScanCompletePage from "./pages/ScanCompletePage";
 import PayslipHistoryPage from "./pages/PayslipHistoryPage";
+import AssistantPage from "./pages/AssistantPage";
+import FindingsPage from "./pages/FindingsPage";
+import SettingsPage from "./pages/SettingsPage";
+import StatusPage from "./pages/StatusPage";
+import HelpPage from "./pages/HelpPage";
+import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
@@ -58,6 +64,54 @@ export default function App() {
           element={
             <RequireAuth>
               <DocumentsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.findings}
+          element={
+            <RequireAuth>
+              <FindingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.assistant}
+          element={
+            <RequireAuth>
+              <AssistantPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.settings}
+          element={
+            <RequireAuth>
+              <SettingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.integrationsEmail}
+          element={
+            <RequireAuth>
+              <IntegrationsEmailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.status}
+          element={
+            <RequireAuth>
+              <StatusPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.help}
+          element={
+            <RequireAuth>
+              <HelpPage />
             </RequireAuth>
           }
         />

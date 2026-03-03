@@ -60,6 +60,7 @@ export default function PayslipHistoryPage() {
         <div>
           <h1>היסטוריית תלושים</h1>
           <p>צפייה והשוואה בין תלושי שכר קודמים</p>
+          <p className="payslip-demo-note">נתוני דמו בלבד (ללא חיבור API).</p>
         </div>
       </section>
 

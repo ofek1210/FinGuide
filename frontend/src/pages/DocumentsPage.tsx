@@ -9,8 +9,6 @@ import {
   removeDocument,
   type DocumentItem as ApiDocumentItem,
 } from "../api/documents.api";
-import { APP_ROUTES } from "../types/navigation";
-import { logoutWithConfirm } from "../utils/logout";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
 
@@ -38,6 +36,7 @@ const mapStatus = (status?: ApiDocumentItem["status"]): DocumentStatus => {
   if (status === "completed") return "completed";
   if (status === "processing") return "processing";
   if (status === "failed") return "failed";
+  if (status === "uploaded") return "pending";
   return "pending";
 };
 
@@ -474,11 +473,10 @@ export default function DocumentsPage() {
             disabled={!hasUploadedDocuments}
             onClick={() => navigate("/documents/scan")}
           >
-            סריקת הקבצים שהועלו
+            סריקת הקבצים שהועלו (דמו)
           </button>
           <span className="documents-note">
-            {/* TODO: Wire scanning step once OCR backend is available. */}
-            שלב הסריקה יופעל לאחר חיבור מנוע זיהוי התווים.
+            שלב הסריקה כרגע במצב דמו (ללא OCR). יופעל לאחר חיבור מנוע זיהוי תווים.
           </span>
         </section>
       </main>

@@ -1,3 +1,5 @@
+import { apiJson, type ApiErrorPayload } from "./client";
+
 export type LoginResponse = {
   success: boolean;
   message?: string;
@@ -37,6 +39,7 @@ export type AuthUser = {
   name: string;
   email: string;
   createdAt?: string;
+  avatarUrl?: string;
 };
 
 export type MeResponse = {
@@ -47,88 +50,47 @@ export type MeResponse = {
   };
 };
 
-const parseJson = async (response: Response) => {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-};
-
 const getToken = () => localStorage.getItem("token");
 
-const getAuthHeaders = (): Record<string, string> => {
-  const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
-};
-
 export const login = async (email: string, password: string) => {
-  const response = await fetch("/api/auth/login", {
+  const result = await apiJson<LoginResponse>("/api/auth/login", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email, password }),
+    body: { email, password },
+    fallbackErrorMessage: "אימייל או סיסמה לא נכונים.",
   });
-
-  const payload = await parseJson(response);
-
-  if (!response.ok) {
-    return {
-      success: false,
-      message:
-        (payload && payload.message) || "אימייל או סיסמה לא נכונים.",
-    } as LoginResponse;
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as LoginResponse;
   }
-
-  return (payload || { success: false, message: "תגובה לא תקינה." }) as LoginResponse;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as LoginResponse);
 };
 
 export const register = async (name: string, email: string, password: string) => {
-  const response = await fetch("/api/auth/register", {
+  const result = await apiJson<RegisterResponse>("/api/auth/register", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ name, email, password }),
+    body: { name, email, password },
+    fallbackErrorMessage: "לא הצלחנו להשלים את ההרשמה.",
   });
-
-  const payload = await parseJson(response);
-
-  if (!response.ok) {
-    return (payload || { success: false }) as RegisterResponse;
+  if (!result.ok) {
+    const payload = result.error.payload as ApiErrorPayload | null;
+    return {
+      success: false,
+      message: result.error.message,
+      errors: (payload && Array.isArray(payload.errors) ? payload.errors : undefined) as RegisterResponse["errors"],
+    } as RegisterResponse;
   }
-
-  return (payload || { success: false, message: "תגובה לא תקינה." }) as RegisterResponse;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as RegisterResponse);
 };
 
 export const loginWithGoogle = async (credential: string) => {
-  const response = await fetch("/api/auth/google", {
+  const result = await apiJson<LoginResponse>("/api/auth/google", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ credential }),
+    body: { credential },
+    fallbackErrorMessage: "לא הצלחנו להתחבר עם Google.",
   });
-
-  const payload = await parseJson(response);
-
-  if (!response.ok) {
-    return {
-      success: false,
-      message:
-        (payload && payload.message) || "לא הצלחנו להתחבר עם Google.",
-    } as LoginResponse;
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as LoginResponse;
   }
-
-  return (payload || {
-    success: false,
-    message: "תגובה לא תקינה.",
-  }) as LoginResponse;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as LoginResponse);
 };
 
 export const getMe = async () => {
@@ -137,24 +99,12 @@ export const getMe = async () => {
     return { success: false, message: "אין הרשאה. נא להתחבר." } as MeResponse;
   }
 
-  const response = await fetch("/api/auth/me", {
-    headers: {
-      Accept: "application/json",
-      ...getAuthHeaders(),
-    },
+  const result = await apiJson<MeResponse>("/api/auth/me", {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לטעון את פרטי המשתמש.",
   });
-
-  const payload = await parseJson(response);
-
-  if (!response.ok) {
-    return (payload || {
-      success: false,
-      message: "לא הצלחנו לטעון את פרטי המשתמש.",
-    }) as MeResponse;
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as MeResponse;
   }
-
-  return (payload || {
-    success: false,
-    message: "תגובה לא תקינה.",
-  }) as MeResponse;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as MeResponse);
 };
