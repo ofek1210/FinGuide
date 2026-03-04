@@ -35,6 +35,10 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'סיסמה חייבת להכיל לפחות 6 תווים'],
       select: false, // לא להחזיר סיסמה בברירת מחדל
     },
+    avatarUrl: {
+      type: String,
+      default: null,
+    },
   },
   {
     timestamps: true, // מוסיף createdAt ו-updatedAt אוטומטית

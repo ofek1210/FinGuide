@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const path = require('path');
+const express = require('express');
 const connectDB = require('./config/db');
 const createApp = require('./app');
 
@@ -55,7 +57,6 @@ const basePort = Number(process.env.PORT) || DEFAULT_PORT;
 // הרצה מיידית כאשר הקובץ נטען
 void startServer(basePort);
 
-// טיפול בשגיאות לא צפויות
 process.on('unhandledRejection', err => {
   console.error('❌ Unhandled Rejection:', err);
   if (server) {
