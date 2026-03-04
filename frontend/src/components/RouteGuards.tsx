@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { Navigate } from "react-router-dom";
+import Loader from "./ui/Loader";
+import { useAuth } from "../auth/AuthProvider";
 import { APP_ROUTES } from "../types/navigation";
 
 interface GuardProps {
@@ -7,9 +9,17 @@ interface GuardProps {
 }
 
 export function RequireAuth({ children }: GuardProps) {
-  const token = localStorage.getItem("token");
+  const auth = useAuth();
 
-  if (!token) {
+  if (auth.status === "checking") {
+    return (
+      <div className="route-guard-loader" dir="rtl">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (auth.status !== "authenticated") {
     return <Navigate to={APP_ROUTES.login} replace />;
   }
 
@@ -17,9 +27,17 @@ export function RequireAuth({ children }: GuardProps) {
 }
 
 export function RequireGuest({ children }: GuardProps) {
-  const token = localStorage.getItem("token");
+  const auth = useAuth();
 
-  if (token) {
+  if (auth.status === "checking") {
+    return (
+      <div className="route-guard-loader" dir="rtl">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (auth.status === "authenticated") {
     return <Navigate to={APP_ROUTES.dashboard} replace />;
   }
 

@@ -53,6 +53,7 @@ export default function ScanStatusPage() {
           </span>
           <span>FinGuide</span>
         </div>
+        <span className="scan-mode-badge">מצב דמו</span>
         <button className="scan-back" type="button" onClick={() => navigate("/documents")}>
           חזרה למסמכים
         </button>

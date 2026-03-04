@@ -1,35 +1,17 @@
+import { apiJson } from "./client";
+
 export type HealthResponse = {
   success: boolean;
   message?: string;
   timestamp?: string;
 };
 
-const parseJson = async (response: Response) => {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-};
-
 export const getHealth = async () => {
-  const response = await fetch("/api/health", {
-    headers: {
-      Accept: "application/json",
-    },
+  const result = await apiJson<HealthResponse>("/api/health", {
+    fallbackErrorMessage: "השרת לא זמין כרגע.",
   });
-
-  const payload = await parseJson(response);
-
-  if (!response.ok) {
-    return (payload || {
-      success: false,
-      message: "השרת לא זמין כרגע.",
-    }) as HealthResponse;
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as HealthResponse;
   }
-
-  return (payload || {
-    success: false,
-    message: "תגובה לא תקינה.",
-  }) as HealthResponse;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as HealthResponse);
 };

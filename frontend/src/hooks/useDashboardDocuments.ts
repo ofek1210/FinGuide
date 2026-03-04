@@ -13,6 +13,7 @@ const BYTES_IN_MB = 1024 * 1024;
 const RECENT_DOCUMENTS_COUNT = 4;
 
 const STATUS_LABELS: Record<DocumentStatus, string> = {
+  uploaded: "הועלה",
   pending: "ממתין לעיבוד",
   processing: "בעיבוד",
   completed: "מוכן",
@@ -138,12 +139,13 @@ export const useDashboardDocuments = () => {
     const processing = items.filter(
       (doc) => doc.status === "processing" || doc.status === "pending",
     ).length;
+    const uploaded = items.filter((doc) => doc.status === "uploaded").length;
     const totalSize = items.reduce((sum, doc) => sum + (doc.fileSize || 0), 0);
     return {
       total,
       completed,
       failed,
-      processing,
+      processing: processing + uploaded,
       totalSize,
     };
   }, [items]);

@@ -12,10 +12,11 @@ const findingsRoutes = require('./routes/findings');
 const createApp = () => {
   const app = express();
 
-  // Rate limiting
+  // Rate limiting – גבוה בפיתוח כדי למנוע "יותר מדי בקשות"
+  const isDev = process.env.NODE_ENV !== 'production';
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 דקות
-    max: 100, // 100 בקשות לכל IP
+    max: isDev ? 2000 : 100, // פיתוח: 2000, פרוד: 100
     message: {
       success: false,
       message: 'יותר מדי בקשות, נסה שוב מאוחר יותר',

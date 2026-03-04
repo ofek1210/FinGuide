@@ -1,3 +1,5 @@
+import { apiJson } from "./client";
+
 export type FindingSeverity = "info" | "warning";
 
 export type FindingItem = {
@@ -14,24 +16,7 @@ export type ListFindingsResponse = {
   data?: FindingItem[];
 };
 
-const parseJson = async (response: Response) => {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-};
-
 const getToken = () => localStorage.getItem("token");
-
-const getAuthHeaders = (): Record<string, string> => {
-  const headers: Record<string, string> = {};
-  const token = getToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-  return headers;
-};
 
 export const listFindings = async () => {
   const token = getToken();
@@ -39,24 +24,14 @@ export const listFindings = async () => {
     return { success: false, message: "אין הרשאה. נא להתחבר." } as ListFindingsResponse;
   }
 
-  const response = await fetch("/api/findings", {
-    headers: {
-      Accept: "application/json",
-      ...getAuthHeaders(),
-    },
+  const result = await apiJson<ListFindingsResponse>("/api/findings", {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לטעון את הממצאים.",
   });
 
-  const payload = await parseJson(response);
-
-  if (!response.ok) {
-    return (payload || {
-      success: false,
-      message: "לא הצלחנו לטעון את הממצאים.",
-    }) as ListFindingsResponse;
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as ListFindingsResponse;
   }
 
-  return (payload || {
-    success: false,
-    message: "תגובה לא תקינה.",
-  }) as ListFindingsResponse;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as ListFindingsResponse);
 };

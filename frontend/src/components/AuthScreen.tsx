@@ -5,6 +5,7 @@ import Toast from "./ui/Toast";
 import ToastContainer from "./ui/ToastContainer";
 import Loader from "./ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
+import { emitAuthChanged } from "../auth/authEvents";
 
 interface AuthScreenProps {
   mode: "login" | "register";
@@ -176,6 +177,7 @@ export default function AuthScreen({
       if (user) {
         localStorage.setItem("auth_user", JSON.stringify(user));
       }
+      emitAuthChanged();
       navigate(APP_ROUTES.dashboard);
     },
     [navigate],
