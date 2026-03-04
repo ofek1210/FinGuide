@@ -8,6 +8,11 @@ const {
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
+const {
+  profileUpload,
+  handleProfileUploadError,
+} = require('../middleware/profileUpload');
+const { updateProfileImage } = require('../controllers/authController');
 
 const router = express.Router();
 
@@ -62,5 +67,12 @@ router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
 router.post('/google', googleLoginValidation, validate, googleLogin);
 router.get('/me', protect, getMe);
+router.post(
+  '/profile/image',
+  protect,
+  profileUpload.single('avatar'),
+  handleProfileUploadError,
+  updateProfileImage
+);
 
 module.exports = router;

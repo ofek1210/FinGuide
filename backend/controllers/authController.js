@@ -23,6 +23,7 @@ const buildAuthResponse = user => ({
       id: user._id,
       name: user.name,
       email: user.email,
+      avatarUrl: user.avatarUrl || null,
     },
   },
   message: 'התחברות בוצעה בהצלחה',
@@ -212,10 +213,47 @@ const getMe = async (req, res) => {
         id: req.user._id,
         name: req.user.name,
         email: req.user.email,
+        avatarUrl: req.user.avatarUrl || null,
         createdAt: req.user.createdAt,
       },
     },
   });
+};
+
+/**
+ * @route   POST /api/auth/profile/image
+ * @desc    עדכון תמונת פרופיל למשתמש מחובר
+ * @access  Private
+ */
+const updateProfileImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'לא נבחר קובץ תמונה',
+      });
+    }
+
+    const relativePath = `/uploads/profile-images/${req.file.filename}`;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { avatarUrl: relativePath },
+      { new: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'משתמש לא נמצא',
+      });
+    }
+
+    const response = buildAuthResponse(user);
+    return res.status(200).json(response);
+  } catch (error) {
+    return next(error);
+  }
 };
 
 module.exports = {
@@ -223,4 +261,5 @@ module.exports = {
   login,
   googleLogin,
   getMe,
+  updateProfileImage,
 };
