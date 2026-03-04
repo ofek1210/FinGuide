@@ -1,0 +1,35 @@
+version: "3.9"
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    environment:
+      # App config
+      PORT: "5000"
+      NODE_ENV: "development"
+      MONGODB_URI: "mongodb://mongo:27017/finguide"
+      JWT_SECRET: "dev-secret-change-in-prod"
+      JWT_EXPIRE: "7d"
+      CLIENT_URL: "http://localhost:5173"
+      MAX_UPLOAD_SIZE_MB: "10"
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./backend/uploads:/usr/src/app/uploads
+      - ./backend/.work:/usr/src/app/.work
+
+volumes:
+  mongo_data:
+
