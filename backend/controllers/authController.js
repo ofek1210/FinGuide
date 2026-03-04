@@ -221,6 +221,53 @@ const getMe = async (req, res) => {
 };
 
 /**
+ * @route   POST /api/auth/change-password
+ * @desc    שינוי סיסמה למשתמש מחובר
+ * @access  Private
+ */
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'משתמש לא נמצא',
+      });
+    }
+
+    if (user.password) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'סיסמה נוכחית היא שדה חובה',
+        });
+      }
+
+      const isMatch = await user.matchPassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'סיסמה נוכחית שגויה',
+        });
+      }
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'הסיסמה עודכנה בהצלחה',
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
  * @route   POST /api/auth/profile/image
  * @desc    עדכון תמונת פרופיל למשתמש מחובר
  * @access  Private
@@ -261,5 +308,6 @@ module.exports = {
   login,
   googleLogin,
   getMe,
+  changePassword,
   updateProfileImage,
 };
