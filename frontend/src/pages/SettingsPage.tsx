@@ -6,6 +6,7 @@ import {
   AVATAR_STORAGE_KEY,
 } from "../api/profile.api";
 import PrivateTopbar from "../components/PrivateTopbar";
+import AppFooter from "../components/AppFooter";
 import Loader from "../components/ui/Loader";
 import { useAuth } from "../auth/AuthProvider";
 import { APP_ROUTES } from "../types/navigation";
@@ -212,6 +213,8 @@ export default function SettingsPage() {
             התנתקות
           </button>
         </section>
+
+        <AppFooter variant="private" />
       </div>
     </div>
   );

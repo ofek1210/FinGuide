@@ -13,9 +13,12 @@ interface PrivateTopbarProps {
 const navItems = [
   { label: "לוח בקרה", route: APP_ROUTES.dashboard },
   { label: "מסמכים", route: APP_ROUTES.documents },
+  { label: "היסטוריית תלושים", route: APP_ROUTES.payslipHistory },
   { label: "ממצאים", route: APP_ROUTES.findings },
   { label: "עוזר AI", route: APP_ROUTES.assistant },
   { label: "הגדרות", route: APP_ROUTES.settings },
+  { label: "עזרה", route: APP_ROUTES.help },
+  { label: "מצב מערכת", route: APP_ROUTES.status },
 ];
 
 function getInitial(name: string | undefined): string {
@@ -62,18 +65,27 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
       </div>
 
       <nav className="dashboard-nav">
-        {navItems.map((item) => (
-          <button
-            key={item.route}
-            className={`dashboard-nav-link ${
-              location.pathname === item.route ? "is-active" : ""
-            }`}
-            type="button"
-            onClick={() => navigate(item.route)}
-          >
-            {item.label}
-          </button>
-        ))}
+        {navItems.map((item) => {
+          const isActive =
+            item.route === APP_ROUTES.dashboard
+              ? location.pathname === APP_ROUTES.dashboard
+              : item.route === APP_ROUTES.documents
+                ? location.pathname === APP_ROUTES.documents ||
+                  location.pathname.startsWith("/documents/scan")
+                : item.route === APP_ROUTES.payslipHistory
+                  ? location.pathname.startsWith(APP_ROUTES.payslipHistory)
+                  : location.pathname === item.route;
+          return (
+            <button
+              key={item.route}
+              className={`dashboard-nav-link ${isActive ? "is-active" : ""}`}
+              type="button"
+              onClick={() => navigate(item.route)}
+            >
+              {item.label}
+            </button>
+          );
+        })}
       </nav>
 
       <div className="dashboard-top-actions">

@@ -8,6 +8,7 @@ import DocumentsPage from "./pages/DocumentsPage";
 import ScanStatusPage from "./pages/ScanStatusPage";
 import ScanCompletePage from "./pages/ScanCompletePage";
 import PayslipHistoryPage from "./pages/PayslipHistoryPage";
+import PayslipDetailPage from "./pages/PayslipDetailPage";
 import AssistantPage from "./pages/AssistantPage";
 import FindingsPage from "./pages/FindingsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -116,7 +117,7 @@ export default function App() {
           }
         />
         <Route
-          path="/documents/scan"
+          path={APP_ROUTES.documentsScan}
           element={
             <RequireAuth>
               <ScanStatusPage />
@@ -124,7 +125,7 @@ export default function App() {
           }
         />
         <Route
-          path="/documents/scan/complete"
+          path={APP_ROUTES.documentsScanComplete}
           element={
             <RequireAuth>
               <ScanCompletePage />
@@ -132,10 +133,18 @@ export default function App() {
           }
         />
         <Route
-          path="/documents/history"
+          path={APP_ROUTES.payslipHistory}
           element={
             <RequireAuth>
               <PayslipHistoryPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/documents/history/:id"
+          element={
+            <RequireAuth>
+              <PayslipDetailPage />
             </RequireAuth>
           }
         />

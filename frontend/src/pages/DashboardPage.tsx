@@ -1,6 +1,7 @@
 import { BarChart3, FileText, ShieldCheck, Sparkles } from "lucide-react";
 import { useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import AppFooter from "../components/AppFooter";
 import type { DocumentItem } from "../api/documents.api";
 import DashboardAlertCard from "../components/dashboard/DashboardAlertCard";
 import DashboardChatPanel from "../components/dashboard/DashboardChatPanel";
@@ -15,6 +16,7 @@ import { useDashboardDocuments } from "../hooks/useDashboardDocuments";
 import { useDashboardHealth } from "../hooks/useDashboardHealth";
 import { useDashboardPayslipsPreview } from "../hooks/useDashboardPayslipsPreview";
 import { useDashboardUser } from "../hooks/useDashboardUser";
+import { APP_ROUTES } from "../types/navigation";
 import { formatCurrencyILS, formatFileSize, formatLongDate, formatNumber } from "../utils/formatters";
 import type { DashboardMetric } from "../types/dashboard";
 
@@ -119,15 +121,16 @@ export default function DashboardPage() {
           fileInputRef={fileInputRef}
           onUploadClick={handleUploadClick}
           onFileSelected={handleFileSelected}
-          onNavigateDashboard={() => navigate("/dashboard")}
-          onNavigateDocuments={() => navigate("/documents")}
-          onNavigatePayslipHistory={() => navigate("/documents/history")}
+          onNavigateDashboard={() => navigate(APP_ROUTES.dashboard)}
+          onNavigateDocuments={() => navigate(APP_ROUTES.documents)}
+          onNavigatePayslipHistory={() => navigate(APP_ROUTES.payslipHistory)}
+          onNavigateFindings={() => navigate(APP_ROUTES.findings)}
         />
 
         <DashboardHero
           greetingLine={greetingLine}
           documentsThisMonth={documents.documentsThisMonth}
-          onViewDocuments={() => navigate("/documents")}
+          onViewDocuments={() => navigate(APP_ROUTES.documents)}
         />
 
         <DashboardMetrics metrics={metrics} />
@@ -151,14 +154,14 @@ export default function DashboardPage() {
               completedDocuments={documents.stats.completed}
               processingDocuments={documents.stats.processing}
               failedDocuments={documents.stats.failed}
-              onViewDocuments={() => navigate("/documents")}
+              onViewDocuments={() => navigate(APP_ROUTES.documents)}
             />
 
             <DashboardChatPanel />
 
             <DashboardQuickActions
               onUploadClick={handleUploadClick}
-              onViewDocuments={() => navigate("/documents")}
+              onViewDocuments={() => navigate(APP_ROUTES.documents)}
             />
           </div>
 
@@ -166,7 +169,7 @@ export default function DashboardPage() {
             <DashboardAlertCard
               title={alertTitle}
               message={alertMessage}
-              onViewDocuments={() => navigate("/documents")}
+              onViewDocuments={() => navigate(APP_ROUTES.documents)}
             />
 
             <DashboardPayslipHistoryCard
@@ -174,7 +177,7 @@ export default function DashboardPage() {
               isLoading={payslips.isLoading}
               error={payslips.error}
               onRetry={payslips.reload}
-              onViewAll={() => navigate("/documents/history")}
+              onViewAll={() => navigate(APP_ROUTES.payslipHistory)}
             />
 
             <DashboardRecentDocuments
@@ -185,10 +188,12 @@ export default function DashboardPage() {
               deletingIds={documents.deletingIds}
               onDownload={handleDownload}
               onDelete={handleDelete}
-              onViewAll={() => navigate("/documents")}
+              onViewAll={() => navigate(APP_ROUTES.documents)}
             />
           </div>
         </section>
+
+        <AppFooter variant="private" />
       </div>
     </div>
   );

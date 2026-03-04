@@ -23,6 +23,7 @@ export interface DocumentItem {
 export type ListDocumentsResponse = {
   success: boolean;
   message?: string;
+  status?: number;
   count?: number;
   data?: DocumentItem[];
 };
@@ -79,7 +80,11 @@ export const listDocuments = async () => {
   });
 
   if (!result.ok) {
-    return { success: false, message: result.error.message } as ListDocumentsResponse;
+    return {
+      success: false,
+      message: result.error.message,
+      status: result.status,
+    } as ListDocumentsResponse;
   }
 
   return result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
