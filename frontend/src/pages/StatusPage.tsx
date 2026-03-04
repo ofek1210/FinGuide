@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getHealth } from "../api/health.api";
 import PrivateTopbar from "../components/PrivateTopbar";
+import AppFooter from "../components/AppFooter";
 
 type StatusState = "checking" | "online" | "offline";
 
@@ -15,13 +16,13 @@ export default function StatusPage() {
 
     if (response.success) {
       setStatus("online");
-      setMessage(response.message || "Server is running");
+      setMessage("השרת זמין");
       setTimestamp(response.timestamp || "");
       return;
     }
 
     setStatus("offline");
-    setMessage(response.message || "השרת לא זמין כרגע.");
+    setMessage(response.message || "השרת לא זמין כרגע. נסו שוב מאוחר יותר.");
     setTimestamp("");
   }, []);
 
@@ -61,6 +62,8 @@ export default function StatusPage() {
             </strong>
           </div>
         </section>
+
+        <AppFooter variant="private" />
       </div>
     </div>
   );

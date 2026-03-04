@@ -18,6 +18,7 @@ interface DashboardHeaderProps {
   onNavigateDashboard: () => void;
   onNavigateDocuments: () => void;
   onNavigatePayslipHistory: () => void;
+  onNavigateFindings: () => void;
 }
 
 function getInitial(name: string | undefined): string {
@@ -34,6 +35,7 @@ export default function DashboardHeader({
   onNavigateDashboard,
   onNavigateDocuments,
   onNavigatePayslipHistory,
+  onNavigateFindings,
 }: DashboardHeaderProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -92,8 +94,40 @@ export default function DashboardHeader({
         >
           היסטוריית תלושים
         </button>
-        <button className="dashboard-nav-link" type="button">
-          תובנות
+        <button
+          className="dashboard-nav-link"
+          type="button"
+          onClick={onNavigateFindings}
+        >
+          ממצאים
+        </button>
+        <button
+          className="dashboard-nav-link"
+          type="button"
+          onClick={() => navigate(APP_ROUTES.assistant)}
+        >
+          עוזר AI
+        </button>
+        <button
+          className="dashboard-nav-link"
+          type="button"
+          onClick={() => navigate(APP_ROUTES.settings)}
+        >
+          הגדרות
+        </button>
+        <button
+          className="dashboard-nav-link"
+          type="button"
+          onClick={() => navigate(APP_ROUTES.help)}
+        >
+          עזרה
+        </button>
+        <button
+          className="dashboard-nav-link"
+          type="button"
+          onClick={() => navigate(APP_ROUTES.status)}
+        >
+          מצב מערכת
         </button>
       </nav>
 

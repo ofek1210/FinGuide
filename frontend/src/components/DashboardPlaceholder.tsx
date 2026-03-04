@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { APP_ROUTES } from "../types/navigation";
 
 export default function DashboardPlaceholder() {
   const navigate = useNavigate();
@@ -6,7 +7,7 @@ export default function DashboardPlaceholder() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("auth_user");
-    navigate("/login");
+    navigate(APP_ROUTES.login);
   };
 
   return (

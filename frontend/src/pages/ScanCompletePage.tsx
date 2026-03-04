@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { APP_ROUTES } from "../types/navigation";
 
 const stats = [
   { value: "99%", label: "דיוק" },
@@ -33,7 +34,7 @@ export default function ScanCompletePage() {
           <button
             className="scan-complete-cta"
             type="button"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate(APP_ROUTES.dashboard)}
           >
             צפייה בתובנות
             <span aria-hidden="true">←</span>

@@ -16,7 +16,7 @@ export default function DashboardHero({
       <div>
         <h1>{greetingLine}</h1>
         <p>
-          הנה סקירה מהירה של מצב המסמכים שלך
+          הנה סקירת המצב הפיננסי שלך
           {documentsThisMonth ? " החודש" : ""}.
         </p>
       </div>

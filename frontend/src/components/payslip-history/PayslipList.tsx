@@ -4,6 +4,7 @@ import PayslipRow from "./PayslipRow";
 interface PayslipListProps {
   items: PayslipHistoryItem[];
   onDownload: (item: PayslipHistoryItem) => void;
+  onSelect?: (item: PayslipHistoryItem) => void;
   formatCurrency: (value: number) => string;
   formatDate: (value: string) => string;
 }
@@ -11,6 +12,7 @@ interface PayslipListProps {
 export default function PayslipList({
   items,
   onDownload,
+  onSelect,
   formatCurrency,
   formatDate,
 }: PayslipListProps) {
@@ -28,6 +30,7 @@ export default function PayslipList({
             grossSalary={formatCurrency(item.grossSalary)}
             periodDate={formatDate(item.periodDate)}
             onDownload={onDownload}
+            onSelect={onSelect}
           />
         ))}
       </div>

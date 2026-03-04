@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { APP_ROUTES } from "../types/navigation";
 
 type StepStatus = "pending" | "active" | "done";
 
@@ -34,7 +35,7 @@ export default function ScanStatusPage() {
   useEffect(() => {
     if (!isComplete) return undefined;
     const timer = window.setTimeout(() => {
-      navigate("/documents/scan/complete");
+      navigate(APP_ROUTES.documentsScanComplete);
     }, 900);
     return () => window.clearTimeout(timer);
   }, [isComplete, navigate]);
@@ -54,7 +55,7 @@ export default function ScanStatusPage() {
           <span>FinGuide</span>
         </div>
         <span className="scan-mode-badge">מצב דמו</span>
-        <button className="scan-back" type="button" onClick={() => navigate("/documents")}>
+        <button className="scan-back" type="button" onClick={() => navigate(APP_ROUTES.documents)}>
           חזרה למסמכים
         </button>
       </header>
