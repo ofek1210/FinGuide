@@ -1,22 +1,15 @@
 require('dotenv').config();
 
+const path = require('path');
+const express = require('express');
 const connectDB = require('./config/db');
-const errorHandler = require('./middleware/errorHandler');
-const { NotFoundError } = require('./utils/appErrors');
+const createApp = require('./app');
 
-// Routes
-const authRoutes = require('./routes/auth');
-const documentRoutes = require('./routes/documents');
-const aiRoutes = require('./routes/ai');
-const findingsRoutes = require('./routes/findings');
+const DEFAULT_PORT = 5000;
+const MAX_PORT_ATTEMPTS = 5;
 
-// יצירת Express app
-const app = express();
+let server;
 
-// חיבור ל-MongoDB (מדולל כדי לאפשר overriding בטסטים)
-connectDB();
-
-// ולידציה של משתני סביבה קריטיים בהפעלה
 const validateEnv = () => {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 10) {
     throw new Error('JWT_SECRET חסר או חלש – הגדר ב-.env (לפחות 10 תווים)');
@@ -27,30 +20,17 @@ const validateEnv = () => {
   }
 };
 
-const startServer = async () => {
+const startServer = async (port, attempt = 0) => {
   validateEnv();
   await connectDB();
 
   const app = createApp();
-  const PORT = process.env.PORT || 5000;
 
-  const server = app.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
+  app.use(
+    '/uploads',
+    express.static(path.join(__dirname, 'uploads'))
+  );
 
-// 404 handler
-app.use((req, res, next) => {
-  next(new NotFoundError('Route not found'));
-});
-
-  return { app, server };
-};
-
-// הפעלת השרת
-const PORT = process.env.PORT || 5000;
-
-const startServer = (port, attempt = 0) => {
   server = app.listen(port, () => {
     console.log(`🚀 Server running on port ${port}`);
     console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -72,7 +52,6 @@ const startServer = (port, attempt = 0) => {
 const basePort = Number(process.env.PORT) || DEFAULT_PORT;
 startServer(basePort);
 
-// טיפול בשגיאות לא צפויות
 process.on('unhandledRejection', err => {
   console.error('❌ Unhandled Rejection:', err);
   if (server) {
