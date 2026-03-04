@@ -1,6 +1,7 @@
 const fs = require('fs').promises;
 const Document = require('../models/Document');
-const { FileUploadError } = require('../utils/appErrors');
+const { FileUploadError, NotFoundError } = require('../utils/appErrors');
+const { extractPayslipFile } = require('../services/payslipOcr');
 
 // העלאת מסמך
 exports.uploadDocument = async (req, res, next) => {
@@ -10,16 +11,30 @@ exports.uploadDocument = async (req, res, next) => {
       return next(new FileUploadError('לא נבחר קובץ'));
     }
 
-    // יצירת רכורד במונגו
-    const document = await Document.create({
+    // יצירת רשומה במונגו
+    let document = await Document.create({
       user: req.user.id,
       originalName: req.file.originalname,
       filename: req.file.filename,
       filePath: req.file.path,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
-      // ברירת מחדל: pending (עולה מתוך הסכמה)
+      status: 'processing',
     });
+
+    // ניסיון לבצע OCR ולחלץ נתונים מהתלוש
+    try {
+      const { data } = await extractPayslipFile(req.file.path);
+
+      document.analysisData = data;
+      document.status = 'completed';
+      document.processedAt = new Date();
+      await document.save();
+    } catch (ocrError) {
+      console.error('❌ OCR failed for document', document._id, ocrError);
+      document.status = 'failed';
+      await document.save().catch(() => {});
+    }
 
     res.status(201).json({
       success: true,
