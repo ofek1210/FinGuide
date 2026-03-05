@@ -119,14 +119,11 @@ export const getMe = async () => {
   return result.data || ({ success: false, message: "תגובה לא תקינה." } as MeResponse);
 };
 
-export const changePassword = async (currentPassword: string | null, newPassword: string) => {
-  const body: { currentPassword?: string; newPassword: string } = {
+export const changePassword = async (currentPassword: string, newPassword: string) => {
+  const body: { currentPassword: string; newPassword: string } = {
+    currentPassword: currentPassword.trim(),
     newPassword,
   };
-
-  if (currentPassword && currentPassword.trim()) {
-    body.currentPassword = currentPassword.trim();
-  }
 
   const result = await apiJson<ChangePasswordResponse>("/api/auth/change-password", {
     method: "POST",

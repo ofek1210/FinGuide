@@ -31,6 +31,7 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLoading = status === "checking";
@@ -127,6 +128,11 @@ export default function SettingsPage() {
   };
 
   const validatePasswordLocally = () => {
+    if (!currentPassword.trim()) {
+      setPasswordError("נא להזין סיסמה נוכחית.");
+      return false;
+    }
+
     if (!newPassword.trim() || !confirmPassword.trim()) {
       setPasswordError("נא למלא סיסמה חדשה ואימות סיסמה.");
       return false;
@@ -161,7 +167,7 @@ export default function SettingsPage() {
 
     setPasswordSaveLoading(true);
 
-    const response = await changePassword(currentPassword.trim() || null, newPassword);
+    const response = await changePassword(currentPassword, newPassword);
 
     setPasswordSaveLoading(false);
 
@@ -326,9 +332,18 @@ export default function SettingsPage() {
           <div className="settings-form">
             <h2 className="feature-card-title">שינוי סיסמה</h2>
             <p className="feature-card-subtitle">
-              עדכון סיסמת ההתחברות שלכם. למשתמשים שנרשמו רק עם Google, ניתן להגדיר כאן סיסמה
-              ראשונה.
+              עדכון סיסמת ההתחברות שלכם.
             </p>
+            <div className="settings-password-toggle-wrap">
+              <button
+                className="settings-password-toggle"
+                type="button"
+                onClick={() => setShowPasswords((prev) => !prev)}
+                aria-label={showPasswords ? "הסתר סיסמאות" : "הצג סיסמאות"}
+              >
+                {showPasswords ? "הסתר סיסמאות" : "הצג סיסמאות"}
+              </button>
+            </div>
 
             {passwordSaveMessage === "success" && (
               <div className="settings-banner settings-banner-success">
@@ -345,7 +360,7 @@ export default function SettingsPage() {
               <label htmlFor="settings-current-password">סיסמה נוכחית</label>
               <input
                 id="settings-current-password"
-                type="password"
+                type={showPasswords ? "text" : "password"}
                 value={currentPassword}
                 onChange={(e) => {
                   setCurrentPassword(e.target.value);
@@ -356,8 +371,7 @@ export default function SettingsPage() {
                 dir="ltr"
               />
               <p className="settings-field-note">
-                חובה רק עבור משתמשים שנרשמו עם אימייל וסיסמה. עבור משתמשי Google בלבד ניתן להשאיר
-                ריק כדי להגדיר סיסמה ראשונה.
+                חובה לכל המשתמשים לצורך שינוי הסיסמה.
               </p>
             </div>
 
@@ -365,7 +379,7 @@ export default function SettingsPage() {
               <label htmlFor="settings-new-password">סיסמה חדשה</label>
               <input
                 id="settings-new-password"
-                type="password"
+                type={showPasswords ? "text" : "password"}
                 value={newPassword}
                 onChange={(e) => {
                   setNewPassword(e.target.value);
@@ -381,7 +395,7 @@ export default function SettingsPage() {
               <label htmlFor="settings-confirm-password">אימות סיסמה חדשה</label>
               <input
                 id="settings-confirm-password"
-                type="password"
+                type={showPasswords ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => {
                   setConfirmPassword(e.target.value);

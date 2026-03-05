@@ -290,9 +290,7 @@ Content-Type: application/json
 **Validation Rules:**
 
 - `newPassword`: חובה, לפחות 6 תווים, חייבת לכלול אות גדולה, אות קטנה ומספר.
-- `currentPassword`:
-  - נדרש עבור משתמשים שיש להם סיסמה קיימת (נרשמו עם אימייל/סיסמה).
-  - עבור משתמשים שנוצרו רק דרך Google, ניתן להגדיר סיסמה ראשונה ללא בדיקת סיסמה נוכחית.
+- `currentPassword`: חובה תמיד לצורך שינוי סיסמה.
 
 **Success Response 200:**
 
@@ -313,7 +311,7 @@ Content-Type: application/json
 }
 ```
 
-**Error Response 400 - Missing Current Password (when required):**
+**Error Response 400 - Missing Current Password:**
 
 ```json
 {
@@ -322,7 +320,7 @@ Content-Type: application/json
 }
 ```
 
-**Error Response 401 - Wrong Current Password:**
+**Error Response 400 - Wrong Current Password:**
 
 ```json
 {
