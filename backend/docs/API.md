@@ -188,6 +188,160 @@ Authorization: Bearer <token>
 
 ---
 
+### 5. Update Email
+
+**PATCH** `/auth/me`
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "email": "new-email@example.com"
+}
+```
+
+**Validation Rules:**
+
+- `email`: חובה, בפורמט אימייל תקין.
+
+**Success Response 200:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "507f1f77bcf86cd799439011",
+      "name": "John Doe",
+      "email": "new-email@example.com",
+      "avatarUrl": null
+    }
+  },
+  "message": "הפרופיל עודכן בהצלחה"
+}
+```
+
+**Error Response 400 - Validation:**
+
+```json
+{
+  "success": false,
+  "message": "שגיאות בולידציה",
+  "errors": [...]
+}
+```
+
+**Error Response 400 - Email Already In Use:**
+
+```json
+{
+  "success": false,
+  "message": "משתמש עם אימייל זה כבר קיים"
+}
+```
+
+**Error Response 400 - No Fields Provided:**
+
+```json
+{
+  "success": false,
+  "message": "לא סופקו שדות לעדכון"
+}
+```
+
+**Error Response 401 - No Token:**
+
+```json
+{
+  "success": false,
+  "message": "לא מורשה, אין token"
+}
+```
+
+---
+
+### 6. Change Password
+
+**POST** `/auth/change-password`
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "currentPassword": "CurrentPass123",
+  "newPassword": "NewPass123"
+}
+```
+
+**Validation Rules:**
+
+- `newPassword`: חובה, לפחות 6 תווים, חייבת לכלול אות גדולה, אות קטנה ומספר.
+- `currentPassword`:
+  - נדרש עבור משתמשים שיש להם סיסמה קיימת (נרשמו עם אימייל/סיסמה).
+  - עבור משתמשים שנוצרו רק דרך Google, ניתן להגדיר סיסמה ראשונה ללא בדיקת סיסמה נוכחית.
+
+**Success Response 200:**
+
+```json
+{
+  "success": true,
+  "message": "הסיסמה עודכנה בהצלחה"
+}
+```
+
+**Error Response 400 - Validation:**
+
+```json
+{
+  "success": false,
+  "message": "שגיאות בולידציה",
+  "errors": [...]
+}
+```
+
+**Error Response 400 - Missing Current Password (when required):**
+
+```json
+{
+  "success": false,
+  "message": "סיסמה נוכחית היא שדה חובה"
+}
+```
+
+**Error Response 401 - Wrong Current Password:**
+
+```json
+{
+  "success": false,
+  "message": "סיסמה נוכחית שגויה"
+}
+```
+
+**Error Response 401 - No Token:**
+
+```json
+{
+  "success": false,
+  "message": "לא מורשה, אין token"
+}
+```
+
+---
+
 ## Status Codes
 
 - **200**: OK - Request succeeded

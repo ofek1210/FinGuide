@@ -42,6 +42,16 @@ export type AuthUser = {
   avatarUrl?: string;
 };
 
+export type ChangePasswordResponse = {
+  success: boolean;
+  message?: string;
+  errors?: Array<{
+    field?: string;
+    message?: string;
+    msg?: string;
+  }>;
+};
+
 export type MeResponse = {
   success: boolean;
   message?: string;
@@ -107,4 +117,34 @@ export const getMe = async () => {
     return { success: false, message: result.error.message } as MeResponse;
   }
   return result.data || ({ success: false, message: "תגובה לא תקינה." } as MeResponse);
+};
+
+export const changePassword = async (currentPassword: string | null, newPassword: string) => {
+  const body: { currentPassword?: string; newPassword: string } = {
+    newPassword,
+  };
+
+  if (currentPassword && currentPassword.trim()) {
+    body.currentPassword = currentPassword.trim();
+  }
+
+  const result = await apiJson<ChangePasswordResponse>("/api/auth/change-password", {
+    method: "POST",
+    body,
+    auth: true,
+    fallbackErrorMessage: "שגיאה בעדכון הסיסמה.",
+  });
+
+  if (!result.ok) {
+    const payload = result.error.payload as ApiErrorPayload | null;
+    return {
+      success: false,
+      message: result.error.message,
+      errors: (payload && Array.isArray(payload.errors) ? payload.errors : undefined) as
+        | ChangePasswordResponse["errors"]
+        | undefined,
+    } as ChangePasswordResponse;
+  }
+
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as ChangePasswordResponse);
 };

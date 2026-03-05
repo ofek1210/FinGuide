@@ -205,7 +205,6 @@ const googleLogin = async (req, res, next) => {
  * @access  Private (דורש JWT)
  */
 const getMe = async (req, res) => {
-  // המשתמש כבר נטען על ידי middleware protect
   res.json({
     success: true,
     data: {
@@ -218,6 +217,112 @@ const getMe = async (req, res) => {
       },
     },
   });
+};
+
+/**
+ * @route   PATCH /api/auth/me
+ * @desc    עדכון פרטי משתמש מחובר (שם, אימייל)
+ * @access  Private (דורש JWT)
+ */
+const updateMe = async (req, res, next) => {
+  try {
+    const { name, email } = req.body || {};
+
+    const updates = {};
+
+    if (typeof name === 'string' && name.trim()) {
+      updates.name = name.trim();
+    }
+
+    if (typeof email === 'string' && email.trim()) {
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const existingUser = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: req.user._id },
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'משתמש עם אימייל זה כבר קיים',
+        });
+      }
+
+      updates.email = normalizedEmail;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'לא סופקו שדות לעדכון',
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'משתמש לא נמצא',
+      });
+    }
+
+    const response = buildAuthResponse(user);
+    return res.json(response);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * @route   POST /api/auth/change-password
+ * @desc    שינוי סיסמה למשתמש מחובר
+ * @access  Private
+ */
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'משתמש לא נמצא',
+      });
+    }
+
+    if (user.password) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'סיסמה נוכחית היא שדה חובה',
+        });
+      }
+
+      const isMatch = await user.matchPassword(currentPassword);
+      if (!isMatch) {
+        return res.status(401).json({
+          success: false,
+          message: 'סיסמה נוכחית שגויה',
+        });
+      }
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'הסיסמה עודכנה בהצלחה',
+    });
+  } catch (error) {
+    return next(error);
+  }
 };
 
 /**
@@ -261,5 +366,7 @@ module.exports = {
   login,
   googleLogin,
   getMe,
+  updateMe,
+  changePassword,
   updateProfileImage,
 };
