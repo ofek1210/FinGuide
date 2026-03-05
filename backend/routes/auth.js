@@ -5,6 +5,7 @@ const {
   login,
   googleLogin,
   getMe,
+  updateMe,
   changePassword,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
@@ -63,6 +64,20 @@ const googleLoginValidation = [
     .withMessage('Google credential הוא שדה חובה'),
 ];
 
+const updateMeValidation = [
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage('שם חייב להיות בין 2-50 תווים'),
+  body('email')
+    .optional()
+    .trim()
+    .isEmail()
+    .withMessage('אימייל לא תקין')
+    .normalizeEmail(),
+];
+
 const changePasswordValidation = [
   body('currentPassword')
     .optional()
@@ -82,6 +97,7 @@ router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
 router.post('/google', googleLoginValidation, validate, googleLogin);
 router.get('/me', protect, getMe);
+router.patch('/me', protect, updateMeValidation, validate, updateMe);
 router.post(
   '/change-password',
   protect,

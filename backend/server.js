@@ -25,8 +25,11 @@ const validateEnv = () => {
 // הפעלת השרת
 const startServer = async (port, attempt = 0) => {
   try {
-    validateEnv();
-    await connectDB();
+    // ולידציה וחיבור ל-DB מתבצעים רק בניסיון הראשון
+    if (attempt === 0) {
+      validateEnv();
+      await connectDB();
+    }
 
     app = createApp();
 
@@ -35,12 +38,12 @@ const startServer = async (port, attempt = 0) => {
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 
-    server.on('error', err => {
+    server.on('error', async err => {
       if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
         const nextPort = port + 1;
         console.warn(`⚠️ Port ${port} in use, trying ${nextPort}...`);
-        // ניסיון מחדש על פורט אחר
-        startServer(nextPort, attempt + 1);
+        // ניסיון מחדש על פורט אחר – מוודאים שההפעלה החוזרת עצמה מטופלת
+        await startServer(nextPort, attempt + 1);
         return;
       }
 
@@ -54,8 +57,8 @@ const startServer = async (port, attempt = 0) => {
 };
 
 const basePort = Number(process.env.PORT) || DEFAULT_PORT;
-// הרצה מיידית כאשר הקובץ נטען
-void startServer(basePort);
+// הרצה מיידית כאשר הקובץ נטען – משאירים את ה-Promise מנוהל דרך ה-catch הפנימי
+startServer(basePort);
 
 process.on('unhandledRejection', err => {
   console.error('❌ Unhandled Rejection:', err);

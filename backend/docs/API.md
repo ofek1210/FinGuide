@@ -188,7 +188,86 @@ Authorization: Bearer <token>
 
 ---
 
-### 5. Change Password
+### 5. Update Email
+
+**PATCH** `/auth/me`
+
+**Headers:**
+
+```
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+**Request Body:**
+
+```json
+{
+  "email": "new-email@example.com"
+}
+```
+
+**Validation Rules:**
+
+- `email`: חובה, בפורמט אימייל תקין.
+
+**Success Response 200:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "user": {
+      "id": "507f1f77bcf86cd799439011",
+      "name": "John Doe",
+      "email": "new-email@example.com",
+      "avatarUrl": null
+    }
+  },
+  "message": "הפרופיל עודכן בהצלחה"
+}
+```
+
+**Error Response 400 - Validation:**
+
+```json
+{
+  "success": false,
+  "message": "שגיאות בולידציה",
+  "errors": [...]
+}
+```
+
+**Error Response 400 - Email Already In Use:**
+
+```json
+{
+  "success": false,
+  "message": "משתמש עם אימייל זה כבר קיים"
+}
+```
+
+**Error Response 400 - No Fields Provided:**
+
+```json
+{
+  "success": false,
+  "message": "לא סופקו שדות לעדכון"
+}
+```
+
+**Error Response 401 - No Token:**
+
+```json
+{
+  "success": false,
+  "message": "לא מורשה, אין token"
+}
+```
+
+---
+
+### 6. Change Password
 
 **POST** `/auth/change-password`
 
