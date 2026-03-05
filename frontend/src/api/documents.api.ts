@@ -7,7 +7,6 @@ export type DocumentStatus =
   | "completed"
   | "failed";
 
-/** תוויות סטטוס מסמך בעברית – מקור יחיד לכל האפליקציה */
 export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   uploaded: "הועלה",
   pending: "ממתין",

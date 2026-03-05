@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   updateProfile,
+  uploadAvatar,
   getAvatarDisplayUrl,
   AVATAR_STORAGE_KEY,
 } from "../api/profile.api";
@@ -22,8 +23,11 @@ export default function SettingsPage() {
   const [saveLoading, setSaveLoading] = useState(false);
   const [error, setError] = useState("");
   const [saveMessage, setSaveMessage] = useState<"success" | "error" | "backend-required" | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [fieldError, setFieldError] = useState<{ name?: string }>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarObjectUrlRef = useRef<string | null>(null);
 
   const isLoading = status === "checking";
   const displayAvatarUrl = avatarPreviewUrl ?? getAvatarDisplayUrl(user ?? null);
@@ -40,22 +44,49 @@ export default function SettingsPage() {
     setFieldError({});
   }, [user]);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      try {
-        localStorage.setItem(AVATAR_STORAGE_KEY, dataUrl);
-        setAvatarPreviewUrl(dataUrl);
-        setSaveMessage(null);
-      } catch {
-        setSaveMessage("error");
+  useEffect(() => {
+    return () => {
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
       }
     };
-    reader.readAsDataURL(file);
+  }, []);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    setAvatarError(null);
+    setAvatarUploading(true);
+    const res = await uploadAvatar(file);
+    setAvatarUploading(false);
+    if (res.success) {
+      localStorage.removeItem(AVATAR_STORAGE_KEY);
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = null;
+      }
+      const objectUrl = URL.createObjectURL(file);
+      avatarObjectUrlRef.current = objectUrl;
+      setAvatarPreviewUrl(objectUrl);
+      refresh();
+    } else {
+      const dataUrl = await new Promise<string | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+      if (dataUrl) {
+        try {
+          localStorage.setItem(AVATAR_STORAGE_KEY, dataUrl);
+          setAvatarPreviewUrl(dataUrl);
+        } catch {
+          setAvatarError("לא ניתן לשמור תמונה מקומית.");
+        }
+      }
+      setAvatarError(res.message || "שגיאה בהעלאת התמונה.");
+    }
   };
 
   const handleSave = async () => {
@@ -108,9 +139,15 @@ export default function SettingsPage() {
         )}
         {saveMessage === "backend-required" && (
           <div className="settings-banner settings-banner-info">
-            נדרש מהבאק: עדכון פרופיל (PATCH /api/auth/me) והעלאת תמונת פרופיל. בינתיים השם נשמר מקומית והתמונה מוצגת מדמו.
+            עדכון שם הפרופיל לא זמין כרגע בשרת. התמונה נשמרת בשרת.
           </div>
         )}
+        {avatarError ? (
+          <div className="settings-banner settings-banner-error">{avatarError}</div>
+        ) : null}
+        {avatarUploading ? (
+          <div className="settings-banner settings-banner-info">מעלה תמונה...</div>
+        ) : null}
         {saveMessage === "error" && (
           <div className="settings-banner settings-banner-error">שגיאה בשמירת השינויים. נסו שוב.</div>
         )}
@@ -153,7 +190,7 @@ export default function SettingsPage() {
                   בחירת תמונה
                 </button>
                 <p className="settings-avatar-note">
-                  התמונה נשמרת מקומית (דמו). נדרש מהבאק: endpoint להעלאת Avatar.
+                  בחרו קובץ תמונה (JPG, PNG) להעלאה.
                 </p>
               </div>
 

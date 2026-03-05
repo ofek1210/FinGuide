@@ -417,9 +417,9 @@ export default function DocumentsPage() {
     <div className="documents-page" dir="rtl">
       <PrivateTopbar />
 
-      <main className="documents-main landing-container">
-        <section className="documents-header">
-          <h1>מסמכים</h1>
+      <main className="documents-main landing-container" role="main" aria-label="דף מסמכים">
+        <section className="documents-header" aria-labelledby="documents-title">
+          <h1 id="documents-title">מסמכים</h1>
           <p>
             העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
           </p>
@@ -446,6 +446,7 @@ export default function DocumentsPage() {
                 className="dashboard-hero-action"
                 onClick={() => void handleRefresh()}
                 disabled={isRefreshing}
+                aria-label="רענון רשימת המסמכים"
               >
                 {isRefreshing ? <Loader /> : "רענן"}
               </button>
@@ -483,12 +484,13 @@ export default function DocumentsPage() {
           )}
         </section>
 
-        <section className="documents-actions">
+        <section className="documents-actions" aria-label="פעולות מסמכים">
           <button
             className="landing-primary"
             type="button"
             disabled={!hasUploadedDocuments}
             onClick={() => navigate(APP_ROUTES.documentsScan)}
+            aria-label="סריקת המסמכים והמשך לתוצאות"
           >
             סריקת המסמכים
           </button>

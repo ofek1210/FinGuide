@@ -1,7 +1,7 @@
 import { apiJson, type ApiErrorPayload } from "./client";
 import type { AuthUser } from "./auth.api";
 
-/** מקומי בלבד – הבאק עדיין לא תומך ב-Avatar. TODO: כשהבאק יספק PATCH /api/auth/me ו־endpoint ל־Avatar, להסיר. */
+/** גיבוי מקומי כשהבאק לא החזיר avatarUrl (למשל לפני העלאה). */
 export const AVATAR_STORAGE_KEY = "finguide_avatar_url";
 
 export function getAvatarDisplayUrl(user: AuthUser | null): string | null {
@@ -18,7 +18,7 @@ export type UpdateProfileResponse = {
   data?: { user: AuthUser };
 };
 
-/** עדכון פרופיל. נדרש מהבאק: PATCH /api/auth/me עם body { name?, email? }. */
+/** עדכון פרופיל (שם). הבאק עדיין לא תומך – בכשלון מחזירים status 404 והודעת משתמש מתאימה. */
 export async function updateProfile(
   body: UpdateProfilePayload,
 ): Promise<UpdateProfileResponse & { status?: number; errors?: unknown[] }> {
@@ -30,9 +30,13 @@ export async function updateProfile(
   });
   if (!result.ok) {
     const payload = result.error.payload as ApiErrorPayload | null;
+    const message =
+      result.status === 404
+        ? "עדכון פרטי פרופיל (שם) לא זמין כרגע בשרת."
+        : result.error.message;
     return {
       success: false,
-      message: result.error.message,
+      message,
       status: result.status,
       ...(payload?.errors && { errors: payload.errors }),
     };
@@ -40,22 +44,27 @@ export async function updateProfile(
   return result.data ?? { success: false, message: "תגובה לא תקינה." };
 }
 
-/** העלאת Avatar. נדרש מהבאק: POST /api/users/me/avatar (multipart) או דומה. */
-export async function uploadAvatar(file: File): Promise<{ success: boolean; message?: string; url?: string }> {
+/** העלאת תמונת פרופיל – הבאק: POST /api/auth/profile/image (שדה avatar). */
+type ProfileImageResponse = {
+  success: boolean;
+  message?: string;
+  data?: { user?: { avatarUrl?: string } };
+};
+export async function uploadAvatar(
+  file: File,
+): Promise<{ success: boolean; message?: string; url?: string }> {
   const formData = new FormData();
   formData.append("avatar", file);
-  const result = await apiJson<{ success: boolean; url?: string; message?: string }>(
-    "/api/users/me/avatar",
-    {
-      method: "POST",
-      body: formData,
-      auth: true,
-      fallbackErrorMessage: "שגיאה בהעלאת התמונה.",
-    },
-  );
+  const result = await apiJson<ProfileImageResponse>("/api/auth/profile/image", {
+    method: "POST",
+    body: formData,
+    auth: true,
+    fallbackErrorMessage: "שגיאה בהעלאת התמונה.",
+  });
   if (!result.ok) {
     return { success: false, message: result.error.message };
   }
   const data = result.data;
-  return { success: Boolean(data?.success), url: data?.url, message: data?.message };
+  const url = data?.data?.user?.avatarUrl ?? undefined;
+  return { success: Boolean(data?.success), url, message: data?.message };
 }
