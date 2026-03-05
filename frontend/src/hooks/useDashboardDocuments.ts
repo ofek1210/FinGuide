@@ -4,21 +4,13 @@ import {
   listDocuments,
   removeDocument,
   uploadDocument,
+  DOCUMENT_STATUS_LABELS,
   type DocumentItem,
-  type DocumentStatus,
 } from "../api/documents.api";
 
 const MAX_UPLOAD_SIZE_MB = 10;
 const BYTES_IN_MB = 1024 * 1024;
 const RECENT_DOCUMENTS_COUNT = 4;
-
-const STATUS_LABELS: Record<DocumentStatus, string> = {
-  uploaded: "הועלה",
-  pending: "ממתין לעיבוד",
-  processing: "בעיבוד",
-  completed: "מוכן",
-  failed: "שגיאה",
-};
 
 const addUniqueId = (ids: string[], id: string) =>
   ids.includes(id) ? ids : [...ids, id];
@@ -160,7 +152,7 @@ export const useDashboardDocuments = () => {
     deletingIds,
     downloadingIds,
     actionError,
-    statusLabels: STATUS_LABELS,
+    statusLabels: DOCUMENT_STATUS_LABELS,
     documentsThisMonth,
     stats,
     actions: {

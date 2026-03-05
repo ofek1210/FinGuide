@@ -538,7 +538,7 @@ export default function AuthScreen({
         </aside>
       </div>
       <ToastContainer>
-        {error ? <Toast message={error} onDismiss={() => setError(null)} /> : null}
+        {error ? <Toast message={error} variant="error" onDismiss={() => setError(null)} /> : null}
       </ToastContainer>
     </div>
   );

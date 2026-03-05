@@ -7,7 +7,7 @@ export default function PayslipEmptyState({
 }: PayslipEmptyStateProps) {
   return (
     <div className="payslip-state">
-      <span>עדיין לא הועלו תלושים.</span>
+      <span>עדיין אין תלושים להצגה. מוצגים רק מסמכים שעובדו בהצלחה (סטטוס הושלם).</span>
       <button type="button" onClick={onUploadNew}>
         העלאת תלוש ראשון
       </button>

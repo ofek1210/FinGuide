@@ -255,6 +255,34 @@ input {
   font-size: 0.9rem;
 }
 
+/* Toast variants: success=green, error=red, warning=orange */
+.toast-success {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(34, 139, 34, 0.12);
+  color: #1a6b1a;
+  border: 1px solid rgba(34, 139, 34, 0.35);
+  font-size: 0.9rem;
+}
+
+.toast-error {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(222, 85, 65, 0.12);
+  color: #a3321e;
+  border: 1px solid rgba(222, 85, 65, 0.3);
+  font-size: 0.9rem;
+}
+
+.toast-warning {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(230, 145, 56, 0.15);
+  color: #b45309;
+  border: 1px solid rgba(230, 145, 56, 0.4);
+  font-size: 0.9rem;
+}
+
 .auth-divider {
   display: flex;
   align-items: center;

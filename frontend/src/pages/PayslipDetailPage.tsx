@@ -219,7 +219,6 @@ export default function PayslipDetailPage() {
         </button>
       </div>
 
-      <p className="payslip-detail-demo-note">נתוני דמו. חיבור ל־API יבוצע לאחר השלמת OCR בבאק.</p>
     </PayslipHistoryLayout>
   );
 }

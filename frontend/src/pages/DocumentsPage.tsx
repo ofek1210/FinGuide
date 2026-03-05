@@ -11,19 +11,16 @@ import {
   uploadDocument,
   downloadDocument,
   removeDocument,
+  DOCUMENT_STATUS_LABELS,
   type DocumentItem as ApiDocumentItem,
+  type DocumentStatus as ApiDocumentStatus,
 } from "../api/documents.api";
 import { APP_ROUTES } from "../types/navigation";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
 
-type DocumentStatus =
-  | "uploading"
-  | "pending"
-  | "processing"
-  | "completed"
-  | "failed";
+type DocumentStatus = ApiDocumentStatus | "uploading";
 
 interface DocumentItem {
   id: string;
@@ -42,7 +39,7 @@ const mapStatus = (status?: ApiDocumentItem["status"]): DocumentStatus => {
   if (status === "completed") return "completed";
   if (status === "processing") return "processing";
   if (status === "failed") return "failed";
-  if (status === "uploaded") return "pending";
+  if (status === "uploaded") return "uploaded";
   return "pending";
 };
 
@@ -55,11 +52,8 @@ const mapApiDocument = (document: ApiDocumentItem): DocumentItem => ({
 });
 
 const statusLabels: Record<DocumentStatus, string> = {
+  ...DOCUMENT_STATUS_LABELS,
   uploading: "מעלה קובץ...",
-  pending: "ממתין לעיבוד",
-  processing: "בעיבוד",
-  completed: "הושלם",
-  failed: "נכשל",
 };
 
 interface UploadAreaProps {
@@ -150,16 +144,26 @@ function DocumentCard({
   const statusClass =
     document.status === "completed"
       ? "uploaded"
-      : document.status === "pending" || document.status === "processing"
+      : document.status === "uploaded" ||
+          document.status === "pending" ||
+          document.status === "processing"
         ? "uploading"
         : document.status;
   const isTemp = document.id.startsWith("temp-");
   const isUploading = document.status === "uploading";
   const isFailed = document.status === "failed";
-  const disableDownload = isTemp || isUploading || isFailed || isDownloading;
+  const disableDownload =
+    isTemp ||
+    isUploading ||
+    isFailed ||
+    isDownloading ||
+    document.status === "uploaded" ||
+    document.status === "pending" ||
+    document.status === "processing";
   const disableDelete = isTemp || isUploading || isDeleting;
   const statusIcon =
     document.status === "uploading" ||
+    document.status === "uploaded" ||
     document.status === "pending" ||
     document.status === "processing" ? (
       <span className="status-spinner" aria-hidden="true" />
@@ -342,7 +346,11 @@ export default function DocumentsPage() {
     setDocuments((prev) =>
       prev.map((doc) => (doc.id === tempId ? mapApiDocument(uploadedDoc) : doc)),
     );
-    setToastMessage("המסמך הועלה. הסטטוס יתעדכן בהמשך.");
+    const toastText =
+      uploadedDoc.status === "completed"
+        ? "העיבוד הושלם"
+        : "המסמך הועלה ונבדק. הסטטוס יתעדכן בהמשך";
+    setToastMessage(toastText);
     const toastTimer = window.setTimeout(() => setToastMessage(null), 5000);
     timersRef.current.push(toastTimer);
 
@@ -414,7 +422,6 @@ export default function DocumentsPage() {
           <h1>מסמכים</h1>
           <p>
             העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
-            שלב הסריקה יתווסף בהמשך.
           </p>
         </section>
 
@@ -483,10 +490,10 @@ export default function DocumentsPage() {
             disabled={!hasUploadedDocuments}
             onClick={() => navigate(APP_ROUTES.documentsScan)}
           >
-            סריקת הקבצים שהועלו (דמו)
+            סריקת המסמכים
           </button>
           <span className="documents-note">
-            שלב הסריקה כרגע במצב דמו (ללא OCR). יופעל לאחר חיבור מנוע זיהוי תווים.
+            יוצג מסך סריקה ולאחריו צפייה בתוצאות.
           </span>
         </section>
       </main>
@@ -495,7 +502,7 @@ export default function DocumentsPage() {
 
       <ToastContainer>
         {toastMessage ? (
-          <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
+          <Toast message={toastMessage} variant="success" onDismiss={() => setToastMessage(null)} />
         ) : null}
       </ToastContainer>
     </div>

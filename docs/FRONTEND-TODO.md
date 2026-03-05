@@ -15,21 +15,21 @@
 
 ## עדיפות 1 – OCR ותלושים
 
-- [ ] **1.1** מיפוי analysisData → PayslipDetail – util שמקבל document + analysisData ומחזיר PayslipDetail (כולל earnings/deductions ותוויות בעברית).
-- [ ] **1.2** מיפוי documents → PayslipHistoryResponse – פונקציה שמסננת completed + analysisData, ממיינת לפי תקופה, מחשבת stats ובונה items + downloadUrl.
-- [ ] **1.3** החלפת Mock ב־payslip.service – fetchPayslipHistory ← listDocuments + מיפוי; fetchPayslipDetail(id) ← getDocument(id) + מיפוי + טיפול ב־null/failed.
-- [ ] **1.4** downloadUrl – בניית URL ל־/api/documents/:id/download (base מה־API/client).
-- [ ] **1.5** זרימת סריקה – חיבור לאמיתי: כפתור "סריקת הקבצים" ירענן מסמכים ו/או ינווט להיסטוריית תלושים / דאשבורד; או שינוי ל־"צפייה בתוצאות" + ניווט ישיר.
-- [ ] **1.6** ScanStatusPage / ScanCompletePage – הצגת נתונים אמיתיים ב־ScanComplete ו־CTA להיסטוריה/דאשבורד, או פישוט הזרימה (רענון + redirect בלי דמו).
-- [ ] **1.7** הסרת/עדכון תג "דמו" – בדף היסטוריית תלושים ובמקומות רלוונטיים.
+- [x] **1.1** מיפוי analysisData → PayslipDetail – util שמקבל document + analysisData ומחזיר PayslipDetail (כולל earnings/deductions ותוויות בעברית).
+- [x] **1.2** מיפוי documents → PayslipHistoryResponse – פונקציה שמסננת completed + analysisData, ממיינת לפי תקופה, מחשבת stats ובונה items + downloadUrl.
+- [x] **1.3** החלפת Mock ב־payslip.service – fetchPayslipHistory ← listDocuments + מיפוי; fetchPayslipDetail(id) ← getDocument(id) + מיפוי + טיפול ב־null/failed.
+- [x] **1.4** downloadUrl – בניית URL ל־/api/documents/:id/download (base מה־API/client).
+- [x] **1.5** זרימת סריקה – חיבור לאמיתי: כפתור "סריקת הקבצים" ירענן מסמכים ו/או ינווט להיסטוריית תלושים / דאשבורד; או שינוי ל־"צפייה בתוצאות" + ניווט ישיר.
+- [x] **1.6** ScanStatusPage / ScanCompletePage – הצגת נתונים אמיתיים ב־ScanComplete ו־CTA להיסטוריה/דאשבורד, או פישוט הזרימה (רענון + redirect בלי דמו).
+- [x] **1.7** הסרת/עדכון תג "דמו" – בדף היסטוריית תלושים ובמקומות רלוונטיים.
 
 ---
 
 ## עדיפות 2 – UX מסמכים
 
-- [ ] **2.1** כפתור רענון בדף מסמכים – קורא שוב ל־listDocuments ומרענן רשימה.
-- [ ] **2.2** הודעות אחרי העלאה – Toast/banner אחרי uploadDocument מוצלח.
-- [ ] **2.3** תוויות סטטוס בעברית – יישור uploaded/pending/processing/completed/failed לעברית עקבית.
+- [x] **2.1** כפתור רענון בדף מסמכים – קורא שוב ל־listDocuments ומרענן רשימה.
+- [x] **2.2** הודעות אחרי העלאה – Toast/banner אחרי uploadDocument מוצלח.
+- [x] **2.3** תוויות סטטוס בעברית – יישור uploaded/pending/processing/completed/failed לעברית עקבית.
 
 ---
 

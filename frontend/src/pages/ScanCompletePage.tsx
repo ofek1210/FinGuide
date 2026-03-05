@@ -1,14 +1,37 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { fetchPayslipHistory } from "../services/payslip.service";
+import { formatCurrencyILS } from "../utils/formatters";
 import { APP_ROUTES } from "../types/navigation";
-
-const stats = [
-  { value: "99%", label: "דיוק" },
-  { value: "8", label: "תובנות" },
-  { value: "24", label: "נקודות עניין" },
-];
 
 export default function ScanCompletePage() {
   const navigate = useNavigate();
+  const [totalPayslips, setTotalPayslips] = useState<number>(0);
+  const [averageNet, setAverageNet] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchPayslipHistory();
+        if (!cancelled) {
+          setTotalPayslips(res.stats.totalPayslips);
+          setAverageNet(res.stats.averageNet);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const stats = [
+    { value: loading ? "…" : String(totalPayslips), label: "תלושים שעובדו" },
+    { value: loading ? "…" : formatCurrencyILS(averageNet), label: "ממוצע נטו" },
+  ];
 
   return (
     <div className="scan-complete-page" dir="rtl">
@@ -20,7 +43,7 @@ export default function ScanCompletePage() {
           </div>
 
           <h1>הניתוח הושלם</h1>
-          <p>תובנות השכר שלכם מוכנות. ניתחנו כל פרט בתלוש שלך.</p>
+          <p>תובנות השכר שלכם מוכנות. צפו בהיסטוריית התלושים או בדאשבורד.</p>
 
           <div className="scan-complete-stats">
             {stats.map((item) => (
@@ -31,17 +54,22 @@ export default function ScanCompletePage() {
             ))}
           </div>
 
-          <button
-            className="scan-complete-cta"
-            type="button"
-            onClick={() => navigate(APP_ROUTES.dashboard)}
-          >
-            צפייה בתובנות
-            <span aria-hidden="true">←</span>
-          </button>
-
-          <div className="scan-complete-footnote">
-            הניתוח הושלם תוך 3.2 שניות
+          <div className="scan-complete-actions">
+            <button
+              className="scan-complete-cta"
+              type="button"
+              onClick={() => navigate(APP_ROUTES.payslipHistory)}
+            >
+              היסטוריית תלושים
+              <span aria-hidden="true">←</span>
+            </button>
+            <button
+              className="scan-complete-cta secondary"
+              type="button"
+              onClick={() => navigate(APP_ROUTES.dashboard)}
+            >
+              חזרה ללוח הבקרה
+            </button>
           </div>
         </section>
       </main>

@@ -56,12 +56,13 @@ exports.uploadDocument = async (req, res, next) => {
   }
 };
 
-// קבלת כל המסמכים של משתמש
+// קבלת כל המסמכים של משתמש (כולל analysisData לתלושים)
 exports.getDocuments = async (req, res, next) => {
   try {
     const documents = await Document.find({ user: req.user.id })
       .select('-filePath -__v')
-      .sort('-uploadedAt');
+      .sort('-uploadedAt')
+      .lean();
 
     res.status(200).json({
       success: true,
