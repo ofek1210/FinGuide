@@ -1,0 +1,106 @@
+I need to implement a robust payslip extraction pipeline in the backend.
+
+Goal:
+Extract structured financial data from uploaded PDF payslips. The system must work for both digital PDFs and scanned PDFs.
+
+Architecture requirements:
+
+1. Two-stage extraction pipeline
+
+Stage A (default – preferred):
+Extract embedded text directly from the PDF using a library like `pdf-parse`.
+
+Implementation:
+
+* Read the uploaded PDF buffer.
+* Run pdf-parse to extract text.
+* If meaningful text is found (text.trim().length > ~50), use this text for parsing.
+
+Stage B (fallback – OCR):
+If Stage A fails (empty or extremely short text), run OCR.
+
+OCR pipeline:
+
+* Convert the PDF pages to images using Poppler (pdftoppm or pdftocairo).
+* Run Tesseract OCR on the generated images.
+* Use languages: heb + eng.
+* Return the OCR text.
+
+2. Unified parsing step
+
+Regardless of whether the text came from:
+
+* pdf_text extraction
+* OCR
+
+Run the SAME parser to extract fields.
+
+Parser should extract common payslip fields (Hebrew + English):
+
+* employerName
+* employeeName
+* payslipMonth / period
+* grossSalary
+* netSalary
+* incomeTax
+* nationalInsurance
+* pension
+* trainingFund (קרן השתלמות)
+
+Use regex and normalization for numbers (₪, commas, decimals).
+
+3. Data output
+
+Return a structured object like:
+
+{
+employerName: string | null,
+employeeName: string | null,
+period: string | null,
+grossSalary: number | null,
+netSalary: number | null,
+incomeTax: number | null,
+pension: number | null,
+trainingFund: number | null,
+rawText: string,
+extractionMethod: "pdf_text" | "ocr"
+}
+
+4. Logging and debugging
+
+Add logs for:
+
+* extraction method used
+* OCR failures
+* parser misses
+
+5. Docker support (important)
+
+Add Docker support so OCR works for everyone without local installation.
+
+Backend container must install:
+
+* poppler-utils
+* tesseract-ocr
+* tesseract-ocr-heb
+* tesseract-ocr-eng
+
+Provide:
+
+* Dockerfile for backend
+* docker-compose.yml
+
+6. Tests
+
+Add unit tests for the parser using sample extracted text (not actual OCR).
+
+Tests should verify that:
+
+* gross salary
+* net salary
+* tax
+* pension
+
+are parsed correctly.
+
+Before implementing, scan the repo and identify where the current OCR or document extraction logic exists (e.g. payslipOcr.js) and extend it instead of duplicating code.

@@ -5,9 +5,10 @@
 ## 🚀 התחלה מהירה
 
 ### דרישות מוקדמות
-- Node.js (גרסה 18 ומעלה)
-- MongoDB (Local או Atlas)
+- Node.js (גרסה 18 ומעלה) – לפיתוח מקומי ללא Docker
+- MongoDB (Local או Atlas) – לפיתוח מקומי ללא Docker
 - npm או yarn
+- לחלופין: **Docker / Docker Desktop** (מומלץ להרצה עם OCR, ללא התקנות מערכתיות נוספות)
 
 ### התקנה
 
@@ -74,8 +75,55 @@ npm run dev
 - Backend: `http://localhost:5000`
 
 ### חשוב
-- MongoDB נשאר שירות חיצוני ולא מורם אוטומטית.
+- MongoDB נשאר שירות חיצוני ולא מורם אוטומטית במוד `npm run dev`.
 - ודאו ש־MongoDB רץ לפני `npm run dev`.
+
+## 🐳 הרצה עם Docker (מומלץ ל־OCR)
+
+כדי ש־OCR על קבצי PDF יעבוד לכל המפתחים ולסביבות Deployment ללא התקנת Poppler/Tesseract על המחשב המקומי, קיימת תצורת Docker שמרימה:
+- MongoDB
+- Backend (כולל Poppler + Tesseract בתוך הקונטיינר)
+
+### דרישות
+- Docker / Docker Desktop מותקן ופעיל (Windows / Mac / Linux)
+
+### הרמה
+
+מהתיקייה הראשית של הפרויקט:
+
+```bash
+npm run dev:docker
+```
+
+זוהי מעטפת ל:
+
+```bash
+docker compose up --build
+```
+
+אחרי עלייה:
+- Backend בתוך Docker מאזין על פורט 5000, ונחשף ל־host כ־`http://localhost:5001`
+- MongoDB רץ בקונטיינר `mongo`
+
+הפרונטאנד עדיין רץ מחוץ ל־Docker (Vite):
+
+```bash
+cd frontend
+npm install        # פעם ראשונה
+npm run dev
+```
+
+ולאחר מכן נכנסים ל־`http://localhost:5173`.
+
+### למה Docker חשוב ל־OCR?
+
+עיבוד PDF ↦ תמונה ↦ OCR נשען על כלים חיצוניים:
+- `pdftoppm` (מ־Poppler) להמרת PDF לתמונות
+- `tesseract` ל־OCR (כולל עברית)
+
+בסביבת Docker (קובץ `backend/Dockerfile`) הכלים האלו מותקנים אוטומטית, כך שכל מפתח וכל סביבה מריצה בדיוק אותו סט כלים – ללא צורך בהתקנה ידנית של Poppler/Tesseract במערכת ההפעלה.
+
+אם מריצים את ה־backend ישירות מהמחשב (ללא Docker) בלי Poppler/Tesseract מותקנים, OCR על PDF ייכשל, אך השגיאות יופיעו ב־log עם הסבר ברור כיצד להריץ דרך Docker.
 
 ### פקודות נוספות ברמת ה-root
 

@@ -22,7 +22,7 @@ exports.uploadDocument = async (req, res, next) => {
       status: 'processing',
     });
 
-    // ניסיון לבצע OCR ולחלץ נתונים מהתלוש
+    // ניסיון לבצע חילוץ טקסט ו-OCR (אם יש צורך) ולחלץ נתונים מהתלוש
     try {
       const { data } = await extractPayslipFile(req.file.path);
 
@@ -31,7 +31,7 @@ exports.uploadDocument = async (req, res, next) => {
       document.processedAt = new Date();
       await document.save();
     } catch (ocrError) {
-      console.error('❌ OCR failed for document', document._id, ocrError);
+      console.error('❌ Document extraction failed for document', document._id, ocrError);
       document.status = 'failed';
       await document.save().catch(() => {});
     }
