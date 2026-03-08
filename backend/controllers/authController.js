@@ -1,10 +1,58 @@
+const fs = require('fs/promises');
+const path = require('path');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const { AuthError } = require('../utils/appErrors');
+const { sendPasswordResetEmail } = require('../services/mailService');
+const {
+  hashResetToken,
+  createPasswordResetToken,
+  buildPasswordResetUrl,
+} = require('../services/passwordResetService');
 
 const googleClient = new OAuth2Client();
+const PROFILE_IMAGES_DIR = path.join(__dirname, '..', 'uploads', 'profile-images');
+const PASSWORD_RESET_SUCCESS_MESSAGE =
+  'אם החשבון קיים, שלחנו קישור לאיפוס סיסמה.';
+
+const buildCurrentUserResponse = user => ({
+  success: true,
+  data: {
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl || null,
+      createdAt: user.createdAt,
+    },
+  },
+});
+
+const deleteStoredProfileImage = async avatarUrl => {
+  if (!avatarUrl || typeof avatarUrl !== 'string') {
+    return;
+  }
+
+  const normalizedPrefix = '/uploads/profile-images/';
+  if (!avatarUrl.startsWith(normalizedPrefix)) {
+    return;
+  }
+
+  const filename = path.basename(avatarUrl);
+  const targetPath = path.join(PROFILE_IMAGES_DIR, filename);
+  const relativeToProfileDir = path.relative(PROFILE_IMAGES_DIR, targetPath);
+
+  if (
+    relativeToProfileDir.startsWith('..')
+    || path.isAbsolute(relativeToProfileDir)
+  ) {
+    return;
+  }
+
+  await fs.unlink(targetPath).catch(() => {});
+};
 
 /**
  * יצירת JWT Token
@@ -205,18 +253,7 @@ const googleLogin = async (req, res, next) => {
  * @access  Private (דורש JWT)
  */
 const getMe = async (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      user: {
-        id: req.user._id,
-        name: req.user.name,
-        email: req.user.email,
-        avatarUrl: req.user.avatarUrl || null,
-        createdAt: req.user.createdAt,
-      },
-    },
-  });
+  res.json(buildCurrentUserResponse(req.user));
 };
 
 /**
@@ -323,6 +360,79 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: PASSWORD_RESET_SUCCESS_MESSAGE,
+      });
+    }
+
+    const resetToken = createPasswordResetToken();
+    user.passwordResetTokenHash = resetToken.tokenHash;
+    user.passwordResetExpiresAt = resetToken.expiresAt;
+
+    try {
+      await user.save();
+
+      const resetUrl = buildPasswordResetUrl(resetToken.rawToken);
+      await sendPasswordResetEmail({
+        to: user.email,
+        resetUrl,
+        expiresInMinutes: resetToken.expiresInMinutes,
+      });
+    } catch (error) {
+      user.passwordResetTokenHash = null;
+      user.passwordResetExpiresAt = null;
+      await user.save().catch(() => {});
+      return next(error);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: PASSWORD_RESET_SUCCESS_MESSAGE,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    const tokenHash = hashResetToken(token.trim());
+
+    const user = await User.findOne({
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpiresAt: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'קישור האיפוס לא תקף או שפג תוקפו',
+      });
+    }
+
+    user.password = newPassword;
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpiresAt = null;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'הסיסמה עודכנה בהצלחה',
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 /**
  * @route   POST /api/auth/profile/image
  * @desc    עדכון תמונת פרופיל למשתמש מחובר
@@ -337,24 +447,31 @@ const updateProfileImage = async (req, res, next) => {
       });
     }
 
-    const relativePath = `/uploads/profile-images/${req.file.filename}`;
+    const existingUser = await User.findById(req.user._id);
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { avatarUrl: relativePath },
-      { new: true }
-    );
-
-    if (!user) {
+    if (!existingUser) {
+      await fs.unlink(req.file.path).catch(() => {});
       return res.status(404).json({
         success: false,
         message: 'משתמש לא נמצא',
       });
     }
 
-    const response = buildAuthResponse(user);
-    return res.status(200).json(response);
+    const relativePath = `/uploads/profile-images/${req.file.filename}`;
+
+    const previousAvatarUrl = existingUser.avatarUrl;
+    existingUser.avatarUrl = relativePath;
+    await existingUser.save();
+    await deleteStoredProfileImage(previousAvatarUrl);
+
+    return res.status(200).json({
+      ...buildCurrentUserResponse(existingUser),
+      message: 'תמונת הפרופיל עודכנה בהצלחה',
+    });
   } catch (error) {
+    if (req.file) {
+      await fs.unlink(req.file.path).catch(() => {});
+    }
     return next(error);
   }
 };
@@ -366,5 +483,7 @@ module.exports = {
   getMe,
   updateMe,
   changePassword,
+  forgotPassword,
+  resetPassword,
   updateProfileImage,
 };

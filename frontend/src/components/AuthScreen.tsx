@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { login, loginWithGoogle, register } from "../api/auth.api";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  login,
+  loginWithGoogle,
+  register,
+  requestPasswordReset,
+} from "../api/auth.api";
 import Toast from "./ui/Toast";
 import ToastContainer from "./ui/ToastContainer";
 import Loader from "./ui/Loader";
@@ -153,15 +158,24 @@ export default function AuthScreen({
   mode,
 }: AuthScreenProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleReady, setIsGoogleReady] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotFeedback, setForgotFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
   const isRegister = mode === "register";
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -170,6 +184,50 @@ export default function AuthScreen({
     const timer = window.setTimeout(() => setError(null), 4000);
     return () => window.clearTimeout(timer);
   }, [error]);
+
+  useEffect(() => {
+    if (!successToast) return undefined;
+    const timer = window.setTimeout(() => setSuccessToast(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [successToast]);
+
+  useEffect(() => {
+    const toastMessage =
+      typeof location.state === "object" &&
+      location.state !== null &&
+      "toastMessage" in location.state &&
+      typeof location.state.toastMessage === "string"
+        ? location.state.toastMessage
+        : null;
+
+    if (!toastMessage) {
+      return;
+    }
+
+    setSuccessToast(toastMessage);
+    navigate(location.pathname, { replace: true });
+  }, [location.pathname, location.state, navigate]);
+
+  useEffect(() => {
+    if (!isForgotModalOpen) {
+      return undefined;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsForgotModalOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isForgotModalOpen]);
 
   const persistSession = useCallback(
     (token: string, user?: { id: string; name: string; email: string }) => {
@@ -410,7 +468,7 @@ export default function AuthScreen({
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
+                  autoComplete={isRegister ? "new-password" : "current-password"}
                   required
                 />
                 <span className="auth-input-icon" aria-hidden="true">
@@ -435,7 +493,15 @@ export default function AuthScreen({
                 placeholder
               </span>
             ) : (
-              <button className="auth-link" type="button">
+              <button
+                className="auth-link"
+                type="button"
+                onClick={() => {
+                  setForgotEmail(email.trim());
+                  setForgotFeedback(null);
+                  setIsForgotModalOpen(true);
+                }}
+              >
                 שכחתם את הסיסמה?
               </button>
             )}
@@ -539,7 +605,137 @@ export default function AuthScreen({
       </div>
       <ToastContainer>
         {error ? <Toast message={error} onDismiss={() => setError(null)} /> : null}
+        {successToast ? (
+          <Toast
+            message={successToast}
+            variant="success"
+            onDismiss={() => setSuccessToast(null)}
+          />
+        ) : null}
       </ToastContainer>
+      {isForgotModalOpen ? (
+        <div
+          className="auth-modal-backdrop"
+          role="presentation"
+          onClick={() => setIsForgotModalOpen(false)}
+        >
+          <section
+            className="auth-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="forgot-password-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="auth-modal-header">
+              <div>
+                <h2 id="forgot-password-title">איפוס סיסמה</h2>
+                <p>
+                  הזינו את כתובת האימייל של החשבון ונשלח אליכם קישור חד־פעמי
+                  לאיפוס סיסמה.
+                </p>
+              </div>
+              <button
+                className="auth-modal-close"
+                type="button"
+                onClick={() => setIsForgotModalOpen(false)}
+                aria-label="סגירת חלון איפוס סיסמה"
+              >
+                ×
+              </button>
+            </header>
+
+            <form
+              className="auth-form"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                if (isForgotSubmitting) {
+                  return;
+                }
+
+                if (!forgotEmail.trim()) {
+                  setForgotFeedback({
+                    type: "error",
+                    message: "נא להזין כתובת אימייל.",
+                  });
+                  return;
+                }
+
+                setForgotFeedback(null);
+                setIsForgotSubmitting(true);
+
+                try {
+                  const response = await requestPasswordReset(forgotEmail.trim());
+
+                  if (!response.success) {
+                    setForgotFeedback({
+                      type: "error",
+                      message:
+                        response.errors?.[0]?.message ||
+                        response.errors?.[0]?.msg ||
+                        response.message ||
+                        "לא הצלחנו לשלוח קישור לאיפוס סיסמה.",
+                    });
+                    return;
+                  }
+
+                  setForgotFeedback({
+                    type: "success",
+                    message:
+                      response.message ||
+                      "אם החשבון קיים, שלחנו קישור לאיפוס סיסמה.",
+                  });
+                } catch {
+                  setForgotFeedback({
+                    type: "error",
+                    message: "אירעה שגיאה בשליחת בקשת האיפוס. נסו שוב בהמשך.",
+                  });
+                } finally {
+                  setIsForgotSubmitting(false);
+                }
+              }}
+              noValidate
+            >
+              <label className="auth-field">
+                <span>כתובת אימייל</span>
+                <div className="auth-input">
+                  <input
+                    className="auth-input-control is-ltr"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={forgotEmail}
+                    onChange={(event) => setForgotEmail(event.target.value)}
+                    autoComplete="email"
+                    required
+                  />
+                  <span className="auth-input-icon" aria-hidden="true">
+                    <MailIcon />
+                  </span>
+                </div>
+              </label>
+
+              {forgotFeedback ? (
+                <div
+                  className={
+                    forgotFeedback.type === "success"
+                      ? "auth-success"
+                      : "auth-error"
+                  }
+                >
+                  {forgotFeedback.message}
+                </div>
+              ) : null}
+
+              <button
+                className="auth-button"
+                type="submit"
+                disabled={isForgotSubmitting}
+              >
+                {isForgotSubmitting ? <Loader /> : "שליחת קישור איפוס"}
+              </button>
+            </form>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

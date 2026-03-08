@@ -70,13 +70,10 @@ const handleProfileUploadError = (err, req, res, next) => {
     );
   }
 
-  return next(
-    new FileUploadError(err.message || 'שגיאה בהעלאת תמונת הפרופיל')
-  );
+  return next(err);
 };
 
 module.exports = {
   profileUpload,
   handleProfileUploadError,
 };
-

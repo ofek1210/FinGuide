@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   updateProfile,
   getAvatarDisplayUrl,
-  AVATAR_STORAGE_KEY,
+  uploadAvatar,
 } from "../api/profile.api";
 import PrivateTopbar from "../components/PrivateTopbar";
 import Loader from "../components/ui/Loader";
@@ -19,6 +19,7 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [createdAt, setCreatedAt] = useState("");
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [avatarUploadLoading, setAvatarUploadLoading] = useState(false);
   const [saveLoading, setSaveLoading] = useState(false);
   const [emailSaveLoading, setEmailSaveLoading] = useState(false);
   const [passwordSaveLoading, setPasswordSaveLoading] = useState(false);
@@ -51,19 +52,30 @@ export default function SettingsPage() {
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      try {
-        localStorage.setItem(AVATAR_STORAGE_KEY, dataUrl);
-        setAvatarPreviewUrl(dataUrl);
-        setSaveMessage(null);
-      } catch {
+    if (!file || !file.type.startsWith("image/")) {
+      e.target.value = "";
+      return;
+    }
+
+    setError("");
+    setSaveMessage(null);
+    setAvatarUploadLoading(true);
+
+    void (async () => {
+      const response = await uploadAvatar(file);
+
+      if (response.success && response.data?.user) {
+        setAvatarPreviewUrl(response.data.user.avatarUrl ?? null);
+        await refresh();
+        setSaveMessage("success");
+      } else {
         setSaveMessage("error");
+        setError(response.message || "שגיאה בהעלאת תמונת הפרופיל.");
       }
-    };
-    reader.readAsDataURL(file);
+
+      setAvatarUploadLoading(false);
+    })();
+
     e.target.value = "";
   };
 
@@ -206,7 +218,7 @@ export default function SettingsPage() {
         )}
         {saveMessage === "backend-required" && (
           <div className="settings-banner settings-banner-info">
-            נדרש מהבאק: עדכון פרופיל (PATCH /api/auth/me) והעלאת תמונת פרופיל. בינתיים השם נשמר מקומית והתמונה מוצגת מדמו.
+            נדרש טיפול שרת נוסף כדי לשמור את השינויים שביקשתם.
           </div>
         )}
         {saveMessage === "error" && (
@@ -246,13 +258,11 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   className="dashboard-hero-action"
+                  disabled={avatarUploadLoading}
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  בחירת תמונה
+                  {avatarUploadLoading ? "מעלה תמונה..." : "בחירת תמונה"}
                 </button>
-                <p className="settings-avatar-note">
-                  התמונה נשמרת מקומית (דמו). נדרש מהבאק: endpoint להעלאת Avatar.
-                </p>
               </div>
 
               <div className="settings-field">

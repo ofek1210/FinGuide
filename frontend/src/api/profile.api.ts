@@ -1,13 +1,8 @@
 import { apiJson, type ApiErrorPayload } from "./client";
 import type { AuthUser } from "./auth.api";
 
-/** מקומי בלבד – הבאק עדיין לא תומך ב-Avatar. TODO: כשהבאק יספק PATCH /api/auth/me ו־endpoint ל־Avatar, להסיר. */
-export const AVATAR_STORAGE_KEY = "finguide_avatar_url";
-
 export function getAvatarDisplayUrl(user: AuthUser | null): string | null {
-  if (user?.avatarUrl) return user.avatarUrl;
-  const local = typeof window !== "undefined" ? localStorage.getItem(AVATAR_STORAGE_KEY) : null;
-  return local || null;
+  return user?.avatarUrl || null;
 }
 
 export type UpdateProfilePayload = { name?: string; email?: string };
@@ -40,12 +35,20 @@ export async function updateProfile(
   return result.data ?? { success: false, message: "תגובה לא תקינה." };
 }
 
-/** העלאת Avatar. נדרש מהבאק: POST /api/users/me/avatar (multipart) או דומה. */
-export async function uploadAvatar(file: File): Promise<{ success: boolean; message?: string; url?: string }> {
+export type UploadAvatarResponse = {
+  success: boolean;
+  message?: string;
+  data?: { user: AuthUser };
+};
+
+export async function uploadAvatar(
+  file: File,
+): Promise<UploadAvatarResponse & { status?: number; errors?: unknown[] }> {
   const formData = new FormData();
   formData.append("avatar", file);
-  const result = await apiJson<{ success: boolean; url?: string; message?: string }>(
-    "/api/users/me/avatar",
+
+  const result = await apiJson<UploadAvatarResponse>(
+    "/api/auth/profile/image",
     {
       method: "POST",
       body: formData,
@@ -54,8 +57,13 @@ export async function uploadAvatar(file: File): Promise<{ success: boolean; mess
     },
   );
   if (!result.ok) {
-    return { success: false, message: result.error.message };
+    const payload = result.error.payload as ApiErrorPayload | null;
+    return {
+      success: false,
+      message: result.error.message,
+      status: result.status,
+      ...(payload?.errors && { errors: payload.errors }),
+    };
   }
-  const data = result.data;
-  return { success: Boolean(data?.success), url: data?.url, message: data?.message };
+  return result.data ?? { success: false, message: "תגובה לא תקינה." };
 }

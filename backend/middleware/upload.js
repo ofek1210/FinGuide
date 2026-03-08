@@ -72,7 +72,7 @@ const handleUploadError = (err, req, res, next) => {
     );
   }
 
-  return next(new FileUploadError(err.message || 'שגיאה בהעלאת הקובץ'));
+  return next(err);
 };
 
 module.exports = { upload, handleUploadError };

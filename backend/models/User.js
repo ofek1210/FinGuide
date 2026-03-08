@@ -39,6 +39,14 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    passwordResetTokenHash: {
+      type: String,
+      default: null,
+    },
+    passwordResetExpiresAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true, // מוסיף createdAt ו-updatedAt אוטומטית
