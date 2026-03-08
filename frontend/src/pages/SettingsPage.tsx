@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import {
   updateProfile,
   getAvatarDisplayUrl,
-  AVATAR_STORAGE_KEY,
+  resolveAvatarUrl,
+  uploadAvatar,
 } from "../api/profile.api";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
@@ -20,6 +21,8 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [createdAt, setCreatedAt] = useState("");
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [emailSaveLoading, setEmailSaveLoading] = useState(false);
   const [passwordSaveLoading, setPasswordSaveLoading] = useState(false);
@@ -36,7 +39,7 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLoading = status === "checking";
-  const displayAvatarUrl = avatarPreviewUrl ?? getAvatarDisplayUrl(user ?? null);
+  const displayAvatarUrl = resolveAvatarUrl(avatarPreviewUrl) ?? getAvatarDisplayUrl(user ?? null);
 
   useEffect(() => {
     if (!user) {
@@ -50,22 +53,26 @@ export default function SettingsPage() {
     setFieldError({});
   }, [user]);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      try {
-        localStorage.setItem(AVATAR_STORAGE_KEY, dataUrl);
-        setAvatarPreviewUrl(dataUrl);
-        setSaveMessage(null);
-      } catch {
-        setSaveMessage("error");
-      }
-    };
-    reader.readAsDataURL(file);
     e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    const allowed = ["image/jpeg", "image/jpg", "image/png"];
+    if (!allowed.includes(file.type)) {
+      setAvatarError("רק קבצי JPG או PNG נתמכים.");
+      return;
+    }
+    setAvatarError(null);
+    setAvatarUploading(true);
+    const res = await uploadAvatar(file);
+    setAvatarUploading(false);
+    if (res.success) {
+      if (res.avatarUrl) setAvatarPreviewUrl(res.avatarUrl);
+      await refresh();
+      setSaveMessage("success");
+    } else {
+      setAvatarError(res.message ?? "שגיאה בהעלאת התמונה.");
+    }
   };
 
   const handleSave = async () => {
@@ -239,20 +246,27 @@ export default function SettingsPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png"
                   className="dashboard-upload-input"
                   aria-label="בחירת תמונת פרופיל"
                   onChange={handleAvatarChange}
+                  disabled={avatarUploading}
                 />
                 <button
                   type="button"
                   className="dashboard-hero-action"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
                 >
-                  בחירת תמונה
+                  {avatarUploading ? "מעלה..." : "בחירת תמונה"}
                 </button>
+                {avatarError && (
+                  <p className="settings-avatar-note settings-avatar-error" role="alert">
+                    {avatarError}
+                  </p>
+                )}
                 <p className="settings-avatar-note">
-                  התמונה נשמרת מקומית (דמו). נדרש מהבאק: endpoint להעלאת Avatar.
+                  JPG או PNG, עד 2MB. התמונה נשמרת בשרת.
                 </p>
               </div>
 
