@@ -2,7 +2,6 @@ const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const createApp = require('../../app');
-const User = require('../../models/User');
 
 let app;
 let mongoServer;
@@ -90,8 +89,30 @@ describe('Auth change password flow', () => {
         newPassword: 'NewPass123',
       });
 
-    expect(res.statusCode).toBe(401);
+    expect(res.statusCode).toBe(400);
     expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe('סיסמה נוכחית שגויה');
+  });
+
+  it('rejects change when current password is missing', async () => {
+    const { token } = await registerAndLogin();
+
+    const res = await request(app)
+      .post('/api/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        newPassword: 'NewPass123',
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toBe('שגיאות בולידציה');
+    expect(
+      Array.isArray(res.body.errors)
+      && res.body.errors.some(
+        error => error.field === 'currentPassword' && error.message === 'סיסמה נוכחית היא שדה חובה'
+      )
+    ).toBe(true);
   });
 
   it('rejects change when no token is provided', async () => {
@@ -103,4 +124,3 @@ describe('Auth change password flow', () => {
     expect(res.statusCode).toBe(401);
   });
 });
-

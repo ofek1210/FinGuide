@@ -296,21 +296,19 @@ const changePassword = async (req, res, next) => {
       });
     }
 
-    if (user.password) {
-      if (!currentPassword) {
-        return res.status(400).json({
-          success: false,
-          message: 'סיסמה נוכחית היא שדה חובה',
-        });
-      }
+    if (!currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'סיסמה נוכחית היא שדה חובה',
+      });
+    }
 
-      const isMatch = await user.matchPassword(currentPassword);
-      if (!isMatch) {
-        return res.status(401).json({
-          success: false,
-          message: 'סיסמה נוכחית שגויה',
-        });
-      }
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'סיסמה נוכחית שגויה',
+      });
     }
 
     user.password = newPassword;

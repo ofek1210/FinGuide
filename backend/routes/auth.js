@@ -80,8 +80,7 @@ const updateMeValidation = [
 
 const changePasswordValidation = [
   body('currentPassword')
-    .optional()
-    .isLength({ min: 1 })
+    .notEmpty()
     .withMessage('סיסמה נוכחית היא שדה חובה'),
   body('newPassword')
     .notEmpty()
