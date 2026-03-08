@@ -2273,6 +2273,10 @@
   color: var(--dash-muted);
 }
 
+.settings-avatar-note.settings-avatar-error {
+  color: var(--figma-error, #ef4444);
+}
+
 .settings-field {
   display: flex;
   flex-direction: column;
