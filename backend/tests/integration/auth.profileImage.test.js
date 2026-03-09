@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const createApp = require('../../app');
 const User = require('../../models/User');
+const sharp = require('sharp');
 
 const PROFILE_IMAGES_DIR = path.join(
   __dirname,
@@ -14,10 +15,16 @@ const PROFILE_IMAGES_DIR = path.join(
   'profile-images'
 );
 
-const PNG_PIXEL = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9WnN0XcAAAAASUVORK5CYII=',
-  'base64'
-);
+const createImageBuffer = format =>
+  sharp({
+    create: {
+      width: 32,
+      height: 32,
+      channels: 4,
+      background: { r: 32, g: 128, b: 255, alpha: 1 },
+    },
+  })[format]()
+    .toBuffer();
 
 let app;
 let mongoServer;
@@ -76,11 +83,12 @@ describe('Auth profile image flow', () => {
 
   it('uploads a profile image, stores avatarUrl, and serves it statically', async () => {
     const { token, userId } = await registerAndGetToken();
+    const pngBuffer = await createImageBuffer('png');
 
     const response = await request(app)
       .post('/api/auth/profile/image')
       .set('Authorization', `Bearer ${token}`)
-      .attach('avatar', PNG_PIXEL, {
+      .attach('avatar', pngBuffer, {
         filename: 'avatar.png',
         contentType: 'image/png',
       });
@@ -101,11 +109,12 @@ describe('Auth profile image flow', () => {
 
   it('replaces the previous avatar and deletes the old file', async () => {
     const { token, userId } = await registerAndGetToken();
+    const pngBuffer = await createImageBuffer('png');
 
     const firstResponse = await request(app)
       .post('/api/auth/profile/image')
       .set('Authorization', `Bearer ${token}`)
-      .attach('avatar', PNG_PIXEL, {
+      .attach('avatar', pngBuffer, {
         filename: 'avatar-first.png',
         contentType: 'image/png',
       });
@@ -116,7 +125,7 @@ describe('Auth profile image flow', () => {
     const secondResponse = await request(app)
       .post('/api/auth/profile/image')
       .set('Authorization', `Bearer ${token}`)
-      .attach('avatar', PNG_PIXEL, {
+      .attach('avatar', pngBuffer, {
         filename: 'avatar-second.png',
         contentType: 'image/png',
       });
@@ -132,6 +141,32 @@ describe('Auth profile image flow', () => {
 
     await expect(fs.access(firstAvatarPath)).rejects.toThrow();
     await expect(fs.access(secondAvatarPath)).resolves.toBeUndefined();
+  });
+
+  it('accepts WEBP images and normalizes them to a PNG avatar', async () => {
+    const { token, userId } = await registerAndGetToken();
+    const webpBuffer = await createImageBuffer('webp');
+
+    const response = await request(app)
+      .post('/api/auth/profile/image')
+      .set('Authorization', `Bearer ${token}`)
+      .attach('avatar', webpBuffer, {
+        filename: 'avatar.webp',
+        contentType: 'image/webp',
+      });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data?.user?.avatarUrl).toMatch(
+      /^\/uploads\/profile-images\/.+\.png$/
+    );
+
+    const user = await User.findById(userId);
+    expect(user?.avatarUrl).toBe(response.body.data.user.avatarUrl);
+
+    const avatarResponse = await request(app).get(response.body.data.user.avatarUrl);
+    expect(avatarResponse.statusCode).toBe(200);
+    expect(avatarResponse.headers['content-type']).toMatch(/^image\/png/);
   });
 
   it('rejects invalid file types', async () => {

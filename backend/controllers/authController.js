@@ -2,9 +2,11 @@ const fs = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const sharp = require('sharp');
+const convertHeic = require('heic-convert');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
-const { AuthError } = require('../utils/appErrors');
+const { AuthError, FileUploadError } = require('../utils/appErrors');
 const { sendPasswordResetEmail } = require('../services/mailService');
 const {
   hashResetToken,
@@ -14,6 +16,8 @@ const {
 
 const googleClient = new OAuth2Client();
 const PROFILE_IMAGES_DIR = path.join(__dirname, '..', 'uploads', 'profile-images');
+const SHARED_GOOGLE_CLIENT_ID =
+  '757872744940-rvibdtmd65cif13ia19tm78npjdn8i7l.apps.googleusercontent.com';
 const PASSWORD_RESET_SUCCESS_MESSAGE =
   'אם החשבון קיים, שלחנו קישור לאיפוס סיסמה.';
 
@@ -52,6 +56,31 @@ const deleteStoredProfileImage = async avatarUrl => {
   }
 
   await fs.unlink(targetPath).catch(() => {});
+};
+
+const isHeicUpload = file => {
+  if (!file) {
+    return false;
+  }
+
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  const mime = String(file.mimetype || '').toLowerCase();
+
+  return ext === '.heic'
+    || ext === '.heif'
+    || mime === 'image/heic'
+    || mime === 'image/heif';
+};
+
+const normalizeProfileImageBuffer = async file => {
+  if (isHeicUpload(file)) {
+    return convertHeic({
+      buffer: file.buffer,
+      format: 'PNG',
+    });
+  }
+
+  return file.buffer;
 };
 
 /**
@@ -169,7 +198,7 @@ const googleLogin = async (req, res, next) => {
     });
   }
 
-  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientId = process.env.GOOGLE_CLIENT_ID || SHARED_GOOGLE_CLIENT_ID;
   if (!googleClientId) {
     return res.status(500).json({
       success: false,
@@ -447,17 +476,36 @@ const updateProfileImage = async (req, res, next) => {
       });
     }
 
+    const generatedFilename = `${crypto.randomUUID()}.png`;
+    const relativePath = `/uploads/profile-images/${generatedFilename}`;
+    const outputPath = path.join(PROFILE_IMAGES_DIR, generatedFilename);
+
+    try {
+      const inputBuffer = await normalizeProfileImageBuffer(req.file);
+
+      await sharp(inputBuffer)
+        .rotate()
+        .resize(512, 512, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .png({ compressionLevel: 9 })
+        .toFile(outputPath);
+    } catch (error) {
+      throw new FileUploadError(
+        'לא הצלחנו לעבד את קובץ התמונה. נסו קובץ JPG, PNG, WEBP או HEIC.'
+      );
+    }
+
     const existingUser = await User.findById(req.user._id);
 
     if (!existingUser) {
-      await fs.unlink(req.file.path).catch(() => {});
+      await fs.unlink(outputPath).catch(() => {});
       return res.status(404).json({
         success: false,
         message: 'משתמש לא נמצא',
       });
     }
-
-    const relativePath = `/uploads/profile-images/${req.file.filename}`;
 
     const previousAvatarUrl = existingUser.avatarUrl;
     existingUser.avatarUrl = relativePath;
@@ -469,9 +517,6 @@ const updateProfileImage = async (req, res, next) => {
       message: 'תמונת הפרופיל עודכנה בהצלחה',
     });
   } catch (error) {
-    if (req.file) {
-      await fs.unlink(req.file.path).catch(() => {});
-    }
     return next(error);
   }
 };

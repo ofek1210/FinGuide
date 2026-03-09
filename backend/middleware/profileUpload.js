@@ -1,7 +1,6 @@
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { randomUUID } = require('crypto');
 const { FileUploadError } = require('../utils/appErrors');
 
 const MAX_PROFILE_IMAGE_MB = (() => {
@@ -14,29 +13,17 @@ if (!fs.existsSync(profileImagesDir)) {
   fs.mkdirSync(profileImagesDir, { recursive: true });
 }
 
-const storage = multer.diskStorage({
-  destination(req, file, cb) {
-    cb(null, profileImagesDir);
-  },
-  filename(req, file, cb) {
-    const uniqueName = `${randomUUID()}${path.extname(file.originalname)}`;
-    cb(null, uniqueName);
-  },
-});
-
-const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png'];
-const allowedExtensions = ['.jpg', '.jpeg', '.png'];
+const storage = multer.memoryStorage();
 
 const fileFilter = (req, file, cb) => {
-  const mimeOk = allowedMimeTypes.includes(file.mimetype);
-  const ext = path.extname(file.originalname || '').toLowerCase();
-  const extOk = allowedExtensions.includes(ext);
-
-  if (mimeOk && extOk) {
+  if (file.mimetype && file.mimetype.startsWith('image/')) {
     return cb(null, true);
   }
 
-  return cb(new FileUploadError('רק קבצי תמונה מסוג JPG/PNG מורשים'), false);
+  return cb(
+    new FileUploadError('רק קבצי תמונה מורשים להעלאה'),
+    false
+  );
 };
 
 const profileUpload = multer({

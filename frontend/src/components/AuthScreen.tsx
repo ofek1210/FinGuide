@@ -17,6 +17,8 @@ interface AuthScreenProps {
 }
 
 const GOOGLE_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
+const SHARED_GOOGLE_CLIENT_ID =
+  "757872744940-rvibdtmd65cif13ia19tm78npjdn8i7l.apps.googleusercontent.com";
 
 const MailIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -177,7 +179,8 @@ export default function AuthScreen({
   } | null>(null);
   const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
   const isRegister = mode === "register";
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const googleClientId =
+    import.meta.env.VITE_GOOGLE_CLIENT_ID || SHARED_GOOGLE_CLIENT_ID;
 
   useEffect(() => {
     if (!error) return undefined;
