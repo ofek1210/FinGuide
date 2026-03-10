@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Download, FileText, Building2, User, Calendar, Hash } from "lucide-react";
 import PayslipHistoryLayout from "../components/payslip-history/PayslipHistoryLayout";
+import { downloadDocument } from "../api/documents.api";
 import { fetchPayslipDetail } from "../services/payslip.service";
 import type { PayslipDetail } from "../types/payslip";
 import { APP_ROUTES } from "../types/navigation";
@@ -13,6 +14,7 @@ export default function PayslipDetailPage() {
   const [payslip, setPayslip] = useState<PayslipDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const loadDetail = useCallback(async () => {
     if (!id) return;
@@ -36,9 +38,21 @@ export default function PayslipDetailPage() {
     navigate(APP_ROUTES.payslipHistory);
   }, [navigate]);
 
-  const handleDownload = useCallback(() => {
-    if (payslip?.downloadUrl) window.open(payslip.downloadUrl!, "_blank", "noopener");
-  }, [payslip?.downloadUrl]);
+  const handleDownload = useCallback(async () => {
+    if (!payslip?.id) return;
+    setIsDownloading(true);
+    const response = await downloadDocument(payslip.id);
+    setIsDownloading(false);
+    if (!response.success || !response.blob) return;
+    const url = window.URL.createObjectURL(response.blob);
+    const link = window.document.createElement("a");
+    link.href = url;
+    link.download = response.filename ?? payslip.periodLabel ?? "document.pdf";
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }, [payslip?.id, payslip?.periodLabel]);
 
   if (!id) {
     return (
@@ -102,47 +116,37 @@ export default function PayslipDetailPage() {
         </div>
         <div>
           <h1 className="payslip-detail-title">תלוש משכורת</h1>
-          <p className="payslip-detail-period">{payslip.periodLabel}</p>
+          <p className="payslip-detail-period">{payslip.periodLabel || "לא זוהה"}</p>
         </div>
       </section>
 
-      {(payslip.employerName || payslip.employeeName || payslip.employeeId || payslip.paymentDate) && (
-        <section className="payslip-detail-card payslip-detail-info">
-          <h2 className="payslip-detail-card-title">פרטי התלוש</h2>
-          <ul className="payslip-detail-info-list">
-            {payslip.employerName && (
-              <li>
-                <Building2 aria-hidden="true" />
-                <span className="payslip-detail-info-label">מעסיק</span>
-                <span className="payslip-detail-info-value">{payslip.employerName}</span>
-              </li>
-            )}
-            {payslip.employeeName && (
-              <li>
-                <User aria-hidden="true" />
-                <span className="payslip-detail-info-label">שם העובד</span>
-                <span className="payslip-detail-info-value">{payslip.employeeName}</span>
-              </li>
-            )}
-            {payslip.employeeId && (
-              <li>
-                <Hash aria-hidden="true" />
-                <span className="payslip-detail-info-label">ת.ז.</span>
-                <span className="payslip-detail-info-value">{payslip.employeeId}</span>
-              </li>
-            )}
-            {payslip.paymentDate && (
-              <li>
-                <Calendar aria-hidden="true" />
-                <span className="payslip-detail-info-label">תאריך תשלום</span>
-                <span className="payslip-detail-info-value">
-                  {formatLongDate(payslip.paymentDate)}
-                </span>
-              </li>
-            )}
-          </ul>
-        </section>
-      )}
+      <section className="payslip-detail-card payslip-detail-info">
+        <h2 className="payslip-detail-card-title">פרטי התלוש</h2>
+        <ul className="payslip-detail-info-list">
+          <li>
+            <Building2 aria-hidden="true" />
+            <span className="payslip-detail-info-label">מעסיק</span>
+            <span className="payslip-detail-info-value">{payslip.employerName ?? "לא זוהה"}</span>
+          </li>
+          <li>
+            <User aria-hidden="true" />
+            <span className="payslip-detail-info-label">שם העובד</span>
+            <span className="payslip-detail-info-value">{payslip.employeeName ?? "לא זוהה"}</span>
+          </li>
+          <li>
+            <Hash aria-hidden="true" />
+            <span className="payslip-detail-info-label">ת.ז.</span>
+            <span className="payslip-detail-info-value">{payslip.employeeId ?? "לא זוהה"}</span>
+          </li>
+          <li>
+            <Calendar aria-hidden="true" />
+            <span className="payslip-detail-info-label">תאריך תשלום</span>
+            <span className="payslip-detail-info-value">
+              {payslip.paymentDate ? formatLongDate(payslip.paymentDate) : "לא זוהה"}
+            </span>
+          </li>
+        </ul>
+      </section>
 
       <div className="payslip-detail-tables">
         {hasEarnings && (
@@ -195,7 +199,7 @@ export default function PayslipDetailPage() {
       <section className="payslip-detail-net-card">
         <div className="payslip-detail-net-label">שכר נטו לתשלום</div>
         <div className="payslip-detail-net-value">
-          {formatCurrencyILS(payslip.netSalary)}
+          {payslip.netSalary != null ? formatCurrencyILS(payslip.netSalary) : "לא זוהה"}
         </div>
       </section>
 
@@ -211,15 +215,13 @@ export default function PayslipDetailPage() {
           type="button"
           className="payslip-detail-btn payslip-detail-btn-primary"
           onClick={handleDownload}
-          disabled={!payslip.downloadUrl}
-          aria-label={payslip.downloadUrl ? "הורדת קובץ PDF" : "הורדה לא זמינה"}
+          disabled={!payslip.id || isDownloading}
+          aria-label={payslip.id ? "הורדת קובץ PDF" : "הורדה לא זמינה"}
         >
           <Download aria-hidden="true" />
-          הורד PDF
+          {isDownloading ? "מוריד..." : "הורד PDF"}
         </button>
       </div>
-
-      <p className="payslip-detail-demo-note">נתוני דמו. חיבור ל־API יבוצע לאחר השלמת OCR בבאק.</p>
     </PayslipHistoryLayout>
   );
 }

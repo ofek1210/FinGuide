@@ -2,8 +2,8 @@ export type PayslipHistoryItem = {
   id: string;
   periodLabel: string;
   periodDate: string;
-  netSalary: number;
-  grossSalary: number;
+  netSalary: number | null;
+  grossSalary: number | null;
   isLatest: boolean;
   downloadUrl?: string | null;
 };
@@ -36,7 +36,7 @@ export type PayslipDetail = {
   employeeId?: string;
   earnings: PayslipLineItem[];
   deductions: PayslipLineItem[];
-  grossSalary: number;
-  netSalary: number;
+  grossSalary: number | null;
+  netSalary: number | null;
   downloadUrl?: string | null;
 };

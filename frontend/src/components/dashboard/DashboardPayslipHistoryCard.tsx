@@ -81,10 +81,10 @@ export default function DashboardPayslipHistoryCard({
             </div>
             <div className="payslip-history-amounts">
               <span className="payslip-history-net">
-                {formatCurrencyILS(item.netSalary)}
+                {item.netSalary != null ? formatCurrencyILS(item.netSalary) : "לא זוהה"}
               </span>
               <span className="payslip-history-gross">
-                {formatCurrencyILS(item.grossSalary)}
+                {item.grossSalary != null ? formatCurrencyILS(item.grossSalary) : "לא זוהה"}
               </span>
             </div>
           </div>

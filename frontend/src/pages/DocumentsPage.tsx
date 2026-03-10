@@ -413,8 +413,7 @@ export default function DocumentsPage() {
         <section className="documents-header">
           <h1>מסמכים</h1>
           <p>
-            העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
-            שלב הסריקה יתווסף בהמשך.
+            העלו מסמכי תלוש שכר בפי-די-אף. המסמכים יעברו זיהוי וניתוח אוטומטי ויופיעו בהיסטוריית התלושים.
           </p>
         </section>
 
@@ -483,10 +482,10 @@ export default function DocumentsPage() {
             disabled={!hasUploadedDocuments}
             onClick={() => navigate(APP_ROUTES.documentsScan)}
           >
-            סריקת הקבצים שהועלו (דמו)
+            מעבר לעיבוד וניתוח המסמכים
           </button>
           <span className="documents-note">
-            שלב הסריקה כרגע במצב דמו (ללא OCR). יופעל לאחר חיבור מנוע זיהוי תווים.
+            המסמכים שהועלו יעברו זיהוי וניתוח ויוצגו במסך היסטוריית התלושים.
           </span>
         </section>
       </main>

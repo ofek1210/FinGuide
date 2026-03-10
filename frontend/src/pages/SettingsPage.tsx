@@ -255,7 +255,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   className="dashboard-hero-action"
-                  disabled={avatarUploadLoading}
+                  disabled={avatarUploading}
                   onClick={() => fileInputRef.current?.click()}
                   disabled={avatarUploading}
                 >
