@@ -6,9 +6,9 @@ type StepStatus = "pending" | "active" | "done";
 
 const steps = [
   "קריאת המסמך",
-  "חילוץ נתונים",
-  "ניתוח מס ופנסיה",
-  "יצירת תובנות",
+  "זיהוי נתונים במסמך",
+  "חילוץ פרטי שכר ומס",
+  "הכנת התלוש לתצוגה",
 ];
 
 const buildStepStatus = (index: number, current: number, isDone: boolean): StepStatus => {
@@ -54,7 +54,6 @@ export default function ScanStatusPage() {
           </span>
           <span>FinGuide</span>
         </div>
-        <span className="scan-mode-badge">מצב דמו</span>
         <button className="scan-back" type="button" onClick={() => navigate(APP_ROUTES.documents)}>
           חזרה למסמכים
         </button>
@@ -66,8 +65,8 @@ export default function ScanStatusPage() {
             <span className={`scan-spinner ${isComplete ? "is-complete" : ""}`} />
           </div>
 
-          <h1>מנתחים את תלוש השכר שלך</h1>
-          <p>התהליך עשוי לקחת מספר שניות</p>
+          <h1>מעבדים את המסמך</h1>
+          <p>מזהה ומחלץ נתונים מהתלוש. התהליך עשוי לקחת כמה שניות.</p>
 
           <div className="scan-progress">
             <div className="scan-progress-bar">
@@ -91,7 +90,7 @@ export default function ScanStatusPage() {
           </div>
 
           <div className="scan-note">
-            הבינה המלאכותית שלנו קוראת כל פרט כדי לספק תובנות מדויקות.
+            המערכת קוראת את המסמך ומחלצת פרטי שכר, מס וניכויים לתצוגה בהיסטוריית התלושים.
           </div>
         </section>
       </main>
