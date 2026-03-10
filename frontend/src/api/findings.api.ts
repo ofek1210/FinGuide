@@ -12,6 +12,7 @@ export type FindingItem = {
 export type ListFindingsResponse = {
   success: boolean;
   message?: string;
+  status?: number;
   count?: number;
   data?: FindingItem[];
 };
@@ -30,7 +31,11 @@ export const listFindings = async () => {
   });
 
   if (!result.ok) {
-    return { success: false, message: result.error.message } as ListFindingsResponse;
+    return {
+      success: false,
+      message: result.error.message,
+      status: result.status,
+    } as ListFindingsResponse;
   }
 
   return result.data || ({ success: false, message: "תגובה לא תקינה." } as ListFindingsResponse);

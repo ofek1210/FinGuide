@@ -7,6 +7,7 @@ interface PayslipRowProps {
   grossSalary: string;
   periodDate: string;
   onDownload: (item: PayslipHistoryItem) => void;
+  onSelect?: (item: PayslipHistoryItem) => void;
 }
 
 export default function PayslipRow({
@@ -15,16 +16,38 @@ export default function PayslipRow({
   grossSalary,
   periodDate,
   onDownload,
+  onSelect,
 }: PayslipRowProps) {
   const canDownload = Boolean(item.downloadUrl);
 
-  const handleDownload = () => {
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!canDownload) return;
     onDownload(item);
   };
 
+  const handleRowClick = () => {
+    onSelect?.(item);
+  };
+
   return (
-    <div className="payslip-row">
+    <div
+      className={`payslip-row ${onSelect ? "payslip-row-clickable" : ""}`}
+      role={onSelect ? "button" : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onClick={onSelect ? handleRowClick : undefined}
+      onKeyDown={
+        onSelect
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleRowClick();
+              }
+            }
+          : undefined
+      }
+      aria-label={onSelect ? `צפייה בתלוש ${item.periodLabel}` : undefined}
+    >
       <div className="payslip-row-icon" aria-hidden="true">
         <FileText />
       </div>

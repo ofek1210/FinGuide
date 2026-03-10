@@ -2,10 +2,13 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 
 interface PayslipHistoryHeaderProps {
   onBackToDashboard: () => void;
+  /** Optional label for back button (e.g. "חזרה להיסטוריה" on detail page) */
+  backLabel?: string;
 }
 
 export default function PayslipHistoryHeader({
   onBackToDashboard,
+  backLabel = "חזרה ללוח הבקרה",
 }: PayslipHistoryHeaderProps) {
   return (
     <header className="payslip-header">
@@ -15,8 +18,8 @@ export default function PayslipHistoryHeader({
         </span>
         <span>FinGuide</span>
       </div>
-      <button className="payslip-back" type="button" onClick={onBackToDashboard}>
-        חזרה ללוח הבקרה
+      <button className="payslip-back" type="button" onClick={onBackToDashboard} aria-label={backLabel}>
+        {backLabel}
         <ArrowLeft aria-hidden="true" />
       </button>
     </header>

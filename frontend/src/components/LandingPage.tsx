@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { APP_ROUTES } from "../types/navigation";
+import AppFooter from "./AppFooter";
 
 const features = [
   {
@@ -57,8 +58,8 @@ export default function LandingPage() {
           <button className="landing-link" type="button" onClick={() => navigate(APP_ROUTES.login)}>
             התחברות
           </button>
-          <button className="landing-primary" type="button" onClick={() => navigate(APP_ROUTES.register)}>
-            יצירת חשבון
+          <button className="landing-primary landing-nav-primary" type="button" onClick={() => navigate(APP_ROUTES.register)}>
+            התחל עכשיו
           </button>
         </div>
       </header>
@@ -74,11 +75,9 @@ export default function LandingPage() {
               ניתוח פיננסי מבוסס בינה מלאכותית
             </div>
             <h1 className="hero-title">
-              הביאו את
+              הבינו את המצב הפיננסי שלכם
               <br />
-              המצב הפיננסי
-              <br />
-              שלכם בעזרת <span>AI</span>
+              <span>בעזרת AI</span>
             </h1>
             <p className="hero-subtitle">
               העלו את תלושי השכר, דוחות הפנסיה ומסמכי המס שלכם. הבינה
@@ -87,22 +86,22 @@ export default function LandingPage() {
             </p>
             <div className="hero-actions">
               <button
-                className="landing-primary"
+                className="landing-primary hero-primary-btn"
                 type="button"
                 onClick={() =>
                   navigate(hasToken ? APP_ROUTES.documents : APP_ROUTES.register)
                 }
               >
-                העלאת מסמך חדש
+                העלאת תלוש שכר
                 <ArrowUpRight aria-hidden="true" />
               </button>
               <button
-                className="landing-secondary"
+                className="landing-secondary hero-secondary-btn"
                 type="button"
                 onClick={() => navigate(APP_ROUTES.integrationsEmail)}
               >
                 <Mail aria-hidden="true" />
-                חיבור לתיבת מייל
+                חיבור תיבת מייל
               </button>
             </div>
             <div className="hero-badges">
@@ -112,7 +111,7 @@ export default function LandingPage() {
               </span>
               <span className="hero-badge">
                 <span className="badge-dot is-accent" />
-                תובנות AI מותאמות
+                תובנות מבוססות AI
               </span>
             </div>
           </div>
@@ -121,7 +120,7 @@ export default function LandingPage() {
         <section className="landing-features landing-container">
           <header className="section-header">
             <h2>איך FinGuide עוזר לכם</h2>
-            <p>כלים פשוטים ואינטואיטיביים להבנת המסמכים הפיננסיים שלכם.</p>
+            <p>כלים פשוטים ועוצמתיים להבנת המסמכים הפיננסיים שלכם</p>
           </header>
           <div className="features-grid">
             {features.map((feature) => (
@@ -161,18 +160,16 @@ export default function LandingPage() {
           <h2>מוכנים להבין את המצב הפיננסי שלכם?</h2>
           <p>הצטרפו לאלפים שכבר השיגו בהירות במצבם הפיננסי.</p>
           <button
-            className="landing-primary"
+            className="landing-primary landing-cta-btn"
             type="button"
             onClick={() => navigate(APP_ROUTES.register)}
           >
-            התחלה בחינם
+            התחילו בחינם
           </button>
         </section>
       </main>
 
-      <footer className="landing-footer">
-        © 2025 FinGuide. העוזר הפיננסי המבוסס על בינה מלאכותית שלכם.
-      </footer>
+      <AppFooter variant="guest" />
     </div>
   );
 }

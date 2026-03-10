@@ -5,6 +5,9 @@ export const APP_ROUTES = {
   resetPassword: "/reset-password",
   dashboard: "/dashboard",
   documents: "/documents",
+  documentsScan: "/documents/scan",
+  documentsScanComplete: "/documents/scan/complete",
+  payslipHistory: "/documents/history",
   findings: "/findings",
   assistant: "/assistant",
   settings: "/settings",
@@ -22,6 +25,7 @@ export type AppRoute = (typeof APP_ROUTES)[keyof typeof APP_ROUTES];
 export const PRIVATE_ROUTES: AppRoute[] = [
   APP_ROUTES.dashboard,
   APP_ROUTES.documents,
+  APP_ROUTES.payslipHistory,
   APP_ROUTES.findings,
   APP_ROUTES.assistant,
   APP_ROUTES.settings,

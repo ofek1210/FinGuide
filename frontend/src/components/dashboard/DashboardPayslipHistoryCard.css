@@ -25,8 +25,9 @@
   border: none;
   background: rgba(255, 255, 255, 0.08);
   color: var(--landing-text);
-  padding: 8px 12px;
-  border-radius: 10px;
+  padding: 12px 16px;
+  min-height: 48px;
+  border-radius: 8px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -49,7 +50,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.12);
 }
@@ -71,8 +72,8 @@
   width: fit-content;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(30, 123, 255, 0.2);
-  color: #8bbcff;
+  background: rgba(90, 86, 246, 0.2);
+  color: #a78bfa;
   font-size: 0.7rem;
   font-weight: 600;
 }
@@ -85,7 +86,7 @@
 }
 
 .payslip-history-net {
-  color: #a7d2ff;
+  color: #c4b5fd;
   font-weight: 600;
 }
 
@@ -103,14 +104,15 @@
 }
 
 .payslip-history-state.is-error {
-  color: #f2a3a3;
+  color: #fca5a5;
 }
 
 .payslip-history-state button {
   border: none;
   background: rgba(255, 255, 255, 0.12);
   color: var(--landing-text);
-  padding: 6px 12px;
-  border-radius: 10px;
+  padding: 12px 16px;
+  min-height: 48px;
+  border-radius: 8px;
   cursor: pointer;
 }

@@ -9,6 +9,7 @@ import PayslipLoadingState from "../components/payslip-history/PayslipLoadingSta
 import PayslipStats from "../components/payslip-history/PayslipStats";
 import { usePayslipHistory } from "../hooks/usePayslipHistory";
 import type { PayslipHistoryItem } from "../types/payslip";
+import { APP_ROUTES } from "../types/navigation";
 import { formatCurrencyILS, formatNumber, formatShortDate } from "../utils/formatters";
 
 export default function PayslipHistoryPage() {
@@ -16,17 +17,24 @@ export default function PayslipHistoryPage() {
   const { data, isLoading, error, reload } = usePayslipHistory();
 
   const handleBackToDashboard = useCallback(() => {
-    navigate("/dashboard");
+    navigate(APP_ROUTES.dashboard);
   }, [navigate]);
 
   const handleUploadNew = useCallback(() => {
-    navigate("/documents");
+    navigate(APP_ROUTES.documents);
   }, [navigate]);
 
   const handleDownload = useCallback((item: PayslipHistoryItem) => {
     if (!item.downloadUrl) return;
     window.open(item.downloadUrl, "_blank", "noopener");
   }, []);
+
+  const handleSelectPayslip = useCallback(
+    (item: PayslipHistoryItem) => {
+      navigate(`${APP_ROUTES.payslipHistory}/${item.id}`);
+    },
+    [navigate]
+  );
 
   if (isLoading) {
     return (
@@ -73,6 +81,7 @@ export default function PayslipHistoryPage() {
       <PayslipList
         items={items}
         onDownload={handleDownload}
+        onSelect={handleSelectPayslip}
         formatCurrency={formatCurrencyILS}
         formatDate={formatShortDate}
       />

@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import {
   updateProfile,
   getAvatarDisplayUrl,
+  resolveAvatarUrl,
   uploadAvatar,
 } from "../api/profile.api";
 import PrivateTopbar from "../components/PrivateTopbar";
+import AppFooter from "../components/AppFooter";
 import Loader from "../components/ui/Loader";
 import { useAuth } from "../auth/AuthProvider";
 import { APP_ROUTES } from "../types/navigation";
@@ -19,7 +21,8 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [createdAt, setCreatedAt] = useState("");
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
-  const [avatarUploadLoading, setAvatarUploadLoading] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [emailSaveLoading, setEmailSaveLoading] = useState(false);
   const [passwordSaveLoading, setPasswordSaveLoading] = useState(false);
@@ -36,7 +39,7 @@ export default function SettingsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLoading = status === "checking";
-  const displayAvatarUrl = avatarPreviewUrl ?? getAvatarDisplayUrl(user ?? null);
+  const displayAvatarUrl = resolveAvatarUrl(avatarPreviewUrl) ?? getAvatarDisplayUrl(user ?? null);
 
   useEffect(() => {
     if (!user) {
@@ -50,33 +53,26 @@ export default function SettingsPage() {
     setFieldError({});
   }, [user]);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) {
-      e.target.value = "";
+    e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    const allowed = ["image/jpeg", "image/jpg", "image/png"];
+    if (!allowed.includes(file.type)) {
+      setAvatarError("רק קבצי JPG או PNG נתמכים.");
       return;
     }
-
-    setError("");
-    setSaveMessage(null);
-    setAvatarUploadLoading(true);
-
-    void (async () => {
-      const response = await uploadAvatar(file);
-
-      if (response.success && response.data?.user) {
-        setAvatarPreviewUrl(response.data.user.avatarUrl ?? null);
-        await refresh();
-        setSaveMessage("success");
-      } else {
-        setSaveMessage("error");
-        setError(response.message || "שגיאה בהעלאת תמונת הפרופיל.");
-      }
-
-      setAvatarUploadLoading(false);
-    })();
-
-    e.target.value = "";
+    setAvatarError(null);
+    setAvatarUploading(true);
+    const res = await uploadAvatar(file);
+    setAvatarUploading(false);
+    if (res.success) {
+      if (res.avatarUrl) setAvatarPreviewUrl(res.avatarUrl);
+      await refresh();
+      setSaveMessage("success");
+    } else {
+      setAvatarError(res.message ?? "שגיאה בהעלאת התמונה.");
+    }
   };
 
   const handleSave = async () => {
@@ -250,19 +246,29 @@ export default function SettingsPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png"
                   className="dashboard-upload-input"
                   aria-label="בחירת תמונת פרופיל"
                   onChange={handleAvatarChange}
+                  disabled={avatarUploading}
                 />
                 <button
                   type="button"
                   className="dashboard-hero-action"
                   disabled={avatarUploadLoading}
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
                 >
-                  {avatarUploadLoading ? "מעלה תמונה..." : "בחירת תמונה"}
+                  {avatarUploading ? "מעלה..." : "בחירת תמונה"}
                 </button>
+                {avatarError && (
+                  <p className="settings-avatar-note settings-avatar-error" role="alert">
+                    {avatarError}
+                  </p>
+                )}
+                <p className="settings-avatar-note">
+                  JPG או PNG, עד 2MB. התמונה נשמרת בשרת.
+                </p>
               </div>
 
               <div className="settings-field">
@@ -459,6 +465,8 @@ export default function SettingsPage() {
             התנתקות
           </button>
         </section>
+
+        <AppFooter variant="private" />
       </div>
     </div>
   );

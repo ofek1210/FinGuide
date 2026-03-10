@@ -4,8 +4,15 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const sharp = require('sharp');
 const crypto = require('crypto');
+const pdfParse = require('pdf-parse');
 
 const execFileAsync = promisify(execFile);
+
+const OCR_PDF_PAGES_MODE = (process.env.OCR_PDF_PAGES_MODE || 'all').toLowerCase(); // 'all' | 'first'
+const MIN_PDF_TEXT_LENGTH =
+  Number(process.env.OCR_PDF_MIN_TEXT_LENGTH) && Number(process.env.OCR_PDF_MIN_TEXT_LENGTH) > 0
+    ? Number(process.env.OCR_PDF_MIN_TEXT_LENGTH)
+    : 200;
 
 // -------------------- helpers --------------------
 function sha256(str) {
@@ -120,13 +127,61 @@ async function ocrWithTesseract(imagePath, { psm = '6' } = {}) {
     '-c',
     'preserve_interword_spaces=1',
   ];
-  const { stdout } = await execFileAsync('tesseract', args);
-  return stdout || '';
+
+  try {
+    const { stdout } = await execFileAsync('tesseract', args);
+    return stdout || '';
+  } catch (err) {
+    const message =
+      err.code === 'ENOENT'
+        ? 'tesseract binary not found. Run the backend via Docker or install Tesseract on this machine.'
+        : 'tesseract OCR command failed. Check that Tesseract is installed and supports the requested options.';
+
+    const wrapped = new Error(message);
+    wrapped.cause = err;
+    throw wrapped;
+  }
+}
+
+// -------------------- embedded PDF text --------------------
+async function extractPdfEmbeddedText(pdfPath) {
+  try {
+    const buffer = await fs.readFile(pdfPath);
+    const result = await pdfParse(buffer);
+    const text = (result.text || '').trim();
+    return text;
+  } catch (err) {
+    const wrapped = new Error('Failed to extract embedded text from PDF via pdf-parse.');
+    wrapped.cause = err;
+    throw wrapped;
+  }
 }
 
 async function pdfToPngs(pdfPath, outDir) {
   const prefix = path.join(outDir, 'page');
-  await execFileAsync('pdftoppm', ['-png', '-r', '300', pdfPath, prefix]);
+
+  // Prefer PNG – supported by Poppler's pdftoppm (used in Docker image).
+  // On systems where pdftoppm doesn't support -png, this will fail fast with
+  // a clear error message so developers know to use Docker or install Poppler.
+  const args = ['-png', '-r', '300', pdfPath, prefix];
+
+  try {
+    await execFileAsync('pdftoppm', args);
+  } catch (err) {
+    const stderr = err.stderr ? String(err.stderr) : '';
+    const looksLikeUsageError = /Usage: pdftoppm/i.test(stderr);
+
+    const message =
+      err.code === 'ENOENT'
+        ? 'pdftoppm binary not found. Run the backend via Docker or install Poppler (pdftoppm) on this machine.'
+        : looksLikeUsageError
+          ? 'pdftoppm does not support the -png flag in this environment. Run the backend via Docker with Poppler installed.'
+          : 'pdftoppm command failed while converting PDF to images.';
+
+    const wrapped = new Error(message);
+    wrapped.cause = err;
+    throw wrapped;
+  }
 
   const files = await fs.readdir(outDir);
   return files
@@ -191,9 +246,9 @@ function extractMandatoryDeductions(lines, warnings) {
     return pickReasonableAmount(nums, { min: 50, max: 60000 });
   };
 
-  const income_tax = findAmountOnLabelLine(/מס\s*הכנסה/i);
-  const national_insurance = findAmountOnLabelLine(/ביטוח\s*לאומי/i);
-  const health_insurance = findAmountOnLabelLine(/ביטוח\s*בריאות/i);
+  const income_tax = findAmountOnLabelLine(/(?:מס\s*הכנסה|income\s+tax)/i);
+  const national_insurance = findAmountOnLabelLine(/(?:ביטוח\s*לאומי|national\s+insurance)/i);
+  const health_insurance = findAmountOnLabelLine(/(?:ביטוח\s*בריאות|health\s+insurance)/i);
 
   // derived total (only if looks real)
   let derived_total;
@@ -422,6 +477,26 @@ function extractPayslipFinancialEN(ocrText, { sourcePath } = {}) {
 
   const hmo = translateHMO(extractHMO(full));
 
+  // Parties (employer / employee)
+  let employer_name;
+  let employee_name;
+  let employee_id;
+
+  // Common Hebrew patterns
+  employee_name =
+    match1(full, /שם\s+עובד[:\s]+([^\n]+)/i) ??
+    match1(full, /Employee\s+Name[:\s]+([^\n]+)/i);
+
+  employer_name =
+    match1(full, /שם\s+מעסיק[:\s]+([^\n]+)/i) ??
+    match1(full, /שם\s+מעביד[:\s]+([^\n]+)/i) ??
+    match1(full, /Employer\s+Name[:\s]+([^\n]+)/i);
+
+  // ID patterns – ת.ז., ת\"ז, מספר זהות, ID
+  employee_id =
+    match1(full, /(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות)[:\s\-]*(\d{7,9})/i) ??
+    match1(full, /\bID[:\s\-]*(\d{7,9})\b/i);
+
   const study = extractStudyFund(lines, warnings);
   const pension = extractPension(lines, warnings);
 
@@ -518,6 +593,12 @@ function extractPayslipFinancialEN(ocrText, { sourcePath } = {}) {
       job_percent,
     },
 
+    parties: {
+      employer_name,
+      employee_name,
+      employee_id,
+    },
+
     insurances: {
       hmo,
     },
@@ -535,6 +616,8 @@ function extractPayslipFinancialEN(ocrText, { sourcePath } = {}) {
       ocr_engine: 'tesseract-cli',
       ocr_lang: 'heb+eng',
       text_sha256: textHash,
+      rawText: ocrText,
+      ocr_text: ocrText,
     },
   };
 }
@@ -543,12 +626,35 @@ function extractPayslipFinancialEN(ocrText, { sourcePath } = {}) {
 async function extractPayslipFile(inputPath) {
   const abs = path.resolve(inputPath);
   const ext = path.extname(abs).toLowerCase();
+  let extractionMethod = 'ocr';
 
   const workDir = path.join(process.cwd(), '.work');
   await fs.mkdir(workDir, { recursive: true });
 
   let imagePaths = [];
   if (ext === '.pdf') {
+    // Stage A: try embedded text first
+    try {
+      const embeddedText = await extractPdfEmbeddedText(abs);
+      const normalized = embeddedText.replace(/\s+/g, ' ').trim();
+
+      if (normalized.length >= MIN_PDF_TEXT_LENGTH) {
+        extractionMethod = 'pdf_text';
+        const data = extractPayslipFinancialEN(embeddedText, { sourcePath: abs });
+        data.raw = {
+          ...data.raw,
+          rawText: embeddedText,
+          extractionMethod,
+        };
+        return { data };
+      }
+    } catch (err) {
+      // Log and fall back to OCR
+      // eslint-disable-next-line no-console
+      console.warn('PDF text extraction failed, falling back to OCR:', err.message);
+    }
+
+    // Stage B: fallback to OCR
     const pdfOut = path.join(workDir, `pdf_${Date.now()}`);
     await fs.mkdir(pdfOut, { recursive: true });
     imagePaths = await pdfToPngs(abs, pdfOut);
@@ -556,16 +662,26 @@ async function extractPayslipFile(inputPath) {
     imagePaths = [abs];
   }
 
+  const pagesToProcess =
+    OCR_PDF_PAGES_MODE === 'first' && imagePaths.length > 0 ? [imagePaths[0]] : imagePaths;
+
   const candidates = [];
+  extractionMethod = 'ocr';
+
   for (const psm of [6, 4, 3]) {
     let fullText = '';
-    for (const img of imagePaths) {
+    for (const img of pagesToProcess) {
       const prepped = await preprocessImage(img);
       const text = await ocrWithTesseract(prepped, { psm });
       fullText += '\n' + text;
       await fs.unlink(prepped).catch(() => {});
     }
     const data = extractPayslipFinancialEN(fullText, { sourcePath: abs });
+    data.raw = {
+      ...data.raw,
+      rawText: fullText,
+      extractionMethod,
+    };
     candidates.push({ psm, data });
   }
 

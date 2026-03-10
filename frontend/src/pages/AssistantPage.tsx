@@ -1,7 +1,10 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { chatWithAI } from "../api/ai.api";
 import PrivateTopbar from "../components/PrivateTopbar";
+import AppFooter from "../components/AppFooter";
 import Loader from "../components/ui/Loader";
+
+const AI_CHAT_STORAGE_KEY = "finguide_ai_chat";
 
 type ChatMessage = {
   id: string;
@@ -10,25 +13,55 @@ type ChatMessage = {
   model?: string;
 };
 
+const defaultWelcome: ChatMessage = {
+  id: "welcome",
+  role: "assistant",
+  content: "שלום, אני כאן כדי לעזור לכם להבין את המסמכים הפיננסיים שלכם.",
+};
+
 const promptSuggestions = [
   "תסכם לי את מצב המסמכים שלי",
   "איזה פעולות מומלץ לבצע החודש?",
   "מה נראה חריג במסמכים שהעליתי?",
 ] as const;
 
+function loadStoredMessages(): ChatMessage[] {
+  try {
+    const raw = sessionStorage.getItem(AI_CHAT_STORAGE_KEY);
+    if (!raw) return [defaultWelcome];
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed as ChatMessage[];
+    }
+  } catch {
+    /* ignore */
+  }
+  return [defaultWelcome];
+}
+
+function saveMessages(messages: ChatMessage[]) {
+  try {
+    sessionStorage.setItem(AI_CHAT_STORAGE_KEY, JSON.stringify(messages));
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function AssistantPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "שלום, אני כאן כדי לעזור לכם להבין את המסמכים הפיננסיים שלכם.",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(loadStoredMessages);
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
 
+  useEffect(() => {
+    saveMessages(messages);
+  }, [messages]);
+
   const hasMessages = useMemo(() => messages.length > 0, [messages.length]);
+
+  const copyToClipboard = useCallback((text: string) => {
+    void navigator.clipboard.writeText(text);
+  }, []);
 
   const sendMessage = async () => {
     const trimmed = input.trim();
@@ -79,7 +112,22 @@ export default function AssistantPage() {
                 messages.map((message) => (
                   <div key={message.id} className={`ai-message ${message.role}`}>
                     <span>{message.content}</span>
-                    {message.model ? <em className="ai-model">{message.model}</em> : null}
+                    {message.role === "assistant" && (
+                      <div className="ai-message-actions">
+                        <button
+                          type="button"
+                          className="ai-copy-btn"
+                          onClick={() => copyToClipboard(message.content)}
+                          title="העתק תשובה"
+                        >
+                          העתק תשובה
+                        </button>
+                        {message.model ? <em className="ai-model">{message.model}</em> : null}
+                      </div>
+                    )}
+                    {message.role === "user" && message.model ? (
+                      <em className="ai-model">{message.model}</em>
+                    ) : null}
                   </div>
                 ))
               ) : (
@@ -132,6 +180,8 @@ export default function AssistantPage() {
             {error ? <span className="ai-error">{error}</span> : null}
           </div>
         </section>
+
+        <AppFooter variant="private" />
       </div>
     </div>
   );

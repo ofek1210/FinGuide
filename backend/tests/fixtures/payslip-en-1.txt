@@ -1,0 +1,13 @@
+PAYSLIP FOR 03/2024
+
+Employer Name: Example Tech Ltd
+Employee Name: Dana Levi
+ID: 987654321
+
+Gross Salary           18,000
+Net Salary to Pay      13,000
+
+Income Tax              2,500
+National Insurance        800
+Health Insurance          400
+
