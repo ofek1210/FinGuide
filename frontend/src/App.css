@@ -511,6 +511,12 @@
   pointer-events: auto;
 }
 
+.toast.auth-success {
+  color: #eefcf3;
+  background: rgba(15, 89, 47, 0.92);
+  border-color: rgba(111, 219, 157, 0.28);
+}
+
 .loader {
   display: inline-flex;
   gap: 6px;

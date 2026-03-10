@@ -7,6 +7,8 @@ const {
   getMe,
   updateMe,
   changePassword,
+  forgotPassword,
+  resetPassword,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
@@ -91,10 +93,46 @@ const changePasswordValidation = [
     .withMessage('סיסמה חייבת להכיל אות גדולה, אות קטנה ומספר'),
 ];
 
+const forgotPasswordValidation = [
+  body('email')
+    .trim()
+    .notEmpty()
+    .withMessage('אימייל הוא שדה חובה')
+    .isEmail()
+    .withMessage('אימייל לא תקין')
+    .normalizeEmail(),
+];
+
+const resetPasswordValidation = [
+  body('token')
+    .trim()
+    .notEmpty()
+    .withMessage('token הוא שדה חובה'),
+  body('newPassword')
+    .notEmpty()
+    .withMessage('סיסמה חדשה היא שדה חובה')
+    .isLength({ min: 6 })
+    .withMessage('סיסמה חייבת להיות לפחות 6 תווים')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('סיסמה חייבת להכיל אות גדולה, אות קטנה ומספר'),
+];
+
 // Routes עם validation
 router.post('/register', registerValidation, validate, register);
 router.post('/login', loginValidation, validate, login);
 router.post('/google', googleLoginValidation, validate, googleLogin);
+router.post(
+  '/forgot-password',
+  forgotPasswordValidation,
+  validate,
+  forgotPassword
+);
+router.post(
+  '/reset-password',
+  resetPasswordValidation,
+  validate,
+  resetPassword
+);
 router.get('/me', protect, getMe);
 router.patch('/me', protect, updateMeValidation, validate, updateMe);
 router.post(

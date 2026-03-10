@@ -1,3 +1,4 @@
+const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
@@ -33,6 +34,7 @@ const createApp = () => {
   );
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+  app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {

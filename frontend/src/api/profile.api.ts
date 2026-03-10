@@ -75,7 +75,13 @@ export async function uploadAvatar(file: File): Promise<{
     fallbackErrorMessage: "שגיאה בהעלאת התמונה.",
   });
   if (!result.ok) {
-    return { success: false, message: result.error.message };
+    const payload = result.error.payload as ApiErrorPayload | null;
+    return {
+      success: false,
+      message: result.error.message,
+      status: result.status,
+      ...(payload?.errors && { errors: payload.errors }),
+    };
   }
   const data = result.data;
   const avatarUrl = data?.data?.user?.avatarUrl ?? null;

@@ -216,9 +216,10 @@ describe('Auth routes integration', () => {
       expect(res.body.message).toBe('Google credential לא תקף');
     });
 
-    it('should return 500 when GOOGLE_CLIENT_ID is missing', async () => {
+    it('should use the shared fallback when GOOGLE_CLIENT_ID is missing', async () => {
       const previousGoogleClientId = process.env.GOOGLE_CLIENT_ID;
       delete process.env.GOOGLE_CLIENT_ID;
+      mockGoogleVerifyIdToken.mockRejectedValue(new Error('invalid token'));
 
       const res = await request(app)
         .post('/api/auth/google')
@@ -226,9 +227,9 @@ describe('Auth routes integration', () => {
 
       process.env.GOOGLE_CLIENT_ID = previousGoogleClientId;
 
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(401);
       expect(res.body.success).toBe(false);
-      expect(res.body.message).toBe('Google auth לא הוגדר בשרת');
+      expect(res.body.message).toBe('Google credential לא תקף');
     });
   });
 });

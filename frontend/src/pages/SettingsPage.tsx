@@ -214,7 +214,7 @@ export default function SettingsPage() {
         )}
         {saveMessage === "backend-required" && (
           <div className="settings-banner settings-banner-info">
-            נדרש מהבאק: עדכון פרופיל (PATCH /api/auth/me) והעלאת תמונת פרופיל. בינתיים השם נשמר מקומית והתמונה מוצגת מדמו.
+            נדרש טיפול שרת נוסף כדי לשמור את השינויים שביקשתם.
           </div>
         )}
         {saveMessage === "error" && (
@@ -255,6 +255,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   className="dashboard-hero-action"
+                  disabled={avatarUploadLoading}
                   onClick={() => fileInputRef.current?.click()}
                   disabled={avatarUploading}
                 >
