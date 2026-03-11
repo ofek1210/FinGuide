@@ -136,6 +136,7 @@ interface DocumentCardProps {
   document: DocumentItem;
   onDownload: (document: DocumentItem) => void;
   onDelete: (document: DocumentItem) => void;
+  onViewDetails: (document: DocumentItem) => void;
   isDeleting: boolean;
   isDownloading: boolean;
 }
@@ -144,6 +145,7 @@ function DocumentCard({
   document,
   onDownload,
   onDelete,
+  onViewDetails,
   isDeleting,
   isDownloading,
 }: DocumentCardProps) {
@@ -175,6 +177,14 @@ function DocumentCard({
       <span className="document-name">{document.name}</span>
       <span className="document-status">{statusLabels[document.status]}</span>
       <div className="document-actions">
+        <button
+          className="document-action"
+          type="button"
+          onClick={() => onViewDetails(document)}
+          disabled={isTemp || isUploading}
+        >
+          פרטי תלוש
+        </button>
         <button
           className="document-action"
           type="button"
@@ -346,6 +356,10 @@ export default function DocumentsPage() {
     const toastTimer = window.setTimeout(() => setToastMessage(null), 5000);
     timersRef.current.push(toastTimer);
 
+    // רענון הרשימה מהשרת כדי לוודא שהמסמכים מסונכרנים
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    loadDocuments();
+
     const finalizeTimer = window.setTimeout(() => {
       setUploadMessage("");
       setUploadState("idle");
@@ -373,6 +387,11 @@ export default function DocumentsPage() {
 
     setDocuments((prev) => prev.filter((item) => item.id !== doc.id));
     setDeletingIds((prev) => removeId(prev, doc.id));
+  };
+
+  const handleViewDetails = (doc: DocumentItem) => {
+    if (doc.id.startsWith("temp-")) return;
+    navigate(`/documents/${doc.id}`);
   };
 
   const handleDownload = async (doc: DocumentItem) => {
@@ -467,6 +486,7 @@ export default function DocumentsPage() {
                   document={doc}
                   onDelete={handleDelete}
                   onDownload={handleDownload}
+                  onViewDetails={handleViewDetails}
                   isDeleting={deletingIds.includes(doc.id)}
                   isDownloading={downloadingIds.includes(doc.id)}
                 />

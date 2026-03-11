@@ -87,7 +87,10 @@ export const listDocuments = async () => {
     } as ListDocumentsResponse;
   }
 
-  return result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
+  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
+  // eslint-disable-next-line no-console
+  console.log("[frontend] listDocuments response", payload);
+  return payload;
 };
 
 export const uploadDocument = async (file: File) => {
@@ -112,7 +115,10 @@ export const uploadDocument = async (file: File) => {
   if (!result.ok) {
     return { success: false, message: result.error.message } as UploadDocumentResponse;
   }
-  return result.data || ({ success: false, message: "תגובה לא תקינה." } as UploadDocumentResponse);
+  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as UploadDocumentResponse);
+  // eslint-disable-next-line no-console
+  console.log("[frontend] uploadDocument response", payload);
+  return payload;
 };
 
 export const getDocument = async (id: string) => {
@@ -130,7 +136,10 @@ export const getDocument = async (id: string) => {
     return { success: false, message: result.error.message } as DocumentResponse;
   }
 
-  return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
+  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
+  // eslint-disable-next-line no-console
+  console.log("[frontend] getDocument response", payload);
+  return payload;
 };
 
 export const removeDocument = async (id: string) => {
