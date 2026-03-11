@@ -16,6 +16,7 @@ import StatusPage from "./pages/StatusPage";
 import HelpPage from "./pages/HelpPage";
 import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
@@ -67,6 +68,14 @@ export default function App() {
           element={
             <RequireAuth>
               <DocumentsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/documents/:id"
+          element={
+            <RequireAuth>
+              <DocumentDetailsPage />
             </RequireAuth>
           }
         />

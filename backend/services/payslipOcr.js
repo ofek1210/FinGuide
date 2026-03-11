@@ -109,6 +109,13 @@ function translateHMO(hmo) {
 
 // -------------------- OCR pipeline --------------------
 async function preprocessImage(inPath) {
+  const ext = path.extname(inPath).toLowerCase();
+
+  // אם הקובץ הוא PPM (ברירת המחדל של pdftoppm ללא -png), תן אותו כמו שהוא ל-tesseract
+  if (ext === '.ppm' || ext === '.pbm' || ext === '.pgm') {
+    return inPath;
+  }
+
   const outPath = inPath + '.prep.png';
   await sharp(inPath).rotate().grayscale().normalize().threshold(170).png().toFile(outPath);
   return outPath;
@@ -157,35 +164,83 @@ async function extractPdfEmbeddedText(pdfPath) {
   }
 }
 
+function isLikelyBrokenHebrew(text) {
+  if (!text) return false;
+  const t = String(text);
+  const hebrewMatches = t.match(/[\u0590-\u05FF]/g) || [];
+  const hebrewCount = hebrewMatches.length;
+
+  // אופייני ל-mojibake של עברית: הרבה תווים בטווח 0xE0-0xFF (ã å î ò וכו')
+  const weirdLatinMatches = t.match(/[À-ÿ]/g) || [];
+  const weirdLatinCount = weirdLatinMatches.length;
+
+  // אם כמעט ואין עברית, אבל יש הרבה "לטינית מוזרה", סביר שזה קידוד עברית שבור
+  if (hebrewCount < 5 && weirdLatinCount > 20) {
+    return true;
+  }
+
+  return false;
+}
+
 async function pdfToPngs(pdfPath, outDir) {
   const prefix = path.join(outDir, 'page');
 
   // Prefer PNG – supported by Poppler's pdftoppm (used in Docker image).
   // On systems where pdftoppm doesn't support -png, this will fail fast with
   // a clear error message so developers know to use Docker or install Poppler.
-  const args = ['-png', '-r', '300', pdfPath, prefix];
+  const pngArgs = ['-png', '-r', '300', pdfPath, prefix];
+
+  let pngSupported = true;
 
   try {
-    await execFileAsync('pdftoppm', args);
+    await execFileAsync('pdftoppm', pngArgs);
   } catch (err) {
     const stderr = err.stderr ? String(err.stderr) : '';
     const looksLikeUsageError = /Usage: pdftoppm/i.test(stderr);
 
-    const message =
-      err.code === 'ENOENT'
-        ? 'pdftoppm binary not found. Run the backend via Docker or install Poppler (pdftoppm) on this machine.'
-        : looksLikeUsageError
-          ? 'pdftoppm does not support the -png flag in this environment. Run the backend via Docker with Poppler installed.'
-          : 'pdftoppm command failed while converting PDF to images.';
+    if (err.code === 'ENOENT') {
+      const wrapped = new Error(
+        'pdftoppm binary not found. Run the backend via Docker or install Poppler (pdftoppm) on this machine.',
+      );
+      wrapped.cause = err;
+      throw wrapped;
+    }
 
-    const wrapped = new Error(message);
-    wrapped.cause = err;
-    throw wrapped;
+    if (looksLikeUsageError) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        'pdftoppm does not support -png flag in this environment, retrying without -png and returning PPM files.',
+      );
+      pngSupported = false;
+      const ppmArgs = ['-r', '300', pdfPath, prefix];
+      try {
+        await execFileAsync('pdftoppm', ppmArgs);
+      } catch (err2) {
+        const wrapped = new Error(
+          'pdftoppm command failed while converting PDF to images (both with and without -png).',
+        );
+        wrapped.cause = err2;
+        throw wrapped;
+      }
+    } else {
+      const wrapped = new Error('pdftoppm command failed while converting PDF to images.');
+      wrapped.cause = err;
+      throw wrapped;
+    }
   }
 
   const files = await fs.readdir(outDir);
+
+  if (pngSupported) {
+    return files
+      .filter(f => f.startsWith('page-') && f.endsWith('.png'))
+      .map(f => path.join(outDir, f))
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  // Fallback: return PPM files when -png is not supported.
   return files
-    .filter(f => f.startsWith('page-') && f.endsWith('.png'))
+    .filter(f => f.startsWith('page-') && f.endsWith('.ppm'))
     .map(f => path.join(outDir, f))
     .sort((a, b) => a.localeCompare(b));
 }
@@ -622,6 +677,264 @@ function extractPayslipFinancialEN(ocrText, { sourcePath } = {}) {
   };
 }
 
+// -------------------- lightweight summary for frontend --------------------
+function extractNumberByRegexes(full, regexes, parser = parseNumber) {
+  if (!full) return null;
+  for (const rx of regexes) {
+    const m = String(full).match(rx);
+    if (m && m[1]) {
+      const val = parser(m[1]);
+      if (val !== undefined && val !== null) {
+        return val;
+      }
+    }
+  }
+  return null;
+}
+
+function inferGrossAndNetFromNumbers(lines) {
+  const histogram = new Map();
+
+  lines.forEach((line, idx) => {
+    const nums = extractAllNumericTokens(line);
+    for (const n of nums) {
+      if (!Number.isFinite(n)) continue;
+      const key = n;
+      const existing = histogram.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        histogram.set(key, { count: 1, firstLineIdx: idx });
+      }
+    }
+  });
+
+  const entries = Array.from(histogram.entries())
+    .map(([amount, meta]) => ({ amount, count: meta.count, firstLineIdx: meta.firstLineIdx }))
+    // סינון לרמות שכר סבירות
+    .filter(e => e.amount >= 1000 && e.amount <= 200000);
+
+  if (!entries.length) return {};
+
+  // ברוטו – המספר הגבוה ביותר
+  entries.sort((a, b) => b.amount - a.amount);
+  const grossCandidate = entries[0]?.amount;
+
+  // נטו – המספר הגבוה הבא שמופיע לפחות פעמיים, אם יש
+  let netCandidateEntry = entries.find(e => e.count >= 2 && e.amount < grossCandidate);
+  if (!netCandidateEntry && entries.length > 1) {
+    netCandidateEntry = entries[1];
+  }
+
+  return {
+    gross: grossCandidate,
+    net: netCandidateEntry ? netCandidateEntry.amount : undefined,
+  };
+}
+
+function buildPayslipSummary(data, rawText) {
+  if (!data || typeof data !== 'object') return null;
+
+  const textSource =
+    rawText ||
+    data.raw?.ocr_text ||
+    data.raw?.rawText ||
+    '';
+
+  const lines = linesOf(textSource);
+  const full = lines.join('\n');
+
+  // --- employee name & date (string fields) ---
+  const employeeNameFromText =
+    match1(full, /שם\s+עובד[:\s]+([^\n]+)/i) ||
+    match1(full, /\bשם[:\s]+([^\n]+)/i);
+
+  const dateFromText =
+    // "לחודש 02/2024"
+    match1(full, /לחודש\s+([0-9]{2}\/[0-9]{4})/i) ||
+    // "תאריך: 01/02/2024"
+    match1(full, /תאריך[:\s]+([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{2,4})/i) ||
+    // generic fallback
+    match1(full, /חודש[:\s]+([^\n]+)/i);
+
+  const employeeName = data.parties?.employee_name || (employeeNameFromText || null);
+  const date =
+    data.period?.month ||
+    dateFromText ||
+    data.employment?.employment_start_date ||
+    null;
+
+  // --- numeric helpers (all normalized to JS numbers or null) ---
+  let grossSalary =
+    data.salary?.gross_total ??
+    extractNumberByRegexes(full, [/שכר\s*ברוטו[^\d]*(\d[\d,.\s₪]+)/i], parseMoney) ??
+    null;
+
+  let netSalary =
+    data.salary?.net_payable ??
+    extractNumberByRegexes(
+      full,
+      [
+        /שכר\s*נטו\s*לתשלום[^\d]*(\d[\d,.\s₪]+)/i,
+        /שכר\s*נטו[^\d]*(\d[\d,.\s₪]+)/i,
+        /נטו\s*לתשלום[^\d]*(\d[\d,.\s₪]+)/i,
+      ],
+      parseMoney,
+    ) ??
+    null;
+
+  // Fallback: אם לא הצלחנו לזהות ברוטו/נטו לפי תוויות (בעיות קידוד OCR),
+  // ננסה להסיק אותם מהמספרים הגדולים החוזרים בתלוש.
+  if (grossSalary === null || netSalary === null) {
+    const inferred = inferGrossAndNetFromNumbers(lines);
+    if (grossSalary === null && inferred.gross !== undefined) {
+      grossSalary = inferred.gross;
+    }
+    if (netSalary === null && inferred.net !== undefined) {
+      netSalary = inferred.net;
+    }
+  }
+
+  const vacationDays =
+    extractNumberByRegexes(
+      full,
+      [
+        /(?:ימי|יתרת)\s*חופשה[^\d]*(\d[\d,.\s]+)/i,
+        /חופשה\s*צבורה[^\d]*(\d[\d,.\s]+)/i,
+      ],
+      parseNumber,
+    ) ?? null;
+
+  const sickDays =
+    extractNumberByRegexes(
+      full,
+      [
+        /(?:ימי|יתרת)\s*מחלה[^\d]*(\d[\d,.\s]+)/i,
+        /מחלה\s*צבורה[^\d]*(\d[\d,.\s]+)/i,
+      ],
+      parseNumber,
+    ) ?? null;
+
+  const pensionEmployee =
+    data.contributions?.pension?.employee ??
+    extractNumberByRegexes(
+      full,
+      [
+        /(?:פנסיה|ביטוח\s*מנהלים|תגמולים)[^\n]*?(?:עובד|ניכוי\s*עובד)[^\d]*(\d[\d,.\s₪]+)/i,
+      ],
+      parseMoney,
+    ) ??
+    null;
+
+  const pensionEmployer =
+    data.contributions?.pension?.employer ??
+    extractNumberByRegexes(
+      full,
+      [
+        /(?:פנסיה|ביטוח\s*מנהלים|תגמולים)[^\n]*?(?:מעסיק|מעביד)[^\d]*(\d[\d,.\s₪]+)/i,
+      ],
+      parseMoney,
+    ) ??
+    null;
+
+  const trainingFundEmployee =
+    data.contributions?.study_fund?.employee ??
+    extractNumberByRegexes(
+      full,
+      [
+        /(?:קרן\s*השתלמות|קופת\s*גמל)[^\n]*?(?:עובד|ניכוי\s*עובד)[^\d]*(\d[\d,.\s₪]+)/i,
+      ],
+      parseMoney,
+    ) ??
+    null;
+
+  const trainingFundEmployer =
+    data.contributions?.study_fund?.employer ??
+    extractNumberByRegexes(
+      full,
+      [
+        /(?:קרן\s*השתלמות|קופת\s*גמל)[^\n]*?(?:מעסיק|מעביד)[^\d]*(\d[\d,.\s₪]+)/i,
+      ],
+      parseMoney,
+    ) ??
+    null;
+
+  const tax =
+    data.deductions?.mandatory?.income_tax ??
+    extractNumberByRegexes(
+      full,
+      [/מס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i],
+      parseMoney,
+    ) ??
+    null;
+
+  const nationalInsurance =
+    data.deductions?.mandatory?.national_insurance ??
+    extractNumberByRegexes(
+      full,
+      [/ביטוח\s*לאומי[^\d]*(\d[\d,.\s₪]+)/i],
+      parseMoney,
+    ) ??
+    null;
+
+  const healthInsurance =
+    data.deductions?.mandatory?.health_insurance ??
+    extractNumberByRegexes(
+      full,
+      [
+        /מס\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
+        /ביטוח\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
+      ],
+      parseMoney,
+    ) ??
+    null;
+
+  const jobPercentage =
+    data.employment?.job_percent ??
+    extractNumberByRegexes(
+      full,
+      [
+        /חלקיות\s*משרה[^\d]*(\d+(?:[.,]\d+)?)\s*%/i,
+        /חלקיות[^\d]*(\d+(?:[.,]\d+)?)\s*%/i,
+      ],
+      s => parsePercent(`${s}%`),
+    ) ??
+    null;
+
+  const workingDays =
+    extractNumberByRegexes(
+      full,
+      [/ימי\s*עבודה[^\d]*(\d[\d,.\s]+)/i],
+      parseNumber,
+    ) ?? null;
+
+  const workingHours =
+    extractNumberByRegexes(
+      full,
+      [/(?:שעות\s*עבודה|סה["״']?כ\s*שעות)[^\d]*(\d[\d,.\s]+)/i],
+      parseNumber,
+    ) ?? null;
+
+  return {
+    employeeName,
+    date,
+    grossSalary,
+    netSalary,
+    vacationDays,
+    sickDays,
+    pensionEmployee,
+    pensionEmployer,
+    trainingFundEmployee,
+    trainingFundEmployer,
+    tax,
+    nationalInsurance,
+    healthInsurance,
+    jobPercentage,
+    workingDays,
+    workingHours,
+  };
+}
+
 // -------------------- high-level API --------------------
 async function extractPayslipFile(inputPath) {
   const abs = path.resolve(inputPath);
@@ -637,10 +950,24 @@ async function extractPayslipFile(inputPath) {
     try {
       const embeddedText = await extractPdfEmbeddedText(abs);
       const normalized = embeddedText.replace(/\s+/g, ' ').trim();
+      const brokenHebrew = isLikelyBrokenHebrew(embeddedText);
 
-      if (normalized.length >= MIN_PDF_TEXT_LENGTH) {
+      if (normalized.length >= MIN_PDF_TEXT_LENGTH && !brokenHebrew) {
         extractionMethod = 'pdf_text';
         const data = extractPayslipFinancialEN(embeddedText, { sourcePath: abs });
+        const summary = buildPayslipSummary(data, embeddedText);
+        if (summary) {
+          data.summary = summary;
+        }
+        // eslint-disable-next-line no-console
+        console.log('[payslipOcr] extractPayslipFile(pdf_text)', {
+          sourcePath: abs,
+          summary: data.summary,
+          salary: data.salary,
+          parties: data.parties,
+          quality: data.quality,
+          rawPreview: embeddedText.slice(0, 2000),
+        });
         data.raw = {
           ...data.raw,
           rawText: embeddedText,
@@ -667,25 +994,75 @@ async function extractPayslipFile(inputPath) {
 
   const candidates = [];
   extractionMethod = 'ocr';
+  let lastOcrError;
 
   for (const psm of [6, 4, 3]) {
     let fullText = '';
-    for (const img of pagesToProcess) {
-      const prepped = await preprocessImage(img);
-      const text = await ocrWithTesseract(prepped, { psm });
-      fullText += '\n' + text;
-      await fs.unlink(prepped).catch(() => {});
+    try {
+      for (const img of pagesToProcess) {
+        const prepped = await preprocessImage(img);
+        try {
+          const text = await ocrWithTesseract(prepped, { psm });
+          fullText += '\n' + text;
+        } finally {
+          // אם יצרנו קובץ ביניים (PNG), מחק אותו. אם זה קובץ המקור (PPM/PDF), אל תמחק.
+          if (prepped !== img) {
+            await fs.unlink(prepped).catch(() => {});
+          }
+        }
+      }
+
+      if (!fullText.trim()) {
+        // אין טקסט מה‑OCR בפס זה – נמשיך לפס הבא
+        // eslint-disable-next-line no-console
+        console.warn('[payslipOcr] OCR produced empty text', { sourcePath: abs, psm });
+        continue;
+      }
+
+      const data = extractPayslipFinancialEN(fullText, { sourcePath: abs });
+      const summary = buildPayslipSummary(data, fullText);
+      if (summary) {
+        data.summary = summary;
+      }
+      // eslint-disable-next-line no-console
+      console.log('[payslipOcr] extractPayslipFile(ocr candidate)', {
+        sourcePath: abs,
+        psm,
+        summary: data.summary,
+        salary: data.salary,
+        parties: data.parties,
+        quality: data.quality,
+        rawPreview: fullText.slice(0, 2000),
+      });
+      data.raw = {
+        ...data.raw,
+        rawText: fullText,
+        extractionMethod,
+      };
+      candidates.push({ psm, data });
+    } catch (err) {
+      lastOcrError = err;
+      // eslint-disable-next-line no-console
+      console.warn('[payslipOcr] OCR pass failed', {
+        sourcePath: abs,
+        psm,
+        error: err.message,
+      });
+      // לא מפילים את כל התהליך – ננסה psm אחר או נחזור למועמד הקודם
     }
-    const data = extractPayslipFinancialEN(fullText, { sourcePath: abs });
-    data.raw = {
-      ...data.raw,
-      rawText: fullText,
-      extractionMethod,
-    };
-    candidates.push({ psm, data });
   }
 
-  candidates.sort((a, b) => (b.data.quality.confidence ?? 0) - (a.data.quality.confidence ?? 0));
+  if (!candidates.length) {
+    // כל נסיונות ה‑OCR נכשלו – אם יש שגיאה אחרונה, נזרוק אותה, אחרת נזרוק שגיאה כללית
+    if (lastOcrError) {
+      throw lastOcrError;
+    }
+    throw new Error('OCR failed: no text extracted from any pass.');
+  }
+
+  candidates.sort(
+    (a, b) => (b.data.quality.confidence ?? 0) - (a.data.quality.confidence ?? 0),
+  );
   return candidates[0];
 }
 

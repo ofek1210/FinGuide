@@ -22,6 +22,8 @@ const computeFileChecksum = filePath =>
 // העלאת מסמך
 exports.uploadDocument = async (req, res, next) => {
   try {
+    // eslint-disable-next-line no-console
+    console.log('[documents] uploadDocument req.user =', req.user);
     // בדוק שקובץ הועלה
     if (!req.file) {
       return next(new FileUploadError('לא נבחר קובץ'));
@@ -45,10 +47,13 @@ exports.uploadDocument = async (req, res, next) => {
 
     processDocumentAsync(document._id.toString());
 
-    res.status(201).json({
+    const responseBody = {
       success: true,
       data: serializeDocument(document),
-    });
+    };
+    // eslint-disable-next-line no-console
+    console.log('[documents] uploadDocument response', responseBody);
+    res.status(201).json(responseBody);
   } catch (error) {
     // אם נכשל, מחק את הקובץ
     if (req.file) {
@@ -63,11 +68,12 @@ exports.getDocuments = async (req, res, next) => {
   try {
     const documents = await Document.find({ user: req.user.id }).sort('-uploadedAt');
 
-    res.status(200).json({
+    const responseBody = {
       success: true,
       count: documents.length,
       data: documents.map(serializeDocument),
-    });
+    };
+    res.status(200).json(responseBody);
   } catch (error) {
     next(error);
   }
@@ -85,10 +91,11 @@ exports.getDocument = async (req, res, next) => {
       return next(new NotFoundError('מסמך לא נמצא'));
     }
 
-    res.status(200).json({
+    const responseBody = {
       success: true,
       data: serializeDocument(document),
-    });
+    };
+    res.status(200).json(responseBody);
   } catch (error) {
     next(error);
   }
