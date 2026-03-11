@@ -6,6 +6,8 @@ const { extractPayslipFile } = require('../services/payslipOcr');
 // העלאת מסמך
 exports.uploadDocument = async (req, res, next) => {
   try {
+    // eslint-disable-next-line no-console
+    console.log('[documents] uploadDocument req.user =', req.user);
     // בדוק שקובץ הועלה
     if (!req.file) {
       return next(new FileUploadError('לא נבחר קובץ'));
@@ -30,13 +32,18 @@ exports.uploadDocument = async (req, res, next) => {
       document.status = 'completed';
       document.processedAt = new Date();
       await document.save();
+      // eslint-disable-next-line no-console
+      console.log('[documents] uploadDocument extraction result', {
+        documentId: document._id,
+        summary: document.analysisData?.summary,
+      });
     } catch (ocrError) {
       console.error('❌ Document extraction failed for document', document._id, ocrError);
       document.status = 'failed';
       await document.save().catch(() => {});
     }
 
-    res.status(201).json({
+    const responseBody = {
       success: true,
       data: {
         id: document._id,
@@ -46,7 +53,10 @@ exports.uploadDocument = async (req, res, next) => {
         uploadedAt: document.uploadedAt,
         status: document.status,
       },
-    });
+    };
+    // eslint-disable-next-line no-console
+    console.log('[documents] uploadDocument response', responseBody);
+    res.status(201).json(responseBody);
   } catch (error) {
     // אם נכשל, מחק את הקובץ
     if (req.file) {
@@ -59,15 +69,27 @@ exports.uploadDocument = async (req, res, next) => {
 // קבלת כל המסמכים של משתמש
 exports.getDocuments = async (req, res, next) => {
   try {
-    const documents = await Document.find({ user: req.user.id })
+    const filter = { user: req.user.id };
+    // eslint-disable-next-line no-console
+    console.log('[documents] getDocuments req.user =', req.user);
+    // eslint-disable-next-line no-console
+    console.log('[documents] getDocuments filter =', filter);
+
+    const documents = await Document.find(filter)
       .select('-filePath -__v')
       .sort('-uploadedAt');
 
-    res.status(200).json({
+    const responseBody = {
       success: true,
       count: documents.length,
       data: documents,
+    };
+    // eslint-disable-next-line no-console
+    console.log('[documents] getDocuments response', {
+      count: documents.length,
+      firstSummary: documents[0]?.analysisData?.summary,
     });
+    res.status(200).json(responseBody);
   } catch (error) {
     next(error);
   }
@@ -85,10 +107,16 @@ exports.getDocument = async (req, res, next) => {
       return next(new NotFoundError('מסמך לא נמצא'));
     }
 
-    res.status(200).json({
+    const responseBody = {
       success: true,
       data: document,
+    };
+    // eslint-disable-next-line no-console
+    console.log('[documents] getDocument response', {
+      documentId: document._id,
+      summary: document.analysisData?.summary,
     });
+    res.status(200).json(responseBody);
   } catch (error) {
     next(error);
   }
