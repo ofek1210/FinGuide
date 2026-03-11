@@ -8,6 +8,7 @@ import DocumentsPage from "./pages/DocumentsPage";
 import ScanStatusPage from "./pages/ScanStatusPage";
 import ScanCompletePage from "./pages/ScanCompletePage";
 import PayslipHistoryPage from "./pages/PayslipHistoryPage";
+import PayslipDetailPage from "./pages/PayslipDetailPage";
 import AssistantPage from "./pages/AssistantPage";
 import FindingsPage from "./pages/FindingsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -15,6 +16,7 @@ import StatusPage from "./pages/StatusPage";
 import HelpPage from "./pages/HelpPage";
 import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import DocumentDetailsPage from "./pages/DocumentDetailsPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
@@ -52,6 +54,7 @@ export default function App() {
             </RequireGuest>
           }
         />
+        <Route path={APP_ROUTES.resetPassword} element={<ResetPasswordPage />} />
         <Route
           path={APP_ROUTES.dashboard}
           element={
@@ -125,7 +128,7 @@ export default function App() {
           }
         />
         <Route
-          path="/documents/scan"
+          path={APP_ROUTES.documentsScan}
           element={
             <RequireAuth>
               <ScanStatusPage />
@@ -133,7 +136,7 @@ export default function App() {
           }
         />
         <Route
-          path="/documents/scan/complete"
+          path={APP_ROUTES.documentsScanComplete}
           element={
             <RequireAuth>
               <ScanCompletePage />
@@ -141,10 +144,18 @@ export default function App() {
           }
         />
         <Route
-          path="/documents/history"
+          path={APP_ROUTES.payslipHistory}
           element={
             <RequireAuth>
               <PayslipHistoryPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/documents/history/:id"
+          element={
+            <RequireAuth>
+              <PayslipDetailPage />
             </RequireAuth>
           }
         />

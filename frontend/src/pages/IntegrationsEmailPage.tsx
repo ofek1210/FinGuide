@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
+import AppFooter from "../components/AppFooter";
 import { APP_ROUTES } from "../types/navigation";
 
 export default function IntegrationsEmailPage() {
@@ -22,6 +23,11 @@ export default function IntegrationsEmailPage() {
           <p>
             בקרוב תוכלו לחבר תיבת דוא״ל, למשוך קבצים אוטומטית ולנתח מסמכים בלי העלאה ידנית.
           </p>
+          <ul className="feature-placeholder-list" dir="rtl">
+            <li>חיבור מאובטח לתיבת Gmail או Outlook</li>
+            <li>משיכה אוטומטית של תלושי שכר וקבצים מצורפים</li>
+            <li>ניתוח ותובנות כמו בהעלאה ידנית</li>
+          </ul>
         </section>
 
         <section className="dashboard-card feature-page-actions">
@@ -40,6 +46,8 @@ export default function IntegrationsEmailPage() {
             עזרה ותמיכה
           </button>
         </section>
+
+        <AppFooter variant="private" />
       </div>
     </div>
   );

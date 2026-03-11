@@ -109,17 +109,18 @@ describe('authController - googleLogin', () => {
     return { req, res };
   };
 
-  it('should return 500 when GOOGLE_CLIENT_ID is missing', async () => {
+  it('should use the shared fallback when GOOGLE_CLIENT_ID is missing', async () => {
     delete process.env.GOOGLE_CLIENT_ID;
+    mockGoogleVerifyIdToken.mockRejectedValue(new Error('invalid token'));
 
     const { req, res } = buildReqRes({ credential: 'fake-token' });
 
     await googleLogin(req, res);
 
-    expect(res.statusCode).toBe(500);
+    expect(res.statusCode).toBe(401);
     expect(res._getJSONData()).toEqual({
       success: false,
-      message: 'Google auth לא הוגדר בשרת',
+      message: 'Google credential לא תקף',
     });
   });
 

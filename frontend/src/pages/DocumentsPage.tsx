@@ -2,6 +2,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/ui/Loader";
+import Toast from "../components/ui/Toast";
+import ToastContainer from "../components/ui/ToastContainer";
+import AppFooter from "../components/AppFooter";
+import PrivateTopbar from "../components/PrivateTopbar";
 import {
   listDocuments,
   uploadDocument,
@@ -9,6 +13,8 @@ import {
   removeDocument,
   type DocumentItem as ApiDocumentItem,
 } from "../api/documents.api";
+import { APP_ROUTES } from "../types/navigation";
+import { getApiErrorMessage } from "../utils/apiErrorMessages";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
 
@@ -50,10 +56,10 @@ const mapApiDocument = (document: ApiDocumentItem): DocumentItem => ({
 
 const statusLabels: Record<DocumentStatus, string> = {
   uploading: "מעלה קובץ...",
-  pending: "הקובץ הועלה - ממתין לעיבוד",
-  processing: "המסמך בעיבוד",
-  completed: "העיבוד הושלם",
-  failed: "העלאת הקובץ נכשלה",
+  pending: "ממתין לעיבוד",
+  processing: "בעיבוד",
+  completed: "הושלם",
+  failed: "נכשל",
 };
 
 interface UploadAreaProps {
@@ -223,10 +229,13 @@ export default function DocumentsPage() {
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const timersRef = useRef<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadDocuments = useCallback(async () => {
+    setIsLoadingList(true);
     const response = await listDocuments();
 
     if (response.success && Array.isArray(response.data)) {
@@ -234,11 +243,22 @@ export default function DocumentsPage() {
       setListError("");
     } else {
       setDocuments([]);
-      setListError(response.message || "לא הצלחנו לטעון את המסמכים.");
+      setListError(
+        getApiErrorMessage(
+          response.message || "לא הצלחנו לטעון את המסמכים.",
+          response.status,
+        ),
+      );
     }
 
     setIsLoadingList(false);
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await loadDocuments();
+    setIsRefreshing(false);
+  }, [loadDocuments]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -332,6 +352,9 @@ export default function DocumentsPage() {
     setDocuments((prev) =>
       prev.map((doc) => (doc.id === tempId ? mapApiDocument(uploadedDoc) : doc)),
     );
+    setToastMessage("המסמך הועלה. הסטטוס יתעדכן בהמשך.");
+    const toastTimer = window.setTimeout(() => setToastMessage(null), 5000);
+    timersRef.current.push(toastTimer);
 
     // רענון הרשימה מהשרת כדי לוודא שהמסמכים מסונכרנים
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -403,37 +426,13 @@ export default function DocumentsPage() {
 
   return (
     <div className="documents-page" dir="rtl">
-      <header className="documents-nav landing-container">
-        <div className="landing-logo">
-          <span className="landing-logo-badge" aria-hidden="true">
-            ✦
-          </span>
-          <span>FinGuide</span>
-        </div>
-        <div className="documents-nav-actions">
-          <button
-            className="landing-secondary"
-            type="button"
-            onClick={() => navigate("/documents/history")}
-          >
-            היסטוריית תלושים
-          </button>
-          <button
-            className="landing-secondary"
-            type="button"
-            onClick={() => navigate("/dashboard")}
-          >
-            חזרה ללוח הבקרה
-          </button>
-        </div>
-      </header>
+      <PrivateTopbar />
 
       <main className="documents-main landing-container">
         <section className="documents-header">
           <h1>מסמכים</h1>
           <p>
-            העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
-            שלב הסריקה יתווסף בהמשך.
+            העלו מסמכי תלוש שכר בפי-די-אף. המסמכים יעברו זיהוי וניתוח אוטומטי ויופיעו בהיסטוריית התלושים.
           </p>
         </section>
 
@@ -451,7 +450,17 @@ export default function DocumentsPage() {
         <section className="documents-list">
           <div className="documents-list-header">
             <h2>המסמכים שלכם</h2>
-            <span>{documents.length} קבצים</span>
+            <div className="documents-list-header-actions">
+              <span>{documents.length} קבצים</span>
+              <button
+                type="button"
+                className="dashboard-hero-action"
+                onClick={() => void handleRefresh()}
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? <Loader /> : "רענן"}
+              </button>
+            </div>
           </div>
           {actionError ? (
             <div className="documents-inline-error">{actionError}</div>
@@ -491,15 +500,23 @@ export default function DocumentsPage() {
             className="landing-primary"
             type="button"
             disabled={!hasUploadedDocuments}
-            onClick={() => navigate("/documents/scan")}
+            onClick={() => navigate(APP_ROUTES.documentsScan)}
           >
-            סריקת הקבצים שהועלו (דמו)
+            מעבר לעיבוד וניתוח המסמכים
           </button>
           <span className="documents-note">
-            שלב הסריקה כרגע במצב דמו (ללא OCR). יופעל לאחר חיבור מנוע זיהוי תווים.
+            המסמכים שהועלו יעברו זיהוי וניתוח ויוצגו במסך היסטוריית התלושים.
           </span>
         </section>
       </main>
+
+      <AppFooter variant="private" />
+
+      <ToastContainer>
+        {toastMessage ? (
+          <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
+        ) : null}
+      </ToastContainer>
     </div>
   );
 }

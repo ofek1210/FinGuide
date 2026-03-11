@@ -16,7 +16,6 @@ const validateEnv = () => {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 10) {
     throw new Error('JWT_SECRET חסר או חלש – הגדר ב-.env (לפחות 10 תווים)');
   }
-
   if (!process.env.MONGODB_URI) {
     throw new Error('MONGODB_URI חסר – הגדר ב-.env');
   }
@@ -25,8 +24,11 @@ const validateEnv = () => {
 // הפעלת השרת
 const startServer = async (port, attempt = 0) => {
   try {
-    validateEnv();
-    await connectDB();
+    // ולידציה וחיבור ל-DB מתבצעים רק בניסיון הראשון
+    if (attempt === 0) {
+      validateEnv();
+      await connectDB();
+    }
 
     app = createApp();
 
@@ -35,12 +37,12 @@ const startServer = async (port, attempt = 0) => {
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
 
-    server.on('error', err => {
+    server.on('error', async err => {
       if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
         const nextPort = port + 1;
         console.warn(`⚠️ Port ${port} in use, trying ${nextPort}...`);
-        // ניסיון מחדש על פורט אחר
-        startServer(nextPort, attempt + 1);
+        // ניסיון מחדש על פורט אחר – מוודאים שההפעלה החוזרת עצמה מטופלת
+        await startServer(nextPort, attempt + 1);
         return;
       }
 
@@ -54,18 +56,12 @@ const startServer = async (port, attempt = 0) => {
 };
 
 const basePort = Number(process.env.PORT) || DEFAULT_PORT;
-// הרצה מיידית כאשר הקובץ נטען
-void startServer(basePort);
+// הרצה מיידית כאשר הקובץ נטען – משאירים את ה-Promise מנוהל דרך ה-catch הפנימי
+startServer(basePort);
 
 process.on('unhandledRejection', err => {
   console.error('❌ Unhandled Rejection:', err);
-  if (server) {
-    server.close(() => {
-      process.exit(1);
-    });
-  } else {
-    process.exit(1);
-  }
+  process.exit(1);
 });
 
 module.exports = {

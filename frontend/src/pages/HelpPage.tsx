@@ -1,23 +1,28 @@
 import { useNavigate } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
+import AppFooter from "../components/AppFooter";
 import { APP_ROUTES } from "../types/navigation";
 
 const faqs = [
   {
     question: "איך מעלים מסמך חדש?",
-    answer: "נכנסים למסך מסמכים, בוחרים קובץ PDF ולוחצים על העלאה.",
+    answer: "נכנסים למסך מסמכים, בוחרים קובץ PDF (עד 10MB) ולוחצים על העלאה. המסמך יופיע ברשימה והסטטוס יתעדכן בהמשך.",
   },
   {
     question: "איזה קבצים נתמכים כרגע?",
     answer: "בשלב זה נתמכים קבצי PDF בלבד.",
   },
   {
+    question: "איך מגיעים למסמכים שלי?",
+    answer: "מהתפריט העליון בחרו \"מסמכים\" או מלוח הבקרה \"צפייה במסמכים\". שם תראו את כל הקבצים שהועלו.",
+  },
+  {
     question: "למה אני לא רואה ממצאים?",
-    answer: "אם אין מסמכים בחשבון, יוצג מצב ריק. אחרי העלאה, יופיעו ממצאים.",
+    answer: "אם אין מסמכים בחשבון, יוצג מצב ריק. אחרי העלאה, יופיעו ממצאים והתובנות במסך \"ממצאים והתראות\".",
   },
   {
     question: "איך מתנתקים?",
-    answer: "מכל מסך מחובר דרך כפתור התנתקות בחלק העליון.",
+    answer: "מכל מסך מחובר לחצו על התמונה/אותיות שלכם בפינה השמאלית ובחרו \"התנתקות\".",
   },
 ] as const;
 
@@ -49,6 +54,13 @@ export default function HelpPage() {
           <button
             className="dashboard-hero-action"
             type="button"
+            onClick={() => navigate(APP_ROUTES.documents)}
+          >
+            מעבר למסמכים
+          </button>
+          <button
+            className="dashboard-hero-action"
+            type="button"
             onClick={() => navigate(APP_ROUTES.settings)}
           >
             מעבר להגדרות
@@ -61,6 +73,8 @@ export default function HelpPage() {
             מצב מערכת
           </button>
         </section>
+
+        <AppFooter variant="private" />
       </div>
     </div>
   );

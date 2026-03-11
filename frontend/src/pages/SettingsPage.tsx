@@ -3,13 +3,16 @@ import { useNavigate } from "react-router-dom";
 import {
   updateProfile,
   getAvatarDisplayUrl,
-  AVATAR_STORAGE_KEY,
+  resolveAvatarUrl,
+  uploadAvatar,
 } from "../api/profile.api";
 import PrivateTopbar from "../components/PrivateTopbar";
+import AppFooter from "../components/AppFooter";
 import Loader from "../components/ui/Loader";
 import { useAuth } from "../auth/AuthProvider";
 import { APP_ROUTES } from "../types/navigation";
 import { logoutWithConfirm } from "../utils/logout";
+import { changePassword } from "../api/auth.api";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -18,14 +21,25 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("");
   const [createdAt, setCreatedAt] = useState("");
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [emailSaveLoading, setEmailSaveLoading] = useState(false);
+  const [passwordSaveLoading, setPasswordSaveLoading] = useState(false);
   const [error, setError] = useState("");
   const [saveMessage, setSaveMessage] = useState<"success" | "error" | "backend-required" | null>(null);
-  const [fieldError, setFieldError] = useState<{ name?: string }>({});
+  const [emailSaveMessage, setEmailSaveMessage] = useState<"success" | "error" | null>(null);
+  const [passwordSaveMessage, setPasswordSaveMessage] = useState<"success" | "error" | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<{ name?: string; email?: string }>({});
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isLoading = status === "checking";
-  const displayAvatarUrl = avatarPreviewUrl ?? getAvatarDisplayUrl(user ?? null);
+  const displayAvatarUrl = resolveAvatarUrl(avatarPreviewUrl) ?? getAvatarDisplayUrl(user ?? null);
 
   useEffect(() => {
     if (!user) {
@@ -39,22 +53,26 @@ export default function SettingsPage() {
     setFieldError({});
   }, [user]);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      try {
-        localStorage.setItem(AVATAR_STORAGE_KEY, dataUrl);
-        setAvatarPreviewUrl(dataUrl);
-        setSaveMessage(null);
-      } catch {
-        setSaveMessage("error");
-      }
-    };
-    reader.readAsDataURL(file);
     e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    const allowed = ["image/jpeg", "image/jpg", "image/png"];
+    if (!allowed.includes(file.type)) {
+      setAvatarError("רק קבצי JPG או PNG נתמכים.");
+      return;
+    }
+    setAvatarError(null);
+    setAvatarUploading(true);
+    const res = await uploadAvatar(file);
+    setAvatarUploading(false);
+    if (res.success) {
+      if (res.avatarUrl) setAvatarPreviewUrl(res.avatarUrl);
+      await refresh();
+      setSaveMessage("success");
+    } else {
+      setAvatarError(res.message ?? "שגיאה בהעלאת התמונה.");
+    }
   };
 
   const handleSave = async () => {
@@ -87,6 +105,95 @@ export default function SettingsPage() {
     }
   };
 
+  const handleEmailSave = async () => {
+    setEmailSaveMessage(null);
+    setFieldError((prev) => ({ ...prev, email: undefined }));
+    setEmailSaveLoading(true);
+
+    const trimmedEmail = email.trim();
+    const res = await updateProfile({ email: trimmedEmail });
+
+    setEmailSaveLoading(false);
+
+    if (res.success && res.data?.user) {
+      setEmail(res.data.user.email);
+      refresh();
+      setEmailSaveMessage("success");
+    } else {
+      const msg = res.message || "שגיאה בעדכון האימייל.";
+      setEmailSaveMessage("error");
+      setError(msg);
+      if (res.errors && Array.isArray(res.errors)) {
+        const emailErr = res.errors.find(
+          (e): e is { field?: string; message?: string } =>
+            typeof e === "object" && e !== null && (e as { field?: string }).field === "email",
+        );
+        if (emailErr && "message" in emailErr) {
+          setFieldError((prev) => ({ ...prev, email: emailErr.message }));
+        }
+      }
+    }
+  };
+
+  const validatePasswordLocally = () => {
+    if (!currentPassword.trim()) {
+      setPasswordError("נא להזין סיסמה נוכחית.");
+      return false;
+    }
+
+    if (!newPassword.trim() || !confirmPassword.trim()) {
+      setPasswordError("נא למלא סיסמה חדשה ואימות סיסמה.");
+      return false;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("הסיסמאות אינן תואמות.");
+      return false;
+    }
+
+    if (newPassword.length < 6) {
+      setPasswordError("סיסמה חייבת להיות לפחות 6 תווים.");
+      return false;
+    }
+
+    const complexityRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+    if (!complexityRegex.test(newPassword)) {
+      setPasswordError("סיסמה חייבת להכיל אות גדולה, אות קטנה ומספר.");
+      return false;
+    }
+
+    setPasswordError(null);
+    return true;
+  };
+
+  const handlePasswordChange = async () => {
+    setPasswordSaveMessage(null);
+    setPasswordError(null);
+
+    const isValid = validatePasswordLocally();
+    if (!isValid) return;
+
+    setPasswordSaveLoading(true);
+
+    const response = await changePassword(currentPassword, newPassword);
+
+    setPasswordSaveLoading(false);
+
+    if (response.success) {
+      setPasswordSaveMessage("success");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      return;
+    }
+
+    setPasswordSaveMessage("error");
+    setPasswordError(
+      response.message ||
+        "שגיאה בשינוי הסיסמה. ודאו שהסיסמה הנוכחית נכונה ושהסיסמה החדשה עומדת בכללים.",
+    );
+  };
+
   const handleLogout = () => {
     logoutWithConfirm(navigate);
   };
@@ -107,7 +214,7 @@ export default function SettingsPage() {
         )}
         {saveMessage === "backend-required" && (
           <div className="settings-banner settings-banner-info">
-            נדרש מהבאק: עדכון פרופיל (PATCH /api/auth/me) והעלאת תמונת פרופיל. בינתיים השם נשמר מקומית והתמונה מוצגת מדמו.
+            נדרש טיפול שרת נוסף כדי לשמור את השינויים שביקשתם.
           </div>
         )}
         {saveMessage === "error" && (
@@ -139,20 +246,28 @@ export default function SettingsPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/jpg,image/png"
                   className="dashboard-upload-input"
                   aria-label="בחירת תמונת פרופיל"
                   onChange={handleAvatarChange}
+                  disabled={avatarUploading}
                 />
                 <button
                   type="button"
                   className="dashboard-hero-action"
+                  disabled={avatarUploading}
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={avatarUploading}
                 >
-                  בחירת תמונה
+                  {avatarUploading ? "מעלה..." : "בחירת תמונה"}
                 </button>
+                {avatarError && (
+                  <p className="settings-avatar-note settings-avatar-error" role="alert">
+                    {avatarError}
+                  </p>
+                )}
                 <p className="settings-avatar-note">
-                  התמונה נשמרת מקומית (דמו). נדרש מהבאק: endpoint להעלאת Avatar.
+                  JPG או PNG, עד 2MB. התמונה נשמרת בשרת.
                 </p>
               </div>
 
@@ -171,25 +286,163 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              <div className="settings-field">
-                <label htmlFor="settings-email">אימייל</label>
-                <input
-                  id="settings-email"
-                  type="email"
-                  value={email}
-                  readOnly
-                  className="settings-input settings-input-readonly"
-                  dir="ltr"
-                />
-                <p className="settings-field-note">שינוי אימייל אינו נתמך כרגע.</p>
-              </div>
-
               <div className="settings-meta">
                 <span>נוצר בתאריך</span>
                 <strong>{createdAt ? new Date(createdAt).toLocaleDateString("he-IL") : "—"}</strong>
               </div>
             </div>
           )}
+        </section>
+
+        <section className="dashboard-card feature-page-grid">
+          <div className="settings-form">
+            <h2 className="feature-card-title">שינוי אימייל</h2>
+            <p className="feature-card-subtitle">
+              עדכון כתובת האימייל אליה תקבלו התראות ומסמכים. הפעולה דורשת התחברות פעילה.
+            </p>
+
+            {emailSaveMessage === "success" && (
+              <div className="settings-banner settings-banner-success">
+                האימייל עודכן בהצלחה.
+              </div>
+            )}
+            {emailSaveMessage === "error" && (
+              <div className="settings-banner settings-banner-error">
+                שגיאה בעדכון האימייל. נסו שוב.
+              </div>
+            )}
+
+            <div className="settings-field">
+              <label htmlFor="settings-email">אימייל</label>
+              <input
+                id="settings-email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setEmailSaveMessage(null);
+                  setFieldError((prev) => ({ ...prev, email: undefined }));
+                }}
+                className="settings-input"
+                dir="ltr"
+              />
+              {fieldError.email && (
+                <span className="settings-field-error">{fieldError.email}</span>
+              )}
+            </div>
+
+            <div className="feature-page-actions">
+              <button
+                className="dashboard-hero-action"
+                type="button"
+                disabled={emailSaveLoading}
+                onClick={handleEmailSave}
+              >
+                {emailSaveLoading ? "שומר..." : "שמירת אימייל"}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="dashboard-card feature-page-grid">
+          <div className="settings-form">
+            <h2 className="feature-card-title">שינוי סיסמה</h2>
+            <p className="feature-card-subtitle">
+              עדכון סיסמת ההתחברות שלכם.
+            </p>
+            <div className="settings-password-toggle-wrap">
+              <button
+                className="settings-password-toggle"
+                type="button"
+                onClick={() => setShowPasswords((prev) => !prev)}
+                aria-label={showPasswords ? "הסתר סיסמאות" : "הצג סיסמאות"}
+              >
+                {showPasswords ? "הסתר סיסמאות" : "הצג סיסמאות"}
+              </button>
+            </div>
+
+            {passwordSaveMessage === "success" && (
+              <div className="settings-banner settings-banner-success">
+                הסיסמה עודכנה בהצלחה.
+              </div>
+            )}
+            {passwordSaveMessage === "error" && (
+              <div className="settings-banner settings-banner-error">
+                לא הצלחנו לעדכן את הסיסמה. בדקו את הפרטים ונסו שוב.
+              </div>
+            )}
+
+            <div className="settings-field">
+              <label htmlFor="settings-current-password">סיסמה נוכחית</label>
+              <input
+                id="settings-current-password"
+                type={showPasswords ? "text" : "password"}
+                value={currentPassword}
+                onChange={(e) => {
+                  setCurrentPassword(e.target.value);
+                  setPasswordSaveMessage(null);
+                  setPasswordError(null);
+                }}
+                className="settings-input"
+                dir="ltr"
+              />
+              <p className="settings-field-note">
+                חובה לכל המשתמשים לצורך שינוי הסיסמה.
+              </p>
+            </div>
+
+            <div className="settings-field">
+              <label htmlFor="settings-new-password">סיסמה חדשה</label>
+              <input
+                id="settings-new-password"
+                type={showPasswords ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  setPasswordSaveMessage(null);
+                  setPasswordError(null);
+                }}
+                className="settings-input"
+                dir="ltr"
+              />
+            </div>
+
+            <div className="settings-field">
+              <label htmlFor="settings-confirm-password">אימות סיסמה חדשה</label>
+              <input
+                id="settings-confirm-password"
+                type={showPasswords ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  setPasswordSaveMessage(null);
+                  setPasswordError(null);
+                }}
+                className="settings-input"
+                dir="ltr"
+              />
+              <p className="settings-field-note">
+                הסיסמה חייבת להיות לפחות 6 תווים, ולכלול אות גדולה, אות קטנה ומספר.
+              </p>
+            </div>
+
+            {passwordError && (
+              <div className="settings-field-error" style={{ marginTop: "0.5rem" }}>
+                {passwordError}
+              </div>
+            )}
+
+            <div className="feature-page-actions">
+              <button
+                className="dashboard-hero-action"
+                type="button"
+                disabled={passwordSaveLoading}
+                onClick={handlePasswordChange}
+              >
+                {passwordSaveLoading ? "מעדכן..." : "שינוי סיסמה"}
+              </button>
+            </div>
+          </div>
         </section>
 
         <section className="dashboard-card feature-page-actions">
@@ -212,6 +465,8 @@ export default function SettingsPage() {
             התנתקות
           </button>
         </section>
+
+        <AppFooter variant="private" />
       </div>
     </div>
   );

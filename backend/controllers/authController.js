@@ -1,10 +1,87 @@
+const fs = require('fs/promises');
+const path = require('path');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
+const sharp = require('sharp');
+const convertHeic = require('heic-convert');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
-const { AuthError } = require('../utils/appErrors');
+const { AuthError, FileUploadError } = require('../utils/appErrors');
+const { sendPasswordResetEmail } = require('../services/mailService');
+const {
+  hashResetToken,
+  createPasswordResetToken,
+  buildPasswordResetUrl,
+} = require('../services/passwordResetService');
 
 const googleClient = new OAuth2Client();
+const PROFILE_IMAGES_DIR = path.join(__dirname, '..', 'uploads', 'profile-images');
+const SHARED_GOOGLE_CLIENT_ID =
+  '757872744940-rvibdtmd65cif13ia19tm78npjdn8i7l.apps.googleusercontent.com';
+const PASSWORD_RESET_SUCCESS_MESSAGE =
+  'אם החשבון קיים, שלחנו קישור לאיפוס סיסמה.';
+
+const buildCurrentUserResponse = user => ({
+  success: true,
+  data: {
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl || null,
+      createdAt: user.createdAt,
+    },
+  },
+});
+
+const deleteStoredProfileImage = async avatarUrl => {
+  if (!avatarUrl || typeof avatarUrl !== 'string') {
+    return;
+  }
+
+  const normalizedPrefix = '/uploads/profile-images/';
+  if (!avatarUrl.startsWith(normalizedPrefix)) {
+    return;
+  }
+
+  const filename = path.basename(avatarUrl);
+  const targetPath = path.join(PROFILE_IMAGES_DIR, filename);
+  const relativeToProfileDir = path.relative(PROFILE_IMAGES_DIR, targetPath);
+
+  if (
+    relativeToProfileDir.startsWith('..')
+    || path.isAbsolute(relativeToProfileDir)
+  ) {
+    return;
+  }
+
+  await fs.unlink(targetPath).catch(() => {});
+};
+
+const isHeicUpload = file => {
+  if (!file) {
+    return false;
+  }
+
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  const mime = String(file.mimetype || '').toLowerCase();
+
+  return ext === '.heic'
+    || ext === '.heif'
+    || mime === 'image/heic'
+    || mime === 'image/heif';
+};
+
+const normalizeProfileImageBuffer = async file => {
+  if (isHeicUpload(file)) {
+    return convertHeic({
+      buffer: file.buffer,
+      format: 'PNG',
+    });
+  }
+
+  return file.buffer;
+};
 
 /**
  * יצירת JWT Token
@@ -121,7 +198,7 @@ const googleLogin = async (req, res, next) => {
     });
   }
 
-  const googleClientId = process.env.GOOGLE_CLIENT_ID;
+  const googleClientId = process.env.GOOGLE_CLIENT_ID || SHARED_GOOGLE_CLIENT_ID;
   if (!googleClientId) {
     return res.status(500).json({
       success: false,
@@ -205,19 +282,184 @@ const googleLogin = async (req, res, next) => {
  * @access  Private (דורש JWT)
  */
 const getMe = async (req, res) => {
-  // המשתמש כבר נטען על ידי middleware protect
-  res.json({
-    success: true,
-    data: {
-      user: {
-        id: req.user._id,
-        name: req.user.name,
-        email: req.user.email,
-        avatarUrl: req.user.avatarUrl || null,
-        createdAt: req.user.createdAt,
-      },
-    },
-  });
+  res.json(buildCurrentUserResponse(req.user));
+};
+
+/**
+ * @route   PATCH /api/auth/me
+ * @desc    עדכון פרטי משתמש מחובר (שם, אימייל)
+ * @access  Private (דורש JWT)
+ */
+const updateMe = async (req, res, next) => {
+  try {
+    const { name, email } = req.body || {};
+
+    const updates = {};
+
+    if (typeof name === 'string' && name.trim()) {
+      updates.name = name.trim();
+    }
+
+    if (typeof email === 'string' && email.trim()) {
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const existingUser = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: req.user._id },
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'משתמש עם אימייל זה כבר קיים',
+        });
+      }
+
+      updates.email = normalizedEmail;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'לא סופקו שדות לעדכון',
+      });
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'משתמש לא נמצא',
+      });
+    }
+
+    const response = buildAuthResponse(user);
+    return res.json(response);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * @route   POST /api/auth/change-password
+ * @desc    שינוי סיסמה למשתמש מחובר
+ * @access  Private
+ */
+const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'משתמש לא נמצא',
+      });
+    }
+
+    if (!currentPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'סיסמה נוכחית היא שדה חובה',
+      });
+    }
+
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        message: 'סיסמה נוכחית שגויה',
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'הסיסמה עודכנה בהצלחה',
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+
+    if (!user) {
+      return res.status(200).json({
+        success: true,
+        message: PASSWORD_RESET_SUCCESS_MESSAGE,
+      });
+    }
+
+    const resetToken = createPasswordResetToken();
+    user.passwordResetTokenHash = resetToken.tokenHash;
+    user.passwordResetExpiresAt = resetToken.expiresAt;
+
+    try {
+      await user.save();
+
+      const resetUrl = buildPasswordResetUrl(resetToken.rawToken);
+      await sendPasswordResetEmail({
+        to: user.email,
+        resetUrl,
+        expiresInMinutes: resetToken.expiresInMinutes,
+      });
+    } catch (error) {
+      user.passwordResetTokenHash = null;
+      user.passwordResetExpiresAt = null;
+      await user.save().catch(() => {});
+      return next(error);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: PASSWORD_RESET_SUCCESS_MESSAGE,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+    const tokenHash = hashResetToken(token.trim());
+
+    const user = await User.findOne({
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpiresAt: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'קישור האיפוס לא תקף או שפג תוקפו',
+      });
+    }
+
+    user.password = newPassword;
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpiresAt = null;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'הסיסמה עודכנה בהצלחה',
+    });
+  } catch (error) {
+    return next(error);
+  }
 };
 
 /**
@@ -234,23 +476,46 @@ const updateProfileImage = async (req, res, next) => {
       });
     }
 
-    const relativePath = `/uploads/profile-images/${req.file.filename}`;
+    const generatedFilename = `${crypto.randomUUID()}.png`;
+    const relativePath = `/uploads/profile-images/${generatedFilename}`;
+    const outputPath = path.join(PROFILE_IMAGES_DIR, generatedFilename);
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { avatarUrl: relativePath },
-      { new: true }
-    );
+    try {
+      const inputBuffer = await normalizeProfileImageBuffer(req.file);
 
-    if (!user) {
+      await sharp(inputBuffer)
+        .rotate()
+        .resize(512, 512, {
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .png({ compressionLevel: 9 })
+        .toFile(outputPath);
+    } catch (error) {
+      throw new FileUploadError(
+        'לא הצלחנו לעבד את קובץ התמונה. נסו קובץ JPG, PNG, WEBP או HEIC.'
+      );
+    }
+
+    const existingUser = await User.findById(req.user._id);
+
+    if (!existingUser) {
+      await fs.unlink(outputPath).catch(() => {});
       return res.status(404).json({
         success: false,
         message: 'משתמש לא נמצא',
       });
     }
 
-    const response = buildAuthResponse(user);
-    return res.status(200).json(response);
+    const previousAvatarUrl = existingUser.avatarUrl;
+    existingUser.avatarUrl = relativePath;
+    await existingUser.save();
+    await deleteStoredProfileImage(previousAvatarUrl);
+
+    return res.status(200).json({
+      ...buildCurrentUserResponse(existingUser),
+      message: 'תמונת הפרופיל עודכנה בהצלחה',
+    });
   } catch (error) {
     return next(error);
   }
@@ -261,5 +526,9 @@ module.exports = {
   login,
   googleLogin,
   getMe,
+  updateMe,
+  changePassword,
+  forgotPassword,
+  resetPassword,
   updateProfileImage,
 };

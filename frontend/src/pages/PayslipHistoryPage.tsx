@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PayslipEmptyState from "../components/payslip-history/PayslipEmptyState";
 import PayslipErrorState from "../components/payslip-history/PayslipErrorState";
@@ -7,26 +7,52 @@ import PayslipHistoryLayout from "../components/payslip-history/PayslipHistoryLa
 import PayslipList from "../components/payslip-history/PayslipList";
 import PayslipLoadingState from "../components/payslip-history/PayslipLoadingState";
 import PayslipStats from "../components/payslip-history/PayslipStats";
+import { downloadDocument } from "../api/documents.api";
 import { usePayslipHistory } from "../hooks/usePayslipHistory";
 import type { PayslipHistoryItem } from "../types/payslip";
+import { APP_ROUTES } from "../types/navigation";
 import { formatCurrencyILS, formatNumber, formatShortDate } from "../utils/formatters";
 
 export default function PayslipHistoryPage() {
   const navigate = useNavigate();
   const { data, isLoading, error, reload } = usePayslipHistory();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const handleBackToDashboard = useCallback(() => {
-    navigate("/dashboard");
+    navigate(APP_ROUTES.dashboard);
   }, [navigate]);
 
   const handleUploadNew = useCallback(() => {
-    navigate("/documents");
+    navigate(APP_ROUTES.documents);
   }, [navigate]);
 
-  const handleDownload = useCallback((item: PayslipHistoryItem) => {
-    if (!item.downloadUrl) return;
-    window.open(item.downloadUrl, "_blank", "noopener");
+  const handleDownload = useCallback(async (item: PayslipHistoryItem) => {
+    if (!item.id) return;
+    setDownloadError(null);
+    setDownloadingId(item.id);
+    const response = await downloadDocument(item.id);
+    setDownloadingId(null);
+    if (!response.success || !response.blob) {
+      setDownloadError(response.message ?? "שגיאה בהורדת המסמך.");
+      return;
+    }
+    const url = window.URL.createObjectURL(response.blob);
+    const link = window.document.createElement("a");
+    link.href = url;
+    link.download = response.filename ?? item.periodLabel ?? "document.pdf";
+    window.document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
   }, []);
+
+  const handleSelectPayslip = useCallback(
+    (item: PayslipHistoryItem) => {
+      navigate(`${APP_ROUTES.payslipHistory}/${item.id}`);
+    },
+    [navigate]
+  );
 
   if (isLoading) {
     return (
@@ -60,9 +86,14 @@ export default function PayslipHistoryPage() {
         <div>
           <h1>היסטוריית תלושים</h1>
           <p>צפייה והשוואה בין תלושי שכר קודמים</p>
-          <p className="payslip-demo-note">נתוני דמו בלבד (ללא חיבור API).</p>
         </div>
       </section>
+
+      {downloadError ? (
+        <div className="payslip-inline-error" role="alert">
+          {downloadError}
+        </div>
+      ) : null}
 
       <PayslipStats
         averageNet={formatCurrencyILS(stats.averageNet)}
@@ -73,8 +104,10 @@ export default function PayslipHistoryPage() {
       <PayslipList
         items={items}
         onDownload={handleDownload}
-        formatCurrency={formatCurrencyILS}
+        onSelect={handleSelectPayslip}
+        formatCurrency={(v) => (v != null ? formatCurrencyILS(v) : "לא זוהה")}
         formatDate={formatShortDate}
+        downloadingId={downloadingId}
       />
 
       <PayslipFooterAction onUploadNew={handleUploadNew} />
