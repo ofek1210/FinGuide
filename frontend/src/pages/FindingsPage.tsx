@@ -25,7 +25,10 @@ const findingSeverityLabels: Record<FindingSeverity, string> = {
 
 const SEVERITY_ORDER: FindingSeverity[] = ["warning", "info"];
 
-/** ערכי דמו בהתאם ל-Figma Pension Insights – יחוברו לבאק בהמשך */
+/**
+ * Placeholder KPIs until backend provides a dedicated pension/KPI endpoint.
+ * Findings from GET /api/findings are shown in "המלצות AI" below (title + details).
+ */
 const DEMO_KPIS = [
   { label: "שנים לפרישה", value: "33", icon: Calendar },
   { label: "תחזית בגיל 65", value: "₪2.1M", icon: PiggyBank },
@@ -33,6 +36,7 @@ const DEMO_KPIS = [
   { label: "יתרה נוכחית", value: "₪93,000", icon: BarChart3 },
 ] as const;
 
+/** Fallback when GET /api/findings returns no findings. */
 const DEMO_RECOMMENDATIONS = [
   { title: "הגדלת הפקדות", text: "הוספת ₪190/חודש תגדיל את יתרת הפרישה ב-₪324,000" },
   { title: "בדרך הנכונה", text: "את בדרך להשגת יעד הפרישה שלך של ₪1.9 מיליון" },
@@ -167,11 +171,14 @@ export default function FindingsPage() {
               </div>
             </section>
 
-            <section className="pension-card pension-recommendations-card">
+            <section className="pension-card pension-recommendations-card" aria-label="ממצאים מהבקאנד">
               <div className="pension-card-head">
                 <Lightbulb className="pension-card-head-icon" aria-hidden="true" />
                 <h2 className="pension-card-title">המלצות AI</h2>
               </div>
+              <p className="pension-card-desc" style={{ marginTop: "0.25rem", marginBottom: "0.5rem" }}>
+                ממצאים מ-GET /api/findings (אזהרות ומידע). ללא ממצאים – מוצגות המלצות דמו.
+              </p>
               {isLoading ? (
                 <div className="pension-recommendations-loading">
                   <Loader />

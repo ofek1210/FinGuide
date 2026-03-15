@@ -5,7 +5,15 @@ import { resetPassword } from "../api/auth.api";
 import Loader from "../components/ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
 
+/**
+ * This page expects the token in the URL query: ?token=...
+ * Backend sends password-reset emails with links of the form:
+ * {APP_PUBLIC_URL or CLIENT_URL}/reset-password?token=...
+ */
+
 const PASSWORD_HINT = "לפחות 6 תווים, עם אות גדולה, אות קטנה ומספר.";
+const PASSWORD_MIN_LENGTH = 6;
+const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate();
@@ -29,6 +37,15 @@ export default function ResetPasswordPage() {
 
     if (newPassword !== confirmPassword) {
       setError("אימות הסיסמה אינו תואם.");
+      return;
+    }
+
+    if (newPassword.length < PASSWORD_MIN_LENGTH) {
+      setError("סיסמה חייבת להיות לפחות 6 תווים.");
+      return;
+    }
+    if (!PASSWORD_COMPLEXITY_REGEX.test(newPassword)) {
+      setError("סיסמה חייבת להכיל אות גדולה, אות קטנה ומספר.");
       return;
     }
 

@@ -2,30 +2,14 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import Loader from "../components/ui/Loader";
-import { getDocument, type DocumentItem } from "../api/documents.api";
+import {
+  getDocument,
+  type DocumentItem,
+  type PayslipSummaryFromBackend,
+} from "../api/documents.api";
 
-type PayslipSummary = {
-  employeeName: string | null;
-  date: string | null;
-  grossSalary: number | null;
-  netSalary: number | null;
-  vacationDays: number | null;
-  sickDays: number | null;
-  pensionEmployee: number | null;
-  pensionEmployer: number | null;
-  trainingFundEmployee: number | null;
-  trainingFundEmployer: number | null;
-  tax: number | null;
-  nationalInsurance: number | null;
-  healthInsurance: number | null;
-  jobPercentage: number | null;
-  workingDays: number | null;
-  workingHours: number | null;
-};
-
-function getSummary(doc: DocumentItem | null): PayslipSummary | null {
-  const summary = (doc?.analysisData as { summary?: PayslipSummary } | undefined)?.summary;
-  return summary ?? null;
+function getSummary(doc: DocumentItem | null): PayslipSummaryFromBackend | null {
+  return doc?.analysisData?.summary ?? null;
 }
 
 function formatValue(value: unknown): string {
