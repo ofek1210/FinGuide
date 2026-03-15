@@ -1,11 +1,32 @@
 import { apiBlob, apiJson } from "./client";
 
+/** Matches backend: pending, processing, completed, failed. "uploaded" is frontend-only for just-uploaded row. */
 export type DocumentStatus =
   | "uploaded"
   | "pending"
   | "processing"
   | "completed"
   | "failed";
+
+/** Matches backend payslipOcr buildPayslipSummary output (analysisData.summary). */
+export type PayslipSummaryFromBackend = {
+  employeeName?: string | null;
+  date?: string | null;
+  grossSalary?: number | null;
+  netSalary?: number | null;
+  vacationDays?: number | null;
+  sickDays?: number | null;
+  pensionEmployee?: number | null;
+  pensionEmployer?: number | null;
+  trainingFundEmployee?: number | null;
+  trainingFundEmployer?: number | null;
+  tax?: number | null;
+  nationalInsurance?: number | null;
+  healthInsurance?: number | null;
+  jobPercentage?: number | null;
+  workingDays?: number | null;
+  workingHours?: number | null;
+};
 
 export interface DocumentItem {
   _id: string;
@@ -15,7 +36,7 @@ export interface DocumentItem {
   uploadedAt?: string;
   processedAt?: string;
   mimeType?: string;
-  analysisData?: Record<string, unknown>;
+  analysisData?: { summary?: PayslipSummaryFromBackend; [k: string]: unknown };
   createdAt?: string;
   updatedAt?: string;
 }

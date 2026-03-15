@@ -39,12 +39,22 @@ const toApiError = (
   fallbackMessage: string,
 ): ApiError => {
   const p = payload as ApiErrorPayload | null;
+  const firstError =
+    p &&
+    Array.isArray(p.errors) &&
+    p.errors[0] &&
+    typeof p.errors[0] === "object" &&
+    p.errors[0] !== null
+      ? (p.errors[0] as { message?: string; msg?: string }).message ??
+        (p.errors[0] as { message?: string; msg?: string }).msg
+      : undefined;
   const message =
     (p && typeof p.message === "string" && p.message) ||
     (p &&
       p.error &&
       typeof p.error.message === "string" &&
       p.error.message) ||
+    (typeof firstError === "string" ? firstError : undefined) ||
     fallbackMessage;
 
   const type =
@@ -139,6 +149,7 @@ export async function apiJson<T>(
 
   if (response.status === 401) {
     clearSession();
+    // AuthProvider listens to auth change and sets guest; RequireAuth redirects to login.
   }
 
   if (!response.ok) {
@@ -212,6 +223,7 @@ export async function apiBlob(
 
   if (response.status === 401) {
     clearSession();
+    // AuthProvider redirects to login via RequireAuth.
   }
 
   const contentType = response.headers.get("content-type") ?? "";
