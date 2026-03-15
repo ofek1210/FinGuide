@@ -38,3 +38,9 @@ export const formatFileSize = (bytes?: number) => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
 };
+
+/** Format percent (e.g. 75 → "75%") */
+export const formatPercent = (value?: number | null) => {
+  if (value === undefined || value === null) return "—";
+  return `${Number(value)}%`;
+};

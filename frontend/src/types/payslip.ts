@@ -34,6 +34,16 @@ export type PayslipDetail = {
   employerName?: string;
   employeeName?: string;
   employeeId?: string;
+  /** אחוז משרה (0–100) */
+  jobPercent?: number | null;
+  /** ימי עבודה בחודש */
+  workingDays?: number | null;
+  /** שעות עבודה */
+  workingHours?: number | null;
+  /** יתרת/ימי חופשה */
+  vacationDays?: number | null;
+  /** יתרת/ימי מחלה */
+  sickDays?: number | null;
   earnings: PayslipLineItem[];
   deductions: PayslipLineItem[];
   grossSalary: number | null;
