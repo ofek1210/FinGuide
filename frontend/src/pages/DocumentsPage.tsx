@@ -690,7 +690,11 @@ export default function DocumentsPage() {
 
       <ToastContainer>
         {toastMessage ? (
-          <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
+          <Toast
+            message={toastMessage}
+            variant="success"
+            onDismiss={() => setToastMessage(null)}
+          />
         ) : null}
       </ToastContainer>
     </div>
