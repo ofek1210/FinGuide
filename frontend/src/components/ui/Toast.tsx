@@ -1,8 +1,16 @@
+export type ToastVariant = "error" | "warning" | "success";
+
 interface ToastProps {
   message: string;
-  variant?: "error" | "success";
+  variant?: ToastVariant;
   onDismiss?: () => void;
 }
+
+const variantToClass: Record<ToastVariant, string> = {
+  error: "toast--error",
+  warning: "toast--warning",
+  success: "toast--success",
+};
 
 export default function Toast({
   message,
@@ -11,8 +19,9 @@ export default function Toast({
 }: ToastProps) {
   return (
     <div
-      className={`toast ${variant === "success" ? "auth-success" : "auth-error"}`}
+      className={`toast ${variantToClass[variant]}`}
       role="status"
+      aria-live="polite"
       onClick={onDismiss}
     >
       {message}
