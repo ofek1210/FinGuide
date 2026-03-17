@@ -1,12 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Download, FileText, Building2, User, Calendar, Hash } from "lucide-react";
+import {
+  Download,
+  FileText,
+  Building2,
+  User,
+  Calendar,
+  Hash,
+  Briefcase,
+  Sun,
+  Heart,
+} from "lucide-react";
 import PayslipHistoryLayout from "../components/payslip-history/PayslipHistoryLayout";
 import { downloadDocument } from "../api/documents.api";
 import { fetchPayslipDetail } from "../services/payslip.service";
 import type { PayslipDetail } from "../types/payslip";
 import { APP_ROUTES } from "../types/navigation";
-import { formatCurrencyILS, formatLongDate } from "../utils/formatters";
+import {
+  formatCurrencyILS,
+  formatLongDate,
+  formatPercent,
+  formatNumber,
+} from "../utils/formatters";
 
 export default function PayslipDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -126,27 +141,86 @@ export default function PayslipDetailPage() {
           <li>
             <Building2 aria-hidden="true" />
             <span className="payslip-detail-info-label">מעסיק</span>
-            <span className="payslip-detail-info-value">{payslip.employerName ?? "לא זוהה"}</span>
+            <span className="payslip-detail-info-value">{payslip.employerName ?? "—"}</span>
           </li>
           <li>
             <User aria-hidden="true" />
             <span className="payslip-detail-info-label">שם העובד</span>
-            <span className="payslip-detail-info-value">{payslip.employeeName ?? "לא זוהה"}</span>
+            <span className="payslip-detail-info-value">{payslip.employeeName ?? "—"}</span>
           </li>
           <li>
             <Hash aria-hidden="true" />
             <span className="payslip-detail-info-label">ת.ז.</span>
-            <span className="payslip-detail-info-value">{payslip.employeeId ?? "לא זוהה"}</span>
+            <span className="payslip-detail-info-value">{payslip.employeeId ?? "—"}</span>
           </li>
           <li>
             <Calendar aria-hidden="true" />
-            <span className="payslip-detail-info-label">תאריך תשלום</span>
+            <span className="payslip-detail-info-label">תאריך / תקופה</span>
             <span className="payslip-detail-info-value">
-              {payslip.paymentDate ? formatLongDate(payslip.paymentDate) : "לא זוהה"}
+              {payslip.paymentDate
+                ? formatLongDate(payslip.paymentDate)
+                : payslip.periodLabel || "—"}
             </span>
           </li>
         </ul>
       </section>
+
+      {(payslip.jobPercent != null ||
+        payslip.workingDays != null ||
+        payslip.workingHours != null ||
+        payslip.vacationDays != null ||
+        payslip.sickDays != null) && (
+        <section className="payslip-detail-card payslip-detail-info">
+          <h2 className="payslip-detail-card-title">עבודה ויתרות</h2>
+          <ul className="payslip-detail-info-list">
+            {payslip.jobPercent != null && (
+              <li>
+                <Briefcase aria-hidden="true" />
+                <span className="payslip-detail-info-label">אחוז משרה</span>
+                <span className="payslip-detail-info-value">
+                  {formatPercent(payslip.jobPercent)}
+                </span>
+              </li>
+            )}
+            {payslip.workingDays != null && (
+              <li>
+                <Briefcase aria-hidden="true" />
+                <span className="payslip-detail-info-label">ימי עבודה</span>
+                <span className="payslip-detail-info-value">
+                  {formatNumber(payslip.workingDays)}
+                </span>
+              </li>
+            )}
+            {payslip.workingHours != null && (
+              <li>
+                <Briefcase aria-hidden="true" />
+                <span className="payslip-detail-info-label">שעות עבודה</span>
+                <span className="payslip-detail-info-value">
+                  {formatNumber(payslip.workingHours)}
+                </span>
+              </li>
+            )}
+            {payslip.vacationDays != null && (
+              <li>
+                <Sun aria-hidden="true" />
+                <span className="payslip-detail-info-label">ימי חופשה</span>
+                <span className="payslip-detail-info-value">
+                  {formatNumber(payslip.vacationDays)}
+                </span>
+              </li>
+            )}
+            {payslip.sickDays != null && (
+              <li>
+                <Heart aria-hidden="true" />
+                <span className="payslip-detail-info-label">ימי מחלה</span>
+                <span className="payslip-detail-info-value">
+                  {formatNumber(payslip.sickDays)}
+                </span>
+              </li>
+            )}
+          </ul>
+        </section>
+      )}
 
       <div className="payslip-detail-tables">
         {hasEarnings && (
