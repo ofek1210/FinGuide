@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import Loader from "./ui/Loader";
 import { useAuth } from "../auth/AuthProvider";
 import { APP_ROUTES } from "../types/navigation";
@@ -10,6 +10,7 @@ interface GuardProps {
 
 export function RequireAuth({ children }: GuardProps) {
   const auth = useAuth();
+  const location = useLocation();
 
   if (auth.status === "checking") {
     return (
@@ -21,6 +22,12 @@ export function RequireAuth({ children }: GuardProps) {
 
   if (auth.status !== "authenticated") {
     return <Navigate to={APP_ROUTES.login} replace />;
+  }
+
+  const onboardingCompleted = auth.user?.onboardingCompleted;
+  const isOnboardingRoute = location.pathname === APP_ROUTES.onboarding;
+  if (onboardingCompleted === false && !isOnboardingRoute) {
+    return <Navigate to={APP_ROUTES.onboarding} replace />;
   }
 
   return <>{children}</>;

@@ -65,6 +65,8 @@ export async function uploadAvatar(file: File): Promise<{
   success: boolean;
   message?: string;
   avatarUrl?: string | null;
+  status?: number;
+  errors?: unknown[];
 }> {
   const formData = new FormData();
   formData.append("avatar", file);

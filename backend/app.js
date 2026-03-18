@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const documentRoutes = require('./routes/documents');
 const aiRoutes = require('./routes/ai');
 const findingsRoutes = require('./routes/findings');
+const onboardingRoutes = require('./routes/onboarding');
 
 const createApp = () => {
   const app = express();
@@ -69,6 +70,7 @@ const createApp = () => {
   app.use('/api/documents', documentRoutes);
   app.use('/api/ai', aiRoutes);
   app.use('/api/findings', findingsRoutes);
+  app.use('/api/onboarding', onboardingRoutes);
 
   // 404 handler
   app.use((req, res) => {

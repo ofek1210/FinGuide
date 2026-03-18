@@ -40,6 +40,7 @@ export type AuthUser = {
   email: string;
   createdAt?: string;
   avatarUrl?: string;
+  onboardingCompleted?: boolean;
 };
 
 export type ChangePasswordResponse = {
