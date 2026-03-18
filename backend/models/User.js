@@ -47,6 +47,73 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    onboarding: {
+      completed: {
+        type: Boolean,
+        default: false,
+        index: true,
+      },
+      completedAt: {
+        type: Date,
+        default: null,
+      },
+      data: {
+        salaryType: {
+          type: String,
+          enum: ['global', 'hourly'],
+          default: null,
+        },
+        expectedMonthlyGross: {
+          type: Number,
+          default: null,
+          min: 0,
+          max: 500000,
+        },
+        hourlyRate: {
+          type: Number,
+          default: null,
+          min: 0,
+          max: 5000,
+        },
+        expectedMonthlyHours: {
+          type: Number,
+          default: null,
+          min: 0,
+          max: 400,
+        },
+        jobPercentage: {
+          type: Number,
+          default: null,
+          min: 0,
+          max: 100,
+        },
+        isPrimaryJob: {
+          type: Boolean,
+          default: null,
+        },
+        hasMultipleEmployers: {
+          type: Boolean,
+          default: null,
+        },
+        employmentStartDate: {
+          type: String,
+          default: null,
+          trim: true,
+        },
+        hasPension: {
+          type: Boolean,
+          default: null,
+        },
+        hasStudyFund: {
+          type: Boolean,
+          default: null,
+        },
+      },
+      updatedAt: {
+        type: Date,
+        default: null,
+      },
+    },
   },
   {
     timestamps: true, // מוסיף createdAt ו-updatedAt אוטומטית
