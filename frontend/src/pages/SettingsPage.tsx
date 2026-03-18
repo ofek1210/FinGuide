@@ -56,10 +56,9 @@ export default function SettingsPage() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file || !file.type.startsWith("image/")) return;
-    const allowed = ["image/jpeg", "image/jpg", "image/png"];
-    if (!allowed.includes(file.type)) {
-      setAvatarError("רק קבצי JPG או PNG נתמכים.");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("רק קבצי תמונה מורשים להעלאה.");
       return;
     }
     setAvatarError(null);
@@ -71,7 +70,7 @@ export default function SettingsPage() {
       await refresh();
       setSaveMessage("success");
     } else {
-      setAvatarError(res.message ?? "שגיאה בהעלאת התמונה.");
+      setAvatarError(res.message ?? "שגיאה בהעלאת התמונה. נסו קובץ אחר או פנו לתמיכה.");
     }
   };
 
@@ -188,8 +187,13 @@ export default function SettingsPage() {
     }
 
     setPasswordSaveMessage("error");
+    const firstError =
+      response.errors?.[0] && ("message" in response.errors[0]
+        ? response.errors[0].message
+        : (response.errors[0] as { msg?: string }).msg);
     setPasswordError(
-      response.message ||
+      firstError ||
+        response.message ||
         "שגיאה בשינוי הסיסמה. ודאו שהסיסמה הנוכחית נכונה ושהסיסמה החדשה עומדת בכללים.",
     );
   };
@@ -246,7 +250,7 @@ export default function SettingsPage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/jpeg,image/jpg,image/png"
+                  accept="image/*"
                   className="dashboard-upload-input"
                   aria-label="בחירת תמונת פרופיל"
                   onChange={handleAvatarChange}
@@ -266,7 +270,7 @@ export default function SettingsPage() {
                   </p>
                 )}
                 <p className="settings-avatar-note">
-                  JPG או PNG, עד 2MB. התמונה נשמרת בשרת.
+                  תמונה (JPG, PNG או HEIC), עד 2MB. התמונה נשמרת בשרת. הודעות שגיאה מגיעות מהשרת.
                 </p>
               </div>
 

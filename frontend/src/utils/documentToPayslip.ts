@@ -40,6 +40,15 @@ interface DocumentPayslipAnalysis {
     employee_name?: string;
     employee_id?: string;
   };
+  employment?: { job_percent?: number };
+  summary?: {
+    date?: string;
+    jobPercentage?: number;
+    workingDays?: number;
+    workingHours?: number;
+    vacationDays?: number;
+    sickDays?: number;
+  };
 }
 
 function getAnalysisData(doc: DocumentItem): DocumentPayslipAnalysis | null {
@@ -196,6 +205,20 @@ function mapDeductions(analysis: DocumentPayslipAnalysis): PayslipLineItem[] {
 }
 
 // ---------------------------------------------------------------------------
+// Ensure gross >= net (fix OCR/column mix-up where net and gross were swapped)
+// ---------------------------------------------------------------------------
+
+function ensureGrossGteNet(
+  gross: number | undefined | null,
+  net: number | undefined | null,
+): { gross: number | null; net: number | null } {
+  const g = Number.isFinite(gross) ? (gross as number) : null;
+  const n = Number.isFinite(net) ? (net as number) : null;
+  if (g != null && n != null && n > g) return { gross: n, net: g };
+  return { gross: g, net: n };
+}
+
+// ---------------------------------------------------------------------------
 // Document → PayslipHistoryItem
 // ---------------------------------------------------------------------------
 
@@ -204,16 +227,18 @@ export function documentToPayslipItem(doc: DocumentItem, index: number): Payslip
   const month = analysis.period?.month;
   const periodLabel = formatPeriodLabel(month);
   const periodDate = periodMonthToDate(month) || "";
-  const gross = analysis.salary?.gross_total;
-  const net = analysis.salary?.net_payable;
+  const { gross: grossSalary, net: netSalary } = ensureGrossGteNet(
+    analysis.salary?.gross_total,
+    analysis.salary?.net_payable,
+  );
   const isLatest = index === 0;
 
   return {
     id: doc._id,
     periodLabel,
     periodDate,
-    netSalary: Number.isFinite(net) ? (net as number) : null,
-    grossSalary: Number.isFinite(gross) ? (gross as number) : null,
+    netSalary,
+    grossSalary,
     isLatest,
     downloadUrl: null,
   };
@@ -223,24 +248,58 @@ export function documentToPayslipItem(doc: DocumentItem, index: number): Payslip
 // Document → PayslipDetail
 // ---------------------------------------------------------------------------
 
+/** Normalize summary.date or period.month into a YYYY-MM-DD style string for display. */
+function normalizePaymentDate(month?: string, summaryDate?: string): string | undefined {
+  if (summaryDate && /^\d{4}-\d{2}-\d{2}$/.test(summaryDate)) return summaryDate;
+  if (summaryDate && /^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(summaryDate)) {
+    const [d, m, y] = summaryDate.split("/");
+    const year = y!.length === 2 ? `20${y}` : y;
+    return `${year}-${m!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
+  }
+  const fromPeriod = periodMonthToDate(month);
+  return fromPeriod || undefined;
+}
+
 export function documentToPayslipDetail(doc: DocumentItem): PayslipDetail | null {
   if (!isPayslipDocument(doc)) return null;
   const analysis = getAnalysisData(doc)!;
   const month = analysis.period?.month;
-  const gross = analysis.salary?.gross_total;
-  const net = analysis.salary?.net_payable;
+  const { gross, net } = ensureGrossGteNet(
+    analysis.salary?.gross_total,
+    analysis.salary?.net_payable,
+  );
+  const summary = analysis.summary;
+
+  const jobPercent =
+    analysis.employment?.job_percent ??
+    (typeof summary?.jobPercentage === "number" ? summary.jobPercentage : undefined);
+  const workingDays =
+    typeof summary?.workingDays === "number" ? summary.workingDays : undefined;
+  const workingHours =
+    typeof summary?.workingHours === "number" ? summary.workingHours : undefined;
+  const vacationDays =
+    typeof summary?.vacationDays === "number" ? summary.vacationDays : undefined;
+  const sickDays =
+    typeof summary?.sickDays === "number" ? summary.sickDays : undefined;
+  const paymentDate = normalizePaymentDate(month, summary?.date);
 
   return {
     id: doc._id,
     periodLabel: formatPeriodLabel(month),
     periodDate: periodMonthToDate(month) || "",
+    paymentDate,
     employerName: analysis.parties?.employer_name ?? undefined,
     employeeName: analysis.parties?.employee_name ?? undefined,
     employeeId: analysis.parties?.employee_id ?? undefined,
+    jobPercent: jobPercent != null ? jobPercent : null,
+    workingDays: workingDays != null ? workingDays : null,
+    workingHours: workingHours != null ? workingHours : null,
+    vacationDays: vacationDays != null ? vacationDays : null,
+    sickDays: sickDays != null ? sickDays : null,
     earnings: mapEarnings(analysis),
     deductions: mapDeductions(analysis),
-    grossSalary: Number.isFinite(gross) ? (gross as number) : null,
-    netSalary: Number.isFinite(net) ? (net as number) : null,
+    grossSalary: gross,
+    netSalary: net,
     downloadUrl: null,
   };
 }

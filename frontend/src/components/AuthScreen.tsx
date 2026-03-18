@@ -20,6 +20,18 @@ const GOOGLE_SCRIPT_SRC = "https://accounts.google.com/gsi/client";
 const SHARED_GOOGLE_CLIENT_ID =
   "757872744940-rvibdtmd65cif13ia19tm78npjdn8i7l.apps.googleusercontent.com";
 
+/** Backend expects: min 6 chars, at least one upper, one lower, one digit. */
+const PASSWORD_MIN_LENGTH = 6;
+const PASSWORD_COMPLEXITY_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+const PASSWORD_HINT = "לפחות 6 תווים, עם אות גדולה, אות קטנה ומספר.";
+
+function validatePasswordForRegister(pwd: string): string | null {
+  if (pwd.length < PASSWORD_MIN_LENGTH) return "סיסמה חייבת להיות לפחות 6 תווים";
+  if (!PASSWORD_COMPLEXITY_REGEX.test(pwd))
+    return "סיסמה חייבת להכיל אות גדולה, אות קטנה ומספר";
+  return null;
+}
+
 const MailIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
     <path
@@ -369,6 +381,11 @@ export default function AuthScreen({
           setError("נא למלא שם, אימייל וסיסמה");
           return;
         }
+        const passwordValidationError = validatePasswordForRegister(password);
+        if (passwordValidationError) {
+          setError(passwordValidationError);
+          return;
+        }
 
         const response = await register(name.trim(), email.trim(), password);
         const token = response.token ?? response.data?.token;
@@ -486,6 +503,9 @@ export default function AuthScreen({
                   {showPassword ? <EyeOffIcon /> : <EyeIcon />}
                 </button>
               </div>
+              {isRegister && (
+                <p className="auth-helper-text">{PASSWORD_HINT}</p>
+              )}
             </label>
 
             {isRegister ? (

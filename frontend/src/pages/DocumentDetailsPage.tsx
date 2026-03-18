@@ -2,37 +2,55 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import Loader from "../components/ui/Loader";
-import { getDocument, type DocumentItem } from "../api/documents.api";
+import {
+  getDocument,
+  type DocumentItem,
+  type PayslipSummaryFromBackend,
+} from "../api/documents.api";
+import {
+  formatCurrencyILS,
+  formatPercent,
+  formatNumber,
+} from "../utils/formatters";
 
-type PayslipSummary = {
-  employeeName: string | null;
-  date: string | null;
-  grossSalary: number | null;
-  netSalary: number | null;
-  vacationDays: number | null;
-  sickDays: number | null;
-  pensionEmployee: number | null;
-  pensionEmployer: number | null;
-  trainingFundEmployee: number | null;
-  trainingFundEmployer: number | null;
-  tax: number | null;
-  nationalInsurance: number | null;
-  healthInsurance: number | null;
-  jobPercentage: number | null;
-  workingDays: number | null;
-  workingHours: number | null;
-};
+function getSummary(doc: DocumentItem | null): PayslipSummaryFromBackend | null {
+  return doc?.analysisData?.summary ?? null;
+}
 
-function getSummary(doc: DocumentItem | null): PayslipSummary | null {
-  const summary = (doc?.analysisData as { summary?: PayslipSummary } | undefined)?.summary;
-  return summary ?? null;
+function getParties(doc: DocumentItem | null): {
+  employer_name?: string;
+  employee_name?: string;
+  employee_id?: string;
+} | null {
+  const raw = doc?.analysisData;
+  if (raw == null || typeof raw !== "object") return null;
+  const parties = (raw as { parties?: { employer_name?: string; employee_name?: string; employee_id?: string } }).parties;
+  return parties ?? null;
 }
 
 function formatValue(value: unknown): string {
   if (value === null || value === undefined || value === "") {
-    return "לא זוהה";
+    return "—";
   }
   return String(value);
+}
+
+function formatMoney(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = Number(value);
+  return Number.isFinite(n) ? formatCurrencyILS(n) : "—";
+}
+
+function formatPercentValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = Number(value);
+  return Number.isFinite(n) ? formatPercent(n) : "—";
+}
+
+function formatNumberValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = Number(value);
+  return Number.isFinite(n) ? formatNumber(n) : "—";
 }
 
 export default function DocumentDetailsPage() {
@@ -66,8 +84,7 @@ export default function DocumentDetailsPage() {
   }, [loadDocument]);
 
   const summary = getSummary(document);
-  // eslint-disable-next-line no-console
-  console.log("[frontend] DocumentDetailsPage summary", { id, summary });
+  const parties = getParties(document);
 
   return (
     <div className="feature-page dashboard-page" dir="rtl">
@@ -104,7 +121,19 @@ export default function DocumentDetailsPage() {
                 <div className="insight-row">
                   <span className="insight-label">שם עובד</span>
                   <span className="insight-value">
-                    {formatValue(summary?.employeeName)}
+                    {formatValue(parties?.employee_name ?? summary?.employeeName)}
+                  </span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">ת.ז.</span>
+                  <span className="insight-value">
+                    {formatValue(parties?.employee_id)}
+                  </span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">מעסיק</span>
+                  <span className="insight-value">
+                    {formatValue(parties?.employer_name)}
                   </span>
                 </div>
                 <div className="insight-row">
@@ -116,19 +145,19 @@ export default function DocumentDetailsPage() {
                 <div className="insight-row">
                   <span className="insight-label">אחוז משרה</span>
                   <span className="insight-value">
-                    {formatValue(summary?.jobPercentage)}
+                    {formatPercentValue(summary?.jobPercentage)}
                   </span>
                 </div>
                 <div className="insight-row">
                   <span className="insight-label">ימי עבודה</span>
                   <span className="insight-value">
-                    {formatValue(summary?.workingDays)}
+                    {formatNumberValue(summary?.workingDays)}
                   </span>
                 </div>
                 <div className="insight-row">
                   <span className="insight-label">שעות עבודה</span>
                   <span className="insight-value">
-                    {formatValue(summary?.workingHours)}
+                    {formatNumberValue(summary?.workingHours)}
                   </span>
                 </div>
               </div>
@@ -140,13 +169,13 @@ export default function DocumentDetailsPage() {
                 <div className="insight-row">
                   <span className="insight-label">שכר ברוטו</span>
                   <span className="insight-value">
-                    {formatValue(summary?.grossSalary)}
+                    {formatMoney(summary?.grossSalary)}
                   </span>
                 </div>
                 <div className="insight-row">
                   <span className="insight-label">שכר נטו</span>
                   <span className="insight-value">
-                    {formatValue(summary?.netSalary)}
+                    {formatMoney(summary?.netSalary)}
                   </span>
                 </div>
               </div>
@@ -158,13 +187,13 @@ export default function DocumentDetailsPage() {
                 <div className="insight-row">
                   <span className="insight-label">ימי חופשה</span>
                   <span className="insight-value">
-                    {formatValue(summary?.vacationDays)}
+                    {formatNumberValue(summary?.vacationDays)}
                   </span>
                 </div>
                 <div className="insight-row">
                   <span className="insight-label">ימי מחלה</span>
                   <span className="insight-value">
-                    {formatValue(summary?.sickDays)}
+                    {formatNumberValue(summary?.sickDays)}
                   </span>
                 </div>
               </div>
@@ -176,25 +205,25 @@ export default function DocumentDetailsPage() {
                 <div className="insight-row">
                   <span className="insight-label">פנסיה - עובד</span>
                   <span className="insight-value">
-                    {formatValue(summary?.pensionEmployee)}
+                    {formatMoney(summary?.pensionEmployee)}
                   </span>
                 </div>
                 <div className="insight-row">
                   <span className="insight-label">פנסיה - מעסיק</span>
                   <span className="insight-value">
-                    {formatValue(summary?.pensionEmployer)}
+                    {formatMoney(summary?.pensionEmployer)}
                   </span>
                 </div>
                 <div className="insight-row">
                   <span className="insight-label">קרן השתלמות / גמל - עובד</span>
                   <span className="insight-value">
-                    {formatValue(summary?.trainingFundEmployee)}
+                    {formatMoney(summary?.trainingFundEmployee)}
                   </span>
                 </div>
                 <div className="insight-row">
                   <span className="insight-label">קרן השתלמות / גמל - מעסיק</span>
                   <span className="insight-value">
-                    {formatValue(summary?.trainingFundEmployer)}
+                    {formatMoney(summary?.trainingFundEmployer)}
                   </span>
                 </div>
               </div>
@@ -206,19 +235,19 @@ export default function DocumentDetailsPage() {
                 <div className="insight-row">
                   <span className="insight-label">מס הכנסה</span>
                   <span className="insight-value">
-                    {formatValue(summary?.tax)}
+                    {formatMoney(summary?.tax)}
                   </span>
                 </div>
                 <div className="insight-row">
                   <span className="insight-label">ביטוח לאומי</span>
                   <span className="insight-value">
-                    {formatValue(summary?.nationalInsurance)}
+                    {formatMoney(summary?.nationalInsurance)}
                   </span>
                 </div>
                 <div className="insight-row">
                   <span className="insight-label">מס בריאות / ביטוח בריאות</span>
                   <span className="insight-value">
-                    {formatValue(summary?.healthInsurance)}
+                    {formatMoney(summary?.healthInsurance)}
                   </span>
                 </div>
               </div>
