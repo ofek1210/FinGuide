@@ -186,7 +186,7 @@ export default function AuthScreen({
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotFeedback, setForgotFeedback] = useState<{
-    type: "success" | "error";
+    type: "success" | "error" | "warning";
     message: string;
   } | null>(null);
   const [isForgotSubmitting, setIsForgotSubmitting] = useState(false);
@@ -741,7 +741,9 @@ export default function AuthScreen({
                   className={
                     forgotFeedback.type === "success"
                       ? "auth-success"
-                      : "auth-error"
+                      : forgotFeedback.type === "warning"
+                        ? "auth-warning"
+                        : "auth-error"
                   }
                 >
                   {forgotFeedback.message}

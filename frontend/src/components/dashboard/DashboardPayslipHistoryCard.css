@@ -78,6 +78,17 @@
   font-weight: 600;
 }
 
+.payslip-history-missing {
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 107, 71, 0.18);
+  border: 1px solid rgba(255, 107, 71, 0.35);
+  color: #ffd3c7;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
 .payslip-history-amounts {
   display: flex;
   flex-direction: column;
@@ -93,6 +104,11 @@
 .payslip-history-gross {
   color: var(--landing-muted);
   font-size: 0.85rem;
+}
+
+.payslip-history-row.is-scan-success .payslip-history-date,
+.payslip-history-row.is-scan-success .payslip-history-gross {
+  color: var(--landing-text);
 }
 
 .payslip-history-state {

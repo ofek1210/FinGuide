@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Download,
@@ -30,6 +30,28 @@ export default function PayslipDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+
+  const earningsTotal = useMemo(() => {
+    if (!payslip) return 0;
+    return payslip.earnings.reduce((sum, i) => sum + i.amount, 0);
+  }, [payslip]);
+
+  const deductionsTotal = useMemo(() => {
+    if (!payslip) return 0;
+    return payslip.deductions.reduce((sum, i) => sum + i.amount, 0);
+  }, [payslip]);
+
+  const hasEarnings = Boolean(payslip && payslip.earnings.length > 0);
+  const hasDeductions = Boolean(payslip && payslip.deductions.length > 0);
+
+  const handleAskAssistant = useCallback(() => {
+    navigate(APP_ROUTES.assistant);
+  }, [navigate]);
+
+  const handleViewMissingFields = useCallback(() => {
+    if (!id) return;
+    navigate(`${APP_ROUTES.payslipHistory}/${id}/missing`);
+  }, [id, navigate]);
 
   const loadDetail = useCallback(async () => {
     if (!id) return;
@@ -114,11 +136,6 @@ export default function PayslipDetailPage() {
       </PayslipHistoryLayout>
     );
   }
-
-  const earningsTotal = payslip.earnings.reduce((sum, i) => sum + i.amount, 0);
-  const deductionsTotal = payslip.deductions.reduce((sum, i) => sum + i.amount, 0);
-  const hasEarnings = payslip.earnings.length > 0;
-  const hasDeductions = payslip.deductions.length > 0;
 
   return (
     <PayslipHistoryLayout
@@ -275,6 +292,42 @@ export default function PayslipDetailPage() {
         <div className="payslip-detail-net-value">
           {payslip.netSalary != null ? formatCurrencyILS(payslip.netSalary) : "לא זוהה"}
         </div>
+      </section>
+
+      <section className="payslip-detail-assistant-cta" aria-label="עזרה מסוכן פיננסי">
+        <button
+          type="button"
+          className="payslip-detail-btn payslip-detail-btn-primary payslip-detail-btn-assistant"
+          onClick={handleAskAssistant}
+        >
+          <MessageSquareText aria-hidden="true" />
+          דברו עם סוכן פיננסי
+        </button>
+        <p className="payslip-detail-assistant-note">
+          לכל שאלה על הנתונים שמופיעים בתלוש – אפשר להיעזר בסוכן הפיננסי, שיודע להבין
+          את המידע שלכם ישירות מהתלוש ולתת הכוונה והסבר על הכל.
+        </p>
+      </section>
+
+      <section className="payslip-detail-missing-cta" aria-label="שדות שלא זוהו">
+        <div className="payslip-detail-missing-badge" aria-label="אזהרה: שימו לב">
+          <AlertTriangle aria-hidden="true" />
+         
+        </div>
+        <div className="payslip-detail-missing-content">
+          <div className="payslip-detail-missing-title">חסרים נתונים מהסריקה של התלוש</div>
+          <div className="payslip-detail-missing-subtitle">
+            מומלץ לעבור על סיכום השדות שלא זוהו כדי להבין מה חסר ולמה זה יכול להשפיע.
+          </div>
+        </div>
+        <button
+          type="button"
+          className="payslip-detail-btn payslip-detail-btn-warning payslip-detail-btn-missing"
+          onClick={handleViewMissingFields}
+        >
+          <AlertTriangle aria-hidden="true" />
+          סיכום שדות שלא זוהו
+        </button>
       </section>
 
       <div className="payslip-detail-actions">

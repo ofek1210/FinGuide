@@ -9,6 +9,7 @@ import ScanStatusPage from "./pages/ScanStatusPage";
 import ScanCompletePage from "./pages/ScanCompletePage";
 import PayslipHistoryPage from "./pages/PayslipHistoryPage";
 import PayslipDetailPage from "./pages/PayslipDetailPage";
+import PayslipMissingFieldsPage from "./pages/PayslipMissingFieldsPage";
 import AssistantPage from "./pages/AssistantPage";
 import FindingsPage from "./pages/FindingsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -156,6 +157,14 @@ export default function App() {
           element={
             <RequireAuth>
               <PayslipDetailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/documents/history/:id/missing"
+          element={
+            <RequireAuth>
+              <PayslipMissingFieldsPage />
             </RequireAuth>
           }
         />

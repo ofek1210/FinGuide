@@ -264,6 +264,15 @@ input {
   font-size: 0.9rem;
 }
 
+.auth-warning {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(214, 158, 46, 0.15);
+  color: #744210;
+  border: 1px solid rgba(214, 158, 46, 0.35);
+  font-size: 0.9rem;
+}
+
 .auth-helper-text {
   margin: -4px 0 0;
   color: var(--muted);
