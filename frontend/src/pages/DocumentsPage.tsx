@@ -12,8 +12,15 @@ import {
   downloadDocument,
   removeDocument,
   type DocumentItem as ApiDocumentItem,
+  type DocumentCategory,
+  type DocumentMetadata,
+  type UploadDocumentPayload,
 } from "../api/documents.api";
 import { APP_ROUTES } from "../types/navigation";
+import {
+  DOCUMENT_CATEGORY_LABELS,
+  formatDocumentMetadataSummary,
+} from "../utils/documentMetadata";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
@@ -31,7 +38,22 @@ interface DocumentItem {
   status: DocumentStatus;
   fileSize?: number;
   uploadedAt?: string;
+  metadata: DocumentMetadata;
 }
+
+type UploadFormState = {
+  category: DocumentCategory | "";
+  periodMonth: string;
+  periodYear: string;
+  documentDate: string;
+};
+
+const DEFAULT_UPLOAD_FORM: UploadFormState = {
+  category: "",
+  periodMonth: "",
+  periodYear: "",
+  documentDate: "",
+};
 
 const addUniqueId = (ids: string[], id: string) =>
   ids.includes(id) ? ids : [...ids, id];
@@ -52,6 +74,10 @@ const mapApiDocument = (document: ApiDocumentItem): DocumentItem => ({
   status: mapStatus(document.status),
   fileSize: document.fileSize,
   uploadedAt: document.uploadedAt,
+  metadata: document.metadata ?? {
+    category: "other",
+    source: "manual_upload",
+  },
 });
 
 const statusLabels: Record<DocumentStatus, string> = {
@@ -68,8 +94,10 @@ interface UploadAreaProps {
   message: string;
   isUploading: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
+  metadata: UploadFormState;
   onBrowse: () => void;
   onPickFile: (file: File | null) => void;
+  onMetadataChange: (field: keyof UploadFormState, value: string) => void;
   onUpload: () => void;
 }
 
@@ -79,8 +107,10 @@ function UploadArea({
   message,
   isUploading,
   inputRef,
+  metadata,
   onBrowse,
   onPickFile,
+  onMetadataChange,
   onUpload,
 }: UploadAreaProps) {
   return (
@@ -117,6 +147,61 @@ function UploadArea({
         <span className="upload-hint">פי-די-אף בלבד • עד 10 מ"ב</span>
       </div>
       <div className="upload-meta">
+        <div className="upload-form-grid">
+          <label className="upload-field">
+            <span>קטגוריה</span>
+            <select
+              value={metadata.category}
+              onChange={(event) => onMetadataChange("category", event.target.value)}
+              disabled={isUploading}
+            >
+              <option value="">בחרו קטגוריה</option>
+              {Object.entries(DOCUMENT_CATEGORY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="upload-field">
+            <span>חודש</span>
+            <input
+              type="number"
+              min="1"
+              max="12"
+              inputMode="numeric"
+              value={metadata.periodMonth}
+              onChange={(event) => onMetadataChange("periodMonth", event.target.value)}
+              disabled={isUploading}
+              placeholder="03"
+            />
+          </label>
+
+          <label className="upload-field">
+            <span>שנה</span>
+            <input
+              type="number"
+              min="2000"
+              max="2100"
+              inputMode="numeric"
+              value={metadata.periodYear}
+              onChange={(event) => onMetadataChange("periodYear", event.target.value)}
+              disabled={isUploading}
+              placeholder="2026"
+            />
+          </label>
+
+          <label className="upload-field">
+            <span>תאריך מסמך</span>
+            <input
+              type="date"
+              value={metadata.documentDate}
+              onChange={(event) => onMetadataChange("documentDate", event.target.value)}
+              disabled={isUploading}
+            />
+          </label>
+        </div>
         {fileName ? (
           <div className="upload-file">נבחר: {fileName}</div>
         ) : (
@@ -172,7 +257,19 @@ function DocumentCard({
   return (
     <div className="document-row">
       <span className={`status-icon status-${statusClass}`}>{statusIcon}</span>
-      <span className="document-name">{document.name}</span>
+      <div className="document-info">
+        <span className="document-name">{document.name}</span>
+        <span className="document-meta">
+          {[
+            formatDocumentMetadataSummary(document.metadata),
+            document.uploadedAt
+              ? new Date(document.uploadedAt).toLocaleDateString("he-IL")
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
+      </div>
       <span className="document-status">{statusLabels[document.status]}</span>
       <div className="document-actions">
         <button
@@ -219,6 +316,7 @@ export default function DocumentsPage() {
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadForm, setUploadForm] = useState<UploadFormState>(DEFAULT_UPLOAD_FORM);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const timersRef = useRef<number[]>([]);
@@ -267,6 +365,61 @@ export default function DocumentsPage() {
     timersRef.current = [];
   };
 
+  const handleMetadataChange = (field: keyof UploadFormState, value: string) => {
+    setUploadForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const buildUploadPayload = (): UploadDocumentPayload | null => {
+    if (!uploadForm.category) {
+      setUploadState("error");
+      setUploadMessage("נא לבחור קטגוריית מסמך לפני ההעלאה.");
+      return null;
+    }
+
+    const hasPeriodMonth = uploadForm.periodMonth.trim().length > 0;
+    const hasPeriodYear = uploadForm.periodYear.trim().length > 0;
+
+    if (hasPeriodMonth !== hasPeriodYear) {
+      setUploadState("error");
+      setUploadMessage("אם מזינים חודש, חייבים להזין גם שנה ולהפך.");
+      return null;
+    }
+
+    const periodMonth = hasPeriodMonth ? Number(uploadForm.periodMonth) : undefined;
+    const periodYear = hasPeriodYear ? Number(uploadForm.periodYear) : undefined;
+
+    if (periodMonth !== undefined && (!Number.isInteger(periodMonth) || periodMonth < 1 || periodMonth > 12)) {
+      setUploadState("error");
+      setUploadMessage("חודש חייב להיות מספר בין 1 ל-12.");
+      return null;
+    }
+
+    if (periodYear !== undefined && (!Number.isInteger(periodYear) || periodYear < 2000 || periodYear > 2100)) {
+      setUploadState("error");
+      setUploadMessage("שנה חייבת להיות מספר בין 2000 ל-2100.");
+      return null;
+    }
+
+    if (uploadForm.documentDate) {
+      const parsedDate = new Date(uploadForm.documentDate);
+      if (Number.isNaN(parsedDate.getTime())) {
+        setUploadState("error");
+        setUploadMessage("תאריך המסמך אינו תקין.");
+        return null;
+      }
+    }
+
+    return {
+      category: uploadForm.category,
+      ...(periodMonth !== undefined && { periodMonth }),
+      ...(periodYear !== undefined && { periodYear }),
+      ...(uploadForm.documentDate && { documentDate: uploadForm.documentDate }),
+    };
+  };
+
   const handlePickFile = (file: File | null) => {
     clearTimers();
     setUploadMessage("");
@@ -309,6 +462,12 @@ export default function DocumentsPage() {
     }
 
     const file = selectedFile;
+    const metadataPayload = buildUploadPayload();
+
+    if (!metadataPayload) {
+      return;
+    }
+
     const tempId = `temp-${Date.now()}`;
     const tempDoc: DocumentItem = {
       id: tempId,
@@ -316,6 +475,19 @@ export default function DocumentsPage() {
       status: "uploading",
       fileSize: file.size,
       uploadedAt: new Date().toISOString(),
+      metadata: {
+        category: metadataPayload.category,
+        ...(metadataPayload.periodMonth !== undefined && {
+          periodMonth: metadataPayload.periodMonth,
+        }),
+        ...(metadataPayload.periodYear !== undefined && {
+          periodYear: metadataPayload.periodYear,
+        }),
+        ...(metadataPayload.documentDate && {
+          documentDate: metadataPayload.documentDate,
+        }),
+        source: "manual_upload",
+      },
     };
 
     setDocuments((prev) => [tempDoc, ...prev]);
@@ -323,7 +495,7 @@ export default function DocumentsPage() {
     setUploadMessage("מעלה קובץ...");
     setSelectedFile(null);
 
-    const response = await uploadDocument(file);
+    const response = await uploadDocument(file, metadataPayload);
 
     if (!response.success || !response.data) {
       setUploadState("error");
@@ -338,11 +510,12 @@ export default function DocumentsPage() {
 
     const uploadedDoc = response.data;
     setUploadState("uploaded");
-    setUploadMessage("הקובץ עלה בהצלחה");
+    setUploadMessage("המסמך נשמר וממתין לעיבוד.");
     setDocuments((prev) =>
       prev.map((doc) => (doc.id === tempId ? mapApiDocument(uploadedDoc) : doc)),
     );
-    setToastMessage("המסמך הועלה. הסטטוס יתעדכן בהמשך.");
+    setToastMessage("המסמך נשמר וממתין לעיבוד.");
+    setUploadForm(DEFAULT_UPLOAD_FORM);
     const toastTimer = window.setTimeout(() => setToastMessage(null), 5000);
     timersRef.current.push(toastTimer);
 
@@ -414,7 +587,7 @@ export default function DocumentsPage() {
           <h1>מסמכים</h1>
           <p>
             העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
-            שלב הסריקה יתווסף בהמשך.
+            הקובץ נשמר מיד, והעיבוד ממשיך ברקע.
           </p>
         </section>
 
@@ -424,8 +597,10 @@ export default function DocumentsPage() {
           message={uploadMessage}
           isUploading={uploadState === "uploading"}
           inputRef={fileInputRef}
+          metadata={uploadForm}
           onBrowse={handleBrowse}
           onPickFile={handlePickFile}
+          onMetadataChange={handleMetadataChange}
           onUpload={handleUpload}
         />
 
@@ -486,7 +661,7 @@ export default function DocumentsPage() {
             סריקת הקבצים שהועלו (דמו)
           </button>
           <span className="documents-note">
-            שלב הסריקה כרגע במצב דמו (ללא OCR). יופעל לאחר חיבור מנוע זיהוי תווים.
+            עיבוד המסמכים פועל ברקע. מסך הסריקה עצמו נשאר דמו בלבד.
           </span>
         </section>
       </main>

@@ -1,6 +1,7 @@
 import { Download, FileText, Trash2 } from "lucide-react";
 import type { DocumentItem, DocumentStatus } from "../../api/documents.api";
 import { formatFileSize, formatLongDate } from "../../utils/formatters";
+import { formatDocumentMetadataSummary } from "../../utils/documentMetadata";
 import Loader from "../ui/Loader";
 
 interface DashboardRecentDocumentsProps {
@@ -51,7 +52,13 @@ export default function DashboardRecentDocuments({
               <div className="dashboard-documents-info">
                 <span>{doc.originalName}</span>
                 <span className="dashboard-documents-meta">
-                  {formatLongDate(doc.uploadedAt)} · {formatFileSize(doc.fileSize)}
+                  {[
+                    formatDocumentMetadataSummary(doc.metadata),
+                    formatLongDate(doc.uploadedAt),
+                    formatFileSize(doc.fileSize),
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </span>
               </div>
               <div className={`dashboard-documents-chip status-${doc.status}`}>

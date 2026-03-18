@@ -7,6 +7,21 @@ export type DocumentStatus =
   | "completed"
   | "failed";
 
+export type DocumentCategory =
+  | "payslip"
+  | "tax_report"
+  | "pension_report"
+  | "invoice"
+  | "other";
+
+export interface DocumentMetadata {
+  category: DocumentCategory;
+  periodMonth?: number;
+  periodYear?: number;
+  documentDate?: string;
+  source?: "manual_upload";
+}
+
 export interface DocumentItem {
   _id: string;
   originalName: string;
@@ -16,9 +31,17 @@ export interface DocumentItem {
   processedAt?: string;
   mimeType?: string;
   analysisData?: Record<string, unknown>;
+  metadata?: DocumentMetadata;
   createdAt?: string;
   updatedAt?: string;
 }
+
+export type UploadDocumentPayload = {
+  category: DocumentCategory;
+  periodMonth?: number;
+  periodYear?: number;
+  documentDate?: string;
+};
 
 export type ListDocumentsResponse = {
   success: boolean;
@@ -90,7 +113,10 @@ export const listDocuments = async () => {
   return result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
 };
 
-export const uploadDocument = async (file: File) => {
+export const uploadDocument = async (
+  file: File,
+  metadata: UploadDocumentPayload = { category: "other" },
+) => {
   const token = getToken();
   if (!token) {
     return { success: false, message: "אין הרשאה. נא להתחבר." } as UploadDocumentResponse;
@@ -102,6 +128,16 @@ export const uploadDocument = async (file: File) => {
 
   const formData = new FormData();
   formData.append("document", file);
+  formData.append("category", metadata.category);
+  if (metadata.periodMonth !== undefined) {
+    formData.append("periodMonth", String(metadata.periodMonth));
+  }
+  if (metadata.periodYear !== undefined) {
+    formData.append("periodYear", String(metadata.periodYear));
+  }
+  if (metadata.documentDate) {
+    formData.append("documentDate", metadata.documentDate);
+  }
 
   const result = await apiJson<UploadDocumentResponse>("/api/documents/upload", {
     method: "POST",

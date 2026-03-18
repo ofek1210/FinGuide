@@ -41,6 +41,7 @@ export default function SettingsPage() {
   const isLoading = status === "checking";
   const displayAvatarUrl = resolveAvatarUrl(avatarPreviewUrl) ?? getAvatarDisplayUrl(user ?? null);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!user) {
       setError("לא הצלחנו לטעון את פרטי החשבון.");
@@ -52,6 +53,7 @@ export default function SettingsPage() {
     setError("");
     setFieldError({});
   }, [user]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -255,7 +257,6 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   className="dashboard-hero-action"
-                  disabled={avatarUploadLoading}
                   onClick={() => fileInputRef.current?.click()}
                   disabled={avatarUploading}
                 >

@@ -1,7 +1,23 @@
-const fs = require('fs').promises;
+const fs = require('fs');
+const crypto = require('crypto');
+const { promisify } = require('util');
 const Document = require('../models/Document');
 const { FileUploadError, NotFoundError } = require('../utils/appErrors');
-const { extractPayslipFile } = require('../services/payslipOcr');
+const { normalizeDocumentMetadataInput } = require('../utils/documentMetadata');
+const { serializeDocument } = require('../serializers/documentSerializer');
+const { processDocumentAsync } = require('../services/documentProcessingService');
+
+const unlink = promisify(fs.unlink);
+
+const computeFileChecksum = filePath =>
+  new Promise((resolve, reject) => {
+    const hash = crypto.createHash('sha256');
+    const stream = fs.createReadStream(filePath);
+
+    stream.on('error', reject);
+    stream.on('data', chunk => hash.update(chunk));
+    stream.on('end', () => resolve(hash.digest('hex')));
+  });
 
 // העלאת מסמך
 exports.uploadDocument = async (req, res, next) => {
@@ -11,46 +27,32 @@ exports.uploadDocument = async (req, res, next) => {
       return next(new FileUploadError('לא נבחר קובץ'));
     }
 
+    const metadata = normalizeDocumentMetadataInput(req.body);
+    const checksumSha256 = await computeFileChecksum(req.file.path);
+
     // יצירת רשומה במונגו
-    let document = await Document.create({
+    const document = await Document.create({
       user: req.user.id,
       originalName: req.file.originalname,
       filename: req.file.filename,
       filePath: req.file.path,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
-      status: 'processing',
+      metadata,
+      checksumSha256,
+      status: 'pending',
     });
 
-    // ניסיון לבצע חילוץ טקסט ו-OCR (אם יש צורך) ולחלץ נתונים מהתלוש
-    try {
-      const { data } = await extractPayslipFile(req.file.path);
-
-      document.analysisData = data;
-      document.status = 'completed';
-      document.processedAt = new Date();
-      await document.save();
-    } catch (ocrError) {
-      console.error('❌ Document extraction failed for document', document._id, ocrError);
-      document.status = 'failed';
-      await document.save().catch(() => {});
-    }
+    processDocumentAsync(document._id.toString());
 
     res.status(201).json({
       success: true,
-      data: {
-        id: document._id,
-        _id: document._id,
-        originalName: document.originalName,
-        fileSize: document.fileSize,
-        uploadedAt: document.uploadedAt,
-        status: document.status,
-      },
+      data: serializeDocument(document),
     });
   } catch (error) {
     // אם נכשל, מחק את הקובץ
     if (req.file) {
-      await fs.unlink(req.file.path).catch(err => console.error(err));
+      await unlink(req.file.path).catch(err => console.error(err));
     }
     next(error);
   }
@@ -59,14 +61,12 @@ exports.uploadDocument = async (req, res, next) => {
 // קבלת כל המסמכים של משתמש
 exports.getDocuments = async (req, res, next) => {
   try {
-    const documents = await Document.find({ user: req.user.id })
-      .select('-filePath -__v')
-      .sort('-uploadedAt');
+    const documents = await Document.find({ user: req.user.id }).sort('-uploadedAt');
 
     res.status(200).json({
       success: true,
       count: documents.length,
-      data: documents,
+      data: documents.map(serializeDocument),
     });
   } catch (error) {
     next(error);
@@ -87,7 +87,7 @@ exports.getDocument = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      data: document,
+      data: serializeDocument(document),
     });
   } catch (error) {
     next(error);
@@ -107,7 +107,7 @@ exports.deleteDocument = async (req, res, next) => {
     }
 
     // מחיקת הקובץ מהדיסק
-    await fs.unlink(document.filePath).catch(err => {
+    await unlink(document.filePath).catch(err => {
       console.error('שגיאה במחיקת קובץ:', err);
     });
 
