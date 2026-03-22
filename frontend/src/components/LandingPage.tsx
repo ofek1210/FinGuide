@@ -10,6 +10,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import { APP_ROUTES } from "../types/navigation";
 import AppFooter from "./AppFooter";
+import HeroMediaAnimation from "./HeroMediaAnimation";
+import LandingPlatformShowcase from "./LandingPlatformShowcase";
 
 const features = [
   {
@@ -67,7 +69,9 @@ export default function LandingPage() {
       <main className="landing-main">
         <section className="landing-hero landing-container">
           <div className="hero-media" aria-hidden="true">
-            <div className="hero-media-inner" />
+            <div className="hero-media-inner">
+              <HeroMediaAnimation />
+            </div>
           </div>
           <div className="hero-content">
             <div className="hero-pill">
@@ -135,6 +139,8 @@ export default function LandingPage() {
             ))}
           </div>
         </section>
+
+        <LandingPlatformShowcase />
 
         <section className="landing-security landing-container">
           <div className="security-card">

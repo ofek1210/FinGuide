@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  AlertTriangle,
   Download,
   FileText,
   Building2,
@@ -12,6 +13,7 @@ import {
   Briefcase,
   Sun,
   Heart,
+  MessageSquareText,
 } from "lucide-react";
 import PayslipHistoryLayout from "../components/payslip-history/PayslipHistoryLayout";
 import { downloadDocument } from "../api/documents.api";
