@@ -301,6 +301,24 @@ export default function SettingsPage() {
 
         <section className="dashboard-card feature-page-grid">
           <div className="settings-form">
+            <h2 className="feature-card-title">Onboarding</h2>
+            <p className="feature-card-subtitle">
+              ניתן לעדכן את פרטי ההגדרה המהירה בכל רגע.
+            </p>
+            <div className="feature-page-actions">
+              <button
+                className="dashboard-hero-action"
+                type="button"
+                onClick={() => navigate(APP_ROUTES.onboarding)}
+              >
+                עריכת פרטי Onboarding
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="dashboard-card feature-page-grid">
+          <div className="settings-form">
             <h2 className="feature-card-title">שינוי אימייל</h2>
             <p className="feature-card-subtitle">
               עדכון כתובת האימייל אליה תקבלו התראות ומסמכים. הפעולה דורשת התחברות פעילה.
