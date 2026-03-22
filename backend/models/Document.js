@@ -1,5 +1,36 @@
 const mongoose = require('mongoose');
 
+const DocumentMetadataSchema = new mongoose.Schema(
+  {
+    category: {
+      type: String,
+      enum: ['payslip', 'tax_report', 'pension_report', 'invoice', 'other'],
+      default: 'other',
+    },
+    periodMonth: {
+      type: Number,
+      min: 1,
+      max: 12,
+    },
+    periodYear: {
+      type: Number,
+      min: 2000,
+      max: 2100,
+    },
+    documentDate: {
+      type: Date,
+    },
+    source: {
+      type: String,
+      enum: ['manual_upload'],
+      default: 'manual_upload',
+    },
+  },
+  {
+    _id: false,
+  }
+);
+
 const DocumentSchema = new mongoose.Schema(
   {
     user: {
@@ -29,6 +60,16 @@ const DocumentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    metadata: {
+      type: DocumentMetadataSchema,
+      default: () => ({
+        category: 'other',
+        source: 'manual_upload',
+      }),
+    },
+    checksumSha256: {
+      type: String,
+    },
     status: {
       type: String,
       enum: ['uploaded', 'pending', 'processing', 'completed', 'failed'],
@@ -44,6 +85,10 @@ const DocumentSchema = new mongoose.Schema(
     analysisData: {
       type: Object,
       default: {},
+    },
+    processingError: {
+      type: String,
+      default: null,
     },
   },
   {

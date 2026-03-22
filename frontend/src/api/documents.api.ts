@@ -41,6 +41,13 @@ export interface DocumentItem {
   updatedAt?: string;
 }
 
+export type UploadDocumentPayload = {
+  category: DocumentCategory;
+  periodMonth?: number;
+  periodYear?: number;
+  documentDate?: string;
+};
+
 export type ListDocumentsResponse = {
   success: boolean;
   message?: string;
@@ -114,7 +121,10 @@ export const listDocuments = async () => {
   return payload;
 };
 
-export const uploadDocument = async (file: File) => {
+export const uploadDocument = async (
+  file: File,
+  metadata: UploadDocumentPayload = { category: "other" },
+) => {
   const token = getToken();
   if (!token) {
     return { success: false, message: "אין הרשאה. נא להתחבר." } as UploadDocumentResponse;
@@ -126,6 +136,16 @@ export const uploadDocument = async (file: File) => {
 
   const formData = new FormData();
   formData.append("document", file);
+  formData.append("category", metadata.category);
+  if (metadata.periodMonth !== undefined) {
+    formData.append("periodMonth", String(metadata.periodMonth));
+  }
+  if (metadata.periodYear !== undefined) {
+    formData.append("periodYear", String(metadata.periodYear));
+  }
+  if (metadata.documentDate) {
+    formData.append("documentDate", metadata.documentDate);
+  }
 
   const result = await apiJson<UploadDocumentResponse>("/api/documents/upload", {
     method: "POST",
