@@ -221,6 +221,7 @@ interface DocumentCardProps {
   document: DocumentItem;
   onDownload: (document: DocumentItem) => void;
   onDelete: (document: DocumentItem) => void;
+  onViewDetails: (document: DocumentItem) => void;
   isDeleting: boolean;
   isDownloading: boolean;
 }
@@ -229,6 +230,7 @@ function DocumentCard({
   document,
   onDownload,
   onDelete,
+  onViewDetails,
   isDeleting,
   isDownloading,
 }: DocumentCardProps) {
@@ -272,6 +274,14 @@ function DocumentCard({
       </div>
       <span className="document-status">{statusLabels[document.status]}</span>
       <div className="document-actions">
+        <button
+          className="document-action"
+          type="button"
+          onClick={() => onViewDetails(document)}
+          disabled={isTemp || isUploading}
+        >
+          פרטי תלוש
+        </button>
         <button
           className="document-action"
           type="button"
@@ -519,6 +529,10 @@ export default function DocumentsPage() {
     const toastTimer = window.setTimeout(() => setToastMessage(null), 5000);
     timersRef.current.push(toastTimer);
 
+    // רענון הרשימה מהשרת כדי לוודא שהמסמכים מסונכרנים
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    loadDocuments();
+
     const finalizeTimer = window.setTimeout(() => {
       setUploadMessage("");
       setUploadState("idle");
@@ -546,6 +560,11 @@ export default function DocumentsPage() {
 
     setDocuments((prev) => prev.filter((item) => item.id !== doc.id));
     setDeletingIds((prev) => removeId(prev, doc.id));
+  };
+
+  const handleViewDetails = (doc: DocumentItem) => {
+    if (doc.id.startsWith("temp-")) return;
+    navigate(`/documents/${doc.id}`);
   };
 
   const handleDownload = async (doc: DocumentItem) => {
@@ -586,8 +605,7 @@ export default function DocumentsPage() {
         <section className="documents-header">
           <h1>מסמכים</h1>
           <p>
-            העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
-            הקובץ נשמר מיד, והעיבוד ממשיך ברקע.
+            העלו מסמכי תלוש שכר בפי-די-אף. המסמכים יעברו זיהוי וניתוח אוטומטי ויופיעו בהיסטוריית התלושים.
           </p>
         </section>
 
@@ -643,6 +661,7 @@ export default function DocumentsPage() {
                   document={doc}
                   onDelete={handleDelete}
                   onDownload={handleDownload}
+                  onViewDetails={handleViewDetails}
                   isDeleting={deletingIds.includes(doc.id)}
                   isDownloading={downloadingIds.includes(doc.id)}
                 />
@@ -658,10 +677,10 @@ export default function DocumentsPage() {
             disabled={!hasUploadedDocuments}
             onClick={() => navigate(APP_ROUTES.documentsScan)}
           >
-            סריקת הקבצים שהועלו (דמו)
+            מעבר לעיבוד וניתוח המסמכים
           </button>
           <span className="documents-note">
-            עיבוד המסמכים פועל ברקע. מסך הסריקה עצמו נשאר דמו בלבד.
+            המסמכים שהועלו יעברו זיהוי וניתוח ויוצגו במסך היסטוריית התלושים.
           </span>
         </section>
       </main>
@@ -670,7 +689,11 @@ export default function DocumentsPage() {
 
       <ToastContainer>
         {toastMessage ? (
-          <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
+          <Toast
+            message={toastMessage}
+            variant="success"
+            onDismiss={() => setToastMessage(null)}
+          />
         ) : null}
       </ToastContainer>
     </div>

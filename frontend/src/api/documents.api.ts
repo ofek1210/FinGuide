@@ -1,5 +1,6 @@
 import { apiBlob, apiJson } from "./client";
 
+/** Matches backend: pending, processing, completed, failed. "uploaded" is frontend-only for just-uploaded row. */
 export type DocumentStatus =
   | "uploaded"
   | "pending"
@@ -7,20 +8,25 @@ export type DocumentStatus =
   | "completed"
   | "failed";
 
-export type DocumentCategory =
-  | "payslip"
-  | "tax_report"
-  | "pension_report"
-  | "invoice"
-  | "other";
-
-export interface DocumentMetadata {
-  category: DocumentCategory;
-  periodMonth?: number;
-  periodYear?: number;
-  documentDate?: string;
-  source?: "manual_upload";
-}
+/** Matches backend payslipOcr buildPayslipSummary output (analysisData.summary). */
+export type PayslipSummaryFromBackend = {
+  employeeName?: string | null;
+  date?: string | null;
+  grossSalary?: number | null;
+  netSalary?: number | null;
+  vacationDays?: number | null;
+  sickDays?: number | null;
+  pensionEmployee?: number | null;
+  pensionEmployer?: number | null;
+  trainingFundEmployee?: number | null;
+  trainingFundEmployer?: number | null;
+  tax?: number | null;
+  nationalInsurance?: number | null;
+  healthInsurance?: number | null;
+  jobPercentage?: number | null;
+  workingDays?: number | null;
+  workingHours?: number | null;
+};
 
 export interface DocumentItem {
   _id: string;
@@ -30,8 +36,7 @@ export interface DocumentItem {
   uploadedAt?: string;
   processedAt?: string;
   mimeType?: string;
-  analysisData?: Record<string, unknown>;
-  metadata?: DocumentMetadata;
+  analysisData?: { summary?: PayslipSummaryFromBackend; [k: string]: unknown };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -110,7 +115,10 @@ export const listDocuments = async () => {
     } as ListDocumentsResponse;
   }
 
-  return result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
+  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
+  // eslint-disable-next-line no-console
+  console.log("[frontend] listDocuments response", payload);
+  return payload;
 };
 
 export const uploadDocument = async (
@@ -148,7 +156,10 @@ export const uploadDocument = async (
   if (!result.ok) {
     return { success: false, message: result.error.message } as UploadDocumentResponse;
   }
-  return result.data || ({ success: false, message: "תגובה לא תקינה." } as UploadDocumentResponse);
+  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as UploadDocumentResponse);
+  // eslint-disable-next-line no-console
+  console.log("[frontend] uploadDocument response", payload);
+  return payload;
 };
 
 export const getDocument = async (id: string) => {
@@ -166,7 +177,10 @@ export const getDocument = async (id: string) => {
     return { success: false, message: result.error.message } as DocumentResponse;
   }
 
-  return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
+  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
+  // eslint-disable-next-line no-console
+  console.log("[frontend] getDocument response", payload);
+  return payload;
 };
 
 export const removeDocument = async (id: string) => {

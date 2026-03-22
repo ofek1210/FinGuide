@@ -1,10 +1,7 @@
 require('dotenv').config();
 
-const path = require('path');
-const express = require('express');
 const connectDB = require('./config/db');
 const createApp = require('./app');
-const connectDB = require('./config/db');
 
 const DEFAULT_PORT = 5000;
 const MAX_PORT_ATTEMPTS = 10;

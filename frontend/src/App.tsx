@@ -9,12 +9,14 @@ import ScanStatusPage from "./pages/ScanStatusPage";
 import ScanCompletePage from "./pages/ScanCompletePage";
 import PayslipHistoryPage from "./pages/PayslipHistoryPage";
 import PayslipDetailPage from "./pages/PayslipDetailPage";
+import PayslipMissingFieldsPage from "./pages/PayslipMissingFieldsPage";
 import AssistantPage from "./pages/AssistantPage";
 import FindingsPage from "./pages/FindingsPage";
 import SettingsPage from "./pages/SettingsPage";
 import StatusPage from "./pages/StatusPage";
 import HelpPage from "./pages/HelpPage";
 import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
+import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
@@ -67,6 +69,14 @@ export default function App() {
           element={
             <RequireAuth>
               <DocumentsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/documents/:id"
+          element={
+            <RequireAuth>
+              <DocumentDetailsPage />
             </RequireAuth>
           }
         />
@@ -147,6 +157,14 @@ export default function App() {
           element={
             <RequireAuth>
               <PayslipDetailPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/documents/history/:id/missing"
+          element={
+            <RequireAuth>
+              <PayslipMissingFieldsPage />
             </RequireAuth>
           }
         />

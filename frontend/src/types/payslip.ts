@@ -2,8 +2,8 @@ export type PayslipHistoryItem = {
   id: string;
   periodLabel: string;
   periodDate: string;
-  netSalary: number;
-  grossSalary: number;
+  netSalary: number | null;
+  grossSalary: number | null;
   isLatest: boolean;
   downloadUrl?: string | null;
 };
@@ -34,9 +34,19 @@ export type PayslipDetail = {
   employerName?: string;
   employeeName?: string;
   employeeId?: string;
+  /** אחוז משרה (0–100) */
+  jobPercent?: number | null;
+  /** ימי עבודה בחודש */
+  workingDays?: number | null;
+  /** שעות עבודה */
+  workingHours?: number | null;
+  /** יתרת/ימי חופשה */
+  vacationDays?: number | null;
+  /** יתרת/ימי מחלה */
+  sickDays?: number | null;
   earnings: PayslipLineItem[];
   deductions: PayslipLineItem[];
-  grossSalary: number;
-  netSalary: number;
+  grossSalary: number | null;
+  netSalary: number | null;
   downloadUrl?: string | null;
 };

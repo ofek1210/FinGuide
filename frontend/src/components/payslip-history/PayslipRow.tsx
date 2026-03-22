@@ -8,6 +8,7 @@ interface PayslipRowProps {
   periodDate: string;
   onDownload: (item: PayslipHistoryItem) => void;
   onSelect?: (item: PayslipHistoryItem) => void;
+  isDownloading?: boolean;
 }
 
 export default function PayslipRow({
@@ -17,8 +18,9 @@ export default function PayslipRow({
   periodDate,
   onDownload,
   onSelect,
+  isDownloading = false,
 }: PayslipRowProps) {
-  const canDownload = Boolean(item.downloadUrl);
+  const canDownload = Boolean(item.id) && !isDownloading;
 
   const handleDownload = (e: React.MouseEvent) => {
     e.stopPropagation();

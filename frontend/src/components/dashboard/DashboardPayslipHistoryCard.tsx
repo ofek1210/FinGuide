@@ -71,20 +71,28 @@ export default function DashboardPayslipHistoryCard({
 
       <div className="payslip-history-list">
         {items.map((item) => (
-          <div key={item.id} className="payslip-history-row">
+          <div
+            key={item.id}
+            className={`payslip-history-row ${
+              item.netSalary != null && item.grossSalary != null ? "is-scan-success" : ""
+            }`}
+          >
             <div className="payslip-history-period">
               <span>{item.periodLabel}</span>
               <span className="payslip-history-date">
                 {formatShortDate(item.periodDate)}
               </span>
               {item.isLatest ? <span className="payslip-history-latest">אחרון</span> : null}
+              {item.netSalary == null || item.grossSalary == null ? (
+                <span className="payslip-history-missing">חסר נתונים</span>
+              ) : null}
             </div>
             <div className="payslip-history-amounts">
               <span className="payslip-history-net">
-                {formatCurrencyILS(item.netSalary)}
+                {item.netSalary != null ? formatCurrencyILS(item.netSalary) : "לא זוהה"}
               </span>
               <span className="payslip-history-gross">
-                {formatCurrencyILS(item.grossSalary)}
+                {item.grossSalary != null ? formatCurrencyILS(item.grossSalary) : "לא זוהה"}
               </span>
             </div>
           </div>
