@@ -1,0 +1,8 @@
+{
+  "extractionMethod": "pdf_text",
+  "ocr_engine": "tesseract-cli",
+  "ocr_lang": "heb+eng",
+  "pages_processed": 1,
+  "confidence": 0.89,
+  "rawText": "תלוש שכר לחודש 02/2026\nשם עובד: דנה לוי\nת.ז: 123456789\nשכר ברוטו 25,000\nנטו לתשלום 18,200\nמס הכנסה 2,450\nביטוח לאומי 890\nביטוח בריאות 520"
+}
