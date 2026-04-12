@@ -13,7 +13,7 @@ const buildFinding = (id, title, severity, details) => ({
 exports.getFindings = async (req, res, next) => {
   try {
     const documents = await Document.find({ user: req.user.id })
-      .select('originalName fileSize status updatedAt type date')
+      .select('originalName fileSize status updatedAt metadata')
       .lean();
 
     if (documents.length === 0) {
@@ -34,10 +34,6 @@ exports.getFindings = async (req, res, next) => {
     }
 
     const findings = [];
-    const hasTypeField = Boolean(Document.schema.path('type'));
-    const hasDateField = Boolean(Document.schema.path('date'));
-    const shouldCheckBasicMetadata = hasTypeField || hasDateField;
-
     let missingMetadataCount = 0;
     let futureDateCount = 0;
     let pendingCount = 0;
@@ -64,46 +60,37 @@ exports.getFindings = async (req, res, next) => {
         }
       }
 
-      if (shouldCheckBasicMetadata) {
-        const missingType = hasTypeField && !doc.type;
-        const dateValue = hasDateField && doc.date ? new Date(doc.date) : null;
-        const missingDate =
-          hasDateField && (!doc.date || Number.isNaN(dateValue?.getTime()));
+      const metadata = doc.metadata && typeof doc.metadata === 'object' ? doc.metadata : {};
+      const category = typeof metadata.category === 'string' ? metadata.category : '';
+      const hasCategory = Boolean(category);
+      const dateValue = metadata.documentDate
+        ? new Date(metadata.documentDate)
+        : null;
+      const hasValidDate = Boolean(
+        dateValue && !Number.isNaN(dateValue.getTime())
+      );
 
-        if (missingType || missingDate) {
-          missingMetadataCount += 1;
-        }
+      if (!hasCategory || !hasValidDate) {
+        missingMetadataCount += 1;
+      }
 
-        if (
-          hasDateField &&
-          dateValue &&
-          !Number.isNaN(dateValue.getTime()) &&
-          dateValue > now
-        ) {
-          futureDateCount += 1;
-        }
+      if (hasValidDate && dateValue > now) {
+        futureDateCount += 1;
       }
     });
 
-    if (shouldCheckBasicMetadata && missingMetadataCount > 0) {
-      let missingFieldsLabel = 'date';
-      if (hasTypeField && hasDateField) {
-        missingFieldsLabel = 'type או date';
-      } else if (hasTypeField) {
-        missingFieldsLabel = 'type';
-      }
-
+    if (missingMetadataCount > 0) {
       findings.push(
         buildFinding(
           'missing_basic_metadata',
           'מסמכים ללא פרטים בסיסיים',
           'warning',
-          `נמצאו ${missingMetadataCount} מסמכים שחסרים בהם שדות בסיסיים (${missingFieldsLabel}).`
+          `נמצאו ${missingMetadataCount} מסמכים שחסרים בהם קטגוריה או תאריך מסמך תקין.`
         )
       );
     }
 
-    if (shouldCheckBasicMetadata && futureDateCount > 0) {
+    if (futureDateCount > 0) {
       findings.push(
         buildFinding(
           'future_document_date',

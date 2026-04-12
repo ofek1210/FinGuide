@@ -8,6 +8,21 @@ export type DocumentStatus =
   | "completed"
   | "failed";
 
+export type DocumentCategory =
+  | "payslip"
+  | "tax_report"
+  | "pension_report"
+  | "invoice"
+  | "other";
+
+export type DocumentMetadata = {
+  category: DocumentCategory;
+  periodMonth?: number;
+  periodYear?: number;
+  documentDate?: string;
+  source: "manual_upload";
+};
+
 /** Matches backend payslipOcr buildPayslipSummary output (analysisData.summary). */
 export type PayslipSummaryFromBackend = {
   employeeName?: string | null;
@@ -29,6 +44,7 @@ export type PayslipSummaryFromBackend = {
 };
 
 export interface DocumentItem {
+  id?: string;
   _id: string;
   originalName: string;
   fileSize: number;
@@ -36,6 +52,7 @@ export interface DocumentItem {
   uploadedAt?: string;
   processedAt?: string;
   mimeType?: string;
+  metadata?: DocumentMetadata;
   analysisData?: { summary?: PayslipSummaryFromBackend; [k: string]: unknown };
   createdAt?: string;
   updatedAt?: string;

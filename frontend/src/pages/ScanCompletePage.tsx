@@ -1,8 +1,10 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { APP_ROUTES } from "../types/navigation";
 
 export default function ScanCompletePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const documentId = searchParams.get("documentId")?.trim() ?? "";
 
   return (
     <div className="scan-complete-page" dir="rtl">
@@ -19,9 +21,11 @@ export default function ScanCompletePage() {
           <button
             className="scan-complete-cta"
             type="button"
-            onClick={() => navigate(APP_ROUTES.payslipHistory)}
+            onClick={() =>
+              navigate(documentId ? `/documents/${documentId}` : APP_ROUTES.payslipHistory)
+            }
           >
-            צפייה בהיסטוריית תלושים
+            {documentId ? "צפייה בפרטי המסמך" : "צפייה בהיסטוריית תלושים"}
             <span aria-hidden="true">←</span>
           </button>
         </section>

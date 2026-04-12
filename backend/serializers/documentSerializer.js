@@ -10,6 +10,7 @@ const serializeDocument = document => {
   }
 
   return {
+    id: raw._id?.toString?.() || raw._id,
     _id: raw._id?.toString?.() || raw._id,
     originalName: raw.originalName,
     fileSize: raw.fileSize,

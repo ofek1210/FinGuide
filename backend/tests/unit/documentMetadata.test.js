@@ -57,6 +57,7 @@ describe('document metadata utilities', () => {
     });
 
     expect(serialized).toEqual({
+      id: 'doc1',
       _id: 'doc1',
       originalName: 'salary.pdf',
       fileSize: 1234,

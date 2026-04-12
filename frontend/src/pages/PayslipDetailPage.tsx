@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
+  AlertTriangle,
   Download,
   FileText,
   Building2,
@@ -8,6 +9,7 @@ import {
   Calendar,
   Hash,
   Briefcase,
+  MessageSquareText,
   Sun,
   Heart,
 } from "lucide-react";

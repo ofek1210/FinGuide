@@ -39,6 +39,9 @@ describe('documentProcessingService', () => {
   });
 
   it('marks document as failed when background processing crashes', async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
     const save = jest.fn().mockResolvedValue(undefined);
     const document = {
       _id: 'doc-failure',
@@ -52,9 +55,16 @@ describe('documentProcessingService', () => {
 
     await processDocumentNow('doc-failure');
 
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      '❌ Document extraction failed for document',
+      'doc-failure',
+      expect.any(Error)
+    );
     expect(document.status).toBe('failed');
     expect(document.processingError).toBe('ocr failed');
     expect(document.processedAt).toBeInstanceOf(Date);
     expect(save).toHaveBeenCalledTimes(2);
+
+    consoleErrorSpy.mockRestore();
   });
 });

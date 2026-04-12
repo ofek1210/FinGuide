@@ -1,12 +1,13 @@
-const httpMocks = require('node-mocks-http');
-const jwt = require('jsonwebtoken');
-
-const User = require('../../models/User');
-
 let mockGoogleVerifyIdToken;
 
-jest.mock('../../models/User');
-jest.mock('jsonwebtoken');
+jest.mock('../../models/User', () => ({
+  findOne: jest.fn(),
+  findById: jest.fn(),
+  create: jest.fn(),
+}));
+jest.mock('jsonwebtoken', () => ({
+  sign: jest.fn(),
+}));
 jest.mock('google-auth-library', () => {
   mockGoogleVerifyIdToken = jest.fn();
   return {
@@ -15,24 +16,52 @@ jest.mock('google-auth-library', () => {
     })),
   };
 });
+const jwt = require('jsonwebtoken');
+const User = require('../../models/User');
 const {
   register,
   getMe,
   googleLogin,
 } = require('../../controllers/authController');
 
+const resetUserModelMocks = () => {
+  User.findOne.mockReset();
+  User.findById.mockReset();
+  User.create.mockReset();
+};
+
+const resetJwtMocks = () => {
+  jwt.sign.mockReset();
+};
+
 describe('authController - register', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetUserModelMocks();
+    resetJwtMocks();
   });
 
   const buildReqResNext = body => {
-    const req = httpMocks.createRequest({
+    const req = {
       method: 'POST',
       url: '/api/auth/register',
       body,
-    });
-    const res = httpMocks.createResponse();
+    };
+    const res = {
+      statusCode: 200,
+      body: undefined,
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(payload) {
+        this.body = payload;
+        return this;
+      },
+      _getJSONData() {
+        return this.body;
+      },
+    };
     const next = jest.fn();
     return { req, res, next };
   };
@@ -95,17 +124,33 @@ describe('authController - register', () => {
 describe('authController - googleLogin', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetUserModelMocks();
+    resetJwtMocks();
     mockGoogleVerifyIdToken.mockReset();
     process.env.GOOGLE_CLIENT_ID = 'google-client-id';
   });
 
   const buildReqRes = body => {
-    const req = httpMocks.createRequest({
+    const req = {
       method: 'POST',
       url: '/api/auth/google',
       body,
-    });
-    const res = httpMocks.createResponse();
+    };
+    const res = {
+      statusCode: 200,
+      body: undefined,
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(payload) {
+        this.body = payload;
+        return this;
+      },
+      _getJSONData() {
+        return this.body;
+      },
+    };
     return { req, res };
   };
 
@@ -178,6 +223,7 @@ describe('authController - googleLogin', () => {
           id: 'existing-user-id',
           name: 'Existing User',
           email: 'existing@example.com',
+          avatarUrl: null,
         },
         token: 'jwt-from-google',
       },
@@ -223,6 +269,7 @@ describe('authController - googleLogin', () => {
           id: 'new-user-id',
           name: 'New User',
           email: 'new@example.com',
+          avatarUrl: null,
         },
         token: 'jwt-for-new-user',
       },
@@ -234,6 +281,8 @@ describe('authController - googleLogin', () => {
 describe('authController - getMe', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetUserModelMocks();
+    resetJwtMocks();
   });
 
   it('should return current user from req.user (set by protect middleware)', async () => {
@@ -244,12 +293,26 @@ describe('authController - getMe', () => {
       createdAt: new Date('2024-01-01T00:00:00.000Z'),
     };
 
-    const req = httpMocks.createRequest({
+    const req = {
       method: 'GET',
       url: '/api/auth/me',
       user: userFromProtect,
-    });
-    const res = httpMocks.createResponse();
+    };
+    const res = {
+      statusCode: 200,
+      body: undefined,
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(payload) {
+        this.body = payload;
+        return this;
+      },
+      _getJSONData() {
+        return this.body;
+      },
+    };
 
     await getMe(req, res);
 

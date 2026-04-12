@@ -5,11 +5,11 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const sharp = require('sharp');
 const crypto = require('crypto');
-const pdfParse = require('pdf-parse');
 
 const { extractFromLinesByLabelMap } = require('./payslipOcrLabelMap');
 
 const execFileAsync = promisify(execFile);
+let pdfParse;
 
 const OCR_PDF_PAGES_MODE = (process.env.OCR_PDF_PAGES_MODE || 'all').toLowerCase(); // 'all' | 'first'
 const MIN_PDF_TEXT_LENGTH =
@@ -164,6 +164,10 @@ async function ocrWithTesseract(imagePath, { psm = '6' } = {}) {
 // -------------------- embedded PDF text --------------------
 async function extractPdfEmbeddedText(pdfPath) {
   try {
+    if (!pdfParse) {
+      // eslint-disable-next-line global-require
+      pdfParse = require('pdf-parse');
+    }
     const buffer = await fs.readFile(pdfPath);
     const result = await pdfParse(buffer);
     const text = (result.text || '').trim();
@@ -1172,4 +1176,3 @@ module.exports = {
   extractPayslipFinancialEN,
   extractPayslipFile,
 };
-
