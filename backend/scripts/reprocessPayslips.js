@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const connectDB = require('../config/db');
 const Document = require('../models/Document');
 const { extractPayslipFile } = require('../services/payslipOcr');
+const { categorizeOcrWarning, dedupeStrings } = require('../services/payslipOcrShared');
 
 function parseArgs(argv) {
   const options = {
@@ -68,9 +69,14 @@ function buildResolvedFieldsSummary(data) {
 }
 
 function diffWarnings(oldWarnings = [], newWarnings = []) {
+  const oldCategories = dedupeStrings(oldWarnings.map(categorizeOcrWarning));
+  const newCategories = dedupeStrings(newWarnings.map(categorizeOcrWarning));
+
   return {
     added: newWarnings.filter(warning => !oldWarnings.includes(warning)),
     removed: oldWarnings.filter(warning => !newWarnings.includes(warning)),
+    added_categories: newCategories.filter(category => !oldCategories.includes(category)),
+    removed_categories: oldCategories.filter(category => !newCategories.includes(category)),
   };
 }
 
@@ -88,6 +94,9 @@ function buildReport(document, nextAnalysisData) {
       resolution_score: current.quality?.resolution_score ?? null,
       resolved_core_fields: current.quality?.resolved_core_fields ?? null,
       resolved_fields: buildResolvedFieldsSummary(current),
+      warning_categories:
+        current.quality?.warning_categories ??
+        dedupeStrings((current.quality?.warnings || []).map(categorizeOcrWarning)),
     },
     next: {
       schema_version: next.schema_version ?? null,
@@ -95,6 +104,9 @@ function buildReport(document, nextAnalysisData) {
       resolution_score: next.quality?.resolution_score ?? null,
       resolved_core_fields: next.quality?.resolved_core_fields ?? null,
       resolved_fields: buildResolvedFieldsSummary(next),
+      warning_categories:
+        next.quality?.warning_categories ??
+        dedupeStrings((next.quality?.warnings || []).map(categorizeOcrWarning)),
     },
     warnings_delta: diffWarnings(current.quality?.warnings || [], next.quality?.warnings || []),
   };
@@ -110,6 +122,8 @@ function initializeAggregateReport() {
     warning_counts: {
       added: {},
       removed: {},
+      added_categories: {},
+      removed_categories: {},
     },
   };
 }
@@ -152,6 +166,14 @@ function buildAggregateReport(reports = []) {
 
     report.warnings_delta.added.forEach(warning => incrementCounter(aggregate.warning_counts.added, warning));
     report.warnings_delta.removed.forEach(warning => incrementCounter(aggregate.warning_counts.removed, warning));
+    report.warnings_delta.added_categories.forEach(category => incrementCounter(
+      aggregate.warning_counts.added_categories,
+      category,
+    ));
+    report.warnings_delta.removed_categories.forEach(category => incrementCounter(
+      aggregate.warning_counts.removed_categories,
+      category,
+    ));
   }
 
   aggregate.average_confidence_delta = Number((confidenceDeltaSum / reports.length).toFixed(4));

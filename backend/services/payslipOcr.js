@@ -294,7 +294,7 @@ function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
   const employee_name = resolvedParties.employee_name?.value;
   const employee_id = resolvedParties.employee_id?.value;
 
-  const contributionCollection = collectContributionCandidates(lines);
+  const contributionCollection = collectContributionCandidates(normalizedDoc);
   const { study, pension } = resolveContributionCandidates(
     contributionCollection.store,
     contributionCollection.stats,
@@ -345,7 +345,7 @@ function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
   );
 
   const result = {
-    schema_version: '1.8',
+    schema_version: '1.9',
     period: month ? { month } : {},
 
     salary: {

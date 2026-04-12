@@ -9,6 +9,8 @@ const { pushCandidate, sortCandidatesByScore } = require('./payslipOcrResolver')
 const EMPLOYEE_LABEL_REGEX = /(?:שם\s+עובד|שם\s+העובד|Employee\s+Name)[:\s-]+([^\n]+)/i;
 const EMPLOYER_LABEL_REGEX = /(?:שם\s+מעסיק|שם\s+מעביד|Employer\s+Name)[:\s-]+([^\n]+)/i;
 const EMPLOYEE_ID_LABEL_REGEX = /(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ID)[:\s-]*(\d{7,9})/i;
+const CONTRIBUTION_CONTEXT_REGEX =
+  /(?:קרן\s*השתלמות|שכר\s*לקצבה|תגמול|תגמולים|פיצוי|פיצויים|הפרשת\s*מעסיק|ניכוי\s*עובד)/i;
 
 function normalizeEmployeeName(value) {
   return String(value).replace(/\s+/g, ' ').trim();
@@ -48,13 +50,26 @@ function isEmployerContextLine(line) {
   return EMPLOYER_CONTEXT_REGEX.test(String(line)) || COMPANY_HINT_REGEX.test(String(line));
 }
 
+function isContributionContextEntry(entry) {
+  if (!entry) {
+    return false;
+  }
+
+  if (entry.sectionHints?.includes('contributions')) {
+    return true;
+  }
+
+  return CONTRIBUTION_CONTEXT_REGEX.test(String(entry.raw || entry));
+}
+
 function collectPartyCandidates(context) {
   const store = {};
   const full = context.fullText;
 
   for (const entry of context.lines) {
+    const contributionContext = isContributionContextEntry(entry);
     const employeeName = match1(entry.raw, EMPLOYEE_LABEL_REGEX);
-    if (employeeName && isValidEmployeeName(employeeName)) {
+    if (employeeName && isValidEmployeeName(employeeName) && !contributionContext) {
       pushCandidate(store, 'employee_name', normalizeEmployeeName(employeeName), {
         source: 'employee_name_label',
         lineIndex: entry.index,
@@ -77,7 +92,7 @@ function collectPartyCandidates(context) {
       });
     }
 
-    if (!isEmployerContextLine(entry.raw)) {
+    if (!isEmployerContextLine(entry.raw) && !contributionContext) {
       const employeeId = match1(entry.raw, EMPLOYEE_ID_LABEL_REGEX);
       if (employeeId && isValidEmployeeId(employeeId)) {
         pushCandidate(store, 'employee_id', employeeId, {
@@ -103,6 +118,10 @@ function collectPartyCandidates(context) {
           evidenceCategory: 'fallback',
         });
       }
+      continue;
+    }
+
+    if (contributionContext) {
       continue;
     }
 

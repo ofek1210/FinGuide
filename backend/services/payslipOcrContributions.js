@@ -1,5 +1,6 @@
 const {
   bestAmountByExpected,
+  isCumulativeLine,
   isLikelyTaxBaseNoiseLine,
   pickReasonableAmount,
 } = require('./payslipOcrShared');
@@ -8,6 +9,16 @@ const {
   extractPercentTokens,
 } = require('./payslipOcrNumbers');
 const { pushCandidate, resolveBestNumericCandidate } = require('./payslipOcrResolver');
+
+const STUDY_CONTEXT_REGEX = /קרן\s*השתלמות/i;
+const STUDY_BASE_REGEX = /שכר\s*לקרן\s*השתלמות/i;
+const PENSION_CONTEXT_REGEX =
+  /(תגמול|תגמולים|פיצוי|פיצויים|פנסי|ביטוח\s*מנהלים|קופ["״]?ג|גמל)/i;
+const PENSION_BASE_REGEX = /שכר\s*לקצבה/i;
+const EMPLOYEE_ROLE_REGEX = /(עובד|תגמולי\s*עובד|ניכוי\s*עובד)/i;
+const EMPLOYER_ROLE_REGEX = /(מעביד|מעסיק|תגמולי\s*מעביד|הפרשת\s*מעסיק)/i;
+const SEVERANCE_ROLE_REGEX = /פיצוי|פיצויים/i;
+const IDENTITY_NOISE_REGEX = /(?:שם\s+עובד|שם\s+מעסיק|ת\.?\s*ז\.?|מספר\s+זהות)/i;
 
 function singleAmountMatchesRates(amount, base, rates, tolerance) {
   if (amount === undefined) {
@@ -23,35 +34,198 @@ function singleAmountMatchesRates(amount, base, rates, tolerance) {
   });
 }
 
-function collectContributionCandidates(lines) {
-  const store = {};
+function normalizeContributionEntries(input) {
+  const source = Array.isArray(input) ? input : input?.lines;
+  if (!Array.isArray(source)) {
+    return [];
+  }
+
+  return source
+    .map((entry, index) => {
+      if (typeof entry === 'string') {
+        return {
+          raw: String(entry).trim(),
+          index,
+          sectionHints: [],
+          primarySection: null,
+        };
+      }
+
+      return {
+        raw: String(entry?.raw || entry?.text || '').trim(),
+        index: Number.isInteger(entry?.index) ? entry.index : index,
+        sectionHints: Array.isArray(entry?.sectionHints) ? entry.sectionHints : [],
+        primarySection: entry?.primarySection || null,
+      };
+    })
+    .filter(entry => entry.raw);
+}
+
+function isContributionNoiseEntry(entry) {
+  return (
+    !entry ||
+    !entry.raw ||
+    isCumulativeLine(entry.raw) ||
+    isLikelyTaxBaseNoiseLine(entry.raw) ||
+    IDENTITY_NOISE_REGEX.test(entry.raw)
+  );
+}
+
+function determineContributionKind(entry, activeKind) {
+  if (!entry || isContributionNoiseEntry(entry)) {
+    return activeKind;
+  }
+
+  if (STUDY_BASE_REGEX.test(entry.raw) || STUDY_CONTEXT_REGEX.test(entry.raw)) {
+    return 'study';
+  }
+
+  if (PENSION_BASE_REGEX.test(entry.raw) || PENSION_CONTEXT_REGEX.test(entry.raw)) {
+    return 'pension';
+  }
+
+  if ((EMPLOYEE_ROLE_REGEX.test(entry.raw) || EMPLOYER_ROLE_REGEX.test(entry.raw)) && activeKind) {
+    return activeKind;
+  }
+
+  return activeKind;
+}
+
+function collectContributionLines(entries) {
   const studyLines = [];
   const pensionLines = [];
+  let activeKind = null;
 
-  lines.forEach((line, index) => {
-    if (/קרן\s*השתלמות/i.test(line) && !/נתוניס\s*מצטברים|מצטבר/i.test(line)) {
-      studyLines.push({ line, index });
+  entries.forEach(entry => {
+    if (isContributionNoiseEntry(entry)) {
+      return;
     }
-    if (
-      (
-        /(תגמול|תגמולים|פיצוי|פיצויים|פנסי|ביטוח\s*מנהלים|קופ["״]?ג|גמל)/i.test(line) ||
-        /(ניכוי\s*עובד|הפרשת\s*מעסיק)/i.test(line)
-      ) &&
-      !/נתוניס\s*מצטברים|מצטבר/i.test(line) &&
-      !isLikelyTaxBaseNoiseLine(line)
-    ) {
-      pensionLines.push({ line, index });
+
+    activeKind = determineContributionKind(entry, activeKind);
+
+    if (activeKind === 'study') {
+      if (
+        STUDY_CONTEXT_REGEX.test(entry.raw) ||
+        STUDY_BASE_REGEX.test(entry.raw) ||
+        EMPLOYEE_ROLE_REGEX.test(entry.raw) ||
+        EMPLOYER_ROLE_REGEX.test(entry.raw)
+      ) {
+        studyLines.push(entry);
+      }
+      return;
+    }
+
+    if (activeKind === 'pension') {
+      if (
+        PENSION_CONTEXT_REGEX.test(entry.raw) ||
+        PENSION_BASE_REGEX.test(entry.raw) ||
+        EMPLOYEE_ROLE_REGEX.test(entry.raw) ||
+        EMPLOYER_ROLE_REGEX.test(entry.raw) ||
+        SEVERANCE_ROLE_REGEX.test(entry.raw)
+      ) {
+        pensionLines.push(entry);
+      }
     }
   });
 
-  const studyBaseLine = lines.find(line => /שכר\s*לקרן\s*השתלמות/i.test(line));
-  const pensionBaseLine = lines.find(line => /שכר\s*לקצבה/i.test(line));
+  return { studyLines, pensionLines };
+}
+
+function getAdjacentSupportEntry(entries, index) {
+  for (let offset = 1; offset <= 2; offset += 1) {
+    const neighbor = entries[index + offset];
+    if (!neighbor) {
+      break;
+    }
+
+    if (isContributionNoiseEntry(neighbor)) {
+      continue;
+    }
+
+    if (
+      neighbor.sectionHints.includes('identity') ||
+      neighbor.sectionHints.includes('summary') ||
+      neighbor.sectionHints.includes('tax_base')
+    ) {
+      break;
+    }
+
+    if (STUDY_BASE_REGEX.test(neighbor.raw) || PENSION_BASE_REGEX.test(neighbor.raw)) {
+      break;
+    }
+
+    const hasAmounts = extractAllNumericTokens(neighbor.raw).length > 0;
+    const hasRates = extractPercentTokens(neighbor.raw).length > 0;
+    if (hasAmounts || hasRates) {
+      return neighbor;
+    }
+
+    if (STUDY_CONTEXT_REGEX.test(neighbor.raw) || PENSION_CONTEXT_REGEX.test(neighbor.raw)) {
+      break;
+    }
+  }
+
+  return null;
+}
+
+function extractContributionLineStats(entry, entries, { maxAmount, tolerance }) {
+  const ownNums = extractAllNumericTokens(entry.raw);
+  const ownRates = extractPercentTokens(entry.raw);
+  const ownBase = pickReasonableAmount(ownNums, { min: 5000, max: 200000 });
+  const ownAmounts = ownNums.filter(
+    value => value >= 50 && value <= maxAmount && !(ownBase && Math.abs(value - ownBase) < 5),
+  );
+  const shouldUseAdjacentSupport = ownAmounts.length === 0 && ownRates.length === 0;
+  const supportEntry = shouldUseAdjacentSupport ? getAdjacentSupportEntry(entries, entry.index) : null;
+  const combinedRaw = supportEntry ? `${entry.raw} ${supportEntry.raw}` : entry.raw;
+  const nums = supportEntry ? extractAllNumericTokens(combinedRaw) : ownNums;
+  const rates = supportEntry ? extractPercentTokens(combinedRaw) : ownRates;
+  const lineBase = ownBase ?? (supportEntry
+    ? pickReasonableAmount(nums, { min: 5000, max: 200000 })
+    : undefined);
+  const amounts = nums.filter(
+    value => value >= 50 && value <= maxAmount && !(lineBase && Math.abs(value - lineBase) < 5),
+  );
+
+  return {
+    combinedRaw,
+    supportEntry,
+    lineBase,
+    rates,
+    amounts,
+    hasAdjacentSupport: Boolean(supportEntry),
+    tolerance,
+  };
+}
+
+function pushContributionAmountCandidate(store, field, amount, entry, stats, {
+  source,
+  score,
+  reason,
+}) {
+  pushCandidate(store, field, amount, {
+    source,
+    lineIndex: entry.index,
+    score: stats.hasAdjacentSupport ? Math.max(0.52, score - 0.06) : score,
+    reason,
+    section: 'contributions',
+    evidenceCategory: stats.hasAdjacentSupport ? 'adjacent_line' : undefined,
+  });
+}
+
+function collectContributionCandidates(input) {
+  const store = {};
+  const entries = normalizeContributionEntries(input);
+  const { studyLines, pensionLines } = collectContributionLines(entries);
+
+  const studyBaseLine = entries.find(entry => STUDY_BASE_REGEX.test(entry.raw) && !isContributionNoiseEntry(entry));
+  const pensionBaseLine = entries.find(entry => PENSION_BASE_REGEX.test(entry.raw) && !isContributionNoiseEntry(entry));
 
   const studyBase = studyBaseLine
-    ? pickReasonableAmount(extractAllNumericTokens(studyBaseLine), { min: 5000, max: 200000 })
+    ? pickReasonableAmount(extractAllNumericTokens(studyBaseLine.raw), { min: 5000, max: 200000 })
     : undefined;
   const pensionBase = pensionBaseLine
-    ? pickReasonableAmount(extractAllNumericTokens(pensionBaseLine), { min: 5000, max: 200000 })
+    ? pickReasonableAmount(extractAllNumericTokens(pensionBaseLine.raw), { min: 5000, max: 200000 })
     : undefined;
 
   if (studyBase !== undefined) {
@@ -74,182 +248,151 @@ function collectContributionCandidates(lines) {
     });
   }
 
-  for (const { line, index } of studyLines) {
-    const nums = extractAllNumericTokens(line);
-    const lineBase = pickReasonableAmount(nums, { min: 5000, max: 200000 });
-    const effectiveBase = studyBase ?? lineBase;
-    const rates = extractPercentTokens(line).slice(0, 4);
-    const moneyAmounts = nums.filter(
-      value => value >= 50 && value <= 30000 && !(effectiveBase && Math.abs(value - effectiveBase) < 5),
-    );
-    const isEmployeeLine = /(עובד|ניכוי\s*עובד|תגמולי\s*עובד)/i.test(line);
-    const isEmployerLine = /(מעביד|מעסיק|הפרשת\s*מעסיק|תגמולי\s*מעביד)/i.test(line);
+  for (const entry of studyLines) {
+    const stats = extractContributionLineStats(entry, entries, {
+      maxAmount: 30000,
+      tolerance: 20,
+    });
+    const effectiveBase = studyBase ?? stats.lineBase;
+    const isEmployeeLine = EMPLOYEE_ROLE_REGEX.test(entry.raw);
+    const isEmployerLine = EMPLOYER_ROLE_REGEX.test(entry.raw);
 
-    if (lineBase !== undefined) {
-      pushCandidate(store, 'study_base', lineBase, {
-        source: 'contribution_inline_base',
-        lineIndex: index,
-        score: 0.72,
-        reason: 'Matched study-fund base salary from the contribution line.',
+    if (stats.lineBase !== undefined) {
+      pushCandidate(store, 'study_base', stats.lineBase, {
+        source: stats.hasAdjacentSupport ? 'contribution_adjacent_base' : 'contribution_inline_base',
+        lineIndex: entry.index,
+        score: stats.hasAdjacentSupport ? 0.66 : 0.72,
+        reason: 'Matched study-fund base salary from the contribution block.',
         section: 'contributions',
-        evidenceCategory: 'inline_base',
+        evidenceCategory: stats.hasAdjacentSupport ? 'adjacent_line' : 'inline_base',
       });
     }
 
-    if (!isEmployeeLine && !isEmployerLine) {
+    if (isEmployeeLine === isEmployerLine) {
       continue;
     }
 
-    if (effectiveBase !== undefined && rates.length) {
-      for (const rate of rates) {
+    if (effectiveBase !== undefined && stats.rates.length) {
+      for (const rate of stats.rates) {
         const expectedAmount = +(effectiveBase * (rate / 100)).toFixed(2);
-        const matchedAmount = bestAmountByExpected(moneyAmounts, expectedAmount, 20);
+        const matchedAmount = bestAmountByExpected(stats.amounts, expectedAmount, stats.tolerance);
         if (matchedAmount === undefined) {
           continue;
         }
 
         if (isEmployeeLine) {
-          pushCandidate(store, 'study_employee', matchedAmount, {
-            source: 'contribution_rate_match',
-            lineIndex: index,
+          pushContributionAmountCandidate(store, 'study_employee', matchedAmount, entry, stats, {
+            source: stats.hasAdjacentSupport ? 'contribution_adjacent_rate_match' : 'contribution_rate_match',
             score: 0.88,
             reason: 'Matched study-fund employee amount from role + base + rate.',
-            section: 'contributions',
-            evidenceCategory: 'base_rate_match',
           });
         }
 
         if (isEmployerLine) {
-          pushCandidate(store, 'study_employer', matchedAmount, {
-            source: 'contribution_rate_match',
-            lineIndex: index,
+          pushContributionAmountCandidate(store, 'study_employer', matchedAmount, entry, stats, {
+            source: stats.hasAdjacentSupport ? 'contribution_adjacent_rate_match' : 'contribution_rate_match',
             score: 0.88,
             reason: 'Matched study-fund employer amount from role + base + rate.',
-            section: 'contributions',
-            evidenceCategory: 'base_rate_match',
           });
         }
       }
     }
 
-    if (moneyAmounts.length === 1 && singleAmountMatchesRates(moneyAmounts[0], effectiveBase, rates, 20)) {
+    if (stats.amounts.length === 1 && singleAmountMatchesRates(stats.amounts[0], effectiveBase, stats.rates, stats.tolerance)) {
       if (isEmployeeLine) {
-        pushCandidate(store, 'study_employee', moneyAmounts[0], {
-          source: 'contribution_single_amount',
-          lineIndex: index,
+        pushContributionAmountCandidate(store, 'study_employee', stats.amounts[0], entry, stats, {
+          source: stats.hasAdjacentSupport ? 'contribution_adjacent_single_amount' : 'contribution_single_amount',
           score: 0.68,
-          reason: 'Matched study-fund employee amount from a role-tagged single amount line.',
-          section: 'contributions',
-          evidenceCategory: 'role_single_amount',
+          reason: 'Matched study-fund employee amount from a role-tagged amount line.',
         });
       }
 
       if (isEmployerLine) {
-        pushCandidate(store, 'study_employer', moneyAmounts[0], {
-          source: 'contribution_single_amount',
-          lineIndex: index,
+        pushContributionAmountCandidate(store, 'study_employer', stats.amounts[0], entry, stats, {
+          source: stats.hasAdjacentSupport ? 'contribution_adjacent_single_amount' : 'contribution_single_amount',
           score: 0.68,
-          reason: 'Matched study-fund employer amount from a role-tagged single amount line.',
-          section: 'contributions',
-          evidenceCategory: 'role_single_amount',
+          reason: 'Matched study-fund employer amount from a role-tagged amount line.',
         });
       }
     }
   }
 
-  for (const { line, index } of pensionLines) {
-    const nums = extractAllNumericTokens(line);
-    if (!nums.length) continue;
+  for (const entry of pensionLines) {
+    const stats = extractContributionLineStats(entry, entries, {
+      maxAmount: 60000,
+      tolerance: 25,
+    });
+    const effectiveBase = stats.lineBase ?? pensionBase;
+    const isEmployeeLine = EMPLOYEE_ROLE_REGEX.test(entry.raw);
+    const isEmployerLine = EMPLOYER_ROLE_REGEX.test(entry.raw);
+    const isSeveranceLine = SEVERANCE_ROLE_REGEX.test(entry.raw);
+    const roleCount = [isEmployeeLine, isEmployerLine, isSeveranceLine].filter(Boolean).length;
 
-    const lineBase = pickReasonableAmount(nums, { min: 5000, max: 200000 });
-    const effectiveBase = lineBase ?? pensionBase;
-    const rates = extractPercentTokens(line);
-    const amounts = nums.filter(
-      value => value >= 50 && value <= 60000 && !(effectiveBase && Math.abs(value - effectiveBase) < 5),
-    );
-    const isEmployeeLine = /(עובד|תגמולי\s*עובד|ניכוי\s*עובד)/i.test(line);
-    const isEmployerLine = /(מעביד|מעסיק|תגמולי\s*מעביד|הפרשת\s*מעסיק)/i.test(line);
-    const isSeveranceLine = /פיצוי|פיצויים/i.test(line);
-
-    if (lineBase !== undefined) {
-      pushCandidate(store, 'pension_base', lineBase, {
-        source: 'contribution_inline_base',
-        lineIndex: index,
-        score: 0.72,
-        reason: 'Matched pension base salary from the contribution line.',
+    if (stats.lineBase !== undefined) {
+      pushCandidate(store, 'pension_base', stats.lineBase, {
+        source: stats.hasAdjacentSupport ? 'contribution_adjacent_base' : 'contribution_inline_base',
+        lineIndex: entry.index,
+        score: stats.hasAdjacentSupport ? 0.66 : 0.72,
+        reason: 'Matched pension base salary from the contribution block.',
         section: 'contributions',
-        evidenceCategory: 'inline_base',
+        evidenceCategory: stats.hasAdjacentSupport ? 'adjacent_line' : 'inline_base',
       });
     }
 
-    if (effectiveBase !== undefined && rates.length) {
-      for (const rate of rates) {
+    if (roleCount !== 1) {
+      continue;
+    }
+
+    if (effectiveBase !== undefined && stats.rates.length) {
+      for (const rate of stats.rates) {
         const expectedAmount = +(effectiveBase * (rate / 100)).toFixed(2);
-        const amount = bestAmountByExpected(amounts, expectedAmount, 25);
+        const amount = bestAmountByExpected(stats.amounts, expectedAmount, stats.tolerance);
         if (amount === undefined) continue;
 
         if (isSeveranceLine) {
-          pushCandidate(store, 'pension_severance', amount, {
-            source: 'contribution_rate_match',
-            lineIndex: index,
+          pushContributionAmountCandidate(store, 'pension_severance', amount, entry, stats, {
+            source: stats.hasAdjacentSupport ? 'contribution_adjacent_rate_match' : 'contribution_rate_match',
             score: 0.88,
             reason: 'Matched severance amount from role + base + rate.',
-            section: 'contributions',
-            evidenceCategory: 'base_rate_match',
           });
         } else if (isEmployeeLine) {
-          pushCandidate(store, 'pension_employee', amount, {
-            source: 'contribution_rate_match',
-            lineIndex: index,
+          pushContributionAmountCandidate(store, 'pension_employee', amount, entry, stats, {
+            source: stats.hasAdjacentSupport ? 'contribution_adjacent_rate_match' : 'contribution_rate_match',
             score: 0.88,
             reason: 'Matched pension employee amount from role + base + rate.',
-            section: 'contributions',
-            evidenceCategory: 'base_rate_match',
           });
         } else if (isEmployerLine) {
-          pushCandidate(store, 'pension_employer', amount, {
-            source: 'contribution_rate_match',
-            lineIndex: index,
+          pushContributionAmountCandidate(store, 'pension_employer', amount, entry, stats, {
+            source: stats.hasAdjacentSupport ? 'contribution_adjacent_rate_match' : 'contribution_rate_match',
             score: 0.88,
             reason: 'Matched pension employer amount from role + base + rate.',
-            section: 'contributions',
-            evidenceCategory: 'base_rate_match',
           });
         }
       }
     }
 
-    if (amounts.length === 1 && singleAmountMatchesRates(amounts[0], effectiveBase, rates, 25)) {
+    if (stats.amounts.length === 1 && singleAmountMatchesRates(stats.amounts[0], effectiveBase, stats.rates, stats.tolerance)) {
       if (isEmployeeLine) {
-        pushCandidate(store, 'pension_employee', amounts[0], {
-          source: 'contribution_single_amount',
-          lineIndex: index,
+        pushContributionAmountCandidate(store, 'pension_employee', stats.amounts[0], entry, stats, {
+          source: stats.hasAdjacentSupport ? 'contribution_adjacent_single_amount' : 'contribution_single_amount',
           score: 0.68,
-          reason: 'Matched pension employee amount from a role-tagged single amount line.',
-          section: 'contributions',
-          evidenceCategory: 'role_single_amount',
+          reason: 'Matched pension employee amount from a role-tagged amount line.',
         });
       }
 
       if (isEmployerLine) {
-        pushCandidate(store, 'pension_employer', amounts[0], {
-          source: 'contribution_single_amount',
-          lineIndex: index,
+        pushContributionAmountCandidate(store, 'pension_employer', stats.amounts[0], entry, stats, {
+          source: stats.hasAdjacentSupport ? 'contribution_adjacent_single_amount' : 'contribution_single_amount',
           score: 0.68,
-          reason: 'Matched pension employer amount from a role-tagged single amount line.',
-          section: 'contributions',
-          evidenceCategory: 'role_single_amount',
+          reason: 'Matched pension employer amount from a role-tagged amount line.',
         });
       }
 
       if (isSeveranceLine) {
-        pushCandidate(store, 'pension_severance', amounts[0], {
-          source: 'contribution_single_amount',
-          lineIndex: index,
+        pushContributionAmountCandidate(store, 'pension_severance', stats.amounts[0], entry, stats, {
+          source: stats.hasAdjacentSupport ? 'contribution_adjacent_single_amount' : 'contribution_single_amount',
           score: 0.68,
-          reason: 'Matched severance amount from a role-tagged single amount line.',
-          section: 'contributions',
-          evidenceCategory: 'role_single_amount',
+          reason: 'Matched severance amount from a role-tagged amount line.',
         });
       }
     }
@@ -260,8 +403,8 @@ function collectContributionCandidates(lines) {
     stats: {
       studyLinesFound: studyLines.length,
       pensionLinesFound: pensionLines.length,
-      studyDebugLine: studyLines[0]?.line,
-      pensionDebugLines: pensionLines.slice(0, 8).map(entry => entry.line),
+      studyDebugLine: studyLines[0]?.raw,
+      pensionDebugLines: pensionLines.slice(0, 8).map(entry => entry.raw),
     },
   };
 }

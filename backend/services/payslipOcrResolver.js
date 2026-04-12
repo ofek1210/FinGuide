@@ -7,6 +7,7 @@ const {
 } = require('./payslipOcrLabelMap');
 const {
   clampScore,
+  categorizeOcrWarning,
   dedupeStrings,
   extractMonthFromFilename,
   extractMonthYYYYMM,
@@ -42,11 +43,16 @@ const SUPPLEMENTAL_NUMERIC_FIELDS = [
   'study_employer',
 ];
 
-const TABLE_CANDIDATE_FIELDS = [
+const CORE_TABLE_CANDIDATE_FIELDS = [
   ...CORE_NUMERIC_FIELDS,
+];
+
+const SUPPLEMENTAL_TABLE_CANDIDATE_FIELDS = [
   'base_salary',
   'global_overtime',
   'travel_expenses',
+  'gross_for_income_tax',
+  'gross_for_national_insurance',
 ];
 
 const NUMERIC_FIELD_LIMITS = {
@@ -210,12 +216,24 @@ function isFieldBlockedByNoise(field, rawLine) {
     return false;
   }
 
-  if (['gross_total', 'mandatory_total'].includes(field) && isLikelyTaxBaseNoiseLine(rawLine)) {
+  if (
+    ['gross_total', 'mandatory_total', 'base_salary', 'global_overtime', 'travel_expenses']
+      .includes(field) &&
+    isLikelyTaxBaseNoiseLine(rawLine)
+  ) {
     return true;
   }
 
   if (
-    ['income_tax', 'national_insurance', 'health_insurance', 'mandatory_total'].includes(field)
+    [
+      'income_tax',
+      'national_insurance',
+      'health_insurance',
+      'mandatory_total',
+      'base_salary',
+      'global_overtime',
+      'travel_expenses',
+    ].includes(field)
     && isCumulativeLine(rawLine)
   ) {
     return true;
@@ -282,6 +300,78 @@ function resolveCandidateSection(field, sections = []) {
   }
 
   return availableSections[0];
+}
+
+function collectTableCandidates(store, context, fields, { tableMinCols = 6, baseScore = 0.98 } = {}) {
+  for (const logicalRow of context.logicalRows || []) {
+    const entry = context.lines[logicalRow.dataLineIndex];
+    const headerEntry = context.lines[logicalRow.headerLineIndex];
+    if (
+      !entry ||
+      !headerEntry ||
+      entry.orderedAmounts.length < tableMinCols ||
+      headerEntry.headerCells.length !== entry.orderedAmounts.length ||
+      isCumulativeLine(entry.raw) ||
+      isCumulativeLine(headerEntry.raw)
+    ) {
+      continue;
+    }
+
+    const hasSalaryRange = entry.orderedAmounts.some(value => value >= 500 && value <= 200000);
+    if (!hasSalaryRange) {
+      continue;
+    }
+
+    for (const field of fields) {
+      const patterns = PAYSLIP_LABEL_MAP[field] || [];
+      let matchedIndex = -1;
+
+      for (let columnIndex = 0; columnIndex < headerEntry.headerCells.length; columnIndex += 1) {
+        const cell = headerEntry.headerCells[columnIndex];
+        if (!cell.normalized || lineMatchesExclude(cell.normalized, field) || isCumulativeLine(cell.raw)) {
+          continue;
+        }
+
+        if (patterns.some(pattern => lineMatchesPattern(cell.normalized, pattern))) {
+          matchedIndex = columnIndex;
+          break;
+        }
+      }
+
+      if (matchedIndex < 0) {
+        continue;
+      }
+
+      const value = entry.orderedAmounts[matchedIndex];
+      const logicalRowSections = logicalRow.sections?.length
+        ? logicalRow.sections
+        : (logicalRow.section ? [logicalRow.section] : []);
+      const candidateSectionHints = dedupeStrings([
+        ...logicalRowSections,
+        ...(FIELD_SECTIONS[field] || []),
+      ]);
+
+      if (
+        !isReasonableFieldValue(field, value) ||
+        isFieldBlockedByNoise(field, entry.raw) ||
+        !linePreferredForField(field, { sectionHints: candidateSectionHints })
+      ) {
+        continue;
+      }
+
+      pushCandidate(store, field, value, {
+        source: 'table_header_column',
+        lineIndex: entry.index,
+        score: adjustScoreForSection(
+          field,
+          { ...entry, sectionHints: candidateSectionHints },
+          baseScore,
+        ),
+        reason: `Matched "${field}" from a table header column.`,
+        section: resolveCandidateSection(field, candidateSectionHints),
+      });
+    }
+  }
 }
 
 function collectPeriodMonthCandidates(context, { sourcePath } = {}) {
@@ -398,69 +488,9 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
 function collectCoreFieldCandidates(context) {
   const store = {};
   const legacyLabelMap = extractFromLinesByLabelMap(context.lines.map(line => line.raw));
-  const tableMinCols = 6;
 
   collectLabelCandidates(store, context, CORE_NUMERIC_FIELDS);
-
-  for (const logicalRow of context.logicalRows || []) {
-    const entry = context.lines[logicalRow.dataLineIndex];
-    const headerEntry = context.lines[logicalRow.headerLineIndex];
-    if (
-      !entry ||
-      !headerEntry ||
-      entry.orderedAmounts.length < tableMinCols ||
-      headerEntry.headerCells.length !== entry.orderedAmounts.length
-    ) {
-      continue;
-    }
-
-    const hasSalaryRange = entry.orderedAmounts.some(value => value >= 500 && value <= 200000);
-    if (!hasSalaryRange) {
-      continue;
-    }
-
-    for (const field of TABLE_CANDIDATE_FIELDS) {
-      const patterns = PAYSLIP_LABEL_MAP[field] || [];
-      let matchedIndex = -1;
-
-      for (let columnIndex = 0; columnIndex < headerEntry.headerCells.length; columnIndex += 1) {
-        const cell = headerEntry.headerCells[columnIndex];
-        if (!cell.normalized || lineMatchesExclude(cell.normalized, field)) {
-          continue;
-        }
-
-        if (patterns.some(pattern => lineMatchesPattern(cell.normalized, pattern))) {
-          matchedIndex = columnIndex;
-          break;
-        }
-      }
-
-      if (matchedIndex < 0) {
-        continue;
-      }
-
-      const value = entry.orderedAmounts[matchedIndex];
-      const logicalRowSections = logicalRow.sections?.length
-        ? logicalRow.sections
-        : (logicalRow.section ? [logicalRow.section] : []);
-
-      if (
-        !isReasonableFieldValue(field, value) ||
-        isFieldBlockedByNoise(field, entry.raw) ||
-        !linePreferredForField(field, { sectionHints: logicalRowSections })
-      ) {
-        continue;
-      }
-
-      pushCandidate(store, field, value, {
-        source: 'table_header_column',
-        lineIndex: entry.index,
-        score: adjustScoreForSection(field, { ...entry, sectionHints: logicalRowSections }, 0.98),
-        reason: `Matched "${field}" from a table header column.`,
-        section: resolveCandidateSection(field, logicalRowSections),
-      });
-    }
-  }
+  collectTableCandidates(store, context, CORE_TABLE_CANDIDATE_FIELDS, { tableMinCols: 6 });
 
   for (const entry of context.lines) {
     if (isLikelyTaxBaseNoiseLine(entry.raw) || isCumulativeLine(entry.raw)) {
@@ -619,6 +649,11 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     adjacentWindow: 1,
     adjacentScore: 0.8,
   });
+  collectLabelCandidates(store, context, ['gross_for_income_tax', 'gross_for_national_insurance'], {
+    adjacentWindow: 2,
+    adjacentScore: 0.82,
+  });
+  collectTableCandidates(store, context, SUPPLEMENTAL_TABLE_CANDIDATE_FIELDS, { tableMinCols: 4, baseScore: 0.94 });
 
   pushRegexValueCandidates(store, 'base_salary', context.fullText, [
     /שכר\s*בסיס[^\d]*(\d[\d,.\s₪]+)/i,
@@ -663,7 +698,7 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
   });
 
   pushRegexValueCandidates(store, 'gross_for_national_insurance', context.fullText, [
-    /(?:שכר\s*חייב\s*ב\.?\s*ל\.?|ברוטו\s*לב\.?\s*לאומי)\s*[:| ]\s*(\d[\d,.\s₪]+)/i,
+    /(?:שכר\s*חייב\s*ב\.?\s*ל\.?|שכר\s*חייב\s*בב\.?\s*ל\.?|ברוטו\s*לב\.?\s*לאומי|הכנסה\s*חייבת\s*ביטוח\s*לאומי)[^\d]*(\d[\d,.\s₪]+)/i,
   ], {
     source: 'regex_gross_for_national_insurance',
     score: 0.86,
@@ -847,6 +882,12 @@ function buildQualityPayload(fieldCandidates, warnings) {
   let weightedSum = 0;
   let totalWeight = 0;
   let resolvedCount = 0;
+  const normalizedWarnings = dedupeStrings(warnings);
+  const warningDetails = normalizedWarnings.map(message => ({
+    message,
+    category: categorizeOcrWarning(message),
+  }));
+  const warningCategories = dedupeStrings(warningDetails.map(detail => detail.category));
 
   Object.entries(QUALITY_FIELD_WEIGHTS).forEach(([field, weight]) => {
     totalWeight += weight;
@@ -882,14 +923,16 @@ function buildQualityPayload(fieldCandidates, warnings) {
     };
   });
 
-  const warningPenalty = Math.min(0.2, dedupeStrings(warnings).length * 0.02);
+  const warningPenalty = Math.min(0.2, normalizedWarnings.length * 0.02);
   const confidence = clampScore((totalWeight > 0 ? weightedSum / totalWeight : 0) - warningPenalty);
 
   return {
     confidence,
     resolution_score: Number(Math.max(0, weightedSum - warningPenalty).toFixed(3)),
     resolved_core_fields: resolvedCount,
-    warnings: dedupeStrings(warnings),
+    warnings: normalizedWarnings,
+    warning_categories: warningCategories,
+    warning_details: warningDetails,
     fields,
   };
 }

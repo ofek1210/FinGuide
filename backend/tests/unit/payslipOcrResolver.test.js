@@ -57,4 +57,10 @@ describe('payslipOcrResolver', () => {
 
     expect(ranked.map(candidate => candidate.psm)).toEqual([3, 4, 6]);
   });
+
+  it('prefers the more internally consistent OCR pass even when another pass has higher confidence', () => {
+    const ranked = rankExtractionCandidates(readJsonFixture('payslip-ocr-pass-ranking-consistency.json'));
+
+    expect(ranked.map(candidate => candidate.psm)).toEqual([4, 6, 3]);
+  });
 });
