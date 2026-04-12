@@ -68,6 +68,10 @@ describe('App behavior integration', () => {
       fileSize: 1024,
       mimeType: 'application/pdf',
       status: 'pending',
+      metadata: {
+        category: 'other',
+        source: 'manual_upload',
+      },
     });
 
     const res = await request(app)
@@ -78,5 +82,9 @@ describe('App behavior integration', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data._id).toBe(createdDocument._id.toString());
     expect(res.body.data.filePath).toBeUndefined();
+    expect(res.body.data.metadata).toEqual({
+      category: 'other',
+      source: 'manual_upload',
+    });
   });
 });

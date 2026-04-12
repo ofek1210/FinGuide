@@ -4,6 +4,7 @@ import {
   listDocuments,
   removeDocument,
   uploadDocument,
+  type UploadDocumentPayload,
   type DocumentItem,
   type DocumentStatus,
 } from "../api/documents.api";
@@ -52,11 +53,15 @@ export const useDashboardDocuments = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadDocuments();
   }, [loadDocuments]);
 
   const uploadFile = useCallback(
-    async (file: File) => {
+    async (
+      file: File,
+      metadata: UploadDocumentPayload = { category: "other" },
+    ) => {
       const maxSizeBytes = MAX_UPLOAD_SIZE_MB * BYTES_IN_MB;
 
       if (!isPdfFile(file)) {
@@ -73,7 +78,7 @@ export const useDashboardDocuments = () => {
       setActionError("");
       setIsUploading(true);
 
-      const response = await uploadDocument(file);
+      const response = await uploadDocument(file, metadata);
       if (!response.success) {
         setUploadError(response.message || "שגיאה בהעלאת הקובץ.");
         setIsUploading(false);
