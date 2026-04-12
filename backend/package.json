@@ -11,6 +11,7 @@
     "test:unit": "jest --runInBand --testMatch '**/tests/unit/**/*.test.js' --testMatch '**/__tests__/**/*.test.js'",
     "test:integration": "jest --runInBand --testMatch '**/tests/integration/**/*.test.js'",
     "test:watch": "jest --watch",
+    "reprocess:payslips": "node scripts/reprocessPayslips.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,json,md}\"",

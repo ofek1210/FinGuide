@@ -1,0 +1,32 @@
+[
+  {
+    "psm": 6,
+    "data": {
+      "quality": {
+        "resolution_score": 6.2,
+        "confidence": 0.78,
+        "warnings": ["low", "noise"]
+      }
+    }
+  },
+  {
+    "psm": 4,
+    "data": {
+      "quality": {
+        "resolution_score": 6.5,
+        "confidence": 0.74,
+        "warnings": ["low", "noise", "ambiguous"]
+      }
+    }
+  },
+  {
+    "psm": 3,
+    "data": {
+      "quality": {
+        "resolution_score": 6.5,
+        "confidence": 0.74,
+        "warnings": ["low"]
+      }
+    }
+  }
+]
