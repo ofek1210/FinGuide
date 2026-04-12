@@ -1,6 +1,7 @@
 const Document = require('../models/Document');
 const { polishHebrewAnswer, askLLM } = require('../services/aiService');
 const { detectSalaryAnomalies } = require('../utils/detectSalaryAnomalies');
+const { simulateWhatIf } = require('../utils/simulateWhatIf');
 
 const RLM = '\u200F';
 
@@ -25,6 +26,27 @@ function safeDate(value) {
 function formatAmount(value) {
   if (value == null || !Number.isFinite(Number(value))) return null;
   return `${Number(value).toLocaleString('he-IL')} ₪`;
+}
+
+// Extract what-if change from a Hebrew message, e.g. "אם אקבל 10%" or "עוד 500 שקל"
+function parseWhatIfChange(msg) {
+  const pctMatch = /(\d+(?:\.\d+)?)\s*(?:%|אחוז)/.exec(msg);
+  if (pctMatch) {
+    return { type: 'gross_percent', value: parseFloat(pctMatch[1]) / 100 };
+  }
+  const amtMatch = /(\d[\d,]*(?:\.\d+)?)\s*(?:שקל|ש.ח|₪|ש״ח)/.exec(msg);
+  if (amtMatch) {
+    return { type: 'gross_amount', value: parseFloat(amtMatch[1].replace(/,/g, '')) };
+  }
+  // Bare number: ≤100 treated as percent, >100 as amount
+  const numMatch = /(\d+(?:\.\d+)?)/.exec(msg);
+  if (numMatch) {
+    const n = parseFloat(numMatch[1]);
+    return n <= 100
+      ? { type: 'gross_percent', value: n / 100 }
+      : { type: 'gross_amount', value: n };
+  }
+  return null;
 }
 
 // ── intent detection ──────────────────────────────────────────────────────────
@@ -80,6 +102,15 @@ function detectIntent(message) {
 
   if (msg.includes('ביטוח לאומי') || msg.includes('ב.ל')) {
     return 'national_insurance';
+  }
+
+  if (
+    msg.includes('מה יקרה אם') ||
+    msg.includes('כמה אקבל אם') ||
+    msg.includes('סימולציה') ||
+    (msg.includes('העלאה') && /\d/.test(msg))
+  ) {
+    return 'whatif';
   }
 
   return 'fallback';
@@ -141,16 +172,27 @@ async function buildUserContext(userId) {
     .sort({ uploadedAt: -1 })
     .lean();
 
-  // Most recent successfully analyzed payslip
-  const latestPayslip = documents.find(
+  // Get last 3 completed payslips for trend analysis
+  const completedPayslips = documents.filter(
     d =>
       d.status === 'completed' &&
       d.metadata?.category === 'payslip' &&
       d.analysisData?.summary,
-  );
+  ).slice(0, 3);
 
+  const latestPayslip = completedPayslips[0];
   const fullAnalysis = latestPayslip?.analysisData || {};
   const summary = fullAnalysis.summary || {};
+
+  // Historical payslips (all except the latest) for month-over-month context
+  const payslipHistory = completedPayslips.slice(1).map(p => ({
+    date: p.analysisData?.summary?.date ?? null,
+    grossSalary: p.analysisData?.summary?.grossSalary ?? null,
+    netSalary: p.analysisData?.summary?.netSalary ?? null,
+    tax: p.analysisData?.summary?.tax ?? null,
+    pensionEmployee: p.analysisData?.summary?.pensionEmployee ?? null,
+    trainingFundEmployee: p.analysisData?.summary?.trainingFundEmployee ?? null,
+  }));
 
   return {
     documents: documents.map(d => ({
@@ -176,6 +218,8 @@ async function buildUserContext(userId) {
     trainingFundEmployerPercent: fullAnalysis.contributions?.study_fund?.employer_rate_percent ?? null,
     marginalTaxRate: fullAnalysis.tax?.marginal_tax_rate_percent ?? null,
     taxCreditPoints: fullAnalysis.tax?.tax_credit_points ?? null,
+    // Prior payslips for trend questions
+    payslipHistory,
   };
 }
 
@@ -291,7 +335,7 @@ function buildRuleBasedAnswer(intent, ctx) {
 // ── main handler ──────────────────────────────────────────────────────────────
 
 async function chatWithAI(req, res) {
-  const { message } = req.body;
+  const { message, history } = req.body;
 
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ success: false, message: 'message is required (string)' });
@@ -300,23 +344,45 @@ async function chatWithAI(req, res) {
   // Server-side RAG: always fetch from DB, never trust client userData
   const userContext = await buildUserContext(req.user._id);
   const intent = detectIntent(message);
-  const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
 
   let finalAnswer;
   let source;
 
-  if (intent === 'hello') {
-    // Light polish for the greeting
+  if (intent === 'whatif') {
+    const change = parseWhatIfChange(normalizeMessage(message));
+    if (!change || userContext.grossSalary == null || userContext.netSalary == null) {
+      finalAnswer = 'אין לי מספיק נתונים לחשב סימולציה. ודאי שיש תלוש מנותח וציני אחוז או סכום, למשל: "מה יקרה אם אקבל העלאה של 10%?"';
+    } else {
+      try {
+        const sim = simulateWhatIf({ gross: userContext.grossSalary, net: userContext.netSalary, change });
+        const label = change.type === 'gross_percent'
+          ? `העלאה של ${change.value * 100}%`
+          : `תוספת של ${formatAmount(change.value)}`;
+        finalAnswer =
+          `לפי הסימולציה, ${label} תביא לברוטו של ${formatAmount(sim.scenario.gross)} ` +
+          `ולנטו של ${formatAmount(sim.scenario.net)} ` +
+          `(עלייה של ${formatAmount(sim.delta.net)} בנטו).\n` +
+          `שים לב: החישוב מניח יחס קבוע בין ברוטו לנטו ואינו לוקח בחשבון מדרגות מס.`;
+      } catch {
+        finalAnswer = 'לא הצלחתי לחשב את הסימולציה. בדוק שהנתונים בתלוש תקינים.';
+      }
+    }
+    source = 'rule';
+  } else if (intent === 'hello') {
+    const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
     finalAnswer = await polishHebrewAnswer(ruleAnswer);
     source = 'rule+polish';
-  } else if (ruleAnswer === null) {
-    // Fallback: open-ended question → LLM with full financial context
-    finalAnswer = await askLLM(message, userContext);
-    source = 'llm';
   } else {
-    // Deterministic rule answer — never touches LLM, no chance of hallucination
-    finalAnswer = ruleAnswer;
-    source = 'rule';
+    const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
+    if (ruleAnswer === null) {
+      // Open-ended question → LLM with full financial context + conversation history
+      finalAnswer = await askLLM(message, userContext, history);
+      source = 'llm';
+    } else {
+      // Deterministic rule answer — never touches LLM, no chance of hallucination
+      finalAnswer = ruleAnswer;
+      source = 'rule';
+    }
   }
 
   return res.json({

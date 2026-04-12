@@ -1,5 +1,5 @@
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:1b';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1:8b';
 
 function cleanAnswer(text) {
   if (!text) return '';
@@ -42,6 +42,20 @@ function buildFinancialSystemPrompt(userContext) {
 
   if (userContext?.documents?.length) {
     lines.push(`סה"כ מסמכים במערכת: ${userContext.documents.length}`);
+  }
+
+  // Include prior payslips for month-over-month trend questions
+  if (Array.isArray(userContext?.payslipHistory) && userContext.payslipHistory.length > 0) {
+    lines.push('', 'תלושים קודמים (לבדיקת מגמות):');
+    userContext.payslipHistory.forEach(p => {
+      const label = p.date || 'תלוש קודם';
+      const parts = [];
+      if (p.grossSalary != null) parts.push(`ברוטו: ${p.grossSalary} ₪`);
+      if (p.netSalary != null) parts.push(`נטו: ${p.netSalary} ₪`);
+      if (p.tax != null) parts.push(`מס: ${p.tax} ₪`);
+      if (p.pensionEmployee != null) parts.push(`פנסיה עובד: ${p.pensionEmployee} ₪`);
+      if (parts.length > 0) lines.push(`${label}: ${parts.join(' | ')}`);
+    });
   }
 
   return lines.join('\n');
@@ -95,14 +109,20 @@ async function polishHebrewAnswer(baseText) {
   return result || baseText;
 }
 
-async function askLLM(userMessage, userContext) {
+async function askLLM(userMessage, userContext, history = []) {
   const systemPrompt = buildFinancialSystemPrompt(userContext);
   const fallback =
     'מצטערת, לא הצלחתי לענות על זה כרגע. נסי לשאול שאלה ספציפית כמו: "כמה נטו?", "כמה פנסיה?" או "תסכם מסמכים".';
 
+  // Include last N turns so the LLM has conversation context
+  const historyMessages = Array.isArray(history)
+    ? history.slice(-6).map(m => ({ role: m.role, content: m.content }))
+    : [];
+
   const result = await callOllamaChat(
     [
       { role: 'system', content: systemPrompt },
+      ...historyMessages,
       { role: 'user', content: userMessage },
     ],
     { temperature: 0.2, maxTokens: 250, timeoutMs: 30000 },

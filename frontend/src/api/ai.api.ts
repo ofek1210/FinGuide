@@ -5,13 +5,20 @@ export type ChatResponse = {
   answer?: string;
   intent?: string;
   source?: string;
-  model?: string;
   message?: string;
+};
+
+export type ConversationMessage = {
+  role: "user" | "assistant";
+  content: string;
 };
 
 const getToken = () => localStorage.getItem("token");
 
-export const chatWithAI = async (message: string): Promise<ChatResponse> => {
+export const chatWithAI = async (
+  message: string,
+  history: ConversationMessage[] = [],
+): Promise<ChatResponse> => {
   const token = getToken();
   if (!token) {
     return { success: false, message: "אין הרשאה. נא להתחבר." };
@@ -20,7 +27,7 @@ export const chatWithAI = async (message: string): Promise<ChatResponse> => {
   const result = await apiJson<ChatResponse>("/api/ai/chat", {
     method: "POST",
     auth: true,
-    body: { message },
+    body: { message, history },
     fallbackErrorMessage: "שגיאה בשיחה עם הבוט.",
   });
 
