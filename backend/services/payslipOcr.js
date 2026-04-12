@@ -27,9 +27,13 @@ const {
 const { buildPayslipSummary } = require('./payslipOcrSummary');
 const {
   extractHMO,
+  extractMonthFromFilename,
+  extractMonthYYYYMM,
+  linesOf,
   match1,
   matchAmountFlexible,
   parseDateDDMMYYYYorYY,
+  parseMoney,
   parseNumber,
   parsePercent,
   translateHMO,
@@ -48,104 +52,8 @@ function sha256(str) {
   return crypto.createHash('sha256').update(str, 'utf8').digest('hex');
 }
 
-function cleanNum(s) {
-  if (!s) return '';
-  return String(s).replace(/[₪]/g, '').replace(/,/g, '').trim();
-}
-
-function parseMoney(s) {
-  const c = cleanNum(s);
-  if (!c) return undefined;
-  const n = Number(c);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-function parsePercent(s) {
-  if (!s) return undefined;
-  const c = String(s).replace('%', '').trim();
-  const n = Number(c);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-function parseNumber(s) {
-  const c = cleanNum(s);
-  if (!c) return undefined;
-  const n = Number(c);
-  return Number.isFinite(n) ? n : undefined;
-}
-
-function linesOf(text) {
-  return String(text)
-    .split(/\r?\n/)
-    .map(l => l.trim())
-    .filter(Boolean);
-}
-
 function toRawLines(text) {
   return linesOf(text);
-}
-
-function match1(text, regex) {
-  const m = String(text).match(regex);
-  return m?.[1]?.trim();
-}
-
-function matchAmountFlexible(text, regex) {
-  const s = match1(text, regex);
-  return parseMoney(s);
-}
-
-function extractMonthFromFilename(filePath) {
-  // PaySlip2024-02.pdf OR 2024-02 anywhere in filename
-  const base = path.basename(filePath);
-  const m = base.match(/(20\d{2})[-_.](\d{2})/);
-  if (!m) return undefined;
-  return `${m[1]}-${m[2]}`;
-}
-
-const HEBREW_MONTHS = {
-  ינואר: '01', פברואר: '02', מרץ: '03', מרס: '03', אפריל: '04', מאי: '05', יוני: '06',
-  יולי: '07', אוגוסט: '08', ספטמבר: '09', אוקטובר: '10', נובמבר: '11', דצמבר: '12',
-};
-
-function extractMonthYYYYMM(text) {
-  const t = String(text);
-
-  const hebrewMonth = t.match(/(ינואר|פברואר|מרץ|מרס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)\s*(20\d{2})/);
-  if (hebrewMonth) {
-    const mm = HEBREW_MONTHS[hebrewMonth[1]];
-    if (mm) return `${hebrewMonth[2]}-${mm}`;
-  }
-
-  const m1 = t.match(/(\d{2})\/(20\d{2})/);
-  if (m1) return `${m1[2]}-${m1[1]}`;
-
-  const m2 = t.match(/מ-\d{2}\/(\d{2})\/(\d{2})\s+עד\s+\d{2}\/\1\/\2/);
-  if (m2) return `20${m2[2]}-${m2[1]}`;
-
-  return undefined;
-}
-
-function parseDateDDMMYYYYorYY(s) {
-  if (!s) return undefined;
-  const m = String(s).match(/(\d{2})\/(\d{2})\/(\d{2}|\d{4})/);
-  if (!m) return undefined;
-  const dd = m[1];
-  const mm = m[2];
-  let yy = m[3];
-  if (yy.length === 2) yy = `20${yy}`;
-  return `${yy}-${mm}-${dd}`;
-}
-
-// -------------------- HMO translate --------------------
-function extractHMO(text) {
-  const m = String(text).match(/קופת[-\s]?חולים\s+([^\s]+)/i);
-  return m?.[1];
-}
-function translateHMO(hmo) {
-  if (!hmo) return undefined;
-  const map = { מכבי: 'Maccabi', כללית: 'Clalit', מאוחדת: 'Meuhedet', לאומית: 'Leumit' };
-  return map[hmo] || hmo;
 }
 
 // -------------------- OCR pipeline --------------------

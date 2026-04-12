@@ -12,10 +12,13 @@ import {
   downloadDocument,
   removeDocument,
   type DocumentItem as ApiDocumentItem,
+  type DocumentCategory,
   type DocumentMetadata,
+  type UploadDocumentPayload,
 } from "../api/documents.api";
 import { APP_ROUTES } from "../types/navigation";
 import {
+  DOCUMENT_CATEGORY_LABELS,
   formatDocumentMetadataSummary,
 } from "../utils/documentMetadata";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
@@ -66,7 +69,7 @@ const mapStatus = (status?: ApiDocumentItem["status"]): DocumentStatus => {
 };
 
 const mapApiDocument = (document: ApiDocumentItem): DocumentItem => ({
-  id: document._id,
+  id: document.id ?? document._id,
   name: document.originalName,
   status: mapStatus(document.status),
   fileSize: document.fileSize,
@@ -469,7 +472,10 @@ export default function DocumentsPage() {
     }
 
     const file = selectedFile;
-    const metadataPayload = { category: "other" as const };
+    const metadataPayload = buildUploadPayload();
+    if (!metadataPayload) {
+      return;
+    }
 
     const tempId = `temp-${Date.now()}`;
     const tempDoc: DocumentItem = {
@@ -479,10 +485,19 @@ export default function DocumentsPage() {
       fileSize: file.size,
       uploadedAt: new Date().toISOString(),
       metadata: {
-        category: metadataPayload.category,
-        source: "manual_upload",
-      },
-    };
+          category: metadataPayload.category,
+          source: "manual_upload",
+          ...(metadataPayload.periodMonth !== undefined && {
+            periodMonth: metadataPayload.periodMonth,
+          }),
+          ...(metadataPayload.periodYear !== undefined && {
+            periodYear: metadataPayload.periodYear,
+          }),
+          ...(metadataPayload.documentDate && {
+            documentDate: metadataPayload.documentDate,
+          }),
+        },
+      };
 
     setDocuments((prev) => [tempDoc, ...prev]);
     setUploadState("uploading");

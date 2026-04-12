@@ -7,7 +7,7 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  model?: string;
+  source?: string;
 };
 
 const promptSuggestions = [
@@ -59,7 +59,7 @@ export default function DashboardChatPanel() {
       id: `assistant-${Date.now()}`,
       role: "assistant",
       content: response.answer,
-      model: response.model,
+      source: response.source,
     };
 
     setChatMessages((prev) => [...prev, assistantMessage]);
@@ -83,7 +83,7 @@ export default function DashboardChatPanel() {
           {chatMessages.map((message) => (
             <div key={message.id} className={`ai-message ${message.role}`}>
               <span>{message.content}</span>
-              {message.model ? <em className="ai-model">{message.model}</em> : null}
+              {message.source ? <em className="ai-model">{message.source}</em> : null}
             </div>
           ))}
           {isChatting ? (
