@@ -1,14 +1,13 @@
-const { polishHebrewAnswer } = require('../services/aiService');
+const Document = require('../models/Document');
+const { polishHebrewAnswer, askLLM } = require('../services/aiService');
+const { detectSalaryAnomalies } = require('../utils/detectSalaryAnomalies');
 
 const RLM = '\u200F';
 
+// ── helpers ──────────────────────────────────────────────────────────────────
+
 function normalizeMessage(message) {
   return String(message || '').trim().toLowerCase();
-}
-
-function formatPercent(value) {
-  if (value === undefined || value === null || value === '') return null;
-  return `${value}%`;
 }
 
 function isSameMonth(dateA, dateB) {
@@ -22,6 +21,13 @@ function safeDate(value) {
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? null : d;
 }
+
+function formatAmount(value) {
+  if (value == null || !Number.isFinite(Number(value))) return null;
+  return `${Number(value).toLocaleString('he-IL')} ₪`;
+}
+
+// ── intent detection ──────────────────────────────────────────────────────────
 
 function detectIntent(message) {
   const msg = normalizeMessage(message);
@@ -39,17 +45,21 @@ function detectIntent(message) {
   if (
     msg.includes('איזו פעולה') ||
     msg.includes('איזה פעולה') ||
-    msg.includes('מה הכי חשוב')
+    msg.includes('איזה פעולות') ||
+    msg.includes('איזו פעולות') ||
+    msg.includes('מה הכי חשוב') ||
+    msg.includes('מומלץ לבצע')
   ) {
     return 'recommended_action';
   }
 
-  if (msg.includes('פנסיה') && msg.includes('כמה')) {
-    return 'pension_employee_percent';
+  if (msg.includes('חריג')) {
+    return 'anomaly_check';
   }
 
-  if (msg.includes('מעסיק') && msg.includes('פנסיה')) {
-    return 'pension_employer_percent';
+  if (msg.includes('פנסיה')) {
+    if (msg.includes('מעסיק')) return 'pension_employer';
+    return 'pension_employee';
   }
 
   if (msg.includes('קרן השתלמות')) {
@@ -64,169 +74,257 @@ function detectIntent(message) {
     return 'gross_salary';
   }
 
+  if (msg.includes('מס הכנסה') || msg.includes('מס שולי')) {
+    return 'tax_info';
+  }
+
+  if (msg.includes('ביטוח לאומי') || msg.includes('ב.ל')) {
+    return 'national_insurance';
+  }
+
   return 'fallback';
 }
 
-function summarizeDocuments(documents = []) {
+// ── document helpers ──────────────────────────────────────────────────────────
+
+function summarizeDocuments(documents) {
   const total = documents.length;
-  const analyzed = documents.filter(doc => doc.status === 'analyzed').length;
-  const uploaded = documents.filter(doc => doc.status === 'uploaded').length;
-  const failed = documents.filter(doc => doc.status === 'failed').length;
+  const completed = documents.filter(d => d.status === 'completed').length;
+  const uploaded = documents.filter(d => d.status === 'uploaded').length;
+  const failed = documents.filter(d => d.status === 'failed').length;
 
   const byType = {};
-  documents.forEach(doc => {
-    const type = doc.type || 'unknown';
-    byType[type] = (byType[type] || 0) + 1;
+  documents.forEach(d => {
+    const t = d.type || 'unknown';
+    byType[t] = (byType[t] || 0) + 1;
   });
 
-  return { total, analyzed, uploaded, failed, byType };
+  return { total, completed, uploaded, failed, byType };
 }
 
-function countDocumentsThisMonth(documents = []) {
+function countDocumentsThisMonth(documents) {
   const now = new Date();
-
-  return documents.filter(doc => {
-    const uploadedAt = safeDate(doc.uploadedAt);
-    return uploadedAt && isSameMonth(uploadedAt, now);
+  return documents.filter(d => {
+    const at = safeDate(d.uploadedAt);
+    return at && isSameMonth(at, now);
   }).length;
 }
 
-function getRecommendedAction(documents = []) {
+function getRecommendedAction(documents) {
   if (!documents.length) {
-    return 'עדיין לא העלית מסמכים. הפעולה הכי חשובה כרגע היא להעלות מסמך ראשון כדי שאוכל לנתח אותו.';
+    return 'עדיין לא העלית מסמכים. הפעולה הכי חשובה כרגע היא להעלות תלוש שכר ראשון.';
   }
 
-  const failedDocs = documents.filter(doc => doc.status === 'failed');
-  if (failedDocs.length > 0) {
-    return `יש לך ${failedDocs.length} מסמכים שנכשלו בניתוח, ולכן הפעולה הכי חשובה כרגע היא לבדוק או להעלות אותם מחדש.`;
+  const failed = documents.filter(d => d.status === 'failed');
+  if (failed.length > 0) {
+    return `יש לך ${failed.length} מסמכים שנכשלו בניתוח. כדאי לבדוק אותם או להעלות אותם מחדש.`;
   }
 
-  const uploadedDocs = documents.filter(doc => doc.status === 'uploaded');
-  if (uploadedDocs.length > 0) {
-    return `יש לך ${uploadedDocs.length} מסמכים שהועלו אבל עדיין לא נותחו, ולכן כדאי להשלים את הניתוח שלהם קודם.`;
+  const pending = documents.filter(d => d.status === 'uploaded' || d.status === 'pending');
+  if (pending.length > 0) {
+    return `יש לך ${pending.length} מסמכים שהועלו אבל עדיין לא נותחו. המתין לסיום הניתוח.`;
   }
 
-  const hasPayslip = documents.some(doc => doc.type === 'payslip');
+  const hasPayslip = documents.some(d => d.type === 'payslip');
   if (!hasPayslip) {
-    return 'כדאי להעלות תלוש שכר כדי שאוכל לתת לך תובנות אישיות על שכר, פנסיה והפרשות.';
+    return 'כדאי להעלות תלוש שכר כדי שאוכל לנתח את הנתונים הפיננסיים שלך.';
   }
 
-  return 'נראה שמצב המסמכים שלך תקין כרגע. השלב הבא שכדאי לעשות הוא לשאול שאלה ממוקדת על הנתונים שלך.';
+  return 'מצב המסמכים שלך תקין. אפשר לשאול שאלות ספציפיות על שכר, פנסיה, קרן השתלמות או מס.';
 }
 
-function buildRuleBasedAnswer(intent, userData = {}) {
-  const documents = Array.isArray(userData.documents) ? userData.documents : [];
+// ── server-side RAG: build context from DB ────────────────────────────────────
+
+async function buildUserContext(userId) {
+  const documents = await Document.find({ user: userId })
+    .select('status uploadedAt metadata analysisData')
+    .sort({ uploadedAt: -1 })
+    .lean();
+
+  // Most recent successfully analyzed payslip
+  const latestPayslip = documents.find(
+    d =>
+      d.status === 'completed' &&
+      d.metadata?.category === 'payslip' &&
+      d.analysisData?.summary,
+  );
+
+  const fullAnalysis = latestPayslip?.analysisData || {};
+  const summary = fullAnalysis.summary || {};
+
+  return {
+    documents: documents.map(d => ({
+      status: d.status,
+      type: d.metadata?.category || 'unknown',
+      uploadedAt: d.uploadedAt,
+    })),
+    // Salary amounts from OCR summary
+    grossSalary: summary.grossSalary ?? null,
+    netSalary: summary.netSalary ?? null,
+    tax: summary.tax ?? null,
+    nationalInsurance: summary.nationalInsurance ?? null,
+    healthInsurance: summary.healthInsurance ?? null,
+    pensionEmployee: summary.pensionEmployee ?? null,
+    pensionEmployer: summary.pensionEmployer ?? null,
+    trainingFundEmployee: summary.trainingFundEmployee ?? null,
+    trainingFundEmployer: summary.trainingFundEmployer ?? null,
+    jobPercentage: summary.jobPercentage ?? null,
+    employeeName: summary.employeeName ?? null,
+    payslipDate: summary.date ?? null,
+    // Rates/percents where OCR extracts them
+    trainingFundEmployeePercent: fullAnalysis.contributions?.study_fund?.employee_rate_percent ?? null,
+    trainingFundEmployerPercent: fullAnalysis.contributions?.study_fund?.employer_rate_percent ?? null,
+    marginalTaxRate: fullAnalysis.tax?.marginal_tax_rate_percent ?? null,
+    taxCreditPoints: fullAnalysis.tax?.tax_credit_points ?? null,
+  };
+}
+
+// ── rule-based answers ────────────────────────────────────────────────────────
+// Returns a string, or null to signal "use LLM"
+
+function buildRuleBasedAnswer(intent, ctx) {
+  const docs = ctx.documents || [];
 
   switch (intent) {
     case 'hello':
-      return 'שלום 😊';
+      return 'שלום! אני העוזר הפיננסי של FinGuide. אפשר לשאול אותי על תלוש השכר, הפנסיה, קרן ההשתלמות או מצב המסמכים שלך.';
 
     case 'documents_count_month': {
-      const count = countDocumentsThisMonth(documents);
+      const count = countDocumentsThisMonth(docs);
       return `בחודש הנוכחי הועלו ${count} מסמכים.`;
     }
 
     case 'documents_summary': {
-      if (!documents.length) {
-        return 'כרגע אין לי מסמכים לסכם. כדי שאוכל לעזור, צריך להעלות לפחות מסמך אחד.';
+      if (!docs.length) {
+        return 'אין לי עדיין מסמכים לסכם. העלה תלוש שכר והמערכת תנתח אותו.';
       }
-
-      const summary = summarizeDocuments(documents);
-      const typeSummary = Object.entries(summary.byType)
+      const s = summarizeDocuments(docs);
+      const typeParts = Object.entries(s.byType)
         .map(([type, count]) => `${count} מסוג ${type}`)
         .join(', ');
-
-      return `יש לך כרגע ${summary.total} מסמכים בסך הכול. מתוכם ${summary.analyzed} נותחו, ${summary.uploaded} ממתינים לניתוח${summary.failed ? ` ו-${summary.failed} נכשלו` : ''}. סוגי המסמכים הקיימים הם: ${typeSummary}.`;
+      return `יש לך ${s.total} מסמכים. ${s.completed} נותחו, ${s.uploaded} ממתינים${s.failed ? `, ${s.failed} נכשלו` : ''}. סוגים: ${typeParts}.`;
     }
 
-    case 'recommended_action': {
-      return getRecommendedAction(documents);
-    }
+    case 'recommended_action':
+      return getRecommendedAction(docs);
 
-    case 'pension_employee_percent': {
-      const value = formatPercent(userData.pensionEmployeePercent);
-      if (!value) {
-        return 'אני לא רואה כרגע בנתונים שלך את אחוז ההפרשה של העובד לפנסיה.';
+    case 'anomaly_check': {
+      const gross = ctx.grossSalary;
+      const net = ctx.netSalary;
+      if (gross == null || net == null) {
+        return 'אין לי נתוני שכר מנותחים. העלה תלוש שכר כדי שאוכל לבדוק חריגות.';
       }
-      return `לפי הנתונים שלך, את מפרישה ${value} לפנסיה.`;
+      const { hasAnomalies, anomalies } = detectSalaryAnomalies({ grossSalary: gross, netSalary: net });
+      if (!hasAnomalies) {
+        return `לא זיהיתי חריגות בתלוש האחרון שלך (ברוטו ${formatAmount(gross)}, נטו ${formatAmount(net)}).`;
+      }
+      const msgMap = {
+        NET_TOO_CLOSE_TO_GROSS: 'הנטו קרוב מאוד לברוטו — ייתכן שחסרים ניכויים.',
+        GROSS_UNUSUALLY_HIGH: `שכר הברוטו (${formatAmount(gross)}) גבוה מהרגיל.`,
+        GROSS_UNUSUALLY_LOW: `שכר הברוטו (${formatAmount(gross)}) נמוך מאוד.`,
+        ZERO_DEDUCTIONS: 'לא זוהו ניכויים בתלוש — כדאי לבדוק זאת.',
+      };
+      const parts = anomalies.map(a => msgMap[a.code] || a.message);
+      return `${parts.length > 1 ? 'כמה נקודות לתשומת לב' : 'נקודה לתשומת לב'}:\n${parts.map(p => `• ${p}`).join('\n')}`;
     }
 
-    case 'pension_employer_percent': {
-      const value = formatPercent(userData.pensionEmployerPercent);
-      if (!value) {
-        return 'אני לא רואה כרגע בנתונים שלך את אחוז ההפרשה של המעסיק לפנסיה.';
-      }
-      return `לפי הנתונים שלך, המעסיק מפריש ${value} לפנסיה.`;
+    case 'pension_employee': {
+      const amt = formatAmount(ctx.pensionEmployee);
+      if (!amt) return 'אין לי נתוני הפרשת עובד לפנסיה בתלוש האחרון.';
+      return `לפי תלוש השכר האחרון, הפרשת העובד לפנסיה היא ${amt}.`;
+    }
+
+    case 'pension_employer': {
+      const amt = formatAmount(ctx.pensionEmployer);
+      if (!amt) return 'אין לי נתוני הפרשת מעסיק לפנסיה בתלוש האחרון.';
+      return `לפי תלוש השכר האחרון, הפרשת המעסיק לפנסיה היא ${amt}.`;
     }
 
     case 'training_fund': {
-      const hasTrainingFund = userData.hasTrainingFund;
-      const employeePercent = formatPercent(userData.trainingFundEmployeePercent);
-      const employerPercent = formatPercent(userData.trainingFundEmployerPercent);
-
-      if (hasTrainingFund === false) {
-        return 'לפי הנתונים שלך, כרגע אין קרן השתלמות.';
+      const empAmt = formatAmount(ctx.trainingFundEmployee);
+      const emplAmt = formatAmount(ctx.trainingFundEmployer);
+      if (!empAmt && !emplAmt) {
+        return 'לא מצאתי נתוני קרן השתלמות בתלוש האחרון.';
       }
-
-      if (employeePercent || employerPercent) {
-        return `לפי הנתונים שלך, יש לך קרן השתלמות${employeePercent ? ` עם הפרשת עובד של ${employeePercent}` : ''}${employerPercent ? ` והפרשת מעסיק של ${employerPercent}` : ''}.`;
-      }
-
-      return 'אני רואה שיש התייחסות לקרן השתלמות, אבל חסרים לי אחוזי ההפרשה המדויקים.';
+      const empPct = ctx.trainingFundEmployeePercent;
+      const emplPct = ctx.trainingFundEmployerPercent;
+      const lines = ['לפי תלוש השכר האחרון:'];
+      if (empAmt) lines.push(`• עובד: ${empAmt}${empPct != null ? ` (${empPct}%)` : ''}`);
+      if (emplAmt) lines.push(`• מעסיק: ${emplAmt}${emplPct != null ? ` (${emplPct}%)` : ''}`);
+      return lines.join('\n');
     }
 
     case 'net_salary': {
-      const value = userData.netSalary;
-      if (value === undefined || value === null) {
-        return 'אני לא רואה כרגע בנתונים שלך את שכר הנטו.';
-      }
-      return `לפי הנתונים שלך, שכר הנטו שלך הוא ${value} ש״ח.`;
+      const amt = formatAmount(ctx.netSalary);
+      if (!amt) return 'אין לי נתוני שכר נטו בתלוש האחרון.';
+      return `לפי תלוש השכר האחרון, שכר הנטו שלך הוא ${amt}.`;
     }
 
     case 'gross_salary': {
-      const value = userData.grossSalary;
-      if (value === undefined || value === null) {
-        return 'אני לא רואה כרגע בנתונים שלך את שכר הברוטו.';
-      }
-      return `לפי הנתונים שלך, שכר הברוטו שלך הוא ${value} ש״ח.`;
+      const amt = formatAmount(ctx.grossSalary);
+      if (!amt) return 'אין לי נתוני שכר ברוטו בתלוש האחרון.';
+      return `לפי תלוש השכר האחרון, שכר הברוטו שלך הוא ${amt}.`;
+    }
+
+    case 'tax_info': {
+      const tax = formatAmount(ctx.tax);
+      if (!tax) return 'אין לי נתוני מס הכנסה בתלוש האחרון.';
+      const rate = ctx.marginalTaxRate;
+      return `לפי תלוש השכר האחרון, מס הכנסה: ${tax}${rate != null ? ` (שיעור שולי: ${rate}%)` : ''}.`;
+    }
+
+    case 'national_insurance': {
+      const ni = formatAmount(ctx.nationalInsurance);
+      const hi = formatAmount(ctx.healthInsurance);
+      if (!ni && !hi) return 'אין לי נתוני ביטוח לאומי בתלוש האחרון.';
+      const lines = ['לפי תלוש השכר האחרון:'];
+      if (ni) lines.push(`• ביטוח לאומי: ${ni}`);
+      if (hi) lines.push(`• ביטוח בריאות: ${hi}`);
+      return lines.join('\n');
     }
 
     default:
-      return 'עדיין לא הצלחתי להבין את השאלה בצורה מדויקת. אפשר לשאול על מסמכים, פנסיה, נטו, ברוטו או קרן השתלמות.';
+      return null; // use LLM
   }
 }
 
+// ── main handler ──────────────────────────────────────────────────────────────
+
 async function chatWithAI(req, res) {
-  const { message, userData } = req.body;
+  const { message } = req.body;
 
   if (!message || typeof message !== 'string') {
-    return res.status(400).json({
-      success: false,
-      message: 'message is required (string)',
-    });
+    return res.status(400).json({ success: false, message: 'message is required (string)' });
   }
 
+  // Server-side RAG: always fetch from DB, never trust client userData
+  const userContext = await buildUserContext(req.user._id);
   const intent = detectIntent(message);
-  const baseAnswer = buildRuleBasedAnswer(intent, userData || {});
+  const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
 
-  const shouldPolish = ![
-    'documents_count_month',
-    'documents_summary',
-    'recommended_action',
-  ].includes(intent);
+  let finalAnswer;
+  let source;
 
-  const finalAnswer = shouldPolish
-    ? await polishHebrewAnswer(baseAnswer)
-    : baseAnswer;
+  if (intent === 'hello') {
+    // Light polish for the greeting
+    finalAnswer = await polishHebrewAnswer(ruleAnswer);
+    source = 'rule+polish';
+  } else if (ruleAnswer === null) {
+    // Fallback: open-ended question → LLM with full financial context
+    finalAnswer = await askLLM(message, userContext);
+    source = 'llm';
+  } else {
+    // Deterministic rule answer — never touches LLM, no chance of hallucination
+    finalAnswer = ruleAnswer;
+    source = 'rule';
+  }
 
   return res.json({
     success: true,
     answer: `${RLM}${finalAnswer}`,
     intent,
-    source: shouldPolish ? 'rule+polish' : 'rule',
+    source,
   });
 }
 
-module.exports = {
-  chatWithAI,
-};
+module.exports = { chatWithAI };

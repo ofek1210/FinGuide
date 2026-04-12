@@ -51,11 +51,14 @@ export interface DocumentItem {
   uploadedAt?: string;
   processedAt?: string;
   mimeType?: string;
+  metadata?: { category?: string; periodMonth?: number; periodYear?: number };
   analysisData?: { summary?: PayslipSummaryFromBackend; [k: string]: unknown };
   metadata?: DocumentMetadata;
   createdAt?: string;
   updatedAt?: string;
 }
+
+export type DocumentCategory = "payslip" | "tax_report" | "pension_report" | "invoice" | "other";
 
 export type UploadDocumentPayload = {
   category: DocumentCategory;

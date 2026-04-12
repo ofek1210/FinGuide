@@ -10,7 +10,7 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  model?: string;
+  source?: string;
 };
 
 const defaultWelcome: ChatMessage = {
@@ -89,7 +89,7 @@ export default function AssistantPage() {
       id: `assistant-${Date.now()}`,
       role: "assistant",
       content: response.answer,
-      model: response.model,
+      source: response.source,
     };
     setMessages((prev) => [...prev, assistantMessage]);
     setIsSending(false);
@@ -122,12 +122,11 @@ export default function AssistantPage() {
                         >
                           העתק תשובה
                         </button>
-                        {message.model ? <em className="ai-model">{message.model}</em> : null}
+                        {message.source ? (
+                          <em className="ai-model">{message.source}</em>
+                        ) : null}
                       </div>
                     )}
-                    {message.role === "user" && message.model ? (
-                      <em className="ai-model">{message.model}</em>
-                    ) : null}
                   </div>
                 ))
               ) : (
