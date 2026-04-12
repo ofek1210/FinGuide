@@ -261,7 +261,6 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   className="dashboard-hero-action"
-                  disabled={avatarUploading}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {avatarUploading ? "מעלה..." : "בחירת תמונה"}
@@ -297,6 +296,24 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
+        </section>
+
+        <section className="dashboard-card feature-page-grid">
+          <div className="settings-form">
+            <h2 className="feature-card-title">Onboarding</h2>
+            <p className="feature-card-subtitle">
+              ניתן לעדכן את פרטי ההגדרה המהירה בכל רגע.
+            </p>
+            <div className="feature-page-actions">
+              <button
+                className="dashboard-hero-action"
+                type="button"
+                onClick={() => navigate(APP_ROUTES.onboarding)}
+              >
+                עריכת פרטי Onboarding
+              </button>
+            </div>
+          </div>
         </section>
 
         <section className="dashboard-card feature-page-grid">

@@ -1,0 +1,14 @@
+{
+  "extractionMethod": "ocr",
+  "ocr_engine": "tesseract-cli",
+  "ocr_lang": "heb+eng",
+  "pages_processed": 1,
+  "confidence": 0.55,
+  "rawLines": [
+    "תלוש שכר 03/26",
+    "עובד: לוי",
+    "ID 12345678",
+    "שכר ברוטו 19,800",
+    "לתשלום 20,100"
+  ]
+}

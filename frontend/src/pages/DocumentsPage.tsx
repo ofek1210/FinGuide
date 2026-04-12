@@ -12,13 +12,10 @@ import {
   downloadDocument,
   removeDocument,
   type DocumentItem as ApiDocumentItem,
-  type DocumentCategory,
   type DocumentMetadata,
-  type UploadDocumentPayload,
 } from "../api/documents.api";
 import { APP_ROUTES } from "../types/navigation";
 import {
-  DOCUMENT_CATEGORY_LABELS,
   formatDocumentMetadataSummary,
 } from "../utils/documentMetadata";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
@@ -472,11 +469,7 @@ export default function DocumentsPage() {
     }
 
     const file = selectedFile;
-    const metadataPayload = buildUploadPayload();
-
-    if (!metadataPayload) {
-      return;
-    }
+    const metadataPayload = { category: "other" as const };
 
     const tempId = `temp-${Date.now()}`;
     const tempDoc: DocumentItem = {
@@ -487,15 +480,6 @@ export default function DocumentsPage() {
       uploadedAt: new Date().toISOString(),
       metadata: {
         category: metadataPayload.category,
-        ...(metadataPayload.periodMonth !== undefined && {
-          periodMonth: metadataPayload.periodMonth,
-        }),
-        ...(metadataPayload.periodYear !== undefined && {
-          periodYear: metadataPayload.periodYear,
-        }),
-        ...(metadataPayload.documentDate && {
-          documentDate: metadataPayload.documentDate,
-        }),
         source: "manual_upload",
       },
     };
@@ -525,12 +509,10 @@ export default function DocumentsPage() {
       prev.map((doc) => (doc.id === tempId ? mapApiDocument(uploadedDoc) : doc)),
     );
     setToastMessage("המסמך נשמר וממתין לעיבוד.");
-    setUploadForm(DEFAULT_UPLOAD_FORM);
     const toastTimer = window.setTimeout(() => setToastMessage(null), 5000);
     timersRef.current.push(toastTimer);
 
     // רענון הרשימה מהשרת כדי לוודא שהמסמכים מסונכרנים
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     loadDocuments();
 
     navigate(`${APP_ROUTES.documentsScan}?documentId=${uploadedDoc._id}`);
@@ -611,7 +593,8 @@ export default function DocumentsPage() {
         <section className="documents-header">
           <h1>מסמכים</h1>
           <p>
-            העלו מסמכי תלוש שכר בפי-די-אף. המסמכים יעברו זיהוי וניתוח אוטומטי ויופיעו בהיסטוריית התלושים.
+            העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
+            הקובץ נשמר מיד, והעיבוד ממשיך ברקע.
           </p>
         </section>
 
@@ -692,7 +675,7 @@ export default function DocumentsPage() {
             מעבר לעיבוד וניתוח המסמכים
           </button>
           <span className="documents-note">
-            המסמכים שהועלו יעברו זיהוי וניתוח ויוצגו במסך היסטוריית התלושים.
+            עיבוד המסמכים פועל ברקע. מסך הסריקה עצמו נשאר דמו בלבד.
           </span>
         </section>
       </main>

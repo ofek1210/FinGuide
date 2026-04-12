@@ -18,6 +18,7 @@ import HelpPage from "./pages/HelpPage";
 import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import OnboardingPage from "./pages/OnboardingPage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
@@ -61,6 +62,14 @@ export default function App() {
           element={
             <RequireAuth>
               <DashboardPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.onboarding}
+          element={
+            <RequireAuth>
+              <OnboardingPage />
             </RequireAuth>
           }
         />

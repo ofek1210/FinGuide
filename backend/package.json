@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "debug:extractor:v2": "node scripts/run-extractor-v2.js",
     "test": "npm run test:all",
     "test:all": "jest --runInBand",
     "test:unit": "jest --runInBand --testMatch '**/tests/unit/**/*.test.js' --testMatch '**/__tests__/**/*.test.js'",
