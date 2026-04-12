@@ -9,11 +9,9 @@ import {
   Calendar,
   Hash,
   MessageSquareText,
-  AlertTriangle,
   Briefcase,
   Sun,
   Heart,
-  MessageSquareText,
 } from "lucide-react";
 import PayslipHistoryLayout from "../components/payslip-history/PayslipHistoryLayout";
 import { downloadDocument } from "../api/documents.api";
