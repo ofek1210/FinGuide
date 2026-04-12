@@ -144,7 +144,7 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
       sourcePath: 'PaySlip2024-09.pdf',
     });
 
-    expect(result.schema_version).toBe('1.8');
+    expect(result.schema_version).toBe('1.9');
     expect(result.period.month).toBe('2024-09');
     expect(result.salary.gross_total).toBe(4072.05);
     expect(result.summary.grossSalary).toBe(4072.05);
@@ -266,5 +266,78 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.deductions.mandatory.total).toBe(4500);
     expect(result.summary.grossSalary).toBe(20000);
     expect(result.summary.netSalary).toBe(15500);
+  });
+
+  it('resolves wrapped pension contribution labels from adjacent amount lines', () => {
+    const text = readFixture('payslip-he-regression-wrapped-contributions.txt');
+
+    const result = extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2025-05.pdf',
+    });
+
+    expect(result.period.month).toBe('2025-05');
+    expect(result.contributions.pension.base_salary_for_pension).toBe(12000);
+    expect(result.contributions.pension.employee).toBe(720);
+    expect(result.contributions.pension.employer).toBe(780);
+    expect(result.contributions.pension.severance).toBe(999.6);
+  });
+
+  it('ignores cumulative contribution sections when current-period lines are present', () => {
+    const text = readFixture('payslip-he-regression-cumulative-contributions.txt');
+
+    const result = extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2025-06.pdf',
+    });
+
+    expect(result.period.month).toBe('2025-06');
+    expect(result.contributions.pension.employee).toBe(600);
+    expect(result.contributions.pension.employer).toBe(650);
+    expect(result.contributions.pension.severance).toBe(833);
+  });
+
+  it('keeps employee identity authoritative when contribution blocks contain employer identifiers', () => {
+    const text = readFixture('payslip-he-regression-contribution-id-collision.txt');
+
+    const result = extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2025-07.pdf',
+    });
+
+    expect(result.period.month).toBe('2025-07');
+    expect(result.parties.employee_name).toBe('גיל כהן');
+    expect(result.parties.employee_id).toBe('123456780');
+    expect(result.quality.fields.employee_id).toEqual(
+      expect.objectContaining({
+        source: 'employee_id_label',
+      }),
+    );
+  });
+
+  it('keeps tax-base and net-pay rows separate when values overlap numerically', () => {
+    const text = readFixture('payslip-he-regression-tax-net-overlap.txt');
+
+    const result = extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2025-08.pdf',
+    });
+
+    expect(result.period.month).toBe('2025-08');
+    expect(result.salary.gross_total).toBe(11450);
+    expect(result.salary.net_payable).toBe(11050);
+    expect(result.tax.gross_for_income_tax).toBe(11200);
+    expect(result.national_insurance.gross_for_national_insurance).toBe(11200);
+  });
+
+  it('attaches normalized warning categories to extraction quality', () => {
+    const text = readFixture('payslip-he-regression-ambiguous-pension.txt');
+
+    const result = extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2024-06.pdf',
+    });
+
+    expect(result.quality.warning_categories).toEqual(
+      expect.arrayContaining([
+        'ambiguous.contributions.pension_roles',
+        'ambiguous.contributions.study_roles',
+      ]),
+    );
   });
 });

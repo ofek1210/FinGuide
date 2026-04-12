@@ -1,0 +1,32 @@
+[
+  {
+    "psm": 6,
+    "data": {
+      "quality": {
+        "resolution_score": 7.2,
+        "confidence": 0.84,
+        "warnings": ["ambiguous contribution roles", "tax-base leakage"]
+      }
+    }
+  },
+  {
+    "psm": 4,
+    "data": {
+      "quality": {
+        "resolution_score": 7.4,
+        "confidence": 0.81,
+        "warnings": ["missing study line"]
+      }
+    }
+  },
+  {
+    "psm": 3,
+    "data": {
+      "quality": {
+        "resolution_score": 6.9,
+        "confidence": 0.9,
+        "warnings": []
+      }
+    }
+  }
+]

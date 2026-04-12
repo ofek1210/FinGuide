@@ -113,7 +113,32 @@ function isLikelyTaxBaseNoiseLine(line) {
 }
 
 function isCumulativeLine(line) {
-  return /(?:מצטבר|מצטברת|cumulative)/i.test(String(line));
+  return /(?:מצטבר|מצטברת|מצטברים|מצטברות|cumulative)/i.test(String(line));
+}
+
+function categorizeOcrWarning(warning) {
+  const value = String(warning || '').trim();
+  if (!value) return 'other';
+
+  if (/Missing period\.month/i.test(value)) return 'missing.period_month';
+  if (/Missing salary\.gross_total/i.test(value)) return 'missing.salary.gross_total';
+  if (/Missing salary\.net_payable/i.test(value)) return 'missing.salary.net_payable';
+  if (/Missing deductions\.mandatory\.total/i.test(value)) return 'missing.deductions.mandatory.total';
+  if (/Study fund line not found/i.test(value)) return 'missing.contributions.study_line';
+  if (/Pension lines not found/i.test(value)) return 'missing.contributions.pension_line';
+  if (/Study fund amounts found but employee\/employer roles were ambiguous/i.test(value)) {
+    return 'ambiguous.contributions.study_roles';
+  }
+  if (/Pension contribution lines found but employee\/employer roles were ambiguous/i.test(value)) {
+    return 'ambiguous.contributions.pension_roles';
+  }
+  if (/Unrealistic contribution amount/i.test(value)) return 'invalid.contributions.amount';
+  if (/Conflicting gross\/net candidates/i.test(value)) return 'conflict.salary.gross_net';
+  if (/Mandatory deductions total conflicts/i.test(value)) {
+    return 'conflict.deductions.mandatory_total';
+  }
+
+  return 'other';
 }
 
 function pickReasonableAmount(nums, { min = 50, max = 50000 } = {}) {
@@ -152,6 +177,7 @@ module.exports = {
   MONTH_NAME_HEADER_REGEX,
   bestAmountByExpected,
   clampScore,
+  categorizeOcrWarning,
   dedupeStrings,
   extractHMO,
   extractMonthFromFilename,

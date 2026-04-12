@@ -11,7 +11,12 @@ describe('reprocessPayslips script helpers', () => {
         originalName: 'a.pdf',
         analysisData: {
           schema_version: '1.7',
-          quality: { confidence: 0.6, resolution_score: 9, resolved_core_fields: 5, warnings: ['old warning'] },
+          quality: {
+            confidence: 0.6,
+            resolution_score: 9,
+            resolved_core_fields: 5,
+            warnings: ['Missing salary.gross_total'],
+          },
           period: { month: '2025-01' },
           salary: { gross_total: 10000 },
           deductions: { mandatory: {} },
@@ -19,8 +24,14 @@ describe('reprocessPayslips script helpers', () => {
         },
       },
       {
-        schema_version: '1.8',
-        quality: { confidence: 0.8, resolution_score: 11, resolved_core_fields: 7, warnings: ['new warning'] },
+        schema_version: '1.9',
+        quality: {
+          confidence: 0.8,
+          resolution_score: 11,
+          resolved_core_fields: 7,
+          warnings: ['Pension contribution lines found but employee/employer roles were ambiguous.'],
+          warning_categories: ['ambiguous.contributions.pension_roles'],
+        },
         period: { month: '2025-01' },
         salary: { gross_total: 10000, net_payable: 7200 },
         deductions: { mandatory: { income_tax: 1200 } },
@@ -31,9 +42,11 @@ describe('reprocessPayslips script helpers', () => {
     const aggregate = buildAggregateReport([reportA]);
 
     expect(aggregate.documents).toBe(1);
-    expect(aggregate.schema_version_changes['1.7->1.8']).toBe(1);
+    expect(aggregate.schema_version_changes['1.7->1.9']).toBe(1);
     expect(aggregate.field_coverage_delta.net_payable).toBe(1);
-    expect(aggregate.warning_counts.added['new warning']).toBe(1);
-    expect(aggregate.warning_counts.removed['old warning']).toBe(1);
+    expect(aggregate.warning_counts.added['Pension contribution lines found but employee/employer roles were ambiguous.']).toBe(1);
+    expect(aggregate.warning_counts.removed['Missing salary.gross_total']).toBe(1);
+    expect(aggregate.warning_counts.added_categories['ambiguous.contributions.pension_roles']).toBe(1);
+    expect(aggregate.warning_counts.removed_categories['missing.salary.gross_total']).toBe(1);
   });
 });
