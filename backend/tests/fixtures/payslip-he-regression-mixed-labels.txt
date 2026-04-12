@@ -1,0 +1,12 @@
+PaySlip 01/2025
+Employee Name: Dana Levi
+ID 123456789
+Base Salary 12,000
+שעות נוספות גלובל 1,500
+Travel Expenses 350
+Gross Salary 13,850
+Total Deductions 2,800
+Income Tax 1,900
+National Insurance 550
+Health Insurance 350
+Net Pay 11,050

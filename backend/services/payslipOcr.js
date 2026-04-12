@@ -7,7 +7,7 @@ const sharp = require('sharp');
 const crypto = require('crypto');
 
 const { extractFromLinesByLabelMap } = require('./payslipOcrLabelMap');
-const { buildNormalizedOcrDocument } = require('./payslipOcrContext');
+const { buildNormalizedOcrDocumentFromSource } = require('./payslipOcrContext');
 const {
   buildQualityPayload,
   collectCoreFieldCandidates,
@@ -20,7 +20,10 @@ const {
   sortCandidatesByScore,
 } = require('./payslipOcrResolver');
 const { collectPartyCandidates, resolvePartyCandidates } = require('./payslipOcrParties');
-const { extractPension, extractStudyFund } = require('./payslipOcrContributions');
+const {
+  collectContributionCandidates,
+  resolveContributionCandidates,
+} = require('./payslipOcrContributions');
 const { buildPayslipSummary } = require('./payslipOcrSummary');
 const {
   extractHMO,
@@ -173,10 +176,15 @@ function logExtractionResult({ sourcePath, extractionMethod, psm, data }) {
   });
 }
 
-function extractPayslipFinancialEN(ocrText, { sourcePath } = {}) {
+function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
   const warnings = [];
-  const textHash = sha256(ocrText);
-  const normalizedDoc = buildNormalizedOcrDocument(ocrText);
+  const sourcePayload =
+    typeof ocrInput === 'string'
+      ? (ocrJson ? { text: ocrInput, ocrJson } : ocrInput)
+      : ocrInput;
+  const normalizedDoc = buildNormalizedOcrDocumentFromSource(sourcePayload);
+  const fullTextSource = normalizedDoc.fullText;
+  const textHash = sha256(fullTextSource);
   const lines = normalizedDoc.lines.map(line => line.raw);
   const full = normalizedDoc.fullText;
   const labelMap = extractFromLinesByLabelMap(lines);
@@ -277,8 +285,12 @@ function extractPayslipFinancialEN(ocrText, { sourcePath } = {}) {
   const employee_name = resolvedParties.employee_name?.value;
   const employee_id = resolvedParties.employee_id?.value;
 
-  const study = extractStudyFund(lines, warnings);
-  const pension = extractPension(lines, warnings);
+  const contributionCollection = collectContributionCandidates(lines);
+  const { study, pension } = resolveContributionCandidates(
+    contributionCollection.store,
+    contributionCollection.stats,
+    warnings,
+  );
 
   if (!month) {
     warnings.push('Missing period.month (OCR+filename fallback failed)');
@@ -315,12 +327,16 @@ function extractPayslipFinancialEN(ocrText, { sourcePath } = {}) {
       employee_name: resolvedParties.employee_name,
       employee_id: resolvedParties.employee_id,
       employer_name: resolvedParties.employer_name,
+      pension_employee: pension.quality.employee,
+      pension_employer: pension.quality.employer,
+      study_employee: study.quality.employee,
+      study_employer: study.quality.employer,
     },
     warnings,
   );
 
   const result = {
-    schema_version: '1.7',
+    schema_version: '1.8',
     period: month ? { month } : {},
 
     salary: {
@@ -391,6 +407,8 @@ function extractPayslipFinancialEN(ocrText, { sourcePath } = {}) {
     quality: {
       ...quality,
       debug: {
+        source_type: normalizedDoc.sourceType,
+        sections: normalizedDoc.sections,
         study_line: study.debug_line,
         pension_lines_sample: pension.debug_lines,
       },
@@ -400,12 +418,12 @@ function extractPayslipFinancialEN(ocrText, { sourcePath } = {}) {
       ocr_engine: 'tesseract-cli',
       ocr_lang: 'heb+eng',
       text_sha256: textHash,
-      rawText: ocrText,
-      ocr_text: ocrText,
+      rawText: fullTextSource,
+      ocr_text: fullTextSource,
     },
   };
 
-  result.summary = buildPayslipSummary(result, ocrText);
+  result.summary = buildPayslipSummary(result, fullTextSource);
   return result;
 }
 

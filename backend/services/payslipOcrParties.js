@@ -60,6 +60,8 @@ function collectPartyCandidates(context) {
         lineIndex: entry.index,
         score: 0.98,
         reason: 'Matched employee name from an explicit label.',
+        section: entry.primarySection || 'identity',
+        evidenceCategory: 'label',
       });
     }
 
@@ -70,6 +72,8 @@ function collectPartyCandidates(context) {
         lineIndex: entry.index,
         score: 0.98,
         reason: 'Matched employer name from an explicit label.',
+        section: entry.primarySection || 'identity',
+        evidenceCategory: 'label',
       });
     }
 
@@ -81,6 +85,8 @@ function collectPartyCandidates(context) {
           lineIndex: entry.index,
           score: 0.99,
           reason: 'Matched employee ID from an explicit label.',
+          section: entry.primarySection || 'identity',
+          evidenceCategory: 'label',
         });
       }
     }
@@ -93,6 +99,8 @@ function collectPartyCandidates(context) {
           lineIndex: entry.index,
           score: 0.56,
           reason: 'Fallback employer name based on a company suffix.',
+          section: 'identity',
+          evidenceCategory: 'fallback',
         });
       }
       continue;
@@ -105,12 +113,16 @@ function collectPartyCandidates(context) {
         lineIndex: entry.index,
         score: 0.34,
         reason: 'Low-confidence name+ID fallback from the same line.',
+        section: 'identity',
+        evidenceCategory: 'heuristic',
       });
       pushCandidate(store, 'employee_id', sameLine[2], {
         source: 'heuristic_name_id_same_line',
         lineIndex: entry.index,
         score: 0.34,
         reason: 'Low-confidence name+ID fallback from the same line.',
+        section: 'identity',
+        evidenceCategory: 'heuristic',
       });
     }
 
@@ -126,12 +138,16 @@ function collectPartyCandidates(context) {
         lineIndex: entry.index,
         score: 0.3,
         reason: 'Low-confidence name+ID fallback from adjacent lines.',
+        section: 'identity',
+        evidenceCategory: 'heuristic',
       });
       pushCandidate(store, 'employee_id', nextLine.trim(), {
         source: 'heuristic_name_before_id',
         lineIndex: entry.index + 1,
         score: 0.3,
         reason: 'Low-confidence name+ID fallback from adjacent lines.',
+        section: 'identity',
+        evidenceCategory: 'heuristic',
       });
     }
   }
@@ -144,6 +160,8 @@ function collectPartyCandidates(context) {
       source: 'employee_id_near_label',
       score: 0.9,
       reason: 'Matched employee ID near an identity label.',
+      section: 'identity',
+      evidenceCategory: 'label_proximity',
     });
   }
 

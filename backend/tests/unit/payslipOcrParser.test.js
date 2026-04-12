@@ -144,7 +144,7 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
       sourcePath: 'PaySlip2024-09.pdf',
     });
 
-    expect(result.schema_version).toBe('1.7');
+    expect(result.schema_version).toBe('1.8');
     expect(result.period.month).toBe('2024-09');
     expect(result.salary.gross_total).toBe(4072.05);
     expect(result.summary.grossSalary).toBe(4072.05);
@@ -187,5 +187,84 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.quality.warnings).toContain(
       'Pension contribution lines found but employee/employer roles were ambiguous.',
     );
+  });
+
+  it('resolves wrapped deduction labels from adjacent lines without corrupting salary fields', () => {
+    const text = readFixture('payslip-he-regression-wrapped-label.txt');
+
+    const result = extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2024-12.pdf',
+    });
+
+    expect(result.period.month).toBe('2024-12');
+    expect(result.salary.gross_total).toBe(18000);
+    expect(result.deductions.mandatory.total).toBe(4200);
+    expect(result.deductions.mandatory.income_tax).toBe(2500);
+  });
+
+  it('handles mixed Hebrew and English labels in the same payslip', () => {
+    const text = readFixture('payslip-he-regression-mixed-labels.txt');
+
+    const result = extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2025-01.pdf',
+    });
+
+    expect(result.period.month).toBe('2025-01');
+    expect(result.salary.gross_total).toBe(13850);
+    expect(result.salary.net_payable).toBe(11050);
+    expect(result.salary.components).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'base_salary', amount: 12000 }),
+        expect.objectContaining({ type: 'global_overtime', amount: 1500 }),
+        expect.objectContaining({ type: 'travel_expenses', amount: 350 }),
+      ]),
+    );
+  });
+
+  it('parses broken European decimal separators consistently', () => {
+    const text = readFixture('payslip-he-regression-broken-decimals.txt');
+
+    const result = extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2025-02.pdf',
+    });
+
+    expect(result.period.month).toBe('2025-02');
+    expect(result.salary.gross_total).toBe(18500.75);
+    expect(result.salary.net_payable).toBe(15170);
+    expect(result.deductions.mandatory.total).toBe(3330.75);
+  });
+
+  it('keeps tax-base rows separate from earnings rows in row-shifted tables', () => {
+    const text = readFixture('payslip-he-regression-row-shifted-table.txt');
+
+    const result = extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2025-03.pdf',
+    });
+
+    expect(result.period.month).toBe('2025-03');
+    expect(result.salary.gross_total).toBe(8650);
+    expect(result.salary.net_payable).toBe(6900);
+    expect(result.tax.gross_for_income_tax).toBe(12000);
+    expect(result.summary.tax).toBe(1100);
+  });
+
+  it('parses OCR JSON input through the same structured output contract', () => {
+    const json = JSON.parse(readFixture('payslip-ocr-json-sample.json'));
+
+    const result = extractPayslipFinancialEN(
+      {
+        ocrJson: json,
+      },
+      {
+        sourcePath: 'PaySlip2025-04.pdf',
+      },
+    );
+
+    expect(result.period.month).toBe('2025-04');
+    expect(result.salary.gross_total).toBe(20000);
+    expect(result.salary.net_payable).toBe(15500);
+    expect(result.deductions.mandatory.total).toBe(4500);
+    expect(result.summary.grossSalary).toBe(20000);
+    expect(result.summary.netSalary).toBe(15500);
   });
 });

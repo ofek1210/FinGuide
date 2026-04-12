@@ -33,6 +33,13 @@ const SUPPLEMENTAL_NUMERIC_FIELDS = [
   'gross_for_income_tax',
   'gross_for_national_insurance',
   'job_percent',
+  'pension_base',
+  'pension_employee',
+  'pension_employer',
+  'pension_severance',
+  'study_base',
+  'study_employee',
+  'study_employer',
 ];
 
 const TABLE_CANDIDATE_FIELDS = [
@@ -55,6 +62,13 @@ const NUMERIC_FIELD_LIMITS = {
   gross_for_income_tax: { min: 0, max: 200000 },
   gross_for_national_insurance: { min: 0, max: 200000 },
   job_percent: { min: 1, max: 200 },
+  pension_base: { min: 5000, max: 200000 },
+  pension_employee: { min: 0, max: 60000 },
+  pension_employer: { min: 0, max: 60000 },
+  pension_severance: { min: 0, max: 60000 },
+  study_base: { min: 5000, max: 200000 },
+  study_employee: { min: 0, max: 30000 },
+  study_employer: { min: 0, max: 30000 },
 };
 
 const QUALITY_FIELD_WEIGHTS = {
@@ -68,9 +82,57 @@ const QUALITY_FIELD_WEIGHTS = {
   employee_name: 1,
   employee_id: 1,
   employer_name: 0.75,
+  pension_employee: 0.75,
+  pension_employer: 0.75,
+  study_employee: 0.5,
+  study_employer: 0.5,
 };
 
-function pushCandidate(store, field, value, { source, lineIndex = null, score = 0.5, reason = '' } = {}) {
+const FIELD_SECTIONS = {
+  gross_total: ['earnings'],
+  net_payable: ['summary', 'earnings', 'deductions'],
+  mandatory_total: ['deductions'],
+  income_tax: ['deductions'],
+  national_insurance: ['deductions'],
+  health_insurance: ['deductions'],
+  base_salary: ['earnings'],
+  global_overtime: ['earnings'],
+  travel_expenses: ['earnings'],
+  gross_for_income_tax: ['tax_base', 'deductions'],
+  gross_for_national_insurance: ['tax_base', 'deductions'],
+  job_percent: ['summary', 'identity'],
+  pension_base: ['contributions'],
+  pension_employee: ['contributions'],
+  pension_employer: ['contributions'],
+  pension_severance: ['contributions'],
+  study_base: ['contributions'],
+  study_employee: ['contributions'],
+  study_employer: ['contributions'],
+};
+
+function inferEvidenceCategory(source) {
+  if (!source) return 'unknown';
+  if (source.startsWith('table_')) return 'table';
+  if (source.startsWith('label_')) return 'label';
+  if (source.startsWith('regex_')) return 'regex';
+  if (source.includes('derived')) return 'derived';
+  if (source.includes('fallback')) return 'fallback';
+  return 'heuristic';
+}
+
+function pushCandidate(
+  store,
+  field,
+  value,
+  {
+    source,
+    lineIndex = null,
+    score = 0.5,
+    reason = '',
+    section = null,
+    evidenceCategory = undefined,
+  } = {},
+) {
   if (value === undefined || value === null) {
     return;
   }
@@ -110,6 +172,8 @@ function pushCandidate(store, field, value, { source, lineIndex = null, score = 
     lineIndex,
     score: clampScore(score),
     reason,
+    section,
+    evidenceCategory: evidenceCategory || inferEvidenceCategory(source),
   });
 }
 
@@ -160,6 +224,66 @@ function isFieldBlockedByNoise(field, rawLine) {
   return false;
 }
 
+function linePreferredForField(field, entry) {
+  const preferredSections = FIELD_SECTIONS[field] || [];
+  if (!preferredSections.length) {
+    return true;
+  }
+
+  if (!entry?.sectionHints?.length) {
+    return true;
+  }
+
+  return preferredSections.some(section => entry.sectionHints.includes(section));
+}
+
+function adjustScoreForSection(field, entry, baseScore) {
+  if (!entry) {
+    return baseScore;
+  }
+
+  const preferredSections = FIELD_SECTIONS[field] || [];
+  if (!preferredSections.length) {
+    return baseScore;
+  }
+
+  if (preferredSections.some(section => entry.sectionHints.includes(section))) {
+    return clampScore(baseScore + 0.05);
+  }
+
+  if (entry.sectionHints.includes('identity') && !preferredSections.includes('identity')) {
+    return clampScore(baseScore - 0.2);
+  }
+
+  if (entry.sectionHints.includes('contributions') && preferredSections[0] !== 'contributions') {
+    return clampScore(baseScore - 0.15);
+  }
+
+  if (entry.sectionHints.includes('tax_base') && !preferredSections.includes('tax_base')) {
+    return clampScore(baseScore - 0.12);
+  }
+
+  return clampScore(baseScore - 0.05);
+}
+
+function resolveCandidateSection(field, sections = []) {
+  const preferredSections = FIELD_SECTIONS[field] || [];
+  const availableSections = Array.isArray(sections)
+    ? sections.filter(Boolean)
+    : [];
+
+  if (!availableSections.length) {
+    return preferredSections[0] || null;
+  }
+
+  const preferredMatch = preferredSections.find(section => availableSections.includes(section));
+  if (preferredMatch) {
+    return preferredMatch;
+  }
+
+  return availableSections[0];
+}
+
 function collectPeriodMonthCandidates(context, { sourcePath } = {}) {
   const candidates = [];
 
@@ -193,7 +317,7 @@ function pushRegexValueCandidates(
   field,
   text,
   regexes,
-  { score, source, reason, parser } = {},
+  { score, source, reason, parser, section = null } = {},
 ) {
   for (const regex of regexes) {
     const captured = match1(text, regex);
@@ -207,6 +331,7 @@ function pushRegexValueCandidates(
         source,
         score,
         reason,
+        section,
       });
     }
   }
@@ -226,13 +351,18 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
         continue;
       }
 
+      if (!linePreferredForField(field, entry)) {
+        continue;
+      }
+
       const rankedAmounts = rankFieldAmounts(field, entry.amounts);
       rankedAmounts.slice(0, 3).forEach((value, index) => {
         pushCandidate(store, field, value, {
           source: 'label_same_line',
           lineIndex: entry.index,
-          score: 0.96 - (index * 0.05),
+          score: adjustScoreForSection(field, entry, 0.96 - (index * 0.05)),
           reason: `Matched "${field}" on the same line as the label.`,
+          section: entry.primarySection,
         });
       });
 
@@ -243,7 +373,7 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
       for (let distance = 1; distance <= adjacentWindow; distance += 1) {
         for (const direction of [1, -1]) {
           const neighbor = context.lines[entry.index + (direction * distance)];
-          if (!neighbor || isFieldBlockedByNoise(field, neighbor.raw)) {
+          if (!neighbor || isFieldBlockedByNoise(field, neighbor.raw) || !linePreferredForField(field, neighbor)) {
             continue;
           }
 
@@ -255,8 +385,9 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
           pushCandidate(store, field, neighborAmounts[0], {
             source: 'label_adjacent_line',
             lineIndex: neighbor.index,
-            score: adjacentScore - ((distance - 1) * 0.07),
+            score: adjustScoreForSection(field, neighbor, adjacentScore - ((distance - 1) * 0.07)),
             reason: `Matched "${field}" from a nearby labeled line.`,
+            section: neighbor.primarySection,
           });
         }
       }
@@ -271,8 +402,15 @@ function collectCoreFieldCandidates(context) {
 
   collectLabelCandidates(store, context, CORE_NUMERIC_FIELDS);
 
-  for (const entry of context.lines) {
-    if (entry.orderedAmounts.length < tableMinCols) {
+  for (const logicalRow of context.logicalRows || []) {
+    const entry = context.lines[logicalRow.dataLineIndex];
+    const headerEntry = context.lines[logicalRow.headerLineIndex];
+    if (
+      !entry ||
+      !headerEntry ||
+      entry.orderedAmounts.length < tableMinCols ||
+      headerEntry.headerCells.length !== entry.orderedAmounts.length
+    ) {
       continue;
     }
 
@@ -281,44 +419,46 @@ function collectCoreFieldCandidates(context) {
       continue;
     }
 
-    for (const delta of [1, -1]) {
-      const headerEntry = context.lines[entry.index + delta];
-      if (!headerEntry || headerEntry.headerCells.length !== entry.orderedAmounts.length) {
+    for (const field of TABLE_CANDIDATE_FIELDS) {
+      const patterns = PAYSLIP_LABEL_MAP[field] || [];
+      let matchedIndex = -1;
+
+      for (let columnIndex = 0; columnIndex < headerEntry.headerCells.length; columnIndex += 1) {
+        const cell = headerEntry.headerCells[columnIndex];
+        if (!cell.normalized || lineMatchesExclude(cell.normalized, field)) {
+          continue;
+        }
+
+        if (patterns.some(pattern => lineMatchesPattern(cell.normalized, pattern))) {
+          matchedIndex = columnIndex;
+          break;
+        }
+      }
+
+      if (matchedIndex < 0) {
         continue;
       }
 
-      for (const field of TABLE_CANDIDATE_FIELDS) {
-        const patterns = PAYSLIP_LABEL_MAP[field] || [];
-        let matchedIndex = -1;
+      const value = entry.orderedAmounts[matchedIndex];
+      const logicalRowSections = logicalRow.sections?.length
+        ? logicalRow.sections
+        : (logicalRow.section ? [logicalRow.section] : []);
 
-        for (let columnIndex = 0; columnIndex < headerEntry.headerCells.length; columnIndex += 1) {
-          const cell = headerEntry.headerCells[columnIndex];
-          if (!cell.normalized || lineMatchesExclude(cell.normalized, field)) {
-            continue;
-          }
-
-          if (patterns.some(pattern => lineMatchesPattern(cell.normalized, pattern))) {
-            matchedIndex = columnIndex;
-            break;
-          }
-        }
-
-        if (matchedIndex < 0) {
-          continue;
-        }
-
-        const value = entry.orderedAmounts[matchedIndex];
-        if (!isReasonableFieldValue(field, value) || isFieldBlockedByNoise(field, entry.raw)) {
-          continue;
-        }
-
-        pushCandidate(store, field, value, {
-          source: 'table_header_column',
-          lineIndex: entry.index,
-          score: 0.98,
-          reason: `Matched "${field}" from a table header column.`,
-        });
+      if (
+        !isReasonableFieldValue(field, value) ||
+        isFieldBlockedByNoise(field, entry.raw) ||
+        !linePreferredForField(field, { sectionHints: logicalRowSections })
+      ) {
+        continue;
       }
+
+      pushCandidate(store, field, value, {
+        source: 'table_header_column',
+        lineIndex: entry.index,
+        score: adjustScoreForSection(field, { ...entry, sectionHints: logicalRowSections }, 0.98),
+        reason: `Matched "${field}" from a table header column.`,
+        section: resolveCandidateSection(field, logicalRowSections),
+      });
     }
   }
 
@@ -360,8 +500,9 @@ function collectCoreFieldCandidates(context) {
       pushCandidate(store, 'gross_total', salaryRangeAmounts[0], {
         source: 'table_main_row',
         lineIndex: entry.index,
-        score: 0.92,
+        score: adjustScoreForSection('gross_total', entry, 0.92),
         reason: 'Resolved gross salary from a nearby labeled table row.',
+        section: entry.primarySection,
       });
     }
 
@@ -369,8 +510,9 @@ function collectCoreFieldCandidates(context) {
       pushCandidate(store, 'mandatory_total', deductionRangeAmounts[0], {
         source: 'table_main_row',
         lineIndex: entry.index,
-        score: 0.9,
+        score: adjustScoreForSection('mandatory_total', entry, 0.9),
         reason: 'Resolved mandatory deductions from a nearby labeled table row.',
+        section: entry.primarySection,
       });
     }
   }
@@ -383,6 +525,7 @@ function collectCoreFieldCandidates(context) {
     source: 'regex_gross_label',
     score: 0.94,
     reason: 'Matched gross salary with a dedicated regex.',
+    section: 'earnings',
   });
 
   pushRegexValueCandidates(store, 'net_payable', context.fullText, [
@@ -393,6 +536,7 @@ function collectCoreFieldCandidates(context) {
     source: 'regex_net_label',
     score: 0.93,
     reason: 'Matched net salary with a dedicated regex.',
+    section: 'summary',
   });
 
   pushRegexValueCandidates(store, 'mandatory_total', context.fullText, [
@@ -403,12 +547,14 @@ function collectCoreFieldCandidates(context) {
     source: 'regex_mandatory_total',
     score: 0.9,
     reason: 'Matched mandatory deductions total with a dedicated regex.',
+    section: 'deductions',
   });
 
   pushRegexValueCandidates(store, 'income_tax', context.fullText, [/מס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i], {
     source: 'regex_income_tax',
     score: 0.89,
     reason: 'Matched income tax with a dedicated regex.',
+    section: 'deductions',
   });
 
   pushRegexValueCandidates(store, 'national_insurance', context.fullText, [
@@ -418,6 +564,7 @@ function collectCoreFieldCandidates(context) {
     source: 'regex_national_insurance',
     score: 0.87,
     reason: 'Matched national insurance with a dedicated regex.',
+    section: 'deductions',
   });
 
   pushRegexValueCandidates(store, 'health_insurance', context.fullText, [
@@ -428,6 +575,7 @@ function collectCoreFieldCandidates(context) {
     source: 'regex_health_insurance',
     score: 0.87,
     reason: 'Matched health insurance with a dedicated regex.',
+    section: 'deductions',
   });
 
   if (/סכום\s*בבנק/i.test(context.fullText)) {
@@ -444,6 +592,7 @@ function collectCoreFieldCandidates(context) {
         source: 'bank_label_backward_scan',
         score: 0.74,
         reason: 'Used the amount immediately before the bank amount label.',
+        section: 'summary',
       });
     }
   }
@@ -455,6 +604,7 @@ function collectCoreFieldCandidates(context) {
         source: 'legacy_label_map',
         score: 0.66,
         reason: 'Fallback candidate from the legacy label-map extractor.',
+        section: FIELD_SECTIONS[field]?.[0] || null,
       });
     }
   }
@@ -477,6 +627,7 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     source: 'regex_base_salary',
     score: 0.88,
     reason: 'Matched base salary with a dedicated regex.',
+    section: 'earnings',
   });
 
   pushRegexValueCandidates(store, 'global_overtime', context.fullText, [
@@ -487,6 +638,7 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     source: 'regex_global_overtime',
     score: 0.84,
     reason: 'Matched global overtime with a dedicated regex.',
+    section: 'earnings',
   });
 
   pushRegexValueCandidates(store, 'travel_expenses', context.fullText, [
@@ -497,6 +649,7 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     source: 'regex_travel_expenses',
     score: 0.84,
     reason: 'Matched travel expenses with a dedicated regex.',
+    section: 'earnings',
   });
 
   pushRegexValueCandidates(store, 'gross_for_income_tax', context.fullText, [
@@ -506,6 +659,7 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     source: 'regex_gross_for_income_tax',
     score: 0.86,
     reason: 'Matched taxable gross with a dedicated regex.',
+    section: 'tax_base',
   });
 
   pushRegexValueCandidates(store, 'gross_for_national_insurance', context.fullText, [
@@ -514,6 +668,7 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     source: 'regex_gross_for_national_insurance',
     score: 0.86,
     reason: 'Matched national insurance gross with a dedicated regex.',
+    section: 'tax_base',
   });
 
   pushRegexValueCandidates(store, 'job_percent', context.fullText, [
@@ -524,6 +679,7 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     score: 0.82,
     reason: 'Matched job percentage with a dedicated regex.',
     parser: parsePercent,
+    section: 'summary',
   });
 
   for (const field of ['base_salary', 'global_overtime', 'travel_expenses']) {
@@ -533,6 +689,7 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
         source: 'label_map_fallback',
         score: 0.62,
         reason: 'Fallback candidate from the label map.',
+        section: FIELD_SECTIONS[field]?.[0] || null,
       });
     }
   }
@@ -662,6 +819,7 @@ function resolveMandatoryTotalCandidate(explicitCandidates, resolvedComponents, 
       return {
         ...candidate,
         score: clampScore(adjustedScore),
+        section: candidate.section || FIELD_SECTIONS.mandatory_total?.[0] || null,
       };
     })
     .filter(Boolean)
@@ -702,6 +860,25 @@ function buildQualityPayload(fieldCandidates, warnings) {
     fields[field] = {
       confidence: Number(candidate.score.toFixed(2)),
       source: candidate.source,
+      evidence_category: candidate.evidenceCategory || inferEvidenceCategory(candidate.source),
+      section: candidate.section || null,
+      reason: candidate.reason || null,
+      abstained: false,
+    };
+  });
+
+  Object.keys(QUALITY_FIELD_WEIGHTS).forEach(field => {
+    if (fields[field]) {
+      return;
+    }
+
+    fields[field] = {
+      confidence: 0,
+      source: null,
+      evidence_category: null,
+      section: null,
+      reason: null,
+      abstained: true,
     };
   });
 
@@ -741,4 +918,5 @@ module.exports = {
   resolveGrossAndNetCandidates,
   resolveMandatoryTotalCandidate,
   sortCandidatesByScore,
+  inferEvidenceCategory,
 };
