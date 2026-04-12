@@ -81,18 +81,13 @@ const buildValidationError = errors => {
 const normalizeDocumentMetadataInput = rawInput => {
   const input = rawInput || {};
   const errors = [];
-  const category = toTrimmedString(input.category);
+  const rawCategory = toTrimmedString(input.category);
+  const category = rawCategory || DEFAULT_DOCUMENT_METADATA.category;
   const periodMonth = toOptionalInteger(input.periodMonth);
   const periodYear = toOptionalInteger(input.periodYear);
   const documentDate = toOptionalDate(input.documentDate);
 
-  if (!category) {
-    errors.push({
-      field: 'category',
-      message: 'קטגוריית מסמך היא שדה חובה',
-      value: input.category,
-    });
-  } else if (!DOCUMENT_CATEGORIES.includes(category)) {
+  if (!DOCUMENT_CATEGORIES.includes(category)) {
     errors.push({
       field: 'category',
       message: 'קטגוריית מסמך לא תקינה',

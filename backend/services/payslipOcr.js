@@ -55,6 +55,10 @@ function linesOf(text) {
     .filter(Boolean);
 }
 
+function toRawLines(text) {
+  return linesOf(text);
+}
+
 function match1(text, regex) {
   const m = String(text).match(regex);
   return m?.[1]?.trim();
@@ -1073,6 +1077,7 @@ async function extractPayslipFile(inputPath) {
         data.raw = {
           ...data.raw,
           rawText: embeddedText,
+          rawLines: toRawLines(embeddedText),
           extractionMethod,
         };
         return { data };
@@ -1139,6 +1144,7 @@ async function extractPayslipFile(inputPath) {
       data.raw = {
         ...data.raw,
         rawText: fullText,
+        rawLines: toRawLines(fullText),
         extractionMethod,
       };
       candidates.push({ psm, data });
