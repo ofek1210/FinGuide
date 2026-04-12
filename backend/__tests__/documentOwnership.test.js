@@ -6,7 +6,7 @@ jest.mock('../models/Document');
 
 describe('document ownership', () => {
   test('scopes document access by user and returns 404 when not owned', async () => {
-    Document.findOne.mockResolvedValue(null);
+    Document.findOne = jest.fn().mockResolvedValue(null);
 
     const req = {
       params: { id: 'doc123' },

@@ -515,6 +515,8 @@ export default function DocumentsPage() {
     // רענון הרשימה מהשרת כדי לוודא שהמסמכים מסונכרנים
     loadDocuments();
 
+    navigate(`${APP_ROUTES.documentsScan}?documentId=${uploadedDoc._id}`);
+
     const finalizeTimer = window.setTimeout(() => {
       setUploadMessage("");
       setUploadState("idle");
@@ -578,6 +580,10 @@ export default function DocumentsPage() {
   };
 
   const hasUploadedDocuments = documents.some((doc) => doc.status !== "failed");
+  const latestProcessableDocument =
+    documents.find(
+      (doc) => !doc.id.startsWith("temp-") && doc.status !== "failed",
+    ) ?? null;
 
   return (
     <div className="documents-page" dir="rtl">
@@ -657,8 +663,14 @@ export default function DocumentsPage() {
           <button
             className="landing-primary"
             type="button"
-            disabled={!hasUploadedDocuments}
-            onClick={() => navigate(APP_ROUTES.documentsScan)}
+            disabled={!hasUploadedDocuments || !latestProcessableDocument}
+            onClick={() =>
+              latestProcessableDocument
+                ? navigate(
+                    `${APP_ROUTES.documentsScan}?documentId=${latestProcessableDocument.id}`,
+                  )
+                : undefined
+            }
           >
             מעבר לעיבוד וניתוח המסמכים
           </button>

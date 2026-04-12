@@ -2,7 +2,10 @@ const {
   normalizeDocumentMetadataInput,
   getDocumentMetadata,
 } = require('../../utils/documentMetadata');
-const { serializeDocument } = require('../../serializers/documentSerializer');
+const {
+  sanitizeAnalysisDataForApi,
+  serializeDocument,
+} = require('../../serializers/documentSerializer');
 const { ValidationError } = require('../../utils/appErrors');
 
 describe('document metadata utilities', () => {
@@ -48,7 +51,19 @@ describe('document metadata utilities', () => {
       status: 'pending',
       uploadedAt: new Date('2026-03-15T10:00:00.000Z'),
       processedAt: null,
-      analysisData: { gross: 1000 },
+      analysisData: {
+        summary: { grossSalary: 1000 },
+        quality: {
+          confidence: 0.8,
+          warnings: [],
+          debug: { raw: 'secret' },
+        },
+        raw: {
+          ocr_engine: 'tesseract-cli',
+          rawText: 'private text',
+          ocr_text: 'private text',
+        },
+      },
       metadata: { category: 'invoice', source: 'manual_upload' },
       checksumSha256: 'a'.repeat(64),
       processingError: 'failed',
@@ -57,6 +72,7 @@ describe('document metadata utilities', () => {
     });
 
     expect(serialized).toEqual({
+      id: 'doc1',
       _id: 'doc1',
       originalName: 'salary.pdf',
       fileSize: 1234,
@@ -64,10 +80,44 @@ describe('document metadata utilities', () => {
       status: 'pending',
       uploadedAt: new Date('2026-03-15T10:00:00.000Z'),
       processedAt: null,
-      analysisData: { gross: 1000 },
+      analysisData: {
+        summary: { grossSalary: 1000 },
+        quality: {
+          confidence: 0.8,
+          warnings: [],
+        },
+        raw: {
+          ocr_engine: 'tesseract-cli',
+        },
+      },
       metadata: { category: 'invoice', source: 'manual_upload' },
       createdAt: new Date('2026-03-15T10:00:00.000Z'),
       updatedAt: new Date('2026-03-15T10:01:00.000Z'),
+    });
+  });
+
+  it('removes raw OCR text and debug payloads from public analysis data', () => {
+    expect(
+      sanitizeAnalysisDataForApi({
+        summary: { grossSalary: 1000 },
+        quality: {
+          confidence: 0.8,
+          debug: { raw: 'secret' },
+        },
+        raw: {
+          rawText: 'private text',
+          ocr_text: 'private text',
+          extractionMethod: 'ocr',
+        },
+      }),
+    ).toEqual({
+      summary: { grossSalary: 1000 },
+      quality: {
+        confidence: 0.8,
+      },
+      raw: {
+        extractionMethod: 'ocr',
+      },
     });
   });
 });

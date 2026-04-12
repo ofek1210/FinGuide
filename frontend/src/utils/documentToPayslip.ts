@@ -204,33 +204,17 @@ function mapDeductions(analysis: DocumentPayslipAnalysis): PayslipLineItem[] {
   return items;
 }
 
-// ---------------------------------------------------------------------------
-// Ensure gross >= net (fix OCR/column mix-up where net and gross were swapped)
-// ---------------------------------------------------------------------------
-
-function ensureGrossGteNet(
-  gross: number | undefined | null,
-  net: number | undefined | null,
-): { gross: number | null; net: number | null } {
-  const g = Number.isFinite(gross) ? (gross as number) : null;
-  const n = Number.isFinite(net) ? (net as number) : null;
-  if (g != null && n != null && n > g) return { gross: n, net: g };
-  return { gross: g, net: n };
-}
-
-// ---------------------------------------------------------------------------
-// Document → PayslipHistoryItem
-// ---------------------------------------------------------------------------
-
 export function documentToPayslipItem(doc: DocumentItem, index: number): PayslipHistoryItem {
   const analysis = getAnalysisData(doc)!;
   const month = analysis.period?.month;
   const periodLabel = formatPeriodLabel(month);
   const periodDate = periodMonthToDate(month) || "";
-  const { gross: grossSalary, net: netSalary } = ensureGrossGteNet(
-    analysis.salary?.gross_total,
-    analysis.salary?.net_payable,
-  );
+  const grossSalary = Number.isFinite(analysis.salary?.gross_total)
+    ? (analysis.salary?.gross_total as number)
+    : null;
+  const netSalary = Number.isFinite(analysis.salary?.net_payable)
+    ? (analysis.salary?.net_payable as number)
+    : null;
   const isLatest = index === 0;
 
   return {
@@ -264,10 +248,12 @@ export function documentToPayslipDetail(doc: DocumentItem): PayslipDetail | null
   if (!isPayslipDocument(doc)) return null;
   const analysis = getAnalysisData(doc)!;
   const month = analysis.period?.month;
-  const { gross, net } = ensureGrossGteNet(
-    analysis.salary?.gross_total,
-    analysis.salary?.net_payable,
-  );
+  const gross = Number.isFinite(analysis.salary?.gross_total)
+    ? (analysis.salary?.gross_total as number)
+    : null;
+  const net = Number.isFinite(analysis.salary?.net_payable)
+    ? (analysis.salary?.net_payable as number)
+    : null;
   const summary = analysis.summary;
 
   const jobPercent =

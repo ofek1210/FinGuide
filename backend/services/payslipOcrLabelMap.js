@@ -8,6 +8,11 @@
  * @module payslipOcrLabelMap
  */
 
+const {
+  extractAllNumericTokens,
+  extractOrderedNumericTokens,
+} = require('./payslipOcrNumbers');
+
 // ---------------------------------------------------------------------------
 // Label map: field key → array of patterns (string or RegExp)
 // String = normalized line must include this substring (case-insensitive for LTR).
@@ -70,6 +75,7 @@ const PAYSLIP_LABEL_MAP = {
     /סה["״]?כ\s*ניכו\w*/i,
     /Total\s*Deductions/i,
   ],
+  _mandatory_total_exclude: [/מצטבר/i, /cumulative/i],
 
   income_tax: [
     'מס הכנסה',
@@ -77,6 +83,7 @@ const PAYSLIP_LABEL_MAP = {
     /מס\s*הכנסה/i,
     /income\s+tax/i,
   ],
+  _income_tax_exclude: [/ברוטו\s*למס/i, /הכנסה\s*חייבת/i, /מצטבר/i, /cumulative/i],
 
   national_insurance: [
     'ביטוח לאומי',
@@ -86,6 +93,7 @@ const PAYSLIP_LABEL_MAP = {
     /national\s+insurance/i,
     /\bב\.?\s*ל\.?/i,
   ],
+  _national_insurance_exclude: [/מצטבר/i, /cumulative/i],
 
   health_insurance: [
     'ביטוח בריאות',
@@ -94,6 +102,7 @@ const PAYSLIP_LABEL_MAP = {
     /מס\s*בריאות/i,
     /health\s+insurance/i,
   ],
+  _health_insurance_exclude: [/מצטבר/i, /cumulative/i],
 
   base_salary: [
     'שכר בסיס',
@@ -168,16 +177,7 @@ function lineMatchesExclude(normalizedLine, fieldKey) {
  * @returns {number[]} Amounts in valid range, preserving order
  */
 function extractAllAmountsFromLine(line, { min = 50, max = 200000 } = {}) {
-  const raw = String(line);
-  const ms = raw.match(/\d[\d,]*(?:\.\d{1,2})?/g) || [];
-  const nums = ms
-    .map(s => {
-      const c = String(s).replace(/[₪,\s]/g, '').trim();
-      const n = Number(c);
-      return Number.isFinite(n) ? n : null;
-    })
-    .filter(n => n != null && n >= min && n <= max);
-  return nums;
+  return extractAllNumericTokens(line).filter(value => value >= min && value <= max);
 }
 
 /**
@@ -186,18 +186,7 @@ function extractAllAmountsFromLine(line, { min = 50, max = 200000 } = {}) {
  * @returns {number[]} Numbers in order, or empty if line doesn't look like a data row
  */
 function extractOrderedAmountsFromLine(line) {
-  const raw = String(line).trim();
-  if (!raw) return [];
-  const tokens = raw.split(/\s+/);
-  const nums = tokens
-    .map(t => {
-      const c = String(t).replace(/[₪,\s]/g, '').replace(/,/g, '').trim();
-      if (!c) return null;
-      const n = Number(c);
-      return Number.isFinite(n) ? n : null;
-    })
-    .filter(n => n !== null);
-  return nums;
+  return extractOrderedNumericTokens(line);
 }
 
 /**
@@ -379,19 +368,19 @@ function extractFromLinesByLabelMap(lines) {
     const inDeductionRange = amounts.filter(a => a >= 100 && a <= 5000);
     const prevNorm = i > 0 ? normalizeLine(lines[i - 1]) : '';
     const nextNorm = i + 1 < lines.length ? normalizeLine(lines[i + 1]) : '';
-    const hasGrossLabel =
-      PAYSLIP_LABEL_MAP.gross_total?.some(
-        p =>
-          (lineMatchesPattern(prevNorm, p) || lineMatchesPattern(nextNorm, p)) &&
-          !lineMatchesExclude(prevNorm, 'gross_total') &&
-          !lineMatchesExclude(nextNorm, 'gross_total'),
-      );
-    const hasBaseLabel =
-      PAYSLIP_LABEL_MAP.base_salary?.some(p => lineMatchesPattern(prevNorm, p) || lineMatchesPattern(nextNorm, p));
-    const hasMandatoryLabel =
-      PAYSLIP_LABEL_MAP.mandatory_total?.some(
-        p => lineMatchesPattern(prevNorm, p) || lineMatchesPattern(nextNorm, p),
-      );
+    const lineMatchesFieldNearby = fieldKey => {
+      const patterns = PAYSLIP_LABEL_MAP[fieldKey] || [];
+      const prevMatches = prevNorm
+        && !lineMatchesExclude(prevNorm, fieldKey)
+        && patterns.some(p => lineMatchesPattern(prevNorm, p));
+      const nextMatches = nextNorm
+        && !lineMatchesExclude(nextNorm, fieldKey)
+        && patterns.some(p => lineMatchesPattern(nextNorm, p));
+      return prevMatches || nextMatches;
+    };
+    const hasGrossLabel = lineMatchesFieldNearby('gross_total');
+    const hasBaseLabel = lineMatchesFieldNearby('base_salary');
+    const hasMandatoryLabel = lineMatchesFieldNearby('mandatory_total');
 
     // Only take gross/base from rows that look like the main table (≥2 salary-range amounts)
     const isLikelyMainTable = inSalaryRange.length >= 2;
@@ -448,5 +437,8 @@ module.exports = {
   normalizeLine,
   extractAmountFromLine,
   extractAllAmountsFromLine,
+  extractOrderedAmountsFromLine,
+  splitHeaderCells,
   lineMatchesPattern,
+  lineMatchesExclude,
 };

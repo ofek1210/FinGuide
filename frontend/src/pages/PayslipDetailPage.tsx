@@ -9,6 +9,7 @@ import {
   Calendar,
   Hash,
   Briefcase,
+  MessageSquareText,
   Sun,
   Heart,
   MessageSquareText,

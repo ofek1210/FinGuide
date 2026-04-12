@@ -44,6 +44,7 @@ export type PayslipSummaryFromBackend = {
 };
 
 export interface DocumentItem {
+  id?: string;
   _id: string;
   originalName: string;
   fileSize: number;

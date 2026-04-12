@@ -93,9 +93,6 @@ const computeFileChecksum = filePath =>
 // העלאת מסמך
 exports.uploadDocument = async (req, res, next) => {
   try {
-    // eslint-disable-next-line no-console
-    console.log('[documents] uploadDocument req.user =', req.user);
-    // בדוק שקובץ הועלה
     if (!req.file) {
       return next(new FileUploadError('לא נבחר קובץ'));
     }
@@ -138,17 +135,8 @@ exports.uploadDocument = async (req, res, next) => {
 
     const responseBody = {
       success: true,
-      data: {
-        id: document._id,
-        _id: document._id,
-        originalName: document.originalName,
-        fileSize: document.fileSize,
-        uploadedAt: document.uploadedAt,
-        status: document.status,
-      },
+      data: serializeDocument(document),
     };
-    // eslint-disable-next-line no-console
-    console.log('[documents] uploadDocument response', responseBody);
     res.status(201).json(responseBody);
   } catch (error) {
     // אם נכשל, מחק את הקובץ
@@ -163,25 +151,14 @@ exports.uploadDocument = async (req, res, next) => {
 exports.getDocuments = async (req, res, next) => {
   try {
     const filter = { user: req.user.id };
-    // eslint-disable-next-line no-console
-    console.log('[documents] getDocuments req.user =', req.user);
-    // eslint-disable-next-line no-console
-    console.log('[documents] getDocuments filter =', filter);
 
-    const documents = await Document.find(filter)
-      .select('-filePath -__v')
-      .sort('-uploadedAt');
+    const documents = await Document.find(filter).sort('-uploadedAt');
 
     const responseBody = {
       success: true,
       count: documents.length,
-      data: documents,
+      data: documents.map(serializeDocument),
     };
-    // eslint-disable-next-line no-console
-    console.log('[documents] getDocuments response', {
-      count: documents.length,
-      firstSummary: documents[0]?.analysisData?.summary,
-    });
     res.status(200).json(responseBody);
   } catch (error) {
     next(error);
@@ -202,13 +179,8 @@ exports.getDocument = async (req, res, next) => {
 
     const responseBody = {
       success: true,
-      data: document,
+      data: serializeDocument(document),
     };
-    // eslint-disable-next-line no-console
-    console.log('[documents] getDocument response', {
-      documentId: document._id,
-      summary: document.analysisData?.summary,
-    });
     res.status(200).json(responseBody);
   } catch (error) {
     next(error);
