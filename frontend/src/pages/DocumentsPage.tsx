@@ -12,13 +12,10 @@ import {
   downloadDocument,
   removeDocument,
   type DocumentItem as ApiDocumentItem,
-  type DocumentCategory,
   type DocumentMetadata,
-  type UploadDocumentPayload,
 } from "../api/documents.api";
 import { APP_ROUTES } from "../types/navigation";
 import {
-  DOCUMENT_CATEGORY_LABELS,
   formatDocumentMetadataSummary,
 } from "../utils/documentMetadata";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
@@ -472,11 +469,7 @@ export default function DocumentsPage() {
     }
 
     const file = selectedFile;
-    const metadataPayload = buildUploadPayload();
-
-    if (!metadataPayload) {
-      return;
-    }
+    const metadataPayload = { category: "other" as const };
 
     const tempId = `temp-${Date.now()}`;
     const tempDoc: DocumentItem = {
@@ -487,15 +480,6 @@ export default function DocumentsPage() {
       uploadedAt: new Date().toISOString(),
       metadata: {
         category: metadataPayload.category,
-        ...(metadataPayload.periodMonth !== undefined && {
-          periodMonth: metadataPayload.periodMonth,
-        }),
-        ...(metadataPayload.periodYear !== undefined && {
-          periodYear: metadataPayload.periodYear,
-        }),
-        ...(metadataPayload.documentDate && {
-          documentDate: metadataPayload.documentDate,
-        }),
         source: "manual_upload",
       },
     };
@@ -525,12 +509,10 @@ export default function DocumentsPage() {
       prev.map((doc) => (doc.id === tempId ? mapApiDocument(uploadedDoc) : doc)),
     );
     setToastMessage("המסמך נשמר וממתין לעיבוד.");
-    setUploadForm(DEFAULT_UPLOAD_FORM);
     const toastTimer = window.setTimeout(() => setToastMessage(null), 5000);
     timersRef.current.push(toastTimer);
 
     // רענון הרשימה מהשרת כדי לוודא שהמסמכים מסונכרנים
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     loadDocuments();
 
     const finalizeTimer = window.setTimeout(() => {
