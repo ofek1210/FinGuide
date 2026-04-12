@@ -1,4 +1,5 @@
 const Document = require('../models/Document');
+const { buildSavingsForecast } = require('../services/savingsForecastService');
 
 const STALE_DAYS = 30;
 
@@ -156,6 +157,22 @@ exports.getFindings = async (req, res, next) => {
       success: true,
       count: findings.length,
       data: findings,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+exports.getSavingsForecast = async (req, res, next) => {
+  try {
+    const forecast = await buildSavingsForecast({
+      userId: req.user.id,
+      input: req.body,
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: forecast,
     });
   } catch (error) {
     return next(error);
