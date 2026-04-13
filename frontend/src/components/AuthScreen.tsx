@@ -245,11 +245,7 @@ export default function AuthScreen({
   }, [isForgotModalOpen]);
 
   const persistSession = useCallback(
-    (token: string, user?: { id: string; name: string; email: string }) => {
-      localStorage.setItem("token", token);
-      if (user) {
-        localStorage.setItem("auth_user", JSON.stringify(user));
-      }
+    (_user?: { id: string; name: string; email: string }) => {
       emitAuthChanged();
       navigate(APP_ROUTES.dashboard);
     },
@@ -263,14 +259,12 @@ export default function AuthScreen({
 
       try {
         const response = await loginWithGoogle(credential);
-        const token = response.data?.token ?? response.token;
-
-        if (!response.success || !token) {
+        if (!response.success) {
           setError(response.message || "לא הצלחנו להתחבר עם Google.");
           return;
         }
 
-        persistSession(token, response.data?.user);
+        persistSession(response.data?.user);
       } catch {
         setError("אירעה שגיאה בהתחברות עם Google, נסו שוב בהמשך.");
       } finally {
@@ -388,9 +382,7 @@ export default function AuthScreen({
         }
 
         const response = await register(name.trim(), email.trim(), password);
-        const token = response.token ?? response.data?.token;
-
-        if (!response.success || !token) {
+        if (!response.success) {
           const serverMessage =
             response.errors?.[0]?.message ||
             response.errors?.[0]?.msg ||
@@ -399,7 +391,7 @@ export default function AuthScreen({
           return;
         }
 
-        persistSession(token, response.data?.user);
+        persistSession(response.data?.user);
         return;
       }
 
@@ -409,14 +401,12 @@ export default function AuthScreen({
       }
 
       const response = await login(email.trim(), password);
-      const token = response.data?.token ?? response.token;
-
-      if (!response.success || !token) {
+      if (!response.success) {
         setError(response.message || "לא הצלחנו להתחבר, נסו שוב.");
         return;
       }
 
-      persistSession(token, response.data?.user);
+      persistSession(response.data?.user);
     } catch {
       setError(
         isRegister

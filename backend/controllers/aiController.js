@@ -45,7 +45,7 @@ async function chatWithAI(req, res) {
     return res.status(503).json({
       success: false,
       message: 'שירות ה-AI אינו זמין כרגע.',
-      source: availability.source,
+      provider: availability.provider,
     });
   }
 

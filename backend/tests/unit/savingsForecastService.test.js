@@ -37,7 +37,12 @@ describe('savingsForecastService', () => {
   it('derives pension contribution from complete document data', () => {
     expect(
       deriveContributionFromDocument({
+        _id: 'doc-1',
+        status: 'completed',
+        metadata: { category: 'payslip', source: 'manual_upload' },
         analysisData: {
+          salary: { gross_total: 10000, net_payable: 8200, components: [] },
+          deductions: { mandatory: { total: 1800 } },
           contributions: {
             pension: {
               employee: 500,
@@ -45,10 +50,15 @@ describe('savingsForecastService', () => {
               severance: 830,
             },
           },
+          parties: { employee_name: 'Test User' },
+          employment: {},
+          summary: {},
+          quality: {},
         },
       })
     ).toEqual({
       monthlyContribution: 1980,
+      sourceDocumentId: 'doc-1',
       warnings: [],
     });
   });
@@ -56,17 +66,27 @@ describe('savingsForecastService', () => {
   it('adds warning when the contribution is derived from partial document data', () => {
     expect(
       deriveContributionFromDocument({
+        _id: 'doc-2',
+        status: 'completed',
+        metadata: { category: 'payslip', source: 'manual_upload' },
         analysisData: {
+          salary: { gross_total: 10000, net_payable: 8200, components: [] },
+          deductions: { mandatory: { total: 1800 } },
           contributions: {
             pension: {
               employee: 500,
               employer: 650,
             },
           },
+          parties: { employee_name: 'Test User' },
+          employment: {},
+          summary: {},
+          quality: {},
         },
       })
     ).toEqual({
       monthlyContribution: 1150,
+      sourceDocumentId: 'doc-2',
       warnings: ['ההפקדה החודשית נגזרה מחלק מנתוני המסמך האחרון.'],
     });
   });

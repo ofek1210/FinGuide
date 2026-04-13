@@ -50,8 +50,15 @@ describe('authController - register', () => {
     const res = {
       statusCode: 200,
       body: undefined,
+      headers: {},
       status(code) {
         this.statusCode = code;
+        return this;
+      },
+      append(name, value) {
+        this.headers[name] = this.headers[name]
+          ? `${this.headers[name]},${value}`
+          : value;
         return this;
       },
       json(payload) {
@@ -97,6 +104,7 @@ describe('authController - register', () => {
       id: 'user-id-1',
       name: 'Test User',
       email: 'test@test.com',
+      avatarUrl: null,
     });
     expect(data.data.token).toBe('test-token');
     expect(next).not.toHaveBeenCalled();
@@ -139,8 +147,15 @@ describe('authController - googleLogin', () => {
     const res = {
       statusCode: 200,
       body: undefined,
+      headers: {},
       status(code) {
         this.statusCode = code;
+        return this;
+      },
+      append(name, value) {
+        this.headers[name] = this.headers[name]
+          ? `${this.headers[name]},${value}`
+          : value;
         return this;
       },
       json(payload) {

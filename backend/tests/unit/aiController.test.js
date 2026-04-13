@@ -49,7 +49,7 @@ describe('aiController', () => {
   it('returns source for model responses', async () => {
     checkAIAvailability.mockResolvedValue({
       available: true,
-      source: 'llama3.2:1b',
+      provider: 'ollama',
     });
     generateAnswer.mockResolvedValue({
       answer: 'תשובה',
@@ -73,7 +73,7 @@ describe('aiController', () => {
   it('returns 503 when provider is unavailable', async () => {
     checkAIAvailability.mockResolvedValue({
       available: false,
-      source: 'llama3.2:1b',
+      provider: 'ollama',
       reason: 'connection_failed',
     });
 
@@ -88,13 +88,13 @@ describe('aiController', () => {
 
     expect(res.statusCode).toBe(503);
     expect(res.body.success).toBe(false);
-    expect(res.body.source).toBe('llama3.2:1b');
+    expect(res.body.provider).toBe('ollama');
   });
 
   it('returns availability status payload', async () => {
     checkAIAvailability.mockResolvedValue({
       available: true,
-      source: 'llama3.2:1b',
+      provider: 'ollama',
     });
 
     const res = createResponse();
@@ -105,7 +105,7 @@ describe('aiController', () => {
       success: true,
       data: {
         available: true,
-        source: 'llama3.2:1b',
+        provider: 'ollama',
       },
     });
   });

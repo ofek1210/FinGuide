@@ -2,6 +2,7 @@ const Document = require('../models/Document');
 const { ValidationError } = require('../utils/appErrors');
 const { normalizeAmount, parseNumericInput } = require('../utils/numeric');
 const { buildLinearSavingsScenario } = require('../utils/linearSavingsForecast');
+const { buildCanonicalPayslip } = require('./payslipAnalysisService');
 
 const parseNonNegativeNumber = (value, field, { required = true } = {}) => {
   if (value === undefined || value === null || value === '') {
@@ -116,7 +117,8 @@ const readContributionValue = value => {
 };
 
 const deriveContributionFromDocument = document => {
-  const pension = document?.analysisData?.contributions?.pension;
+  const payslip = buildCanonicalPayslip(document);
+  const pension = payslip?.contributions?.pension;
 
   if (!pension || typeof pension !== 'object') {
     return null;
@@ -146,6 +148,7 @@ const deriveContributionFromDocument = document => {
 
   return {
     monthlyContribution,
+    sourceDocumentId: payslip.id,
     warnings,
   };
 };
@@ -158,7 +161,7 @@ const resolveCurrentMonthlyContribution = async ({
     user: userId,
     status: 'completed',
   })
-    .select('_id uploadedAt processedAt analysisData')
+    .select('_id status uploadedAt processedAt analysisData metadata')
     .sort({ processedAt: -1, uploadedAt: -1, createdAt: -1 })
     .lean();
 
@@ -173,7 +176,7 @@ const resolveCurrentMonthlyContribution = async ({
       return {
         monthlyContribution: derived.monthlyContribution,
         contributionSource: 'document',
-        sourceDocumentId: document._id.toString(),
+        sourceDocumentId: derived.sourceDocumentId,
         warnings: derived.warnings,
       };
     })

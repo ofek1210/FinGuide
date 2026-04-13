@@ -2,15 +2,19 @@ const express = require('express');
 
 const router = express.Router();
 const {
-  uploadDocument,
   getDocuments,
   getDocument,
-  getPayslipHistory,
-  getPayslipDetail,
   deleteDocument,
   downloadDocument,
+} = require('../controllers/documentCrudController');
+const {
+  getPayslipHistory,
+  getPayslipDetail,
+} = require('../controllers/documentPayslipController');
+const {
+  uploadDocument,
   retryDocumentProcessing,
-} = require('../controllers/documentController');
+} = require('../controllers/documentProcessingController');
 const { protect } = require('../middleware/auth');
 const { upload, handleUploadError } = require('../middleware/upload');
 

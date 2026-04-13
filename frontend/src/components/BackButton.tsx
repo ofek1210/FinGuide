@@ -1,11 +1,12 @@
 import { useNavigate } from "react-router-dom";
 import { APP_ROUTES } from "../types/navigation";
+import { useAuth } from "../auth/AuthProvider";
 
 export default function BackButton() {
   const navigate = useNavigate();
-  const token = localStorage.getItem("token");
+  const { status } = useAuth();
 
-  if (token) {
+  if (status !== "guest") {
     return null;
   }
 

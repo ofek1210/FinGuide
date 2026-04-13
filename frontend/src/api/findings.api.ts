@@ -58,14 +58,7 @@ export type SavingsForecastResponse = {
   data?: SavingsForecastData;
 };
 
-const getToken = () => localStorage.getItem("token");
-
 export const listFindings = async () => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as ListFindingsResponse;
-  }
-
   const result = await apiJson<ListFindingsResponse>("/api/findings", {
     auth: true,
     fallbackErrorMessage: "לא הצלחנו לטעון את הממצאים.",
@@ -83,11 +76,6 @@ export const listFindings = async () => {
 };
 
 export const getSavingsForecast = async (body: SavingsForecastRequest) => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as SavingsForecastResponse;
-  }
-
   const result = await apiJson<SavingsForecastResponse>("/api/findings/savings-forecast", {
     method: "POST",
     body,

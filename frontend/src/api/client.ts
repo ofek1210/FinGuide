@@ -23,8 +23,6 @@ export type ApiResult<T> =
   | { ok: true; status: number; data: T }
   | { ok: false; status: number; error: ApiError };
 
-const getToken = () => localStorage.getItem("token");
-
 const tryParseJson = async (response: Response) => {
   try {
     return (await response.json()) as unknown;
@@ -91,32 +89,12 @@ export async function apiJson<T>(
   path: string,
   options: JsonRequestOptions = {},
 ): Promise<ApiResult<T>> {
-  const {
-    method = "GET",
-    headers = {},
-    body,
-    auth = false,
-    fallbackErrorMessage = "שגיאה בבקשה לשרת.",
-  } = options;
+  const { method = "GET", headers = {}, body, fallbackErrorMessage = "שגיאה בבקשה לשרת." } = options;
 
   const requestHeaders: Record<string, string> = {
     Accept: "application/json",
     ...headers,
   };
-
-  const token = getToken();
-  if (auth) {
-    if (!token) {
-      return {
-        ok: false,
-        status: 401,
-        error: toApiError(401, null, "אין הרשאה. נא להתחבר."),
-      };
-    }
-    requestHeaders.Authorization = `Bearer ${token}`;
-  } else if (token) {
-    requestHeaders.Authorization = `Bearer ${token}`;
-  }
 
   let requestBody: BodyInit | undefined;
   if (body instanceof FormData) {
@@ -132,6 +110,7 @@ export async function apiJson<T>(
       method,
       headers: requestHeaders,
       body: requestBody,
+      credentials: "include",
     });
   } catch (err) {
     return {
@@ -180,34 +159,17 @@ export async function apiBlob(
   | { ok: true; status: number; blob: Blob; response: Response }
   | { ok: false; status: number; error: ApiError }
 > {
-  const {
-    headers = {},
-    auth = false,
-    fallbackErrorMessage = "שגיאה בבקשה לשרת.",
-  } = options;
+  const { headers = {}, fallbackErrorMessage = "שגיאה בבקשה לשרת." } = options;
 
   const requestHeaders: Record<string, string> = {
     ...headers,
   };
 
-  const token = getToken();
-  if (auth) {
-    if (!token) {
-      return {
-        ok: false,
-        status: 401,
-        error: toApiError(401, null, "אין הרשאה. נא להתחבר."),
-      };
-    }
-    requestHeaders.Authorization = `Bearer ${token}`;
-  } else if (token) {
-    requestHeaders.Authorization = `Bearer ${token}`;
-  }
-
   let response: Response;
   try {
     response = await fetch(path, {
       headers: requestHeaders,
+      credentials: "include",
     });
   } catch (err) {
     return {
@@ -250,4 +212,3 @@ export async function apiBlob(
   const blob = await response.blob();
   return { ok: true, status: response.status, blob, response };
 }
-

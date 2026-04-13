@@ -75,6 +75,27 @@ const DocumentSchema = new mongoose.Schema(
       enum: ['uploaded', 'pending', 'processing', 'completed', 'failed'],
       default: 'uploaded',
     },
+    processingStage: {
+      type: String,
+      enum: ['queued', 'extract_text', 'run_ocr', 'resolve_fields', 'finalize', 'failed', 'completed'],
+      default: 'queued',
+    },
+    processingAttempts: {
+      type: Number,
+      default: 0,
+    },
+    processingLeaseExpiresAt: {
+      type: Date,
+      default: null,
+    },
+    processingStartedAt: {
+      type: Date,
+      default: null,
+    },
+    processingFinishedAt: {
+      type: Date,
+      default: null,
+    },
     uploadedAt: {
       type: Date,
       default: Date.now,
@@ -87,6 +108,10 @@ const DocumentSchema = new mongoose.Schema(
       default: {},
     },
     processingError: {
+      type: String,
+      default: null,
+    },
+    ocrDebugArtifactPath: {
       type: String,
       default: null,
     },

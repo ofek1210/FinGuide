@@ -13,6 +13,10 @@ const {
   createPasswordResetToken,
   buildPasswordResetUrl,
 } = require('../services/passwordResetService');
+const {
+  clearSessionCookie,
+  setSessionCookie,
+} = require('../utils/sessionCookie');
 
 const googleClient = new OAuth2Client();
 const PROFILE_IMAGES_DIR = path.join(__dirname, '..', 'uploads', 'profile-images');
@@ -93,7 +97,7 @@ const generateToken = (userId) =>
     expiresIn: process.env.JWT_EXPIRE || '7d',
   });
 
-const buildAuthResponse = user => ({
+const buildAuthResponse = (user, token) => ({
   success: true,
   data: {
     user: {
@@ -102,9 +106,21 @@ const buildAuthResponse = user => ({
       email: user.email,
       avatarUrl: user.avatarUrl || null,
     },
+    ...(token && { token }),
   },
   message: 'התחברות בוצעה בהצלחה',
 });
+
+const sendAuthResponse = (res, user, token, { statusCode = 200, message } = {}) => {
+  setSessionCookie(res, token);
+
+  const response = buildAuthResponse(user, token);
+  if (message) {
+    response.message = message;
+  }
+
+  return res.status(statusCode).json(response);
+};
 
 /**
  * @route   POST /api/auth/register
@@ -134,20 +150,12 @@ const register = async (req, res, next) => {
     // יצירת token
     const token = generateToken(user._id);
 
-    res.status(201).json({
-      success: true,
-      data: {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-        },
-        token,
-      },
+    return sendAuthResponse(res, user, token, {
+      statusCode: 201,
       message: 'ההרשמה בוצעה בהצלחה',
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -175,11 +183,9 @@ const login = async (req, res, next) => {
 
     // יצירת token
     const token = generateToken(user._id);
-    const response = buildAuthResponse(user);
-    response.data.token = token;
-    res.json(response);
+    return sendAuthResponse(res, user, token);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -268,9 +274,7 @@ const googleLogin = async (req, res, next) => {
     }
 
     const token = generateToken(user._id);
-    const response = buildAuthResponse(user);
-    response.data.token = token;
-    return res.json(response);
+    return sendAuthResponse(res, user, token);
   } catch (error) {
     return next(error);
   }
@@ -283,6 +287,14 @@ const googleLogin = async (req, res, next) => {
  */
 const getMe = async (req, res) => {
   res.json(buildCurrentUserResponse(req.user));
+};
+
+const logout = async (req, res) => {
+  clearSessionCookie(res);
+  return res.status(200).json({
+    success: true,
+    message: 'ההתנתקות בוצעה בהצלחה',
+  });
 };
 
 /**
@@ -337,8 +349,10 @@ const updateMe = async (req, res, next) => {
       });
     }
 
-    const response = buildAuthResponse(user);
-    return res.json(response);
+    return res.json({
+      ...buildCurrentUserResponse(user),
+      message: 'הפרופיל עודכן בהצלחה',
+    });
   } catch (error) {
     return next(error);
   }
@@ -525,6 +539,7 @@ module.exports = {
   register,
   login,
   googleLogin,
+  logout,
   getMe,
   updateMe,
   changePassword,

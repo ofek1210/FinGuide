@@ -31,12 +31,10 @@ const createApp = () => {
     'http://localhost:5173',
     'http://127.0.0.1:5173',
   ].filter(Boolean);
-  const defaultOrigin = 'http://localhost:5173';
   const corsOrigin = (origin, cb) => {
     if (!origin) return cb(null, true);
-    if (allowedOrigins.length === 0) return cb(null, defaultOrigin);
     if (allowedOrigins.includes(origin)) return cb(null, true);
-    cb(null, false);
+    return cb(null, false);
   };
   app.use(
     cors({

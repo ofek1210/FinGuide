@@ -5,12 +5,20 @@ import { APP_ROUTES } from "../types/navigation";
 
 type StepStatus = "pending" | "active" | "done";
 type ProcessingStatus = "idle" | "pending" | "processing" | "completed" | "failed";
+type ProcessingStage =
+  | "queued"
+  | "extract_text"
+  | "run_ocr"
+  | "resolve_fields"
+  | "finalize"
+  | "completed"
+  | "failed";
 
 const steps = [
+  "המסמך נכנס לתור",
   "קריאת המסמך",
-  "זיהוי נתונים במסמך",
-  "חילוץ פרטי שכר ומס",
-  "הכנת התלוש לתצוגה",
+  "OCR וחילוץ טקסט",
+  "פתרון שדות והכנת התלוש",
 ];
 
 const buildStepStatus = (index: number, current: number, isDone: boolean): StepStatus => {
@@ -20,11 +28,93 @@ const buildStepStatus = (index: number, current: number, isDone: boolean): StepS
   return "pending";
 };
 
+const getCurrentStageLabel = (status: ProcessingStatus, stage: ProcessingStage | null) => {
+  if (status === "completed") return "המסמך הושלם ומוכן לצפייה.";
+  if (status === "failed") return "המסמך נכשל בעיבוד.";
+
+  switch (stage) {
+    case "queued":
+      return "המסמך ממתין בתור לעובד OCR.";
+    case "extract_text":
+      return "קוראים טקסט ישיר מהקובץ.";
+    case "run_ocr":
+      return "מריצים OCR על המסמך.";
+    case "resolve_fields":
+      return "מחלצים ופוסקים שדות תלוש.";
+    case "finalize":
+      return "מבצעים ולידציה ושומרים את התוצאה.";
+    default:
+      return "מתחילים לעבד את המסמך.";
+  }
+};
+
+const getStageNote = (status: ProcessingStatus, stage: ProcessingStage | null) => {
+  if (status === "failed") {
+    return "העיבוד הופסק. אפשר לחזור למסמכים ולנסות שוב.";
+  }
+
+  switch (stage) {
+    case "queued":
+      return "המסמך נשמר בהצלחה ומחכה לפועל עיבוד זמין.";
+    case "extract_text":
+      return "המערכת בודקת אם יש טקסט ישיר בקובץ לפני OCR מלא.";
+    case "run_ocr":
+      return "המערכת מריצה OCR ומזהה טקסט ושדות מתוך המסמך.";
+    case "resolve_fields":
+      return "המערכת פותרת שדות שכר, מס, ניכויים והפקדות.";
+    case "finalize":
+      return "התוצאה עוברת ולידציה ונשמרת לתצוגה.";
+    default:
+      return status === "pending"
+        ? "המסמך נשמר וממתין להתחלת העיבוד."
+        : "בודקים את סטטוס המסמך מול השרת.";
+  }
+};
+
+const getProgressFromStage = (status: ProcessingStatus, stage: ProcessingStage | null) => {
+  if (status === "completed") return 100;
+  if (status === "failed") return 0;
+
+  switch (stage) {
+    case "queued":
+      return 10;
+    case "extract_text":
+      return 35;
+    case "run_ocr":
+      return 65;
+    case "resolve_fields":
+      return 85;
+    case "finalize":
+      return 95;
+    default:
+      return status === "pending" ? 10 : 35;
+  }
+};
+
+const getStepIndexFromStage = (status: ProcessingStatus, stage: ProcessingStage | null) => {
+  if (status === "completed") return steps.length;
+
+  switch (stage) {
+    case "queued":
+      return 0;
+    case "extract_text":
+      return 1;
+    case "run_ocr":
+      return 2;
+    case "resolve_fields":
+    case "finalize":
+      return 3;
+    default:
+      return status === "pending" ? 0 : 1;
+  }
+};
+
 export default function ScanStatusPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const documentId = searchParams.get("documentId")?.trim() ?? "";
   const [status, setStatus] = useState<ProcessingStatus>("idle");
+  const [processingStage, setProcessingStage] = useState<ProcessingStage | null>(null);
   const [error, setError] = useState("");
   const [documentName, setDocumentName] = useState("");
 
@@ -45,10 +135,10 @@ export default function ScanStatusPage() {
     }
 
     setDocumentName(response.data.originalName);
+    setProcessingStage((response.data.processingStage as ProcessingStage | null) ?? null);
     const nextStatus =
-      response.data.status === "uploaded"
-        ? "pending"
-        : response.data.status || "pending";
+      response.data.status === "uploaded" ? "pending" : response.data.status || "pending";
+
     if (nextStatus === "completed") {
       setStatus("completed");
       setError("");
@@ -92,19 +182,22 @@ export default function ScanStatusPage() {
     return () => window.clearTimeout(timer);
   }, [documentId, isComplete, navigate]);
 
-  const stepIndex = useMemo(() => {
-    if (status === "completed") return steps.length;
-    if (status === "processing") return 2;
-    if (status === "pending") return 1;
-    return 0;
-  }, [status]);
-
-  const progress = useMemo(() => {
-    if (status === "completed") return 100;
-    if (status === "processing") return 75;
-    if (status === "pending") return 35;
-    return 0;
-  }, [status]);
+  const stepIndex = useMemo(
+    () => getStepIndexFromStage(status, processingStage),
+    [processingStage, status]
+  );
+  const progress = useMemo(
+    () => getProgressFromStage(status, processingStage),
+    [processingStage, status]
+  );
+  const stageLabel = useMemo(
+    () => getCurrentStageLabel(status, processingStage),
+    [processingStage, status]
+  );
+  const stageNote = useMemo(
+    () => getStageNote(status, processingStage),
+    [processingStage, status]
+  );
 
   if (!documentId) {
     return (
@@ -157,6 +250,7 @@ export default function ScanStatusPage() {
               ? `מזהה ומחלץ נתונים מתוך ${documentName}.`
               : "מזהה ומחלץ נתונים מהתלוש."}
           </p>
+          <p>{stageLabel}</p>
 
           <div className="scan-progress">
             <div className="scan-progress-bar">
@@ -167,12 +261,12 @@ export default function ScanStatusPage() {
 
           <div className="scan-steps">
             {steps.map((label, index) => {
-              const status = buildStepStatus(index, stepIndex, isComplete);
+              const stepStatus = buildStepStatus(index, stepIndex, isComplete);
               return (
-                <div key={label} className={`scan-step is-${status}`}>
+                <div key={label} className={`scan-step is-${stepStatus}`}>
                   <span className="scan-step-label">{label}</span>
                   <span className="scan-step-icon" aria-hidden="true">
-                    {status === "done" ? "✓" : status === "active" ? "…" : "○"}
+                    {stepStatus === "done" ? "✓" : stepStatus === "active" ? "…" : "○"}
                   </span>
                 </div>
               );
@@ -181,13 +275,7 @@ export default function ScanStatusPage() {
 
           {error ? <div className="documents-inline-error">{error}</div> : null}
 
-          <div className="scan-note">
-            {status === "pending"
-              ? "המסמך נשמר וממתין להתחלת העיבוד."
-              : status === "processing"
-                ? "המערכת קוראת את המסמך ומחלצת פרטי שכר, מס וניכויים."
-                : "בודקים את סטטוס המסמך מול השרת."}
-          </div>
+          <div className="scan-note">{stageNote}</div>
         </section>
       </main>
     </div>

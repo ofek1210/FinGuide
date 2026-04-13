@@ -1,5 +1,6 @@
-const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:1b";
+const AI_PROVIDER = (process.env.AI_PROVIDER || 'ollama').toLowerCase();
+const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.2:1b';
 
 async function requestOllama(path, options = {}, timeoutMs = 30000) {
   const controller = new AbortController();
@@ -33,11 +34,18 @@ ${userMessage}
 }
 
 function cleanAnswer(text) {
-  if (!text) return "";
-  return text.replace(/^["'“]+|["'”]+$/g, "").trim();
+  if (!text) return '';
+  return text.replace(/^["'“]+|["'”]+$/g, '').trim();
 }
 
 async function generateAnswer(message) {
+  if (AI_PROVIDER !== 'ollama') {
+    const error = new Error('AI provider is disabled');
+    error.statusCode = 503;
+    error.provider = AI_PROVIDER;
+    throw error;
+  }
+
   try {
     const payload = {
       model: OLLAMA_MODEL,
@@ -50,14 +58,14 @@ async function generateAnswer(message) {
       },
     };
 
-    const resp = await requestOllama("/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const resp = await requestOllama('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
     if (!resp.ok) {
-      const text = await resp.text().catch(() => "");
+      const text = await resp.text().catch(() => '');
       const err = new Error(`Ollama error: HTTP ${resp.status}`);
       err.details = text;
       err.statusCode = 500;
@@ -65,47 +73,66 @@ async function generateAnswer(message) {
     }
 
     const data = await resp.json();
-    const answer = cleanAnswer((data.response || "").trim());
+    const answer = cleanAnswer((data.response || '').trim());
 
     return {
       answer,
       source: data.model || OLLAMA_MODEL,
     };
   } catch (err) {
-    if (err.name === "AbortError") {
-      const e = new Error("Ollama request timed out");
-      e.statusCode = 500;
-      throw e;
+    if (err.name === 'AbortError') {
+      const error = new Error('Ollama request timed out');
+      error.statusCode = 500;
+      throw error;
     }
     throw err;
   }
 }
 
 async function checkAIAvailability() {
+  if (AI_PROVIDER === 'disabled') {
+    return {
+      available: false,
+      provider: 'disabled',
+      reason: 'disabled',
+    };
+  }
+
+  if (AI_PROVIDER !== 'ollama') {
+    return {
+      available: false,
+      provider: AI_PROVIDER,
+      reason: 'unsupported_provider',
+    };
+  }
+
   try {
-    const response = await requestOllama("/api/tags", {}, 5000);
+    const response = await requestOllama('/api/tags', {}, 5000);
     if (!response.ok) {
       return {
         available: false,
-        source: OLLAMA_MODEL,
+        provider: 'ollama',
         reason: `http_${response.status}`,
       };
     }
 
     return {
       available: true,
-      source: OLLAMA_MODEL,
+      provider: 'ollama',
+      reason: null,
     };
   } catch (error) {
     return {
       available: false,
-      source: OLLAMA_MODEL,
-      reason: error?.name === "AbortError" ? "timeout" : "connection_failed",
+      provider: 'ollama',
+      reason: error?.name === 'AbortError' ? 'timeout' : 'connection_failed',
     };
   }
 }
 
 module.exports = {
+  AI_PROVIDER,
+  OLLAMA_MODEL,
   checkAIAvailability,
   generateAnswer,
 };

@@ -67,7 +67,7 @@ export default function AssistantPage() {
 
       if (response.success && response.data) {
         setAiAvailable(response.data.available);
-        setAiSource(response.data.source);
+        setAiSource(response.data.provider);
         if (!response.data.available) {
           setError("שירות ה-AI אינו זמין כרגע.");
         }

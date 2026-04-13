@@ -66,6 +66,9 @@ describe('Auth routes integration', () => {
       expect(res.body.success).toBe(true);
       expect(res.body.data.user.email).toBe('test@example.com');
       expect(res.body.data.token).toBeDefined();
+      expect(res.headers['set-cookie']).toEqual(
+        expect.arrayContaining([expect.stringContaining('fg_session=')])
+      );
     });
 
     it('should reject duplicate email', async () => {
@@ -127,6 +130,26 @@ describe('Auth routes integration', () => {
   });
 
   describe('GET /api/auth/me', () => {
+    it('should return current user with cookie session', async () => {
+      const agent = request.agent(app);
+
+      const registerRes = await agent.post('/api/auth/register').send({
+        name: 'Cookie User',
+        email: 'cookie@test.com',
+        password: 'Test123',
+      });
+
+      expect(registerRes.headers['set-cookie']).toEqual(
+        expect.arrayContaining([expect.stringContaining('fg_session=')])
+      );
+
+      const res = await agent.get('/api/auth/me');
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.user.email).toBe('cookie@test.com');
+    });
+
     it('should return current user with valid token', async () => {
       const email = 'me@test.com';
       const password = 'Test123';
@@ -154,6 +177,29 @@ describe('Auth routes integration', () => {
       expect(res.statusCode).toBe(401);
       expect(res.body.success).toBe(false);
       expect(res.body.message).toBe('לא מורשה, אין token');
+    });
+  });
+
+  describe('POST /api/auth/logout', () => {
+    it('clears the session cookie', async () => {
+      const agent = request.agent(app);
+
+      await agent.post('/api/auth/register').send({
+        name: 'Logout User',
+        email: 'logout@test.com',
+        password: 'Test123',
+      });
+
+      const logoutRes = await agent.post('/api/auth/logout');
+
+      expect(logoutRes.statusCode).toBe(200);
+      expect(logoutRes.body.success).toBe(true);
+      expect(logoutRes.headers['set-cookie']).toEqual(
+        expect.arrayContaining([expect.stringContaining('fg_session=')])
+      );
+
+      const meRes = await agent.get('/api/auth/me');
+      expect(meRes.statusCode).toBe(401);
     });
   });
 

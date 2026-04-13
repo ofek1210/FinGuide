@@ -9,6 +9,15 @@ export type DocumentStatus =
   | "completed"
   | "failed";
 
+export type DocumentProcessingStage =
+  | "queued"
+  | "extract_text"
+  | "run_ocr"
+  | "resolve_fields"
+  | "finalize"
+  | "completed"
+  | "failed";
+
 export type DocumentCategory =
   | "payslip"
   | "tax_report"
@@ -29,6 +38,10 @@ export interface DocumentItem {
   originalName: string;
   fileSize: number;
   status?: DocumentStatus;
+  processingStage?: DocumentProcessingStage | null;
+  processingAttempts?: number;
+  processingStartedAt?: string | null;
+  processingFinishedAt?: string | null;
   uploadedAt?: string;
   processedAt?: string;
   processingError?: string | null;
@@ -89,8 +102,6 @@ export type DownloadDocumentResponse = {
   filename?: string;
 };
 
-const getToken = () => localStorage.getItem("token");
-
 const getFilenameFromDisposition = (response: Response) => {
   const disposition = response.headers.get("content-disposition");
   if (!disposition) return null;
@@ -106,11 +117,6 @@ const getFilenameFromDisposition = (response: Response) => {
 };
 
 export const listDocuments = async () => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as ListDocumentsResponse;
-  }
-
   const result = await apiJson<ListDocumentsResponse>("/api/documents", {
     auth: true,
     fallbackErrorMessage: "לא הצלחנו לטעון את המסמכים.",
@@ -131,11 +137,6 @@ export const uploadDocument = async (
   file: File,
   metadata: UploadDocumentPayload = { category: "other" },
 ) => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as UploadDocumentResponse;
-  }
-
   if (!file) {
     return { success: false, message: "לא נבחר קובץ." } as UploadDocumentResponse;
   }
@@ -166,11 +167,6 @@ export const uploadDocument = async (
 };
 
 export const getDocument = async (id: string) => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as DocumentResponse;
-  }
-
   const result = await apiJson<DocumentResponse>(`/api/documents/${id}`, {
     auth: true,
     fallbackErrorMessage: "לא הצלחנו לטעון את המסמך.",
@@ -184,11 +180,6 @@ export const getDocument = async (id: string) => {
 };
 
 export const listPayslips = async () => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as PayslipHistoryApiResponse;
-  }
-
   const result = await apiJson<PayslipHistoryApiResponse>("/api/documents/payslips", {
     auth: true,
     fallbackErrorMessage: "לא הצלחנו לטעון את היסטוריית התלושים.",
@@ -205,11 +196,6 @@ export const listPayslips = async () => {
 };
 
 export const getPayslip = async (id: string) => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as PayslipDetailApiResponse;
-  }
-
   const result = await apiJson<PayslipDetailApiResponse>(`/api/documents/payslips/${id}`, {
     auth: true,
     fallbackErrorMessage: "לא הצלחנו לטעון את התלוש.",
@@ -223,11 +209,6 @@ export const getPayslip = async (id: string) => {
 };
 
 export const reprocessDocument = async (id: string) => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as DocumentResponse;
-  }
-
   const result = await apiJson<DocumentResponse>(`/api/documents/${id}/reprocess`, {
     method: "POST",
     auth: true,
@@ -242,11 +223,6 @@ export const reprocessDocument = async (id: string) => {
 };
 
 export const removeDocument = async (id: string) => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as RemoveDocumentResponse;
-  }
-
   const result = await apiJson<RemoveDocumentResponse>(`/api/documents/${id}`, {
     method: "DELETE",
     auth: true,
@@ -259,11 +235,6 @@ export const removeDocument = async (id: string) => {
 };
 
 export const downloadDocument = async (id: string) => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as DownloadDocumentResponse;
-  }
-
   const result = await apiBlob(`/api/documents/${id}/download`, {
     auth: true,
     fallbackErrorMessage: "שגיאה בהורדת המסמך.",

@@ -7,6 +7,7 @@ const connectDB = require('../config/db');
 const Document = require('../models/Document');
 const { extractPayslipFile } = require('../services/payslipOcr');
 const { categorizeOcrWarning, dedupeStrings } = require('../services/payslipOcrShared');
+const { normalizePayslipAnalysis } = require('../services/payslipAnalysisService');
 
 function parseArgs(argv) {
   const options = {
@@ -219,11 +220,12 @@ async function runReprocess(options) {
     for (const document of documents) {
       try {
         const { data } = await extractPayslipFile(document.filePath);
-        const report = buildReport(document, data);
+        const normalized = normalizePayslipAnalysis(data);
+        const report = buildReport(document, normalized);
         report.dryRun = !options.write;
 
         if (options.write) {
-          document.analysisData = data;
+          document.analysisData = normalized;
           document.status = 'completed';
           document.processingError = null;
           document.processedAt = new Date();

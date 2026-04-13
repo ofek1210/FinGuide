@@ -17,19 +17,46 @@ services:
       - mongo
     environment:
       # App config
-      PORT: "5000"
+      PORT: "5001"
       NODE_ENV: "development"
       MONGODB_URI: "mongodb://mongo:27017/finguide"
       JWT_SECRET: "dev-secret-change-in-prod"
       JWT_EXPIRE: "7d"
       CLIENT_URL: "http://localhost:5173"
+      SESSION_COOKIE_NAME: "fg_session"
       MAX_UPLOAD_SIZE_MB: "10"
+      OCR_PROCESSING_LEASE_MS: "60000"
+      OCR_WORKER_POLL_INTERVAL_MS: "2000"
+      OCR_DEBUG_PERSIST: "false"
+      AI_PROVIDER: "disabled"
     ports:
-      - "5001:5000"
+      - "5001:5001"
+    volumes:
+      - ./backend/uploads:/usr/src/app/uploads
+      - ./backend/.work:/usr/src/app/.work
+
+  worker:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      - mongo
+    command: ["npm", "run", "worker"]
+    environment:
+      PORT: "5001"
+      NODE_ENV: "development"
+      MONGODB_URI: "mongodb://mongo:27017/finguide"
+      JWT_SECRET: "dev-secret-change-in-prod"
+      JWT_EXPIRE: "7d"
+      CLIENT_URL: "http://localhost:5173"
+      SESSION_COOKIE_NAME: "fg_session"
+      OCR_PROCESSING_LEASE_MS: "60000"
+      OCR_WORKER_POLL_INTERVAL_MS: "2000"
+      OCR_DEBUG_PERSIST: "false"
+      AI_PROVIDER: "disabled"
     volumes:
       - ./backend/uploads:/usr/src/app/uploads
       - ./backend/.work:/usr/src/app/.work
 
 volumes:
   mongo_data:
-

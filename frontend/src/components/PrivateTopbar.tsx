@@ -47,7 +47,7 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
 
   const handleLogout = () => {
     setDropdownOpen(false);
-    logoutWithConfirm(navigate);
+    void logoutWithConfirm(navigate);
   };
 
   const goToSettings = () => {

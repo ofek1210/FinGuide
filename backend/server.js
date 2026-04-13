@@ -36,7 +36,7 @@ const startServer = async port => {
       resumePendingDocumentProcessing()
         .then(count => {
           if (count > 0) {
-            console.log(`📄 Resumed ${count} pending OCR document(s)`);
+            console.log(`📄 Recovered ${count} expired OCR processing lease(s)`);
           }
         })
         .catch(error => {

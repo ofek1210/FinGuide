@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { getMe, type AuthUser } from "../api/auth.api";
 import { onAuthChanged } from "./authEvents";
@@ -15,35 +15,36 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const hasToken = () => Boolean(localStorage.getItem("token"));
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AuthStatus>("checking");
   const [user, setUser] = useState<AuthUser | null>(null);
   const [error, setError] = useState("");
+  const refreshInFlightRef = useRef(false);
 
   const refresh = useCallback(async () => {
-    setError("");
+    if (refreshInFlightRef.current) {
+      return;
+    }
 
-    if (!hasToken()) {
+    refreshInFlightRef.current = true;
+    setError("");
+    try {
+      setStatus("checking");
+      const response = await getMe();
+
+      if (response.success && response.data?.user) {
+        setUser(response.data.user);
+        setStatus("authenticated");
+        return;
+      }
+
+      clearSession({ notify: false });
       setUser(null);
       setStatus("guest");
-      return;
+      setError(response.message || "פג תוקף ההתחברות. נא להתחבר מחדש.");
+    } finally {
+      refreshInFlightRef.current = false;
     }
-
-    setStatus("checking");
-    const response = await getMe();
-
-    if (response.success && response.data?.user) {
-      setUser(response.data.user);
-      setStatus("authenticated");
-      return;
-    }
-
-    clearSession();
-    setUser(null);
-    setStatus("guest");
-    setError(response.message || "פג תוקף ההתחברות. נא להתחבר מחדש.");
   }, []);
 
   useEffect(() => {
@@ -72,4 +73,3 @@ export const useAuth = () => {
   }
   return ctx;
 };
-

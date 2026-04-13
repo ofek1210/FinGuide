@@ -1,12 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { APP_ROUTES } from "../types/navigation";
+import { logout } from "../api/auth.api";
+import { clearSession } from "../utils/logout";
 
 export default function DashboardPlaceholder() {
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("auth_user");
+    void logout().finally(() => {
+      clearSession();
+    });
     navigate(APP_ROUTES.login);
   };
 

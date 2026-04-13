@@ -42,7 +42,6 @@ const securityPoints = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const hasToken = Boolean(localStorage.getItem("token"));
 
   return (
     <div className="landing-page" dir="rtl">
@@ -87,9 +86,7 @@ export default function LandingPage() {
               <button
                 className="landing-primary hero-primary-btn"
                 type="button"
-                onClick={() =>
-                  navigate(hasToken ? APP_ROUTES.documents : APP_ROUTES.register)
-                }
+                onClick={() => navigate(APP_ROUTES.register)}
               >
                 העלאת תלוש שכר
                 <ArrowUpRight aria-hidden="true" />
@@ -97,7 +94,7 @@ export default function LandingPage() {
               <button
                 className="landing-secondary hero-secondary-btn"
                 type="button"
-                onClick={() => navigate(hasToken ? APP_ROUTES.findings : APP_ROUTES.login)}
+                onClick={() => navigate(APP_ROUTES.login)}
               >
                 קבלו תובנות לדוגמה
               </button>

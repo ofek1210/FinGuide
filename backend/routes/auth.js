@@ -4,6 +4,7 @@ const {
   register,
   login,
   googleLogin,
+  logout,
   getMe,
   updateMe,
   changePassword,
@@ -134,6 +135,7 @@ router.post(
   resetPassword
 );
 router.get('/me', protect, getMe);
+router.post('/logout', protect, logout);
 router.patch('/me', protect, updateMeValidation, validate, updateMe);
 router.post(
   '/change-password',

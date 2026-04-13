@@ -201,7 +201,7 @@ export default function SettingsPage() {
   };
 
   const handleLogout = () => {
-    logoutWithConfirm(navigate);
+    void logoutWithConfirm(navigate);
   };
 
   return (

@@ -1,7 +1,9 @@
 const Document = require('../models/Document');
 const { buildSavingsForecast } = require('../services/savingsForecastService');
+const { buildCanonicalPayslip } = require('../services/payslipAnalysisService');
 
 const STALE_DAYS = 30;
+const LOW_CONFIDENCE_THRESHOLD = 0.65;
 
 const buildFinding = (id, title, severity, details) => ({
   id,
@@ -13,7 +15,7 @@ const buildFinding = (id, title, severity, details) => ({
 exports.getFindings = async (req, res, next) => {
   try {
     const documents = await Document.find({ user: req.user.id })
-      .select('originalName fileSize status updatedAt metadata')
+      .select('_id originalName fileSize status updatedAt metadata analysisData')
       .lean();
 
     if (documents.length === 0) {
@@ -37,7 +39,12 @@ exports.getFindings = async (req, res, next) => {
     let missingMetadataCount = 0;
     let futureDateCount = 0;
     let pendingCount = 0;
+    let failedCount = 0;
     let staleCount = 0;
+    let lowConfidencePayslips = 0;
+    let missingCorePayslipFields = 0;
+    let metadataMismatchCount = 0;
+    let missingPensionCount = 0;
 
     const duplicateMap = new Map();
     const now = new Date();
@@ -51,6 +58,10 @@ exports.getFindings = async (req, res, next) => {
 
       if (doc.status === 'pending' || doc.status === 'processing') {
         pendingCount += 1;
+      }
+
+      if (doc.status === 'failed') {
+        failedCount += 1;
       }
 
       if (doc.updatedAt) {
@@ -76,6 +87,46 @@ exports.getFindings = async (req, res, next) => {
 
       if (hasValidDate && dateValue > now) {
         futureDateCount += 1;
+      }
+
+      if (doc.status === 'completed') {
+        const payslip = buildCanonicalPayslip(doc);
+
+        if (!payslip) {
+          missingCorePayslipFields += 1;
+          return;
+        }
+
+        const gross = typeof payslip.grossSalary === 'number';
+        const net = typeof payslip.netSalary === 'number';
+        const employee = Boolean(payslip.employeeName || payslip.employeeId);
+        if (!gross || !net || !employee) {
+          missingCorePayslipFields += 1;
+        }
+
+        const confidence = payslip.quality?.confidence;
+        if (typeof confidence === 'number' && confidence < LOW_CONFIDENCE_THRESHOLD) {
+          lowConfidencePayslips += 1;
+        }
+
+        const metadataPeriod =
+          Number.isInteger(metadata.periodYear) && Number.isInteger(metadata.periodMonth)
+            ? `${metadata.periodYear}-${String(metadata.periodMonth).padStart(2, '0')}`
+            : '';
+        if (metadataPeriod && payslip.periodMonth && metadataPeriod !== payslip.periodMonth) {
+          metadataMismatchCount += 1;
+        }
+
+        const pension = payslip.contributions?.pension;
+        const hasAnyPension = Boolean(
+          pension &&
+            [pension.employee, pension.employer, pension.severance].some(
+              value => typeof value === 'number' && Number.isFinite(value)
+            )
+        );
+        if (!hasAnyPension) {
+          missingPensionCount += 1;
+        }
       }
     });
 
@@ -129,6 +180,17 @@ exports.getFindings = async (req, res, next) => {
       );
     }
 
+    if (failedCount > 0) {
+      findings.push(
+        buildFinding(
+          'documents_failed',
+          'מסמכים שנכשלו בעיבוד',
+          'warning',
+          `יש ${failedCount} מסמכים שנכשלו בעיבוד ודורשים בדיקה או ניסיון חוזר.`
+        )
+      );
+    }
+
     if (staleCount > 0) {
       findings.push(
         buildFinding(
@@ -136,6 +198,50 @@ exports.getFindings = async (req, res, next) => {
           'מסמכים שלא עודכנו לאחרונה',
           'info',
           `נמצאו ${staleCount} מסמכים שלא עודכנו ב-${STALE_DAYS} הימים האחרונים.`
+        )
+      );
+    }
+
+    if (missingCorePayslipFields > 0) {
+      findings.push(
+        buildFinding(
+          'payslips_missing_core_fields',
+          'תלושים עם נתונים חסרים',
+          'warning',
+          `נמצאו ${missingCorePayslipFields} תלושים בלי שדות ליבה מלאים.`
+        )
+      );
+    }
+
+    if (lowConfidencePayslips > 0) {
+      findings.push(
+        buildFinding(
+          'payslips_low_confidence',
+          'תלושים עם ביטחון OCR נמוך',
+          'warning',
+          `נמצאו ${lowConfidencePayslips} תלושים עם confidence נמוך שדורשים בדיקה ידנית.`
+        )
+      );
+    }
+
+    if (metadataMismatchCount > 0) {
+      findings.push(
+        buildFinding(
+          'payslip_metadata_mismatch',
+          'חוסר התאמה בין metadata לתלוש',
+          'warning',
+          `נמצאו ${metadataMismatchCount} תלושים שבהם חודש התלוש לא תואם ל-metadata שנשמר עם המסמך.`
+        )
+      );
+    }
+
+    if (missingPensionCount > 0) {
+      findings.push(
+        buildFinding(
+          'payslips_missing_pension',
+          'תלושים בלי הפקדות פנסיה מזוהות',
+          'info',
+          `נמצאו ${missingPensionCount} תלושים ללא נתוני הפקדות פנסיה מלאים.`
         )
       );
     }

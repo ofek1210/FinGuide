@@ -12,22 +12,12 @@ export type AIStatusResponse = {
   message?: string;
   data?: {
     available: boolean;
-    source: string;
+    provider: string;
     reason?: string;
   };
 };
 
-const getToken = () => localStorage.getItem("token");
-
 export const chatWithAI = async (message: string) => {
-  const token = getToken();
-  if (!token) {
-    return {
-      success: false,
-      message: "אין הרשאה. נא להתחבר.",
-    } as ChatResponse;
-  }
-
   const result = await apiJson<ChatResponse>("/api/ai/chat", {
     method: "POST",
     auth: true,
@@ -41,14 +31,6 @@ export const chatWithAI = async (message: string) => {
 };
 
 export const getAIStatus = async () => {
-  const token = getToken();
-  if (!token) {
-    return {
-      success: false,
-      message: "אין הרשאה. נא להתחבר.",
-    } as AIStatusResponse;
-  }
-
   const result = await apiJson<AIStatusResponse>("/api/ai/status", {
     auth: true,
     fallbackErrorMessage: "לא הצלחנו לבדוק את זמינות ה-AI.",

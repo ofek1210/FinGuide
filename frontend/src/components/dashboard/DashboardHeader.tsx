@@ -55,7 +55,7 @@ export default function DashboardHeader({
 
   const handleLogout = () => {
     setDropdownOpen(false);
-    logoutWithConfirm(navigate);
+    void logoutWithConfirm(navigate);
   };
 
   const goToSettings = () => {

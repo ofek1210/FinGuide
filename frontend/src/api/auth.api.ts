@@ -70,8 +70,6 @@ export type PasswordResetRequestResponse = {
   }>;
 };
 
-const getToken = () => localStorage.getItem("token");
-
 const extractErrors = (payload: ApiErrorPayload | null) =>
   (payload && Array.isArray(payload.errors) ? payload.errors : undefined) as
     | PasswordResetRequestResponse["errors"]
@@ -121,11 +119,6 @@ export const loginWithGoogle = async (credential: string) => {
 };
 
 export const getMe = async () => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." } as MeResponse;
-  }
-
   const result = await apiJson<MeResponse>("/api/auth/me", {
     auth: true,
     fallbackErrorMessage: "לא הצלחנו לטעון את פרטי המשתמש.",
@@ -134,6 +127,20 @@ export const getMe = async () => {
     return { success: false, message: result.error.message } as MeResponse;
   }
   return result.data || ({ success: false, message: "תגובה לא תקינה." } as MeResponse);
+};
+
+export const logout = async () => {
+  const result = await apiJson<{ success: boolean; message?: string }>("/api/auth/logout", {
+    method: "POST",
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו להתנתק.",
+  });
+
+  if (!result.ok) {
+    return { success: false, message: result.error.message };
+  }
+
+  return result.data || { success: false, message: "תגובה לא תקינה." };
 };
 
 export const changePassword = async (currentPassword: string, newPassword: string) => {
