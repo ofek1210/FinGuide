@@ -2,7 +2,6 @@ import {
   ArrowUpRight,
   BarChart3,
   FileText,
-  Mail,
   ShieldCheck,
   Sparkles,
   Wand2,
@@ -98,10 +97,9 @@ export default function LandingPage() {
               <button
                 className="landing-secondary hero-secondary-btn"
                 type="button"
-                onClick={() => navigate(APP_ROUTES.integrationsEmail)}
+                onClick={() => navigate(hasToken ? APP_ROUTES.findings : APP_ROUTES.login)}
               >
-                <Mail aria-hidden="true" />
-                חיבור תיבת מייל
+                קבלו תובנות לדוגמה
               </button>
             </div>
             <div className="hero-badges">

@@ -80,8 +80,9 @@ describe('App behavior integration', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(res.body.data._id).toBe(createdDocument._id.toString());
+    expect(res.body.data.id).toBe(createdDocument._id.toString());
     expect(res.body.data.filePath).toBeUndefined();
+    expect(res.body.data.analysisData).toBeUndefined();
     expect(res.body.data.metadata).toEqual({
       category: 'other',
       source: 'manual_upload',

@@ -6,10 +6,14 @@ const { MongoMemoryServer } = require('mongodb-memory-server');
 
 jest.mock('../../services/documentProcessingService', () => ({
   processDocumentAsync: jest.fn(),
+  requestDocumentProcessing: jest.fn(),
 }));
 
 const createApp = require('../../app');
 const Document = require('../../models/Document');
+const {
+  requestDocumentProcessing,
+} = require('../../services/documentProcessingService');
 
 let app;
 let mongoServer;
@@ -107,8 +111,9 @@ describe('Document upload metadata integration', () => {
     expect(res.body.data.filePath).toBeUndefined();
     expect(res.body.data.filename).toBeUndefined();
     expect(res.body.data.checksumSha256).toBeUndefined();
+    expect(res.body.data.analysisData).toBeUndefined();
 
-    const createdDocument = await Document.findById(res.body.data._id);
+    const createdDocument = await Document.findById(res.body.data.id);
     expect(createdDocument).toBeTruthy();
     expect(createdDocument.metadata.category).toBe('payslip');
     expect(createdDocument.status).toBe('pending');
@@ -168,6 +173,7 @@ describe('Document upload metadata integration', () => {
     expect(listRes.statusCode).toBe(200);
     expect(listRes.body.data[0].metadata.category).toBe('invoice');
     expect(listRes.body.data[0].filePath).toBeUndefined();
+    expect(listRes.body.data[0].analysisData).toBeUndefined();
 
     const getRes = await request(app)
       .get(`/api/documents/${createdDocument._id}`)
@@ -177,6 +183,7 @@ describe('Document upload metadata integration', () => {
     expect(getRes.body.data.metadata.periodYear).toBe(2026);
     expect(getRes.body.data.filePath).toBeUndefined();
     expect(getRes.body.data.filename).toBeUndefined();
+    expect(getRes.body.data.analysisData).toBeUndefined();
   });
 
   it('deletes both the record and the stored file', async () => {
@@ -188,7 +195,7 @@ describe('Document upload metadata integration', () => {
       .field('category', 'other')
       .attach('document', samplePdfPath);
 
-    const createdDocument = await Document.findById(uploadRes.body.data._id);
+    const createdDocument = await Document.findById(uploadRes.body.data.id);
     expect(createdDocument).toBeTruthy();
 
     const deleteRes = await request(app)
@@ -198,5 +205,38 @@ describe('Document upload metadata integration', () => {
     expect(deleteRes.statusCode).toBe(200);
     expect(await Document.findById(createdDocument._id)).toBeNull();
     await expect(fs.access(createdDocument.filePath)).rejects.toThrow();
+  });
+
+  it('requeues a failed document for processing', async () => {
+    const { token, userId } = await registerAndGetAuth();
+
+    const createdDocument = await Document.create({
+      user: userId,
+      originalName: 'salary.pdf',
+      filename: `salary-${Date.now()}.pdf`,
+      filePath: '/tmp/retry.pdf',
+      fileSize: 1024,
+      mimeType: 'application/pdf',
+      status: 'failed',
+      processingError: 'ocr failed',
+      metadata: {
+        category: 'payslip',
+        source: 'manual_upload',
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/documents/${createdDocument._id}/reprocess`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.statusCode).toBe(202);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.id).toBe(createdDocument._id.toString());
+    expect(res.body.data.status).toBe('pending');
+    expect(res.body.data.processingError).toBeNull();
+    expect(requestDocumentProcessing).toHaveBeenCalledWith(
+      createdDocument._id.toString(),
+      { force: true }
+    );
   });
 });

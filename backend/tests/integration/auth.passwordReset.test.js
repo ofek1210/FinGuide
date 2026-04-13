@@ -14,6 +14,8 @@ const createApp = require('../../app');
 let app;
 let mongoServer;
 
+jest.setTimeout(15000);
+
 describe('Auth password reset flow', () => {
   beforeAll(async () => {
     mongoServer = await MongoMemoryServer.create();

@@ -51,13 +51,6 @@ const DEFAULT_FORECAST_FORM: ForecastFormState = {
   currentMonthlyContribution: "",
 };
 
-/** Fallback when GET /api/findings returns no findings. */
-const DEMO_RECOMMENDATIONS = [
-  { title: "הגדלת הפקדות", text: "הוספת ₪190/חודש תגדיל את יתרת הפרישה ב-₪324,000" },
-  { title: "בדרך הנכונה", text: "את בדרך להשגת יעד הפרישה שלך של ₪1.9 מיליון" },
-  { title: "אופטימיזציית מס", text: "ניתן לחסוך עוד ₪1,070/שנה במס על ידי מקסום ההפקדות" },
-];
-
 const SVG_LEFT = 64;
 const SVG_TOP = 8;
 const SVG_RIGHT = 640;
@@ -268,7 +261,6 @@ export default function FindingsPage() {
   }, [findings, searchQuery]);
 
   const recommendations = useMemo(() => {
-    if (filteredAndGrouped.length === 0) return DEMO_RECOMMENDATIONS;
     return filteredAndGrouped.slice(0, 5).map((f) => ({
       title: f.title,
       text: f.details,
@@ -691,12 +683,16 @@ export default function FindingsPage() {
                 <h2 className="pension-card-title">המלצות AI</h2>
               </div>
               <p className="pension-card-desc" style={{ marginTop: "0.25rem", marginBottom: "0.5rem" }}>
-                ממצאים מ-GET /api/findings (אזהרות ומידע). ללא ממצאים – מוצגות המלצות דמו.
+                ממצאים מ-GET /api/findings (אזהרות ומידע) בלבד.
               </p>
               {isLoading ? (
                 <div className="pension-recommendations-loading">
                   <Loader />
                   <span>טוענים תובנות...</span>
+                </div>
+              ) : recommendations.length === 0 ? (
+                <div className="findings-placeholder">
+                  אין כרגע ממצאים להצגה.
                 </div>
               ) : (
                 <ul className="pension-recommendations-list">

@@ -22,10 +22,14 @@ export default function ScanCompletePage() {
             className="scan-complete-cta"
             type="button"
             onClick={() =>
-              navigate(documentId ? `/documents/${documentId}` : APP_ROUTES.payslipHistory)
+              navigate(
+                documentId
+                  ? `${APP_ROUTES.payslipHistory}/${documentId}`
+                  : APP_ROUTES.payslipHistory
+              )
             }
           >
-            {documentId ? "צפייה בפרטי המסמך" : "צפייה בהיסטוריית תלושים"}
+            {documentId ? "צפייה בפרטי התלוש" : "צפייה בהיסטוריית תלושים"}
             <span aria-hidden="true">←</span>
           </button>
         </section>

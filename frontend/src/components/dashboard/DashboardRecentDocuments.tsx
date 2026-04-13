@@ -45,7 +45,7 @@ export default function DashboardRecentDocuments({
       ) : (
         <div className="dashboard-documents-list">
           {documents.map((doc) => (
-            <div key={doc._id} className="dashboard-documents-row">
+            <div key={doc.id} className="dashboard-documents-row">
               <div className="dashboard-documents-icon">
                 <FileText aria-hidden="true" />
               </div>
@@ -68,7 +68,7 @@ export default function DashboardRecentDocuments({
                 <button
                   type="button"
                   onClick={() => onDownload(doc)}
-                  disabled={downloadingIds.includes(doc._id)}
+                  disabled={downloadingIds.includes(doc.id)}
                   aria-label={`הורדת ${doc.originalName}`}
                 >
                   <Download aria-hidden="true" />
@@ -76,7 +76,7 @@ export default function DashboardRecentDocuments({
                 <button
                   type="button"
                   onClick={() => onDelete(doc)}
-                  disabled={deletingIds.includes(doc._id)}
+                  disabled={deletingIds.includes(doc.id)}
                   aria-label={`מחיקת ${doc.originalName}`}
                 >
                   <Trash2 aria-hidden="true" />

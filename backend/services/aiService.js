@@ -1,6 +1,20 @@
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3.2:1b";
 
+async function requestOllama(path, options = {}, timeoutMs = 30000) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(`${OLLAMA_URL}${path}`, {
+      ...options,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function buildPrompt(userMessage) {
   return `
 You are a senior financial assistant inside a fintech app.
@@ -24,10 +38,6 @@ function cleanAnswer(text) {
 }
 
 async function generateAnswer(message) {
-  // Timeout so it won't hang forever
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-
   try {
     const payload = {
       model: OLLAMA_MODEL,
@@ -40,11 +50,10 @@ async function generateAnswer(message) {
       },
     };
 
-    const resp = await fetch(`${OLLAMA_URL}/api/generate`, {
+    const resp = await requestOllama("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      signal: controller.signal,
     });
 
     if (!resp.ok) {
@@ -60,7 +69,7 @@ async function generateAnswer(message) {
 
     return {
       answer,
-      model: data.model || OLLAMA_MODEL,
+      source: data.model || OLLAMA_MODEL,
     };
   } catch (err) {
     if (err.name === "AbortError") {
@@ -69,11 +78,34 @@ async function generateAnswer(message) {
       throw e;
     }
     throw err;
-  } finally {
-    clearTimeout(timeout);
+  }
+}
+
+async function checkAIAvailability() {
+  try {
+    const response = await requestOllama("/api/tags", {}, 5000);
+    if (!response.ok) {
+      return {
+        available: false,
+        source: OLLAMA_MODEL,
+        reason: `http_${response.status}`,
+      };
+    }
+
+    return {
+      available: true,
+      source: OLLAMA_MODEL,
+    };
+  } catch (error) {
+    return {
+      available: false,
+      source: OLLAMA_MODEL,
+      reason: error?.name === "AbortError" ? "timeout" : "connection_failed",
+    };
   }
 }
 
 module.exports = {
+  checkAIAvailability,
   generateAnswer,
 };

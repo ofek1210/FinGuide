@@ -11,7 +11,6 @@ export const APP_ROUTES = {
   findings: "/findings",
   assistant: "/assistant",
   settings: "/settings",
-  integrationsEmail: "/integrations/email",
   status: "/status",
   help: "/help",
   error400: "/400",
@@ -29,7 +28,6 @@ export const PRIVATE_ROUTES: AppRoute[] = [
   APP_ROUTES.findings,
   APP_ROUTES.assistant,
   APP_ROUTES.settings,
-  APP_ROUTES.integrationsEmail,
   APP_ROUTES.status,
   APP_ROUTES.help,
 ];

@@ -11,6 +11,7 @@ import {
   uploadDocument,
   downloadDocument,
   removeDocument,
+  reprocessDocument,
   type DocumentItem as ApiDocumentItem,
   type DocumentCategory,
   type DocumentMetadata,
@@ -38,6 +39,7 @@ interface DocumentItem {
   status: DocumentStatus;
   fileSize?: number;
   uploadedAt?: string;
+  processingError?: string | null;
   metadata: DocumentMetadata;
 }
 
@@ -69,11 +71,12 @@ const mapStatus = (status?: ApiDocumentItem["status"]): DocumentStatus => {
 };
 
 const mapApiDocument = (document: ApiDocumentItem): DocumentItem => ({
-  id: document._id,
+  id: document.id,
   name: document.originalName,
   status: mapStatus(document.status),
   fileSize: document.fileSize,
   uploadedAt: document.uploadedAt,
+  processingError: document.processingError ?? null,
   metadata: document.metadata ?? {
     category: "other",
     source: "manual_upload",
@@ -222,8 +225,10 @@ interface DocumentCardProps {
   onDownload: (document: DocumentItem) => void;
   onDelete: (document: DocumentItem) => void;
   onViewDetails: (document: DocumentItem) => void;
+  onRetryProcessing: (document: DocumentItem) => void;
   isDeleting: boolean;
   isDownloading: boolean;
+  isRetrying: boolean;
 }
 
 function DocumentCard({
@@ -231,8 +236,10 @@ function DocumentCard({
   onDownload,
   onDelete,
   onViewDetails,
+  onRetryProcessing,
   isDeleting,
   isDownloading,
+  isRetrying,
 }: DocumentCardProps) {
   const statusClass =
     document.status === "completed"
@@ -243,6 +250,7 @@ function DocumentCard({
   const isTemp = document.id.startsWith("temp-");
   const isUploading = document.status === "uploading";
   const isFailed = document.status === "failed";
+  const hasDetails = document.status === "completed";
   const disableDownload = isTemp || isUploading || isFailed || isDownloading;
   const disableDelete = isTemp || isUploading || isDeleting;
   const statusIcon =
@@ -267,6 +275,7 @@ function DocumentCard({
             document.uploadedAt
               ? new Date(document.uploadedAt).toLocaleDateString("he-IL")
               : null,
+            isFailed ? document.processingError : null,
           ]
             .filter(Boolean)
             .join(" · ")}
@@ -278,10 +287,20 @@ function DocumentCard({
           className="document-action"
           type="button"
           onClick={() => onViewDetails(document)}
-          disabled={isTemp || isUploading}
+          disabled={isTemp || isUploading || !hasDetails}
         >
           פרטי תלוש
         </button>
+        {isFailed ? (
+          <button
+            className="document-action"
+            type="button"
+            onClick={() => onRetryProcessing(document)}
+            disabled={isRetrying}
+          >
+            {isRetrying ? "שולח..." : "נסה שוב"}
+          </button>
+        ) : null}
         <button
           className="document-action"
           type="button"
@@ -325,6 +344,7 @@ export default function DocumentsPage() {
   const [actionError, setActionError] = useState("");
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
+  const [retryingIds, setRetryingIds] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadForm, setUploadForm] = useState<UploadFormState>(DEFAULT_UPLOAD_FORM);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -533,7 +553,7 @@ export default function DocumentsPage() {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     loadDocuments();
 
-    navigate(`${APP_ROUTES.documentsScan}?documentId=${uploadedDoc._id}`);
+    navigate(`${APP_ROUTES.documentsScan}?documentId=${uploadedDoc.id}`);
 
     const finalizeTimer = window.setTimeout(() => {
       setUploadMessage("");
@@ -566,7 +586,29 @@ export default function DocumentsPage() {
 
   const handleViewDetails = (doc: DocumentItem) => {
     if (doc.id.startsWith("temp-")) return;
-    navigate(`/documents/${doc.id}`);
+    navigate(`${APP_ROUTES.payslipHistory}/${doc.id}`);
+  };
+
+  const handleRetryProcessing = async (doc: DocumentItem) => {
+    if (doc.id.startsWith("temp-")) return;
+
+    setActionError("");
+    setRetryingIds((prev) => addUniqueId(prev, doc.id));
+
+    const response = await reprocessDocument(doc.id);
+    if (!response.success || !response.data) {
+      setActionError(response.message || "לא הצלחנו לשלוח את המסמך לעיבוד מחדש.");
+      setRetryingIds((prev) => removeId(prev, doc.id));
+      return;
+    }
+
+    setDocuments((prev) =>
+      prev.map((item) => (item.id === doc.id ? mapApiDocument(response.data!) : item)),
+    );
+    setRetryingIds((prev) => removeId(prev, doc.id));
+    setToastMessage("המסמך נשלח שוב לעיבוד.");
+    const toastTimer = window.setTimeout(() => setToastMessage(null), 5000);
+    timersRef.current.push(toastTimer);
   };
 
   const handleDownload = async (doc: DocumentItem) => {
@@ -668,8 +710,10 @@ export default function DocumentsPage() {
                   onDelete={handleDelete}
                   onDownload={handleDownload}
                   onViewDetails={handleViewDetails}
+                  onRetryProcessing={handleRetryProcessing}
                   isDeleting={deletingIds.includes(doc.id)}
                   isDownloading={downloadingIds.includes(doc.id)}
+                  isRetrying={retryingIds.includes(doc.id)}
                 />
               ))}
             </div>

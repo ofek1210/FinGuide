@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { chatWithAI } from "../api/ai.api";
+import { chatWithAI, getAIStatus } from "../api/ai.api";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import Loader from "../components/ui/Loader";
@@ -10,7 +10,7 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  model?: string;
+  source?: string;
 };
 
 const defaultWelcome: ChatMessage = {
@@ -52,10 +52,35 @@ export default function AssistantPage() {
   const [input, setInput] = useState("");
   const [error, setError] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+  const [aiAvailable, setAiAvailable] = useState(false);
+  const [aiSource, setAiSource] = useState<string | null>(null);
 
   useEffect(() => {
     saveMessages(messages);
   }, [messages]);
+
+  useEffect(() => {
+    const loadStatus = async () => {
+      setIsCheckingStatus(true);
+      const response = await getAIStatus();
+
+      if (response.success && response.data) {
+        setAiAvailable(response.data.available);
+        setAiSource(response.data.source);
+        if (!response.data.available) {
+          setError("שירות ה-AI אינו זמין כרגע.");
+        }
+      } else {
+        setAiAvailable(false);
+        setError(response.message || "לא הצלחנו לבדוק את זמינות שירות ה-AI.");
+      }
+
+      setIsCheckingStatus(false);
+    };
+
+    void loadStatus();
+  }, []);
 
   const hasMessages = useMemo(() => messages.length > 0, [messages.length]);
 
@@ -65,7 +90,7 @@ export default function AssistantPage() {
 
   const sendMessage = async () => {
     const trimmed = input.trim();
-    if (!trimmed || isSending) return;
+    if (!trimmed || isSending || !aiAvailable) return;
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -89,7 +114,7 @@ export default function AssistantPage() {
       id: `assistant-${Date.now()}`,
       role: "assistant",
       content: response.answer,
-      model: response.model,
+      source: response.source,
     };
     setMessages((prev) => [...prev, assistantMessage]);
     setIsSending(false);
@@ -104,6 +129,13 @@ export default function AssistantPage() {
           <h1 className="feature-page-title">עוזר AI פיננסי</h1>
           <p className="feature-page-subtitle">
             אפשר לשאול על תלושים, סטטוסים של מסמכים והכוונה כללית.
+          </p>
+          <p className="feature-page-subtitle">
+            {isCheckingStatus
+              ? "בודקים זמינות לשירות ה-AI..."
+              : aiAvailable
+                ? `הספק הפעיל: ${aiSource ?? "AI"}`
+                : "שירות ה-AI אינו זמין כרגע."}
           </p>
 
           <div className="ai-chat">
@@ -122,11 +154,11 @@ export default function AssistantPage() {
                         >
                           העתק תשובה
                         </button>
-                        {message.model ? <em className="ai-model">{message.model}</em> : null}
+                        {message.source ? <em className="ai-model">{message.source}</em> : null}
                       </div>
                     )}
-                    {message.role === "user" && message.model ? (
-                      <em className="ai-model">{message.model}</em>
+                    {message.role === "user" && message.source ? (
+                      <em className="ai-model">{message.source}</em>
                     ) : null}
                   </div>
                 ))
@@ -165,13 +197,13 @@ export default function AssistantPage() {
                     void sendMessage();
                   }
                 }}
-                disabled={isSending}
+                disabled={isSending || !aiAvailable || isCheckingStatus}
               />
               <button
                 className="ai-send"
                 type="button"
                 onClick={() => void sendMessage()}
-                disabled={isSending || !input.trim()}
+                disabled={isSending || !input.trim() || !aiAvailable || isCheckingStatus}
               >
                 שליחה
               </button>

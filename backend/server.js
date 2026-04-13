@@ -2,9 +2,11 @@ require('dotenv').config();
 
 const connectDB = require('./config/db');
 const createApp = require('./app');
+const {
+  resumePendingDocumentProcessing,
+} = require('./services/documentProcessingService');
 
-const DEFAULT_PORT = 5000;
-const MAX_PORT_ATTEMPTS = 10;
+const DEFAULT_PORT = 5001;
 
 let server;
 let app;
@@ -20,27 +22,32 @@ const validateEnv = () => {
 };
 
 // הפעלת השרת
-const startServer = async (port, attempt = 0) => {
+const startServer = async port => {
   try {
-    // ולידציה וחיבור ל-DB מתבצעים רק בניסיון הראשון
-    if (attempt === 0) {
-      validateEnv();
-      await connectDB();
-    }
+    validateEnv();
+    await connectDB();
 
     app = createApp();
 
     server = app.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
       console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+
+      resumePendingDocumentProcessing()
+        .then(count => {
+          if (count > 0) {
+            console.log(`📄 Resumed ${count} pending OCR document(s)`);
+          }
+        })
+        .catch(error => {
+          console.error('❌ Failed to resume pending OCR documents:', error);
+        });
     });
 
-    server.on('error', async err => {
-      if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
-        const nextPort = port + 1;
-        console.warn(`⚠️ Port ${port} in use, trying ${nextPort}...`);
-        // ניסיון מחדש על פורט אחר – מוודאים שההפעלה החוזרת עצמה מטופלת
-        await startServer(nextPort, attempt + 1);
+    server.on('error', err => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${port} is already in use. Update PORT or free the port.`);
+        process.exit(1);
         return;
       }
 
@@ -54,7 +61,6 @@ const startServer = async (port, attempt = 0) => {
 };
 
 const basePort = Number(process.env.PORT) || DEFAULT_PORT;
-// הרצה מיידית כאשר הקובץ נטען – משאירים את ה-Promise מנוהל דרך ה-catch הפנימי
 startServer(basePort);
 
 process.on('unhandledRejection', err => {

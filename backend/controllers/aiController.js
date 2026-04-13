@@ -1,4 +1,7 @@
-const { generateAnswer } = require('../services/aiService');
+const {
+  checkAIAvailability,
+  generateAnswer,
+} = require('../services/aiService');
 
 // RTL mark for terminal display
 const RLM = '\u200F';
@@ -25,7 +28,7 @@ async function chatWithAI(req, res) {
 
   // ✅ Rule-based replies (stable + fast)
   if (isHello(msg)) {
-    return res.json({ success: true, answer: `${RLM}שלום 😊`, model: 'rule' });
+    return res.json({ success: true, answer: `${RLM}שלום 😊`, source: 'rule' });
   }
 
   if (isPensionQuestion(msg)) {
@@ -33,20 +36,39 @@ async function chatWithAI(req, res) {
       success: true,
       answer:
         `${RLM}בישראל לרוב ההפרשות לפנסיה הן סביב 6% עובד, 6.5% מעסיק ועוד רכיב פיצויים; בפועל זה תלוי בסוג ההסכם והאם השכר מבוטח מלא.`,
-      model: 'rule',
+      source: 'rule',
+    });
+  }
+
+  const availability = await checkAIAvailability();
+  if (!availability.available) {
+    return res.status(503).json({
+      success: false,
+      message: 'שירות ה-AI אינו זמין כרגע.',
+      source: availability.source,
     });
   }
 
   // LLM call
-  const { answer, model } = await generateAnswer(msg);
+  const { answer, source } = await generateAnswer(msg);
 
   return res.json({
     success: true,
     answer: answer ? `${RLM}${answer}` : `${RLM}לא הצלחתי לענות כרגע.`,
-    model,
+    source,
+  });
+}
+
+async function getAIStatus(req, res) {
+  const availability = await checkAIAvailability();
+
+  return res.json({
+    success: true,
+    data: availability,
   });
 }
 
 module.exports = {
   chatWithAI,
+  getAIStatus,
 };

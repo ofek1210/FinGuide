@@ -1,4 +1,5 @@
 import { apiBlob, apiJson } from "./client";
+import type { PayslipDetail, PayslipHistoryResponse } from "../types/payslip";
 
 /** Matches backend: pending, processing, completed, failed. "uploaded" is frontend-only for just-uploaded row. */
 export type DocumentStatus =
@@ -23,37 +24,16 @@ export type DocumentMetadata = {
   source: "manual_upload";
 };
 
-/** Matches backend payslipOcr buildPayslipSummary output (analysisData.summary). */
-export type PayslipSummaryFromBackend = {
-  employeeName?: string | null;
-  date?: string | null;
-  grossSalary?: number | null;
-  netSalary?: number | null;
-  vacationDays?: number | null;
-  sickDays?: number | null;
-  pensionEmployee?: number | null;
-  pensionEmployer?: number | null;
-  trainingFundEmployee?: number | null;
-  trainingFundEmployer?: number | null;
-  tax?: number | null;
-  nationalInsurance?: number | null;
-  healthInsurance?: number | null;
-  jobPercentage?: number | null;
-  workingDays?: number | null;
-  workingHours?: number | null;
-};
-
 export interface DocumentItem {
-  id?: string;
-  _id: string;
+  id: string;
   originalName: string;
   fileSize: number;
   status?: DocumentStatus;
   uploadedAt?: string;
   processedAt?: string;
+  processingError?: string | null;
   mimeType?: string;
   metadata?: DocumentMetadata;
-  analysisData?: { summary?: PayslipSummaryFromBackend; [k: string]: unknown };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -83,6 +63,18 @@ export type DocumentResponse = {
   success: boolean;
   message?: string;
   data?: DocumentItem;
+};
+
+export type PayslipHistoryApiResponse = {
+  success: boolean;
+  message?: string;
+  data?: PayslipHistoryResponse;
+};
+
+export type PayslipDetailApiResponse = {
+  success: boolean;
+  message?: string;
+  data?: PayslipDetail;
 };
 
 export type RemoveDocumentResponse = {
@@ -132,10 +124,7 @@ export const listDocuments = async () => {
     } as ListDocumentsResponse;
   }
 
-  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
-  // eslint-disable-next-line no-console
-  console.log("[frontend] listDocuments response", payload);
-  return payload;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
 };
 
 export const uploadDocument = async (
@@ -173,10 +162,7 @@ export const uploadDocument = async (
   if (!result.ok) {
     return { success: false, message: result.error.message } as UploadDocumentResponse;
   }
-  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as UploadDocumentResponse);
-  // eslint-disable-next-line no-console
-  console.log("[frontend] uploadDocument response", payload);
-  return payload;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as UploadDocumentResponse);
 };
 
 export const getDocument = async (id: string) => {
@@ -194,10 +180,65 @@ export const getDocument = async (id: string) => {
     return { success: false, message: result.error.message } as DocumentResponse;
   }
 
-  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
-  // eslint-disable-next-line no-console
-  console.log("[frontend] getDocument response", payload);
-  return payload;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
+};
+
+export const listPayslips = async () => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as PayslipHistoryApiResponse;
+  }
+
+  const result = await apiJson<PayslipHistoryApiResponse>("/api/documents/payslips", {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לטעון את היסטוריית התלושים.",
+  });
+
+  if (!result.ok) {
+    return {
+      success: false,
+      message: result.error.message,
+    } as PayslipHistoryApiResponse;
+  }
+
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as PayslipHistoryApiResponse);
+};
+
+export const getPayslip = async (id: string) => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as PayslipDetailApiResponse;
+  }
+
+  const result = await apiJson<PayslipDetailApiResponse>(`/api/documents/payslips/${id}`, {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לטעון את התלוש.",
+  });
+
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as PayslipDetailApiResponse;
+  }
+
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as PayslipDetailApiResponse);
+};
+
+export const reprocessDocument = async (id: string) => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as DocumentResponse;
+  }
+
+  const result = await apiJson<DocumentResponse>(`/api/documents/${id}/reprocess`, {
+    method: "POST",
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לשלוח את המסמך לעיבוד מחדש.",
+  });
+
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as DocumentResponse;
+  }
+
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
 };
 
 export const removeDocument = async (id: string) => {

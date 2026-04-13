@@ -1,13 +1,13 @@
 import { MessageSquare } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { chatWithAI } from "../../api/ai.api";
+import { chatWithAI, getAIStatus } from "../../api/ai.api";
 import Loader from "../ui/Loader";
 
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  model?: string;
+  source?: string;
 };
 
 const promptSuggestions = [
@@ -28,14 +28,35 @@ export default function DashboardChatPanel() {
   const [chatInput, setChatInput] = useState("");
   const [chatError, setChatError] = useState("");
   const [isChatting, setIsChatting] = useState(false);
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+  const [aiAvailable, setAiAvailable] = useState(false);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [chatMessages, isChatting]);
 
+  useEffect(() => {
+    const loadStatus = async () => {
+      setIsCheckingStatus(true);
+      const response = await getAIStatus();
+      if (response.success && response.data) {
+        setAiAvailable(response.data.available);
+        if (!response.data.available) {
+          setChatError("שירות ה-AI אינו זמין כרגע.");
+        }
+      } else {
+        setAiAvailable(false);
+        setChatError(response.message || "לא הצלחנו לבדוק את זמינות שירות ה-AI.");
+      }
+      setIsCheckingStatus(false);
+    };
+
+    void loadStatus();
+  }, []);
+
   const handleSendChat = async () => {
     const trimmed = chatInput.trim();
-    if (!trimmed || isChatting) return;
+    if (!trimmed || isChatting || !aiAvailable) return;
 
     const userMessage: ChatMessage = {
       id: `user-${Date.now()}`,
@@ -59,7 +80,7 @@ export default function DashboardChatPanel() {
       id: `assistant-${Date.now()}`,
       role: "assistant",
       content: response.answer,
-      model: response.model,
+      source: response.source,
     };
 
     setChatMessages((prev) => [...prev, assistantMessage]);
@@ -83,7 +104,7 @@ export default function DashboardChatPanel() {
           {chatMessages.map((message) => (
             <div key={message.id} className={`ai-message ${message.role}`}>
               <span>{message.content}</span>
-              {message.model ? <em className="ai-model">{message.model}</em> : null}
+              {message.source ? <em className="ai-model">{message.source}</em> : null}
             </div>
           ))}
           {isChatting ? (
@@ -119,13 +140,13 @@ export default function DashboardChatPanel() {
                 void handleSendChat();
               }
             }}
-            disabled={isChatting}
+            disabled={isChatting || !aiAvailable || isCheckingStatus}
           />
           <button
             className="ai-send"
             type="button"
             onClick={handleSendChat}
-            disabled={isChatting || !chatInput.trim()}
+            disabled={isChatting || !chatInput.trim() || !aiAvailable || isCheckingStatus}
           >
             שליחה
           </button>

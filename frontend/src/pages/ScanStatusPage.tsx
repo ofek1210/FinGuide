@@ -57,7 +57,10 @@ export default function ScanStatusPage() {
 
     if (nextStatus === "failed") {
       setStatus("failed");
-      setError("עיבוד המסמך נכשל. אפשר לחזור למסמכים ולנסות שוב.");
+      setError(
+        response.data.processingError ||
+          "עיבוד המסמך נכשל. אפשר לחזור למסמכים ולנסות שוב."
+      );
       return;
     }
 

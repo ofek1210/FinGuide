@@ -1,6 +1,7 @@
 const Document = require('../models/Document');
 
 let extractPayslipFile;
+const queuedDocumentIds = new Set();
 
 const getPayslipExtractor = () => {
   if (!extractPayslipFile) {
@@ -11,14 +12,18 @@ const getPayslipExtractor = () => {
   return extractPayslipFile;
 };
 
-const processDocumentNow = async documentId => {
+const processDocumentNow = async (documentId, { force = false } = {}) => {
   const document = await Document.findById(documentId);
 
   if (!document || !document.filePath) {
     return null;
   }
 
-  if (!['pending', 'uploaded', 'processing'].includes(document.status)) {
+  const allowedStatuses = force
+    ? ['pending', 'uploaded', 'processing', 'failed']
+    : ['pending', 'uploaded', 'processing'];
+
+  if (!allowedStatuses.includes(document.status)) {
     return document;
   }
 
@@ -45,15 +50,45 @@ const processDocumentNow = async documentId => {
   return document;
 };
 
-const processDocumentAsync = documentId => {
+const requestDocumentProcessing = (documentId, { force = false } = {}) => {
+  if (!documentId || queuedDocumentIds.has(documentId)) {
+    return false;
+  }
+
+  queuedDocumentIds.add(documentId);
+
   setImmediate(() => {
-    processDocumentNow(documentId).catch(error => {
-      console.error('❌ Async document processing crashed', documentId, error);
-    });
+    processDocumentNow(documentId, { force })
+      .catch(error => {
+        console.error('❌ Async document processing crashed', documentId, error);
+      })
+      .finally(() => {
+        queuedDocumentIds.delete(documentId);
+      });
   });
+
+  return true;
+};
+
+const processDocumentAsync = documentId => requestDocumentProcessing(documentId);
+
+const resumePendingDocumentProcessing = async () => {
+  const pendingDocuments = await Document.find({
+    status: { $in: ['pending', 'processing'] },
+  })
+    .select('_id')
+    .lean();
+
+  pendingDocuments.forEach(document => {
+    requestDocumentProcessing(document._id.toString());
+  });
+
+  return pendingDocuments.length;
 };
 
 module.exports = {
+  requestDocumentProcessing,
   processDocumentAsync,
   processDocumentNow,
+  resumePendingDocumentProcessing,
 };

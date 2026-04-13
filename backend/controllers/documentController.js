@@ -5,7 +5,14 @@ const Document = require('../models/Document');
 const { FileUploadError, NotFoundError } = require('../utils/appErrors');
 const { normalizeDocumentMetadataInput } = require('../utils/documentMetadata');
 const { serializeDocument } = require('../serializers/documentSerializer');
-const { processDocumentAsync } = require('../services/documentProcessingService');
+const {
+  serializePayslipDetail,
+  serializePayslipHistory,
+} = require('../serializers/payslipSerializer');
+const {
+  processDocumentAsync,
+  requestDocumentProcessing,
+} = require('../services/documentProcessingService');
 
 const unlink = promisify(fs.unlink);
 
@@ -98,6 +105,49 @@ exports.getDocument = async (req, res, next) => {
   }
 };
 
+exports.getPayslipHistory = async (req, res, next) => {
+  try {
+    const documents = await Document.find({
+      user: req.user.id,
+      status: 'completed',
+    }).sort('-uploadedAt');
+
+    const responseBody = {
+      success: true,
+      data: serializePayslipHistory(documents),
+    };
+
+    res.status(200).json(responseBody);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getPayslipDetail = async (req, res, next) => {
+  try {
+    const document = await Document.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    });
+
+    if (!document) {
+      return next(new NotFoundError('מסמך לא נמצא'));
+    }
+
+    const payslip = serializePayslipDetail(document);
+    if (!payslip) {
+      return next(new NotFoundError('תלוש לא נמצא'));
+    }
+
+    res.status(200).json({
+      success: true,
+      data: payslip,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // מחיקת מסמך
 exports.deleteDocument = async (req, res, next) => {
   try {
@@ -141,6 +191,39 @@ exports.downloadDocument = async (req, res, next) => {
 
     // שליחת הקובץ
     res.download(document.filePath, document.originalName);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.retryDocumentProcessing = async (req, res, next) => {
+  try {
+    const document = await Document.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    });
+
+    if (!document) {
+      return next(new NotFoundError('מסמך לא נמצא'));
+    }
+
+    if (document.status === 'processing') {
+      return res.status(409).json({
+        success: false,
+        message: 'המסמך כבר נמצא בעיבוד',
+      });
+    }
+
+    document.status = 'pending';
+    document.processingError = null;
+    await document.save();
+
+    requestDocumentProcessing(document._id.toString(), { force: true });
+
+    res.status(202).json({
+      success: true,
+      data: serializeDocument(document),
+    });
   } catch (error) {
     next(error);
   }

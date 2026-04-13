@@ -1,25 +1,18 @@
-import { getDocument, listDocuments } from "../api/documents.api";
+import { getPayslip, listPayslips } from "../api/documents.api";
 import type { PayslipDetail, PayslipHistoryResponse } from "../types/payslip";
-import {
-  documentToPayslipDetail,
-  getPayslipHistoryFromDocuments,
-} from "../utils/documentToPayslip";
 
 export const fetchPayslipHistory = async (): Promise<PayslipHistoryResponse> => {
-  const response = await listDocuments();
+  const response = await listPayslips();
   if (!response.success) {
-    throw new Error(response.message ?? "לא הצלחנו לטעון את המסמכים.");
+    throw new Error(response.message ?? "לא הצלחנו לטעון את היסטוריית התלושים.");
   }
-  const docs = response.data ?? [];
-  return getPayslipHistoryFromDocuments(docs);
+  return response.data ?? { stats: { averageNet: 0, averageGross: 0, totalPayslips: 0 }, items: [] };
 };
 
 export const fetchPayslipDetail = async (id: string): Promise<PayslipDetail | null> => {
-  const response = await getDocument(id);
+  const response = await getPayslip(id);
   if (!response.success) {
-    throw new Error(response.message ?? "לא הצלחנו לטעון את המסמך.");
+    throw new Error(response.message ?? "לא הצלחנו לטעון את התלוש.");
   }
-  const doc = response.data;
-  if (!doc) return null;
-  return documentToPayslipDetail(doc);
+  return response.data ?? null;
 };

@@ -93,25 +93,25 @@ export const useDashboardDocuments = () => {
 
   const deleteDocument = useCallback(async (doc: DocumentItem) => {
     setActionError("");
-    setDeletingIds((prev) => addUniqueId(prev, doc._id));
-    const response = await removeDocument(doc._id);
+    setDeletingIds((prev) => addUniqueId(prev, doc.id));
+    const response = await removeDocument(doc.id);
     if (!response.success) {
       setActionError(response.message || "שגיאה במחיקת המסמך.");
-      setDeletingIds((prev) => removeId(prev, doc._id));
+      setDeletingIds((prev) => removeId(prev, doc.id));
       return;
     }
 
-    setItems((prev) => prev.filter((item) => item._id !== doc._id));
-    setDeletingIds((prev) => removeId(prev, doc._id));
+    setItems((prev) => prev.filter((item) => item.id !== doc.id));
+    setDeletingIds((prev) => removeId(prev, doc.id));
   }, []);
 
   const downloadFile = useCallback(async (doc: DocumentItem) => {
     setActionError("");
-    setDownloadingIds((prev) => addUniqueId(prev, doc._id));
-    const response = await downloadDocument(doc._id);
+    setDownloadingIds((prev) => addUniqueId(prev, doc.id));
+    const response = await downloadDocument(doc.id);
     if (!response.success || !response.blob) {
       setActionError(response.message || "שגיאה בהורדת המסמך.");
-      setDownloadingIds((prev) => removeId(prev, doc._id));
+      setDownloadingIds((prev) => removeId(prev, doc.id));
       return;
     }
 
@@ -123,7 +123,7 @@ export const useDashboardDocuments = () => {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(url);
-    setDownloadingIds((prev) => removeId(prev, doc._id));
+    setDownloadingIds((prev) => removeId(prev, doc.id));
   }, []);
 
   const documentsThisMonth = useMemo(() => {

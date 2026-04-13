@@ -15,7 +15,6 @@ import FindingsPage from "./pages/FindingsPage";
 import SettingsPage from "./pages/SettingsPage";
 import StatusPage from "./pages/StatusPage";
 import HelpPage from "./pages/HelpPage";
-import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import Error400 from "./pages/errors/Error400";
@@ -101,14 +100,6 @@ export default function App() {
           element={
             <RequireAuth>
               <SettingsPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={APP_ROUTES.integrationsEmail}
-          element={
-            <RequireAuth>
-              <IntegrationsEmailPage />
             </RequireAuth>
           }
         />
