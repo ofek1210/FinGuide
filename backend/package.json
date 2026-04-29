@@ -6,11 +6,13 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "debug:extractor:v2": "node scripts/run-extractor-v2.js",
     "test": "npm run test:all",
     "test:all": "jest --runInBand",
     "test:unit": "jest --runInBand --testMatch '**/tests/unit/**/*.test.js' --testMatch '**/__tests__/**/*.test.js'",
     "test:integration": "jest --runInBand --testMatch '**/tests/integration/**/*.test.js'",
     "test:watch": "jest --watch",
+    "reprocess:payslips": "node scripts/reprocessPayslips.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,json,md}\"",

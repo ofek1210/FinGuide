@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -9,14 +9,22 @@ import {
   PiggyBank,
   Search,
   Sparkles,
-  TrendingUp,
 } from "lucide-react";
-import { listFindings, type FindingItem, type FindingSeverity } from "../api/findings.api";
+import {
+  getSavingsForecast,
+  listFindings,
+  type FindingItem,
+  type FindingSeverity,
+  type SavingsForecastData,
+  type SavingsForecastRequest,
+  type SavingsTimelinePoint,
+} from "../api/findings.api";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
 import Loader from "../components/ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
+import { formatCurrencyILS, formatNumber } from "../utils/formatters";
 
 const findingSeverityLabels: Record<FindingSeverity, string> = {
   info: "מידע",
@@ -25,16 +33,23 @@ const findingSeverityLabels: Record<FindingSeverity, string> = {
 
 const SEVERITY_ORDER: FindingSeverity[] = ["warning", "info"];
 
-/**
- * Placeholder KPIs until backend provides a dedicated pension/KPI endpoint.
- * Findings from GET /api/findings are shown in "המלצות AI" below (title + details).
- */
-const DEMO_KPIS = [
-  { label: "שנים לפרישה", value: "33", icon: Calendar },
-  { label: "תחזית בגיל 65", value: "₪2.1M", icon: PiggyBank },
-  { label: "צמיחה חודשית", value: "₪2,680", icon: TrendingUp },
-  { label: "יתרה נוכחית", value: "₪93,000", icon: BarChart3 },
-] as const;
+const FORECAST_STORAGE_KEY = "finguide_savings_forecast_inputs";
+
+type ForecastFormState = {
+  currentBalance: string;
+  currentAge: string;
+  retirementAge: string;
+  adjustedMonthlyContribution: string;
+  currentMonthlyContribution: string;
+};
+
+const DEFAULT_FORECAST_FORM: ForecastFormState = {
+  currentBalance: "",
+  currentAge: "",
+  retirementAge: "",
+  adjustedMonthlyContribution: "",
+  currentMonthlyContribution: "",
+};
 
 /** Fallback when GET /api/findings returns no findings. */
 const DEMO_RECOMMENDATIONS = [
@@ -43,12 +58,199 @@ const DEMO_RECOMMENDATIONS = [
   { title: "אופטימיזציית מס", text: "ניתן לחסוך עוד ₪1,070/שנה במס על ידי מקסום ההפקדות" },
 ];
 
+const SVG_LEFT = 64;
+const SVG_TOP = 8;
+const SVG_RIGHT = 640;
+const SVG_BOTTOM = 220;
+const SVG_LABEL_Y = 252;
+const SVG_HEIGHT = 280;
+const SVG_WIDTH = 680;
+const CHART_TICKS = 5;
+const X_AXIS_TICKS = 6;
+
+const readStoredForecastForm = (): ForecastFormState => {
+  if (typeof window === "undefined") {
+    return DEFAULT_FORECAST_FORM;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(FORECAST_STORAGE_KEY);
+    if (!raw) {
+      return DEFAULT_FORECAST_FORM;
+    }
+
+    const parsed = JSON.parse(raw) as Partial<ForecastFormState>;
+    return {
+      currentBalance: typeof parsed.currentBalance === "string" ? parsed.currentBalance : "",
+      currentAge: typeof parsed.currentAge === "string" ? parsed.currentAge : "",
+      retirementAge: typeof parsed.retirementAge === "string" ? parsed.retirementAge : "",
+      adjustedMonthlyContribution:
+        typeof parsed.adjustedMonthlyContribution === "string"
+          ? parsed.adjustedMonthlyContribution
+          : "",
+      currentMonthlyContribution:
+        typeof parsed.currentMonthlyContribution === "string"
+          ? parsed.currentMonthlyContribution
+          : "",
+    };
+  } catch {
+    return DEFAULT_FORECAST_FORM;
+  }
+};
+
+const formatCompactCurrency = (value: number) =>
+  new Intl.NumberFormat("he-IL", {
+    style: "currency",
+    currency: "ILS",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+
+const formatAxisCurrency = (value: number) => {
+  if (value >= 1_000_000) {
+    return `₪${(value / 1_000_000).toFixed(1)}M`;
+  }
+
+  if (value >= 1_000) {
+    return `₪${Math.round(value / 1_000)}K`;
+  }
+
+  return formatCurrencyILS(value);
+};
+
+const getNumericStringValue = (value: string) => {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+};
+
+const hasCoreForecastInputs = (form: ForecastFormState) =>
+  Boolean(
+    form.currentBalance.trim() &&
+      form.currentAge.trim() &&
+      form.retirementAge.trim() &&
+      form.adjustedMonthlyContribution.trim()
+  );
+
+const buildAreaPath = (points: Array<{ x: number; y: number }>) => {
+  if (points.length === 0) return "";
+  const first = points[0];
+  const last = points[points.length - 1];
+  const line = points.map((point) => `${point.x} ${point.y}`).join(" L ");
+  return `M ${first.x} ${SVG_BOTTOM} L ${line} L ${last.x} ${SVG_BOTTOM} Z`;
+};
+
+const buildLinePath = (points: Array<{ x: number; y: number }>) => {
+  if (points.length === 0) return "";
+  return `M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`;
+};
+
+const pickTickIndexes = (length: number, maxTicks: number) => {
+  if (length <= maxTicks) {
+    return Array.from({ length }, (_, index) => index);
+  }
+
+  const lastIndex = length - 1;
+  const indexes = new Set<number>([0, lastIndex]);
+
+  for (let i = 1; i < maxTicks - 1; i += 1) {
+    indexes.add(Math.round((i / (maxTicks - 1)) * lastIndex));
+  }
+
+  return Array.from(indexes).sort((a, b) => a - b);
+};
+
+const buildChartModel = (forecast: SavingsForecastData | null) => {
+  if (!forecast) {
+    return null;
+  }
+
+  const currentTimeline = forecast.currentScenario.timeline;
+  const adjustedTimeline = forecast.adjustedScenario.timeline;
+  const maxProjectedBalance = Math.max(
+    ...currentTimeline.map((point) => point.projectedBalance),
+    ...adjustedTimeline.map((point) => point.projectedBalance),
+    1
+  );
+
+  const mapPoint = (point: SavingsTimelinePoint, index: number, totalPoints: number) => {
+    const usableWidth = SVG_RIGHT - SVG_LEFT;
+    const usableHeight = SVG_BOTTOM - SVG_TOP;
+    const x =
+      totalPoints === 1
+        ? SVG_LEFT
+        : SVG_LEFT + (index / (totalPoints - 1)) * usableWidth;
+    const y =
+      SVG_BOTTOM - (point.projectedBalance / maxProjectedBalance) * usableHeight;
+    return {
+      x,
+      y,
+      ...point,
+    };
+  };
+
+  const currentPoints = currentTimeline.map((point, index) =>
+    mapPoint(point, index, currentTimeline.length)
+  );
+  const adjustedPoints = adjustedTimeline.map((point, index) =>
+    mapPoint(point, index, adjustedTimeline.length)
+  );
+
+  const yTickValues = Array.from({ length: CHART_TICKS }, (_, index) => {
+    const ratio = (CHART_TICKS - 1 - index) / (CHART_TICKS - 1);
+    return normalizeForAxis(maxProjectedBalance * ratio);
+  });
+
+  const xTickIndexes = pickTickIndexes(adjustedTimeline.length, X_AXIS_TICKS);
+
+  return {
+    maxProjectedBalance,
+    currentPoints,
+    adjustedPoints,
+    currentAreaPath: buildAreaPath(currentPoints),
+    adjustedAreaPath: buildAreaPath(adjustedPoints),
+    currentLinePath: buildLinePath(currentPoints),
+    adjustedLinePath: buildLinePath(adjustedPoints),
+    yTicks: yTickValues.map((value) => ({
+      value,
+      y:
+        SVG_BOTTOM -
+        (maxProjectedBalance === 0
+          ? 0
+          : (value / maxProjectedBalance) * (SVG_BOTTOM - SVG_TOP)),
+    })),
+    xTicks: xTickIndexes.map((index) => ({
+      x: adjustedPoints[index].x,
+      age: adjustedPoints[index].age,
+      calendarYear: adjustedPoints[index].calendarYear,
+    })),
+  };
+};
+
+function normalizeForAxis(value: number) {
+  if (value <= 0) return 0;
+  if (value < 10_000) return Math.round(value / 100) * 100;
+  if (value < 100_000) return Math.round(value / 1_000) * 1_000;
+  return Math.round(value / 10_000) * 10_000;
+}
+
 export default function FindingsPage() {
   const navigate = useNavigate();
   const [findings, setFindings] = useState<FindingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [forecastForm, setForecastForm] = useState<ForecastFormState>(
+    () => readStoredForecastForm()
+  );
+  const [showManualContributionInput, setShowManualContributionInput] = useState(
+    () => Boolean(readStoredForecastForm().currentMonthlyContribution)
+  );
+  const [forecast, setForecast] = useState<SavingsForecastData | null>(null);
+  const [forecastError, setForecastError] = useState("");
+  const [isForecastLoading, setIsForecastLoading] = useState(false);
+  const didAttemptInitialForecastRef = useRef(false);
 
   const filteredAndGrouped = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -73,6 +275,48 @@ export default function FindingsPage() {
     }));
   }, [filteredAndGrouped]);
 
+  const chartModel = useMemo(() => buildChartModel(forecast), [forecast]);
+  const currentBalanceValue = getNumericStringValue(forecastForm.currentBalance);
+
+  const kpis = useMemo(
+    () => [
+      {
+        label: "שנים לפרישה",
+        value: forecast
+          ? formatNumber(Math.round(forecast.currentScenario.monthsToRetirement / 12))
+          : "—",
+        icon: Calendar,
+      },
+      {
+        label: "תחזית בגיל פרישה",
+        value: forecast
+          ? formatCompactCurrency(forecast.adjustedScenario.projectedBalance)
+          : "—",
+        icon: PiggyBank,
+      },
+      {
+        label: "הפקדה חודשית",
+        value: forecast
+          ? formatCurrencyILS(forecast.currentScenario.monthlyContribution)
+          : "—",
+        icon: Sparkles,
+      },
+      {
+        label: "יתרה נוכחית",
+        value: currentBalanceValue !== null
+          ? formatCurrencyILS(currentBalanceValue)
+          : "—",
+        icon: BarChart3,
+      },
+    ],
+    [currentBalanceValue, forecast]
+  );
+
+  const forecastDelta = useMemo(() => {
+    if (!forecast) return null;
+    return forecast.adjustedScenario.projectedBalance - forecast.currentScenario.projectedBalance;
+  }, [forecast]);
+
   const loadFindings = useCallback(async () => {
     setIsLoading(true);
     const response = await listFindings();
@@ -91,32 +335,217 @@ export default function FindingsPage() {
     setIsLoading(false);
   }, []);
 
+  const buildForecastPayload = useCallback(
+    (
+      form: ForecastFormState,
+      { manualContributionRequired = false }: { manualContributionRequired?: boolean } = {}
+    ): SavingsForecastRequest | null => {
+      if (!hasCoreForecastInputs(form)) {
+        return null;
+      }
+
+      const currentBalance = getNumericStringValue(form.currentBalance);
+      const currentAge = getNumericStringValue(form.currentAge);
+      const retirementAge = getNumericStringValue(form.retirementAge);
+      const adjustedMonthlyContribution = getNumericStringValue(
+        form.adjustedMonthlyContribution
+      );
+      const currentMonthlyContribution = getNumericStringValue(
+        form.currentMonthlyContribution
+      );
+
+      if (
+        currentBalance === null ||
+        currentAge === null ||
+        retirementAge === null ||
+        adjustedMonthlyContribution === null
+      ) {
+        setForecastError("נא להזין מספרים תקינים לכל שדות החובה.");
+        return null;
+      }
+
+      if (
+        currentBalance < 0 ||
+        currentAge < 0 ||
+        retirementAge < 0 ||
+        adjustedMonthlyContribution < 0
+      ) {
+        setForecastError("כל הערכים חייבים להיות גדולים או שווים ל-0.");
+        return null;
+      }
+
+      if (!Number.isInteger(currentAge) || !Number.isInteger(retirementAge)) {
+        setForecastError("גיל נוכחי וגיל פרישה חייבים להיות מספרים שלמים.");
+        return null;
+      }
+
+      if (retirementAge <= currentAge) {
+        setForecastError("גיל הפרישה חייב להיות גדול מהגיל הנוכחי.");
+        return null;
+      }
+
+      if (manualContributionRequired) {
+        if (currentMonthlyContribution === null) {
+          setForecastError("לא נמצאה הפקדה במסמכים. הזינו הפקדה חודשית נוכחית ידנית.");
+          return null;
+        }
+
+        if (currentMonthlyContribution < 0) {
+          setForecastError("הפקדה חודשית נוכחית חייבת להיות גדולה או שווה ל-0.");
+          return null;
+        }
+      }
+
+      return {
+        currentBalance,
+        currentAge,
+        retirementAge,
+        adjustedMonthlyContribution,
+        ...(currentMonthlyContribution !== null && { currentMonthlyContribution }),
+      };
+    },
+    []
+  );
+
+  const loadForecast = useCallback(
+    async (
+      form: ForecastFormState,
+      { manualContributionRequired = false }: { manualContributionRequired?: boolean } = {}
+    ) => {
+      const payload = buildForecastPayload(form, { manualContributionRequired });
+      if (!payload) {
+        return false;
+      }
+
+      setIsForecastLoading(true);
+      setForecastError("");
+
+      const response = await getSavingsForecast(payload);
+      setIsForecastLoading(false);
+
+      if (!response.success || !response.data) {
+        const resolvedMessage = getApiErrorMessage(
+          response.message || "לא הצלחנו לחשב תחזית חיסכון.",
+          response.status
+        );
+
+        const requiresManualContribution = Array.isArray(response.errors)
+          ? response.errors.some((item) => {
+              if (!item || typeof item !== "object") {
+                return false;
+              }
+              const field = (item as { field?: string }).field;
+              return field === "currentMonthlyContribution";
+            })
+          : false;
+
+        if (requiresManualContribution) {
+          setShowManualContributionInput(true);
+          setForecastError(
+            "לא נמצאה הפקדה חודשית תקינה במסמכים. הזינו הפקדה נוכחית ידנית כדי להמשיך."
+          );
+        } else {
+          setForecastError(resolvedMessage);
+        }
+
+        return false;
+      }
+
+      setForecast(response.data);
+      setShowManualContributionInput(response.data.meta.contributionSource === "manual");
+      return true;
+    },
+    [buildForecastPayload]
+  );
+
+  const handleRefresh = useCallback(async () => {
+    await loadFindings();
+    if (hasCoreForecastInputs(forecastForm)) {
+      await loadForecast(forecastForm, {
+        manualContributionRequired: showManualContributionInput,
+      });
+    }
+  }, [forecastForm, loadFindings, loadForecast, showManualContributionInput]);
+
+  const handleForecastFieldChange = (
+    field: keyof ForecastFormState,
+    value: string
+  ) => {
+    setForecastForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleForecastSubmit = async () => {
+    await loadForecast(forecastForm, {
+      manualContributionRequired: showManualContributionInput,
+    });
+  };
+
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadFindings();
   }, [loadFindings]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.sessionStorage.setItem(
+      FORECAST_STORAGE_KEY,
+      JSON.stringify(forecastForm)
+    );
+  }, [forecastForm]);
+
+  useEffect(() => {
+    if (didAttemptInitialForecastRef.current) {
+      return;
+    }
+
+    didAttemptInitialForecastRef.current = true;
+
+    if (!hasCoreForecastInputs(forecastForm)) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void loadForecast(forecastForm, {
+        manualContributionRequired: Boolean(
+          forecastForm.currentMonthlyContribution.trim()
+        ),
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [forecastForm, loadForecast]);
 
   return (
     <div className="pension-insights-page dashboard-page" dir="rtl">
       <div className="dashboard-shell">
         <PrivateTopbar
           rightSlot={(
-            <button className="dashboard-hero-action" type="button" onClick={() => void loadFindings()}>
+            <button className="dashboard-hero-action" type="button" onClick={() => void handleRefresh()}>
               רענון
             </button>
           )}
         />
 
         <header className="pension-insights-hero">
-          <h1 className="pension-insights-title">תחזית ותובנות פנסיה</h1>
+          <h1 className="pension-insights-title">תחזית חיסכון לינארית</h1>
           <p className="pension-insights-subtitle">
-            תכננו את הפרישה שלכם עם תחזיות מבוססות AI
+            חישוב פנסיוני פשוט ללא תשואה: יתרה נוכחית ועוד הפקדה חודשית קבועה עד גיל הפרישה.
           </p>
         </header>
 
         {error ? <div className="feature-page-inline-error">{error}</div> : null}
+        {forecastError ? (
+          <div className="feature-page-inline-error">{forecastError}</div>
+        ) : null}
 
         <section className="pension-kpi-row" aria-label="מדדי מפתח">
-          {DEMO_KPIS.map((item) => {
+          {kpis.map((item) => {
             const Icon = item.icon;
             return (
               <div key={item.label} className="pension-kpi-card">
@@ -138,36 +567,121 @@ export default function FindingsPage() {
                 <h2 className="pension-card-title">סימולטור פרישה</h2>
               </div>
               <p className="pension-card-desc">
-                התאימו את ההפקדות וגיל הפרישה לראות כיצד זה משפיע על התחזית.
+                הזינו יתרה, גיל והפקדה מותאמת. אם קיימת הפקדה במסמכים, נשתמש בה אוטומטית כתרחיש הנוכחי.
               </p>
-              <div className="pension-simulator-row">
-                <label className="pension-simulator-label">הפקדה חודשית</label>
-                <span className="pension-simulator-value">₪1,070</span>
+              <div className="pension-form-grid">
+                <label className="pension-form-field">
+                  <span>יתרה נוכחית</span>
+                  <input
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    value={forecastForm.currentBalance}
+                    onChange={(event) =>
+                      handleForecastFieldChange("currentBalance", event.target.value)
+                    }
+                    placeholder="100000"
+                  />
+                </label>
+                <label className="pension-form-field">
+                  <span>גיל נוכחי</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    value={forecastForm.currentAge}
+                    onChange={(event) =>
+                      handleForecastFieldChange("currentAge", event.target.value)
+                    }
+                    placeholder="32"
+                  />
+                </label>
+                <label className="pension-form-field">
+                  <span>גיל פרישה</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    inputMode="numeric"
+                    value={forecastForm.retirementAge}
+                    onChange={(event) =>
+                      handleForecastFieldChange("retirementAge", event.target.value)
+                    }
+                    placeholder="65"
+                  />
+                </label>
+                <label className="pension-form-field">
+                  <span>הפקדה חודשית מותאמת</span>
+                  <input
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    value={forecastForm.adjustedMonthlyContribution}
+                    onChange={(event) =>
+                      handleForecastFieldChange(
+                        "adjustedMonthlyContribution",
+                        event.target.value
+                      )
+                    }
+                    placeholder="2500"
+                  />
+                </label>
+                {showManualContributionInput ? (
+                  <label className="pension-form-field pension-form-field-full">
+                    <span>הפקדה חודשית נוכחית</span>
+                    <input
+                      type="number"
+                      min="0"
+                      inputMode="numeric"
+                      value={forecastForm.currentMonthlyContribution}
+                      onChange={(event) =>
+                        handleForecastFieldChange(
+                          "currentMonthlyContribution",
+                          event.target.value
+                        )
+                      }
+                      placeholder="1800"
+                    />
+                  </label>
+                ) : (
+                  <div className="pension-form-inline-note">
+                    ננסה למשוך את ההפקדה הנוכחית אוטומטית מהמסמך האחרון עם נתוני פנסיה.
+                  </div>
+                )}
               </div>
-              <div className="pension-simulator-slider-wrap">
-                <div className="pension-simulator-track" />
-                <div className="pension-simulator-fill" style={{ width: "35%" }} />
-              </div>
-              <div className="pension-simulator-range">
-                <span>₪400</span>
-                <span>₪4,000</span>
-              </div>
-              <div className="pension-simulator-row">
-                <label className="pension-simulator-label">גיל פרישה</label>
-                <span className="pension-simulator-value">65</span>
-              </div>
-              <div className="pension-simulator-slider-wrap">
-                <div className="pension-simulator-track" />
-                <div className="pension-simulator-fill" style={{ width: "66%" }} />
-              </div>
-              <div className="pension-simulator-range">
-                <span>55</span>
-                <span>70</span>
+              <div className="pension-simulator-actions">
+                <button
+                  className="dashboard-hero-action"
+                  type="button"
+                  onClick={() => void handleForecastSubmit()}
+                  disabled={isForecastLoading}
+                >
+                  {isForecastLoading ? <Loader /> : "חשב תחזית"}
+                </button>
               </div>
               <div className="pension-simulator-result">
-                <span className="pension-simulator-result-label">ערך פנסיה צפוי</span>
-                <span className="pension-simulator-result-value">₪2,100,000</span>
-                <span className="pension-simulator-result-note">בגיל 65</span>
+                <span className="pension-simulator-result-label">ערך צפוי בתרחיש המותאם</span>
+                <span className="pension-simulator-result-value">
+                  {forecast
+                    ? formatCurrencyILS(forecast.adjustedScenario.projectedBalance)
+                    : "—"}
+                </span>
+                <span className="pension-simulator-result-note">
+                  {forecast
+                    ? `בגיל ${
+                        forecastForm.retirementAge ||
+                        forecast.adjustedScenario.timeline[
+                          forecast.adjustedScenario.timeline.length - 1
+                        ]?.age
+                      }`
+                    : "הזינו נתונים והפעילו חישוב"}
+                </span>
+                {forecastDelta !== null ? (
+                  <span className="pension-simulator-result-note">
+                    פער מול המסלול הנוכחי: {formatCurrencyILS(forecastDelta)}
+                  </span>
+                ) : null}
               </div>
             </section>
 
@@ -201,8 +715,8 @@ export default function FindingsPage() {
             <section className="pension-card pension-chart-card">
               <div className="pension-chart-header">
                 <div>
-                  <h2 className="pension-card-title">תחזית צמיחת פנסיה</h2>
-                  <p className="pension-chart-subtitle">יתרה צפויה לאורך זמן</p>
+                  <h2 className="pension-card-title">תחזית חיסכון לינארית</h2>
+                  <p className="pension-chart-subtitle">השוואה בין המסלול הנוכחי למסלול המותאם</p>
                 </div>
                 <div className="pension-chart-legend">
                   <span className="pension-legend-dot pension-legend-current" />
@@ -212,158 +726,171 @@ export default function FindingsPage() {
                 </div>
               </div>
               <div className="pension-chart-placeholder">
-                <div className="pension-chart-svg-wrap">
-                  <svg viewBox="0 0 597 260" className="pension-chart-svg" aria-hidden="true">
-                    <defs>
-                      <linearGradient id="pensionFillCurrent" x1="0" y1="1" x2="0" y2="0">
-                        <stop offset="0%" stopColor="#0052ff" stopOpacity="0.18" />
-                        <stop offset="100%" stopColor="#0052ff" stopOpacity="0.02" />
-                      </linearGradient>
-                      <linearGradient id="pensionFillAdjusted" x1="0" y1="1" x2="0" y2="0">
-                        <stop offset="0%" stopColor="#00d9ff" stopOpacity="0.12" />
-                        <stop offset="100%" stopColor="#00d9ff" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <g className="pension-chart-grid">
-                      {[0, 65, 130, 195, 260].map((y) => (
-                        <line key={`h-${y}`} x1={65} y1={y} x2={662} y2={y} stroke="#e5e7eb" strokeWidth="1" />
-                      ))}
-                      {[65, 139.625, 214.25, 288.875, 363.5, 438.125, 512.75, 587.375, 662].map((x) => (
-                        <line key={`v-${x}`} x1={x} y1={5} x2={x} y2={265} stroke="#e5e7eb" strokeWidth="1" />
-                      ))}
-                    </g>
-                    <path
-                      fill="url(#pensionFillCurrent)"
-                      d="M65 265 L65 200 L139.6 175 L214.2 150 L288.9 120 L363.5 88 L438.1 62 L512.75 42 L587.4 28 L662 20 L662 265 Z"
-                    />
-                    <path
-                      fill="url(#pensionFillAdjusted)"
-                      d="M65 200 L139.6 175 L214.2 150 L288.9 120 L363.5 88 L438.1 62 L512.75 42 L587.4 28 L662 20 L662 5 L587.4 6 L512.75 8 L438.1 12 L363.5 18 L288.9 28 L214.2 38 L139.6 48 L65 55 Z"
-                    />
-                    <path
-                      fill="none"
-                      stroke="#0052ff"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M65 200 L139.6 175 L214.2 150 L288.9 120 L363.5 88 L438.1 62 L512.75 42 L587.4 28 L662 20"
-                    />
-                    <path
-                      fill="none"
-                      stroke="#00d9ff"
-                      strokeWidth="2"
-                      strokeDasharray="6 4"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M65 55 L139.6 48 L214.2 38 L288.9 28 L363.5 18 L438.1 12 L512.75 8 L587.4 6 L662 5"
-                    />
-                    <text x="50" y="265" className="pension-chart-axis" textAnchor="end">2025</text>
-                    <text x="124.6" y="265" className="pension-chart-axis" textAnchor="end">2030</text>
-                    <text x="199.2" y="265" className="pension-chart-axis" textAnchor="end">2035</text>
-                    <text x="273.9" y="265" className="pension-chart-axis" textAnchor="end">2040</text>
-                    <text x="348.5" y="265" className="pension-chart-axis" textAnchor="end">2045</text>
-                    <text x="423.1" y="265" className="pension-chart-axis" textAnchor="end">2050</text>
-                    <text x="497.75" y="265" className="pension-chart-axis" textAnchor="end">2055</text>
-                    <text x="572.4" y="265" className="pension-chart-axis" textAnchor="end">2060</text>
-                    <text x="647" y="265" className="pension-chart-axis" textAnchor="end">2065</text>
-                    <text x="59" y="265" className="pension-chart-axis" textAnchor="end">0</text>
-                    <text x="59" y="200" className="pension-chart-axis" textAnchor="end">650000</text>
-                    <text x="59" y="135" className="pension-chart-axis" textAnchor="end">1300000</text>
-                    <text x="59" y="70" className="pension-chart-axis" textAnchor="end">1950000</text>
-                    <text x="59" y="5" className="pension-chart-axis" textAnchor="end">2600000</text>
-                  </svg>
-                </div>
-                <p className="pension-chart-note">גרף תחזית – יחובר לנתונים כשהבאק יהיה מוכן</p>
-              </div>
-            </section>
-
-            <section className="pension-card pension-chart-card">
-              <div className="pension-chart-header">
-                <div>
-                  <h2 className="pension-card-title">השפעת הפקדות חודשיות</h2>
-                  <p className="pension-chart-subtitle">
-                    כיצד רמות הפקדה שונות משפיעות על יתרת הפרישה שלכם
-                  </p>
-                </div>
-              </div>
-              <div className="pension-chart-placeholder pension-chart-placeholder-sm">
-                <div className="pension-chart-svg-wrap">
-                  <svg viewBox="0 0 597 260" className="pension-chart-svg" aria-hidden="true">
-                    <defs>
-                      <linearGradient id="depositsLineGrad" x1="0" y1="1" x2="0" y2="0">
-                        <stop offset="0%" stopColor="#a855f7" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#a855f7" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    <g className="pension-chart-grid">
-                      {[0, 65, 130, 195, 260].map((y) => (
-                        <line key={`dh-${y}`} x1={65} y1={y} x2={662} y2={y} stroke="#e5e7eb" strokeWidth="1" />
-                      ))}
-                      {[65, 184.4, 303.8, 423.2, 542.6, 662].map((x) => (
-                        <line key={`dv-${x}`} x1={x} y1={5} x2={x} y2={265} stroke="#e5e7eb" strokeWidth="1" />
-                      ))}
-                    </g>
-                    <path
-                      fill="url(#depositsLineGrad)"
-                      d="M65 75 L184.4 68 L303.8 52 L423.2 35 L542.6 18 L662 5 L662 265 L65 265 Z"
-                    />
-                    <path
-                      fill="none"
-                      stroke="#a855f7"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M65 75 L184.4 68 L303.8 52 L423.2 35 L542.6 18 L662 5"
-                    />
-                    {[
-                      [65, 75],
-                      [184.4, 68],
-                      [303.8, 52],
-                      [423.2, 35],
-                      [542.6, 18],
-                      [662, 5],
-                    ].map(([cx, cy], i) => (
-                      <circle key={i} cx={cx} cy={cy} r="5" fill="#fff" stroke="#a855f7" strokeWidth="2" />
-                    ))}
-                    <text x="65" y="265" className="pension-chart-axis" textAnchor="middle">800</text>
-                    <text x="184.4" y="265" className="pension-chart-axis" textAnchor="middle">950</text>
-                    <text x="303.8" y="265" className="pension-chart-axis" textAnchor="middle">1070</text>
-                    <text x="423.2" y="265" className="pension-chart-axis" textAnchor="middle">1350</text>
-                    <text x="542.6" y="265" className="pension-chart-axis" textAnchor="middle">1500</text>
-                    <text x="662" y="265" className="pension-chart-axis" textAnchor="middle">1900</text>
-                    <text x="59" y="265" className="pension-chart-axis" textAnchor="end">₪0.0M</text>
-                    <text x="59" y="200" className="pension-chart-axis" textAnchor="end">₪0.8M</text>
-                    <text x="59" y="135" className="pension-chart-axis" textAnchor="end">₪1.7M</text>
-                    <text x="59" y="70" className="pension-chart-axis" textAnchor="end">₪2.5M</text>
-                    <text x="59" y="5" className="pension-chart-axis" textAnchor="end">₪3.4M</text>
-                  </svg>
-                </div>
-                <p className="pension-chart-note">הפקדה חודשית (₪) – יחובר לנתונים כשהבאק יהיה מוכן</p>
+                {chartModel ? (
+                  <>
+                    <div className="pension-chart-svg-wrap">
+                      <svg
+                        viewBox={`0 0 ${SVG_WIDTH} ${SVG_HEIGHT}`}
+                        className="pension-chart-svg"
+                        aria-hidden="true"
+                      >
+                        <defs>
+                          <linearGradient id="pensionFillCurrent" x1="0" y1="1" x2="0" y2="0">
+                            <stop offset="0%" stopColor="#0052ff" stopOpacity="0.18" />
+                            <stop offset="100%" stopColor="#0052ff" stopOpacity="0.02" />
+                          </linearGradient>
+                          <linearGradient id="pensionFillAdjusted" x1="0" y1="1" x2="0" y2="0">
+                            <stop offset="0%" stopColor="#00d9ff" stopOpacity="0.12" />
+                            <stop offset="100%" stopColor="#00d9ff" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        <g className="pension-chart-grid">
+                          {chartModel.yTicks.map((tick) => (
+                            <line
+                              key={`h-${tick.value}`}
+                              x1={SVG_LEFT}
+                              y1={tick.y}
+                              x2={SVG_RIGHT}
+                              y2={tick.y}
+                              stroke="#e5e7eb"
+                              strokeWidth="1"
+                            />
+                          ))}
+                          {chartModel.xTicks.map((tick) => (
+                            <line
+                              key={`v-${tick.age}`}
+                              x1={tick.x}
+                              y1={SVG_TOP}
+                              x2={tick.x}
+                              y2={SVG_BOTTOM}
+                              stroke="#e5e7eb"
+                              strokeWidth="1"
+                            />
+                          ))}
+                        </g>
+                        <path fill="url(#pensionFillCurrent)" d={chartModel.currentAreaPath} />
+                        <path fill="url(#pensionFillAdjusted)" d={chartModel.adjustedAreaPath} />
+                        <path
+                          fill="none"
+                          stroke="#0052ff"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d={chartModel.currentLinePath}
+                        />
+                        <path
+                          fill="none"
+                          stroke="#00d9ff"
+                          strokeWidth="2"
+                          strokeDasharray="6 4"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d={chartModel.adjustedLinePath}
+                        />
+                        {chartModel.currentPoints.map((point) => (
+                          <circle
+                            key={`current-${point.age}`}
+                            cx={point.x}
+                            cy={point.y}
+                            r="4"
+                            fill="#ffffff"
+                            stroke="#0052ff"
+                            strokeWidth="2"
+                          />
+                        ))}
+                        {chartModel.adjustedPoints.map((point) => (
+                          <circle
+                            key={`adjusted-${point.age}`}
+                            cx={point.x}
+                            cy={point.y}
+                            r="4"
+                            fill="#ffffff"
+                            stroke="#00d9ff"
+                            strokeWidth="2"
+                          />
+                        ))}
+                        {chartModel.xTicks.map((tick) => (
+                          <text
+                            key={`x-label-${tick.age}`}
+                            x={tick.x}
+                            y={SVG_LABEL_Y}
+                            className="pension-chart-axis"
+                            textAnchor="middle"
+                          >
+                            גיל {tick.age}
+                          </text>
+                        ))}
+                        {chartModel.yTicks.map((tick) => (
+                          <text
+                            key={`y-label-${tick.value}`}
+                            x={SVG_LEFT - 8}
+                            y={tick.y + 4}
+                            className="pension-chart-axis"
+                            textAnchor="end"
+                          >
+                            {formatAxisCurrency(tick.value)}
+                          </text>
+                        ))}
+                      </svg>
+                    </div>
+                    <p className="pension-chart-note">
+                      מקור ההפקדה הנוכחית:{" "}
+                      {forecast?.meta.contributionSource === "document"
+                        ? "מסמך אחרון עם נתוני פנסיה"
+                        : "קלט ידני"}
+                    </p>
+                  </>
+                ) : (
+                  <div className="pension-chart-empty">
+                    <p className="pension-chart-placeholder-label">
+                      הזינו יתרה, גיל והפקדה מותאמת כדי לחשב תחזית חיסכון אמיתית.
+                    </p>
+                  </div>
+                )}
               </div>
             </section>
 
             <div className="pension-mini-cards">
               <div className="pension-mini-card">
                 <div className="pension-mini-card-head">
-                  <TrendingUp className="pension-mini-card-icon" aria-hidden="true" />
-                  <h3 className="pension-mini-card-title">שיעור צמיחה</h3>
+                  <Sparkles className="pension-mini-card-icon" aria-hidden="true" />
+                  <h3 className="pension-mini-card-title">מודל חישוב</h3>
                 </div>
-                <p className="pension-mini-card-value">7.2% בשנה</p>
+                <p className="pension-mini-card-value">לינארי ללא תשואה</p>
                 <p className="pension-mini-card-note">
-                  מבוסס על תמהיל ההשקעות הנוכחי והביצועים ההיסטוריים
+                  אין ריבית, אינפלציה או דמי ניהול. רק יתרה נוכחית ועוד הפקדה חודשית קבועה.
                 </p>
               </div>
               <div className="pension-mini-card">
                 <div className="pension-mini-card-head">
                   <BarChart3 className="pension-mini-card-icon" aria-hidden="true" />
-                  <h3 className="pension-mini-card-title">הטבות מס</h3>
+                  <h3 className="pension-mini-card-title">פער בין תרחישים</h3>
                 </div>
-                <p className="pension-mini-card-value">₪2,568/שנה</p>
+                <p className="pension-mini-card-value">
+                  {forecastDelta !== null ? formatCurrencyILS(forecastDelta) : "—"}
+                </p>
                 <p className="pension-mini-card-note">
-                  הטבת מס על הפקדות הפנסיה הנוכחיות שלכם
+                  {forecast
+                    ? "הפער בין התחזית המותאמת למסלול הנוכחי בגיל הפרישה."
+                    : "יופיע לאחר חישוב תחזית."}
                 </p>
               </div>
             </div>
+            {forecast?.meta.warnings?.length ? (
+              <section className="pension-card pension-chart-card">
+                <div className="pension-card-head">
+                  <AlertTriangle className="pension-card-head-icon" aria-hidden="true" />
+                  <h2 className="pension-card-title">הערות לחישוב</h2>
+                </div>
+                <ul className="pension-warnings-list">
+                  {forecast.meta.warnings.map((warning) => (
+                    <li key={warning} className="pension-warning-item">
+                      {warning}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
           </main>
         </div>
 

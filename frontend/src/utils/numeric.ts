@@ -13,7 +13,11 @@ const normalizeNumericString = (raw: string) => {
   const hasDot = value.includes(".");
 
   if (hasComma && hasDot) {
-    value = value.replace(/,/g, "");
+    if (value.lastIndexOf(",") > value.lastIndexOf(".")) {
+      value = value.replace(/\./g, "").replace(",", ".");
+    } else {
+      value = value.replace(/,/g, "");
+    }
   } else if (hasComma) {
     const parts = value.split(",");
     if (parts.length === 2) {

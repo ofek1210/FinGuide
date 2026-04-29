@@ -47,7 +47,10 @@ const createApp = () => {
   );
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
-  app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+  app.use(
+    '/uploads/profile-images',
+    express.static(path.join(__dirname, 'uploads', 'profile-images'))
+  );
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {

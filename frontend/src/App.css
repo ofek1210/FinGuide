@@ -4359,6 +4359,55 @@
   line-height: 1.5;
 }
 
+.pension-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.pension-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pension-form-field-full {
+  grid-column: 1 / -1;
+}
+
+.pension-form-field span {
+  font-size: 0.85rem;
+  color: var(--dash-muted);
+}
+
+.pension-form-field input {
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid var(--dash-border);
+  padding: 12px 14px;
+  font: inherit;
+  color: var(--dash-text);
+  background: #f8fafc;
+}
+
+.pension-form-field input::placeholder {
+  color: #94a3b8;
+}
+
+.pension-form-inline-note {
+  grid-column: 1 / -1;
+  margin-top: -2px;
+  font-size: 0.85rem;
+  color: var(--dash-muted);
+  line-height: 1.5;
+}
+
+.pension-simulator-actions {
+  display: flex;
+  justify-content: flex-start;
+  margin-top: 18px;
+}
+
 .pension-simulator-row {
   display: flex;
   justify-content: space-between;
@@ -4526,6 +4575,16 @@
 .pension-chart-placeholder-sm {
   min-height: 280px;
 }
+
+.pension-chart-empty {
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+}
+
 .pension-chart-svg-wrap {
   flex: 1;
   min-height: 260px;
@@ -4601,6 +4660,21 @@
   line-height: 1.4;
 }
 
+.pension-warnings-list {
+  margin: 0;
+  padding: 0 18px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--dash-text);
+}
+
+.pension-warning-item {
+  font-size: 0.9rem;
+  color: var(--dash-text);
+  line-height: 1.5;
+}
+
 .pension-findings-section {
   margin-top: 32px;
   padding: 24px 28px;
@@ -4618,6 +4692,10 @@
   }
 
   .pension-mini-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .pension-form-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -69,7 +69,7 @@ const mapStatus = (status?: ApiDocumentItem["status"]): DocumentStatus => {
 };
 
 const mapApiDocument = (document: ApiDocumentItem): DocumentItem => ({
-  id: document._id,
+  id: document.id ?? document._id,
   name: document.originalName,
   status: mapStatus(document.status),
   fileSize: document.fileSize,
@@ -473,7 +473,6 @@ export default function DocumentsPage() {
 
     const file = selectedFile;
     const metadataPayload = buildUploadPayload();
-
     if (!metadataPayload) {
       return;
     }
@@ -486,19 +485,19 @@ export default function DocumentsPage() {
       fileSize: file.size,
       uploadedAt: new Date().toISOString(),
       metadata: {
-        category: metadataPayload.category,
-        ...(metadataPayload.periodMonth !== undefined && {
-          periodMonth: metadataPayload.periodMonth,
-        }),
-        ...(metadataPayload.periodYear !== undefined && {
-          periodYear: metadataPayload.periodYear,
-        }),
-        ...(metadataPayload.documentDate && {
-          documentDate: metadataPayload.documentDate,
-        }),
-        source: "manual_upload",
-      },
-    };
+          category: metadataPayload.category,
+          source: "manual_upload",
+          ...(metadataPayload.periodMonth !== undefined && {
+            periodMonth: metadataPayload.periodMonth,
+          }),
+          ...(metadataPayload.periodYear !== undefined && {
+            periodYear: metadataPayload.periodYear,
+          }),
+          ...(metadataPayload.documentDate && {
+            documentDate: metadataPayload.documentDate,
+          }),
+        },
+      };
 
     setDocuments((prev) => [tempDoc, ...prev]);
     setUploadState("uploading");
@@ -525,13 +524,13 @@ export default function DocumentsPage() {
       prev.map((doc) => (doc.id === tempId ? mapApiDocument(uploadedDoc) : doc)),
     );
     setToastMessage("המסמך נשמר וממתין לעיבוד.");
-    setUploadForm(DEFAULT_UPLOAD_FORM);
     const toastTimer = window.setTimeout(() => setToastMessage(null), 5000);
     timersRef.current.push(toastTimer);
 
     // רענון הרשימה מהשרת כדי לוודא שהמסמכים מסונכרנים
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     loadDocuments();
+
+    navigate(`${APP_ROUTES.documentsScan}?documentId=${uploadedDoc._id}`);
 
     const finalizeTimer = window.setTimeout(() => {
       setUploadMessage("");
@@ -596,6 +595,10 @@ export default function DocumentsPage() {
   };
 
   const hasUploadedDocuments = documents.some((doc) => doc.status !== "failed");
+  const latestProcessableDocument =
+    documents.find(
+      (doc) => !doc.id.startsWith("temp-") && doc.status !== "failed",
+    ) ?? null;
 
   return (
     <div className="documents-page" dir="rtl">
@@ -605,7 +608,8 @@ export default function DocumentsPage() {
         <section className="documents-header">
           <h1>מסמכים</h1>
           <p>
-            העלו מסמכי תלוש שכר בפי-די-אף. המסמכים יעברו זיהוי וניתוח אוטומטי ויופיעו בהיסטוריית התלושים.
+            העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
+            הקובץ נשמר מיד, והעיבוד ממשיך ברקע.
           </p>
         </section>
 
@@ -674,13 +678,19 @@ export default function DocumentsPage() {
           <button
             className="landing-primary"
             type="button"
-            disabled={!hasUploadedDocuments}
-            onClick={() => navigate(APP_ROUTES.documentsScan)}
+            disabled={!hasUploadedDocuments || !latestProcessableDocument}
+            onClick={() =>
+              latestProcessableDocument
+                ? navigate(
+                    `${APP_ROUTES.documentsScan}?documentId=${latestProcessableDocument.id}`,
+                  )
+                : undefined
+            }
           >
             מעבר לעיבוד וניתוח המסמכים
           </button>
           <span className="documents-note">
-            המסמכים שהועלו יעברו זיהוי וניתוח ויוצגו במסך היסטוריית התלושים.
+            עיבוד המסמכים פועל ברקע. מסך הסריקה עצמו נשאר דמו בלבד.
           </span>
         </section>
       </main>

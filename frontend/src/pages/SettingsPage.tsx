@@ -261,7 +261,6 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   className="dashboard-hero-action"
-                  disabled={avatarUploading}
                   onClick={() => fileInputRef.current?.click()}
                 >
                   {avatarUploading ? "מעלה..." : "בחירת תמונה"}

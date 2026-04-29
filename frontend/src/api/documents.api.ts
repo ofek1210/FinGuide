@@ -8,6 +8,21 @@ export type DocumentStatus =
   | "completed"
   | "failed";
 
+export type DocumentCategory =
+  | "payslip"
+  | "tax_report"
+  | "pension_report"
+  | "invoice"
+  | "other";
+
+export type DocumentMetadata = {
+  category?: DocumentCategory;
+  periodMonth?: number;
+  periodYear?: number;
+  documentDate?: string;
+  source?: "manual_upload" | string;
+};
+
 /** Matches backend payslipOcr buildPayslipSummary output (analysisData.summary). */
 export type PayslipSummaryFromBackend = {
   employeeName?: string | null;
@@ -29,6 +44,7 @@ export type PayslipSummaryFromBackend = {
 };
 
 export interface DocumentItem {
+  id?: string;
   _id: string;
   originalName: string;
   fileSize: number;
@@ -36,6 +52,7 @@ export interface DocumentItem {
   uploadedAt?: string;
   processedAt?: string;
   mimeType?: string;
+  metadata?: DocumentMetadata;
   analysisData?: { summary?: PayslipSummaryFromBackend; [k: string]: unknown };
   createdAt?: string;
   updatedAt?: string;
@@ -116,7 +133,6 @@ export const listDocuments = async () => {
   }
 
   const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
-  // eslint-disable-next-line no-console
   console.log("[frontend] listDocuments response", payload);
   return payload;
 };
@@ -157,7 +173,6 @@ export const uploadDocument = async (
     return { success: false, message: result.error.message } as UploadDocumentResponse;
   }
   const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as UploadDocumentResponse);
-  // eslint-disable-next-line no-console
   console.log("[frontend] uploadDocument response", payload);
   return payload;
 };
@@ -178,7 +193,6 @@ export const getDocument = async (id: string) => {
   }
 
   const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
-  // eslint-disable-next-line no-console
   console.log("[frontend] getDocument response", payload);
   return payload;
 };
