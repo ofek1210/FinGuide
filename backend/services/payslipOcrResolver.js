@@ -229,9 +229,14 @@ function rankFieldAmounts(field, amounts) {
   return filtered.sort((a, b) => b - a);
 }
 
-function isFieldBlockedByNoise(field, rawLine) {
+function isFieldBlockedByNoise(field, rawLine, entry) {
   if (!rawLine) {
     return false;
+  }
+
+  // Block all core/supplemental fields from cumulative section lines
+  if (entry?.sectionHints?.includes('cumulative')) {
+    return true;
   }
 
   if (
@@ -371,7 +376,7 @@ function collectTableCandidates(store, context, fields, { tableMinCols = 6, base
 
       if (
         !isReasonableFieldValue(field, value) ||
-        isFieldBlockedByNoise(field, entry.raw) ||
+        isFieldBlockedByNoise(field, entry.raw, entry) ||
         !linePreferredForField(field, { sectionHints: candidateSectionHints })
       ) {
         continue;
@@ -450,7 +455,7 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
     const patterns = PAYSLIP_LABEL_MAP[field] || [];
 
     for (const entry of context.lines) {
-      if (isFieldBlockedByNoise(field, entry.raw)) {
+      if (isFieldBlockedByNoise(field, entry.raw, entry)) {
         continue;
       }
 
@@ -481,7 +486,7 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
       for (let distance = 1; distance <= adjacentWindow; distance += 1) {
         for (const direction of [1, -1]) {
           const neighbor = context.lines[entry.index + (direction * distance)];
-          if (!neighbor || isFieldBlockedByNoise(field, neighbor.raw) || !linePreferredForField(field, neighbor)) {
+          if (!neighbor || isFieldBlockedByNoise(field, neighbor.raw, neighbor) || !linePreferredForField(field, neighbor)) {
             continue;
           }
 
@@ -511,7 +516,7 @@ function collectCoreFieldCandidates(context) {
   collectTableCandidates(store, context, CORE_TABLE_CANDIDATE_FIELDS, { tableMinCols: 6 });
 
   for (const entry of context.lines) {
-    if (isLikelyTaxBaseNoiseLine(entry.raw) || isCumulativeLine(entry.raw)) {
+    if (isLikelyTaxBaseNoiseLine(entry.raw) || isCumulativeLine(entry.raw) || entry.sectionHints?.includes('cumulative')) {
       continue;
     }
 

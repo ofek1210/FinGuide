@@ -113,7 +113,7 @@ function isLikelyTaxBaseNoiseLine(line) {
 }
 
 function isCumulativeLine(line) {
-  return /(?:מצטבר|מצטברת|מצטברים|מצטברות|cumulative)/i.test(String(line));
+  return /(?:מצטבר|מצטברת|מצטברים|מצטברות|cumulative|נתונים\s*מצטברים)/i.test(String(line));
 }
 
 function categorizeOcrWarning(warning) {

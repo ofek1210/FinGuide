@@ -65,6 +65,12 @@ const SECTION_PATTERNS = {
     /שכר\s*חייב\s*ב/i,
     /לב\.?\s*לאומי/i,
   ],
+  cumulative: [
+    /נתונים\s*מצטברים/i,
+    /סה"כ\s*מצטבר/i,
+    /cumulative/i,
+    /חישוב\s*מצטבר/i,
+  ],
 };
 
 function extractLineEntriesFromText(text) {
@@ -230,6 +236,7 @@ function buildSections(lines) {
     contributions: [],
     summary: [],
     tax_base: [],
+    cumulative: [],
     tableHeaders: [],
     tableRows: [],
   };
@@ -241,6 +248,7 @@ function buildSections(lines) {
     if (line.sectionHints.includes('contributions')) sections.contributions.push(line.index);
     if (line.sectionHints.includes('summary')) sections.summary.push(line.index);
     if (line.sectionHints.includes('tax_base')) sections.tax_base.push(line.index);
+    if (line.sectionHints.includes('cumulative')) sections.cumulative.push(line.index);
     if (line.sectionHints.includes('table_header')) sections.tableHeaders.push(line.index);
     if (line.sectionHints.includes('table_row')) sections.tableRows.push(line.index);
   });
@@ -249,7 +257,7 @@ function buildSections(lines) {
 }
 
 function normalizeLineEntries(lineEntries) {
-  return lineEntries.map((entry, index) => {
+  const entries = lineEntries.map((entry, index) => {
     const raw = String(entry.text || '').trim();
     const orderedAmounts = extractOrderedAmountsFromLine(raw);
     const headerCells = splitHeaderCells(raw).map(cell => ({
@@ -274,6 +282,27 @@ function normalizeLineEntries(lineEntries) {
         sectionHints.find(section => !['table_row', 'table_header'].includes(section)) || null,
     };
   });
+
+  // Propagate cumulative context: lines after a cumulative header
+  // inherit the 'cumulative' hint until a new non-cumulative section begins.
+  let inCumulative = false;
+  for (const entry of entries) {
+    if (entry.sectionHints.includes('cumulative')) {
+      inCumulative = true;
+    } else if (
+      inCumulative &&
+      entry.primarySection &&
+      !['cumulative', 'table_row', 'table_header'].includes(entry.primarySection)
+    ) {
+      inCumulative = false;
+    }
+
+    if (inCumulative && !entry.sectionHints.includes('cumulative')) {
+      entry.sectionHints.push('cumulative');
+    }
+  }
+
+  return entries;
 }
 
 function normalizeSourceInput(source) {
