@@ -145,6 +145,11 @@ function isLikelyBrokenHebrew(text) {
   const value = String(text);
   const hebrewCount = (value.match(/[\u0590-\u05FF]/g) || []).length;
   const weirdLatinCount = (value.match(/[À-ÿ]/g) || []).length;
+  // Modifier letters (ʹ-ʿ range U+02B0-U+02FF) appear in some broken
+  // Hebrew PDF encodings where proper Hebrew chars are mapped to the
+  // phonetic modifier block instead.
+  const modifierLetterCount = (value.match(/[\u02B0-\u02FF]/g) || []).length;
+  if (hebrewCount < 5 && modifierLetterCount > 30) return true;
   return hebrewCount < 5 && weirdLatinCount > 20;
 }
 
