@@ -56,6 +56,32 @@ function toRawLines(text) {
   return linesOf(text);
 }
 
+/**
+ * Split a multi-payslip PDF text into individual payslip sections.
+ * Many Israeli payroll systems (e.g. Michpal) embed several months into one PDF.
+ * Returns an array of { text, periodHint } objects, one per payslip.
+ * If only one section is found, returns the original text as a single element.
+ */
+function splitPayslipSections(fullText) {
+  const SECTION_MARKER = /תלוש\s*(?:שכר|משכורת)\s*לחודש\s*(\d{1,2}\/\d{2,4})/gi;
+  const markers = [];
+  let m;
+
+  while ((m = SECTION_MARKER.exec(fullText)) !== null) {
+    markers.push({ index: m.index, period: m[1] });
+  }
+
+  if (markers.length <= 1) {
+    return [{ text: fullText, periodHint: markers[0]?.period || null }];
+  }
+
+  return markers.map((marker, i) => {
+    const start = marker.index;
+    const end = i + 1 < markers.length ? markers[i + 1].index : fullText.length;
+    return { text: fullText.slice(start, end), periodHint: marker.period };
+  });
+}
+
 // -------------------- OCR pipeline --------------------
 async function preprocessImage(inPath) {
   const ext = path.extname(inPath).toLowerCase();
@@ -453,7 +479,9 @@ async function extractPayslipFile(inputPath) {
 
       if (normalized.length >= MIN_PDF_TEXT_LENGTH && !brokenHebrew) {
         extractionMethod = 'pdf_text';
-        const data = extractPayslipFinancialEN(embeddedText, { sourcePath: abs });
+        const sections = splitPayslipSections(embeddedText);
+        const sectionText = sections[sections.length - 1].text;
+        const data = extractPayslipFinancialEN(sectionText, { sourcePath: abs });
         logExtractionResult({
           sourcePath: abs,
           extractionMethod,
@@ -461,9 +489,10 @@ async function extractPayslipFile(inputPath) {
         });
         data.raw = {
           ...data.raw,
-          rawText: embeddedText,
-          rawLines: toRawLines(embeddedText),
+          rawText: sectionText,
+          rawLines: toRawLines(sectionText),
           extractionMethod,
+          total_sections: sections.length,
         };
         return { data };
       }
@@ -549,4 +578,5 @@ async function extractPayslipFile(inputPath) {
 module.exports = {
   extractPayslipFinancialEN,
   extractPayslipFile,
+  splitPayslipSections,
 };
