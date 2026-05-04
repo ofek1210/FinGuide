@@ -298,10 +298,47 @@ function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
     { minScore: 0.35 },
   )?.value;
 
+  const bonus = resolveBestNumericCandidate(
+    'bonus',
+    supplementalFieldCandidates.bonus,
+    { minScore: 0.35 },
+  )?.value;
+  const holiday_pay = resolveBestNumericCandidate(
+    'holiday_pay',
+    supplementalFieldCandidates.holiday_pay,
+    { minScore: 0.35 },
+  )?.value;
+  const overtime_125 = resolveBestNumericCandidate(
+    'overtime_125',
+    supplementalFieldCandidates.overtime_125,
+    { minScore: 0.35 },
+  )?.value;
+  const overtime_150 = resolveBestNumericCandidate(
+    'overtime_150',
+    supplementalFieldCandidates.overtime_150,
+    { minScore: 0.35 },
+  )?.value;
+  const convalescence = resolveBestNumericCandidate(
+    'convalescence',
+    supplementalFieldCandidates.convalescence,
+    { minScore: 0.35 },
+  )?.value;
+  const clothing_allowance = resolveBestNumericCandidate(
+    'clothing_allowance',
+    supplementalFieldCandidates.clothing_allowance,
+    { minScore: 0.35 },
+  )?.value;
+
   const components = [];
   if (base_salary !== undefined) components.push({ type: 'base_salary', amount: base_salary });
   if (global_overtime !== undefined) components.push({ type: 'global_overtime', amount: global_overtime });
   if (travel_expenses !== undefined) components.push({ type: 'travel_expenses', amount: travel_expenses });
+  if (bonus !== undefined) components.push({ type: 'bonus', amount: bonus });
+  if (holiday_pay !== undefined) components.push({ type: 'holiday_pay', amount: holiday_pay });
+  if (overtime_125 !== undefined) components.push({ type: 'overtime_125', amount: overtime_125 });
+  if (overtime_150 !== undefined) components.push({ type: 'overtime_150', amount: overtime_150 });
+  if (convalescence !== undefined) components.push({ type: 'convalescence', amount: convalescence });
+  if (clothing_allowance !== undefined) components.push({ type: 'clothing_allowance', amount: clothing_allowance });
 
   let gross_minus_mandatory_deductions;
   if (gross_total !== undefined && mandatory_total !== undefined) {
