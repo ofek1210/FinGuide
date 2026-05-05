@@ -1,5 +1,6 @@
 const {
   PAYSLIP_LABEL_MAP,
+  FIELD_ORDER,
   extractAllAmountsFromLine,
   extractFromLinesByLabelMap,
   lineMatchesExclude,
@@ -208,9 +209,11 @@ function sortCandidatesByScore(candidates = []) {
       return b.score - a.score;
     }
 
-    if (typeof b.value === 'number' && typeof a.value === 'number') {
-      return b.value - a.value;
-    }
+    // Tie-break: prefer label_same_line over other sources
+    const sourceOrder = { label_same_line: 0, legacy_label_map: 1 };
+    const aOrder = sourceOrder[a.source] ?? 2;
+    const bOrder = sourceOrder[b.source] ?? 2;
+    if (aOrder !== bOrder) return aOrder - bOrder;
 
     return 0;
   });
@@ -496,6 +499,15 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
             continue;
           }
 
+          // Skip neighbors that match a DIFFERENT field's label (e.g., don't
+          // pick ביטוח לאומי amounts as income_tax adjacent candidates).
+          const neighborOwned = FIELD_ORDER.some(otherField => {
+            if (otherField === field) return false;
+            const otherPatterns = PAYSLIP_LABEL_MAP[otherField];
+            return otherPatterns && otherPatterns.some(p => lineMatchesPattern(neighbor.normalized, p));
+          });
+          if (neighborOwned) continue;
+
           const neighborAmounts = rankFieldAmounts(field, neighbor.amounts);
           if (neighborAmounts.length !== 1) {
             continue;
@@ -620,7 +632,7 @@ function collectCoreFieldCandidates(context) {
 
   pushRegexValueCandidates(store, 'income_tax', monthlyText, [
     /מס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i,
-    /(\d[\d,.]+)\s*מס\s*הכנסה/i,
+    /(\d[\d,.]+)[^\S\n]*מס\s*הכנסה/i,
   ], {
     source: 'regex_income_tax',
     score: 0.89,
@@ -631,7 +643,7 @@ function collectCoreFieldCandidates(context) {
   pushRegexValueCandidates(store, 'national_insurance', monthlyText, [
     /ביטוח\s*לאומי[^\d]*(\d[\d,.\s₪]+)/i,
     /National\s+Insurance[^\d]*(\d[\d,.\s₪]+)/i,
-    /(\d[\d,.]+)\s*(?:ב\.?\s*לאומי|בט\.\s*לאומי)/i,
+    /(\d[\d,.]+)[^\S\n]*(?:ב\.?\s*לאומי|בט\.\s*לאומי)/i,
   ], {
     source: 'regex_national_insurance',
     score: 0.87,
@@ -643,7 +655,7 @@ function collectCoreFieldCandidates(context) {
     /ביטוח\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
     /מס\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
     /Health\s+Insurance[^\d]*(\d[\d,.\s₪]+)/i,
-    /(\d[\d,.]+)\s*מס\s*בריאות/i,
+    /(\d[\d,.]+)[^\S\n]*מס\s*בריאות/i,
   ], {
     source: 'regex_health_insurance',
     score: 0.87,
