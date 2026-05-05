@@ -21,6 +21,7 @@ function buildFinancialSystemPrompt(userContext) {
 
   if (hasData) {
     lines.push('', 'נתוני תלוש שכר אחרון של המשתמש:');
+    if (userContext.employeeName) lines.push(`שם העובד: ${userContext.employeeName}`);
     if (userContext.grossSalary != null) lines.push(`ברוטו: ${userContext.grossSalary} ₪`);
     if (userContext.netSalary != null) lines.push(`נטו: ${userContext.netSalary} ₪`);
     if (userContext.tax != null) lines.push(`מס הכנסה: ${userContext.tax} ₪`);
