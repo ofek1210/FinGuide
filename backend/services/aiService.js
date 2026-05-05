@@ -175,7 +175,10 @@ async function askLLM(userMessage, userContext, history = []) {
 
   // Include last N turns so the LLM has conversation context
   const historyMessages = Array.isArray(history)
-    ? history.slice(-6).map(m => ({ role: m.role, content: m.content }))
+    ? history
+        .filter(m => m.role === 'user' || m.role === 'assistant')
+        .slice(-6)
+        .map(m => ({ role: m.role, content: String(m.content || '').slice(0, 1000) }))
     : [];
 
   const result = await callOllamaChat(

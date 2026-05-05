@@ -102,6 +102,10 @@ const simulateWhatIf = ({ gross, net, change, creditPoints }) => {
       ? grossSalary * (1 + value)
       : grossSalary + value;
 
+  if (newGross <= 0) {
+    throw new Error('הסכום החדש לא יכול להיות אפס או שלילי.');
+  }
+
   // Use Israeli tax bracket calculation for the DELTA in mandatory deductions.
   // We can't know pension/voluntary deductions, so we calculate the change
   // in mandatory deductions (tax + NI + health) between old and new gross,

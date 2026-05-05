@@ -398,6 +398,9 @@ async function chatWithAI(req, res) {
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ success: false, message: 'message is required (string)' });
   }
+  if (message.length > 2000) {
+    return res.status(400).json({ success: false, message: 'message too long (max 2000 chars)' });
+  }
 
   // Server-side RAG: always fetch from DB, never trust client userData
   const userContext = await buildUserContext(req.user._id);
@@ -432,9 +435,8 @@ async function chatWithAI(req, res) {
     }
     source = 'rule';
   } else if (intent === 'hello') {
-    const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
-    finalAnswer = await polishHebrewAnswer(ruleAnswer);
-    source = 'rule+polish';
+    finalAnswer = buildRuleBasedAnswer(intent, userContext);
+    source = 'rule';
   } else {
     const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
     if (ruleAnswer === null) {

@@ -522,7 +522,8 @@ async function extractPayslipFile(inputPath) {
       if (normalized.length >= MIN_PDF_TEXT_LENGTH && !brokenHebrew) {
         extractionMethod = 'pdf_text';
         const sections = splitPayslipSections(embeddedText);
-        const sectionText = sections[sections.length - 1].text;
+        // Use first section (most recent payslip in multi-month PDFs)
+        const sectionText = sections[0].text;
         const data = extractPayslipFinancialEN(sectionText, { sourcePath: abs });
         logExtractionResult({
           sourcePath: abs,
@@ -543,9 +544,14 @@ async function extractPayslipFile(inputPath) {
       console.warn('PDF text extraction failed, falling back to OCR:', error.message);
     }
 
-    const pdfOut = path.join(workDir, `pdf_${Date.now()}`);
+    const pdfOut = path.join(workDir, `pdf_${crypto.randomUUID()}`);
     await fs.mkdir(pdfOut, { recursive: true });
-    imagePaths = await pdfToPngs(abs, pdfOut);
+    try {
+      imagePaths = await pdfToPngs(abs, pdfOut);
+    } catch (e) {
+      await fs.rm(pdfOut, { recursive: true, force: true }).catch(() => {});
+      throw e;
+    }
   } else {
     imagePaths = [abs];
   }
@@ -608,10 +614,16 @@ async function extractPayslipFile(inputPath) {
   }
 
   if (!candidates.length) {
+    if (ext === '.pdf') await fs.rm(path.dirname(imagePaths[0]), { recursive: true, force: true }).catch(() => {});
     if (lastOcrError) {
       throw lastOcrError;
     }
     throw new Error('OCR failed: no text extracted from any pass.');
+  }
+
+  // Clean up temp images after successful extraction
+  if (ext === '.pdf') {
+    await fs.rm(path.dirname(imagePaths[0]), { recursive: true, force: true }).catch(() => {});
   }
 
   return rankExtractionCandidates(candidates)[0];
