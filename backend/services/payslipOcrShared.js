@@ -116,6 +116,21 @@ function isCumulativeLine(line) {
   return /(?:מצטבר|מצטברת|מצטברים|מצטברות|cumulative|נתונים\s*מצטברים)/i.test(String(line));
 }
 
+/**
+ * Detect lines that appear in the Michpal "נתונים מצטברים" right-column zone.
+ * These lines look like monthly deduction lines but contain year-to-date totals:
+ * "שכר חייב מס36747.67", "בט. לאומי158.00", "מס בריאות1143.00", "פנסיה1139.52"
+ * They appear AFTER the "נתונים נוספיםנתונים מצטברים" combined header.
+ */
+function isLikelyCumulativeZoneLine(line) {
+  const s = String(line);
+  // These specific labels followed by large amounts indicate cumulative data
+  if (/(?:שכ\.\s*ב\.\s*לאומי|שכר\s*חייב\s*מס)/i.test(s)) return true;
+  // "גמל מעסיק", "ב.לאומי מעסיק", "לפיצ." are employer-side cumulative
+  if (/(?:גמל\s*מעסיק|ב\.\s*לאומי\s*מעסיק|לפיצ\.)/i.test(s)) return true;
+  return false;
+}
+
 function categorizeOcrWarning(warning) {
   const value = String(warning || '').trim();
   if (!value) return 'other';
@@ -183,6 +198,7 @@ module.exports = {
   extractMonthFromFilename,
   extractMonthYYYYMM,
   isCumulativeLine,
+  isLikelyCumulativeZoneLine,
   isLikelyTaxBaseNoiseLine,
   linesOf,
   match1,

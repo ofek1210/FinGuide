@@ -126,8 +126,14 @@ export function periodMonthToDate(month?: string): string {
 
 const EARNINGS_LABELS: Record<string, string> = {
   base_salary: "משכורת בסיס",
-  global_overtime: "שעות נוספות",
+  global_overtime: "שעות נוספות גלובליות",
   travel_expenses: "נסיעות",
+  bonus: "בונוס",
+  holiday_pay: "דמי חגים",
+  overtime_125: "שעות נוספות 125%",
+  overtime_150: "שעות נוספות 150%",
+  convalescence: "דמי הבראה",
+  clothing_allowance: "ביגוד",
 };
 
 const DEDUCTION_LABELS: Record<string, string> = {

@@ -12,6 +12,7 @@ const {
   extractMonthFromFilename,
   extractMonthYYYYMM,
   isCumulativeLine,
+  isLikelyCumulativeZoneLine,
   isLikelyTaxBaseNoiseLine,
   match1,
   parseMoney,
@@ -236,6 +237,11 @@ function isFieldBlockedByNoise(field, rawLine, entry) {
 
   // Block all core/supplemental fields from cumulative section lines
   if (entry?.sectionHints?.includes('cumulative')) {
+    return true;
+  }
+
+  // Block Michpal cumulative zone lines (שכר חייב מס, שכ.ב.לאומי, etc.)
+  if (isLikelyCumulativeZoneLine(rawLine)) {
     return true;
   }
 
@@ -512,6 +518,13 @@ function collectCoreFieldCandidates(context) {
   const store = {};
   const legacyLabelMap = extractFromLinesByLabelMap(context.lines.map(line => line.raw));
 
+  // For regex extraction, strip text after cumulative section markers
+  // to avoid picking up year-to-date totals as monthly values.
+  const cumulativeMarkerIndex = context.fullText.search(/נתונים\s*מצטברים/i);
+  const monthlyText = cumulativeMarkerIndex > 0
+    ? context.fullText.slice(0, cumulativeMarkerIndex)
+    : context.fullText;
+
   collectLabelCandidates(store, context, CORE_NUMERIC_FIELDS);
   collectTableCandidates(store, context, CORE_TABLE_CANDIDATE_FIELDS, { tableMinCols: 6 });
 
@@ -605,7 +618,7 @@ function collectCoreFieldCandidates(context) {
     section: 'deductions',
   });
 
-  pushRegexValueCandidates(store, 'income_tax', context.fullText, [
+  pushRegexValueCandidates(store, 'income_tax', monthlyText, [
     /מס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i,
     /(\d[\d,.]+)\s*מס\s*הכנסה/i,
   ], {
@@ -615,7 +628,7 @@ function collectCoreFieldCandidates(context) {
     section: 'deductions',
   });
 
-  pushRegexValueCandidates(store, 'national_insurance', context.fullText, [
+  pushRegexValueCandidates(store, 'national_insurance', monthlyText, [
     /ביטוח\s*לאומי[^\d]*(\d[\d,.\s₪]+)/i,
     /National\s+Insurance[^\d]*(\d[\d,.\s₪]+)/i,
     /(\d[\d,.]+)\s*(?:ב\.?\s*לאומי|בט\.\s*לאומי)/i,
@@ -626,7 +639,7 @@ function collectCoreFieldCandidates(context) {
     section: 'deductions',
   });
 
-  pushRegexValueCandidates(store, 'health_insurance', context.fullText, [
+  pushRegexValueCandidates(store, 'health_insurance', monthlyText, [
     /ביטוח\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
     /מס\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
     /Health\s+Insurance[^\d]*(\d[\d,.\s₪]+)/i,

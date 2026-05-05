@@ -284,15 +284,22 @@ function normalizeLineEntries(lineEntries) {
   });
 
   // Propagate cumulative context: lines after a cumulative header
-  // inherit the 'cumulative' hint until a new non-cumulative section begins.
+  // inherit the 'cumulative' hint until a new structural section begins
+  // (identity or earnings headers that clearly indicate a new document part).
+  const CUMULATIVE_BREAK_PATTERNS = [
+    /תאור\s*התשלום/i,
+    /פרטים\s*אישיים/i,
+    /שם\s+עובד/i,
+    /תלוש\s*(?:שכר|משכורת)/i,
+    /סה["״']?כ\s*תשלומים/i,
+  ];
   let inCumulative = false;
   for (const entry of entries) {
     if (entry.sectionHints.includes('cumulative')) {
       inCumulative = true;
     } else if (
       inCumulative &&
-      entry.primarySection &&
-      !['cumulative', 'table_row', 'table_header'].includes(entry.primarySection)
+      CUMULATIVE_BREAK_PATTERNS.some(p => p.test(entry.raw))
     ) {
       inCumulative = false;
     }
