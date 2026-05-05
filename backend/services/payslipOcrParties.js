@@ -7,10 +7,13 @@ const {
 const { pushCandidate, sortCandidatesByScore } = require('./payslipOcrResolver');
 
 const EMPLOYEE_LABEL_REGEX = /(?:שם\s+עובד|שם\s+העובד|Employee\s+Name)[:\s-]+([^\n]+)/i;
-const EMPLOYER_LABEL_REGEX = /(?:שם\s+מעסיק|שם\s+מעביד|Employer\s+Name)[:\s-]+([^\n]+)/i;
+const EMPLOYER_LABEL_REGEX = /(?:שם\s+מעסיק|שם\s+מעביד|שם\s+החברה|Employer\s+Name)[:\s-]+([^\n]+)/i;
 const EMPLOYEE_ID_LABEL_REGEX = /(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ID)[:\s-]*(\d{7,9})/i;
+const EMPLOYEE_NUMBER_REGEX = /(?:מס['׳]?\s*עובד|מספר\s+העובד|מספר\s+עובד)[:\s-]*(\d+)/i;
 const CONTRIBUTION_CONTEXT_REGEX =
   /(?:קרן\s*השתלמות|שכר\s*לקצבה|תגמול|תגמולים|פיצוי|פיצויים|הפרשת\s*מעסיק|ניכוי\s*עובד)/i;
+// Michpal format: "חברה: NNN - Company Name בע"מ"
+const MICHPAL_COMPANY_REGEX = /חברה:\s*\d+\s*-\s*(.+?)$/;
 
 function normalizeEmployeeName(value) {
   return String(value).replace(/\s+/g, ' ').trim();
@@ -182,6 +185,59 @@ function collectPartyCandidates(context) {
       section: 'identity',
       evidenceCategory: 'label_proximity',
     });
+  }
+
+  // ---- Michpal: "לכבוד\nFirstName LastName\nAddress" pattern ----
+  for (let i = 0; i < context.lines.length; i += 1) {
+    const entry = context.lines[i];
+    if (/לכבוד/.test(entry.raw)) {
+      const nameLine = context.lines[i + 1];
+      if (nameLine && isValidEmployeeName(nameLine.raw)) {
+        pushCandidate(store, 'employee_name', normalizeEmployeeName(nameLine.raw), {
+          source: 'michpal_lekhavod_pattern',
+          lineIndex: i + 1,
+          score: 0.88,
+          reason: 'Matched employee name after לכבוד (Michpal format).',
+          section: 'identity',
+          evidenceCategory: 'label',
+        });
+      }
+      break;
+    }
+  }
+
+  // ---- Michpal: "חברה: NNN - Company Name בע"מ" from תיק ניכויים line ----
+  for (const entry of context.lines) {
+    const michpalMatch = entry.raw.match(MICHPAL_COMPANY_REGEX);
+    if (michpalMatch) {
+      const companyName = normalizeEmployerName(michpalMatch[1]);
+      if (isValidEmployerName(companyName)) {
+        pushCandidate(store, 'employer_name', companyName, {
+          source: 'michpal_company_pattern',
+          lineIndex: entry.index,
+          score: 0.92,
+          reason: 'Matched employer name from Michpal חברה: NNN - Name pattern.',
+          section: 'identity',
+          evidenceCategory: 'label',
+        });
+      }
+      break;
+    }
+  }
+
+  // ---- שם החברה label ----
+  const companyNameMatch = full.match(/שם\s+החברה\s*[:\s]+([^\n]+)/i);
+  if (companyNameMatch) {
+    const companyName = normalizeEmployerName(companyNameMatch[1]);
+    if (isValidEmployerName(companyName)) {
+      pushCandidate(store, 'employer_name', companyName, {
+        source: 'company_name_label',
+        score: 0.95,
+        reason: 'Matched employer name from שם החברה label.',
+        section: 'identity',
+        evidenceCategory: 'label',
+      });
+    }
   }
 
   return store;

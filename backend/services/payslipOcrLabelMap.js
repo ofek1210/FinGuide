@@ -89,9 +89,13 @@ const PAYSLIP_LABEL_MAP = {
     'ביטוח לאומי',
     'ב.ל.',
     'בל ',
+    'ב.לאומי',
+    'בט. לאומי',
     /ביטוח\s*לאומי/i,
     /national\s+insurance/i,
     /\bב\.?\s*ל\.?/i,
+    /בט\.\s*לאומי/i,
+    /ב\.לאומי/i,
   ],
   _national_insurance_exclude: [/מצטבר/i, /cumulative/i],
 
@@ -126,6 +130,52 @@ const PAYSLIP_LABEL_MAP = {
     /נסיעות/i,
     /travel/i,
   ],
+
+  bonus: [
+    'בונוס',
+    'מענק',
+    'פרמיה',
+    /בונוס/i,
+    /מענק/i,
+    /פרמיה/i,
+    /bonus/i,
+  ],
+
+  holiday_pay: [
+    'דמי חגים',
+    'חג',
+    /דמי\s*חגים/i,
+    /\bחג\b/i,
+    /holiday\s*pay/i,
+  ],
+
+  overtime_125: [
+    'ש.נוס 125%',
+    'שעות נוספות 125',
+    /ש\.?\s*נוס\.?\s*125/i,
+    /שעות\s*נוספות\s*125/i,
+  ],
+
+  overtime_150: [
+    'ש.נוס 150%',
+    'שעות נוספות 150',
+    /ש\.?\s*נוס\.?\s*150/i,
+    /שעות\s*נוספות\s*150/i,
+  ],
+
+  convalescence: [
+    'דמי הבראה',
+    'הבראה',
+    /דמי\s*הבראה/i,
+    /הבראה/i,
+    /convalescence/i,
+  ],
+
+  clothing_allowance: [
+    'ביגוד',
+    /ביגוד/i,
+    /clothing/i,
+  ],
 };
 
 /** Field order: first match wins when a line matches multiple labels. */
@@ -139,6 +189,12 @@ const FIELD_ORDER = [
   'base_salary',
   'global_overtime',
   'travel_expenses',
+  'bonus',
+  'holiday_pay',
+  'overtime_125',
+  'overtime_150',
+  'convalescence',
+  'clothing_allowance',
 ];
 
 // ---------------------------------------------------------------------------
@@ -248,6 +304,35 @@ function extractFromLinesByLabelMap(lines) {
       result[fieldKey] = amount;
       usedLineIndices.add(i);
       break;
+    }
+  }
+
+  // ---- Pass 1b: amount-before-label (Michpal format: "24.00ב.לאומי") ----
+  for (let i = 0; i < lines.length; i++) {
+    if (usedLineIndices.has(i)) continue;
+    const line = lines[i];
+    const normalized = normalizeLine(line);
+
+    for (const fieldKey of FIELD_ORDER) {
+      if (result[fieldKey] !== undefined) continue;
+      const patterns = PAYSLIP_LABEL_MAP[fieldKey];
+      if (!patterns) continue;
+      if (!patterns.some(p => lineMatchesPattern(normalized, p))) continue;
+      if (lineMatchesExclude(normalized, fieldKey)) continue;
+
+      // Try extracting a leading amount (e.g. "185.00מס בריאות")
+      const leadingMatch = normalized.match(/^(\d[\d,.]*)/);
+      if (leadingMatch) {
+        const tokens = extractAllNumericTokens(leadingMatch[1]);
+        const limits = { income_tax: 0, national_insurance: 0, health_insurance: 0 };
+        const minVal = limits[fieldKey] !== undefined ? limits[fieldKey] : 50;
+        const filtered = tokens.filter(v => v >= minVal && v <= 200000);
+        if (filtered.length > 0 && isReasonableDeduction(fieldKey, filtered[0])) {
+          result[fieldKey] = filtered[0];
+          usedLineIndices.add(i);
+          break;
+        }
+      }
     }
   }
 

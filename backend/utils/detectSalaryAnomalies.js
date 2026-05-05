@@ -1,7 +1,7 @@
 const { normalizeAmount } = require('./numeric');
 
 const DEFAULTS = {
-  netToGrossRatioThreshold: 0.9,
+  netToGrossRatioThreshold: 0.95,
   highGrossThreshold: 80_000,
   lowGrossThreshold: 3_000,
   roundIncrement: 1_000,

@@ -69,12 +69,21 @@ function buildPayslipSummary(data, rawText) {
 
   const pensionEmployee = data.contributions?.pension?.employee ?? null;
   const pensionEmployer = data.contributions?.pension?.employer ?? null;
+  const pensionSeverance = data.contributions?.pension?.severance ?? null;
   const trainingFundEmployee = data.contributions?.study_fund?.employee ?? null;
   const trainingFundEmployer = data.contributions?.study_fund?.employer ?? null;
+  const trainingFundEmployeeRate = data.contributions?.study_fund?.employee_rate_percent ?? null;
+  const trainingFundEmployerRate = data.contributions?.study_fund?.employer_rate_percent ?? null;
   const tax = data.deductions?.mandatory?.income_tax ?? null;
   const nationalInsurance = data.deductions?.mandatory?.national_insurance ?? null;
   const healthInsurance = data.deductions?.mandatory?.health_insurance ?? null;
+  const mandatoryDeductionsTotal = data.deductions?.mandatory?.total ?? null;
   const jobPercentage = data.employment?.job_percent ?? null;
+  const marginalTaxRate = data.tax?.marginal_tax_rate_percent ?? null;
+  const taxCreditPoints = data.tax?.tax_credit_points ?? null;
+  const employerName = data.parties?.employer_name ?? null;
+  const employeeId = data.parties?.employee_id ?? null;
+  const baseSalary = data.salary?.components?.find(c => c.type === 'base_salary')?.amount ?? null;
 
   let workingDays =
     extractNumberByRegexes(
@@ -96,18 +105,27 @@ function buildPayslipSummary(data, rawText) {
 
   return {
     employeeName,
+    employerName,
+    employeeId,
     date,
     grossSalary,
     netSalary,
+    baseSalary,
     vacationDays,
     sickDays,
     pensionEmployee,
     pensionEmployer,
+    pensionSeverance,
     trainingFundEmployee,
     trainingFundEmployer,
+    trainingFundEmployeeRate,
+    trainingFundEmployerRate,
     tax,
     nationalInsurance,
     healthInsurance,
+    mandatoryDeductionsTotal,
+    marginalTaxRate,
+    taxCreditPoints,
     jobPercentage,
     workingDays,
     workingHours,

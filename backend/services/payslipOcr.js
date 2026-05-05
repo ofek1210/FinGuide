@@ -56,6 +56,32 @@ function toRawLines(text) {
   return linesOf(text);
 }
 
+/**
+ * Split a multi-payslip PDF text into individual payslip sections.
+ * Many Israeli payroll systems (e.g. Michpal) embed several months into one PDF.
+ * Returns an array of { text, periodHint } objects, one per payslip.
+ * If only one section is found, returns the original text as a single element.
+ */
+function splitPayslipSections(fullText) {
+  const SECTION_MARKER = /תלוש\s*(?:שכר|משכורת)\s*לחודש\s*(\d{1,2}\/\d{2,4})/gi;
+  const markers = [];
+  let m;
+
+  while ((m = SECTION_MARKER.exec(fullText)) !== null) {
+    markers.push({ index: m.index, period: m[1] });
+  }
+
+  if (markers.length <= 1) {
+    return [{ text: fullText, periodHint: markers[0]?.period || null }];
+  }
+
+  return markers.map((marker, i) => {
+    const start = marker.index;
+    const end = i + 1 < markers.length ? markers[i + 1].index : fullText.length;
+    return { text: fullText.slice(start, end), periodHint: marker.period };
+  });
+}
+
 // -------------------- OCR pipeline --------------------
 async function preprocessImage(inPath) {
   const ext = path.extname(inPath).toLowerCase();
@@ -119,6 +145,11 @@ function isLikelyBrokenHebrew(text) {
   const value = String(text);
   const hebrewCount = (value.match(/[\u0590-\u05FF]/g) || []).length;
   const weirdLatinCount = (value.match(/[À-ÿ]/g) || []).length;
+  // Modifier letters (ʹ-ʿ range U+02B0-U+02FF) appear in some broken
+  // Hebrew PDF encodings where proper Hebrew chars are mapped to the
+  // phonetic modifier block instead.
+  const modifierLetterCount = (value.match(/[\u02B0-\u02FF]/g) || []).length;
+  if (hebrewCount < 5 && modifierLetterCount > 30) return true;
   return hebrewCount < 5 && weirdLatinCount > 20;
 }
 
@@ -267,10 +298,47 @@ function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
     { minScore: 0.35 },
   )?.value;
 
+  const bonus = resolveBestNumericCandidate(
+    'bonus',
+    supplementalFieldCandidates.bonus,
+    { minScore: 0.35 },
+  )?.value;
+  const holiday_pay = resolveBestNumericCandidate(
+    'holiday_pay',
+    supplementalFieldCandidates.holiday_pay,
+    { minScore: 0.35 },
+  )?.value;
+  const overtime_125 = resolveBestNumericCandidate(
+    'overtime_125',
+    supplementalFieldCandidates.overtime_125,
+    { minScore: 0.35 },
+  )?.value;
+  const overtime_150 = resolveBestNumericCandidate(
+    'overtime_150',
+    supplementalFieldCandidates.overtime_150,
+    { minScore: 0.35 },
+  )?.value;
+  const convalescence = resolveBestNumericCandidate(
+    'convalescence',
+    supplementalFieldCandidates.convalescence,
+    { minScore: 0.35 },
+  )?.value;
+  const clothing_allowance = resolveBestNumericCandidate(
+    'clothing_allowance',
+    supplementalFieldCandidates.clothing_allowance,
+    { minScore: 0.35 },
+  )?.value;
+
   const components = [];
   if (base_salary !== undefined) components.push({ type: 'base_salary', amount: base_salary });
   if (global_overtime !== undefined) components.push({ type: 'global_overtime', amount: global_overtime });
   if (travel_expenses !== undefined) components.push({ type: 'travel_expenses', amount: travel_expenses });
+  if (bonus !== undefined) components.push({ type: 'bonus', amount: bonus });
+  if (holiday_pay !== undefined) components.push({ type: 'holiday_pay', amount: holiday_pay });
+  if (overtime_125 !== undefined) components.push({ type: 'overtime_125', amount: overtime_125 });
+  if (overtime_150 !== undefined) components.push({ type: 'overtime_150', amount: overtime_150 });
+  if (convalescence !== undefined) components.push({ type: 'convalescence', amount: convalescence });
+  if (clothing_allowance !== undefined) components.push({ type: 'clothing_allowance', amount: clothing_allowance });
 
   let gross_minus_mandatory_deductions;
   if (gross_total !== undefined && mandatory_total !== undefined) {
@@ -453,7 +521,10 @@ async function extractPayslipFile(inputPath) {
 
       if (normalized.length >= MIN_PDF_TEXT_LENGTH && !brokenHebrew) {
         extractionMethod = 'pdf_text';
-        const data = extractPayslipFinancialEN(embeddedText, { sourcePath: abs });
+        const sections = splitPayslipSections(embeddedText);
+        // Use first section (most recent payslip in multi-month PDFs)
+        const sectionText = sections[0].text;
+        const data = extractPayslipFinancialEN(sectionText, { sourcePath: abs });
         logExtractionResult({
           sourcePath: abs,
           extractionMethod,
@@ -461,9 +532,10 @@ async function extractPayslipFile(inputPath) {
         });
         data.raw = {
           ...data.raw,
-          rawText: embeddedText,
-          rawLines: toRawLines(embeddedText),
+          rawText: sectionText,
+          rawLines: toRawLines(sectionText),
           extractionMethod,
+          total_sections: sections.length,
         };
         return { data };
       }
@@ -472,9 +544,14 @@ async function extractPayslipFile(inputPath) {
       console.warn('PDF text extraction failed, falling back to OCR:', error.message);
     }
 
-    const pdfOut = path.join(workDir, `pdf_${Date.now()}`);
+    const pdfOut = path.join(workDir, `pdf_${crypto.randomUUID()}`);
     await fs.mkdir(pdfOut, { recursive: true });
-    imagePaths = await pdfToPngs(abs, pdfOut);
+    try {
+      imagePaths = await pdfToPngs(abs, pdfOut);
+    } catch (e) {
+      await fs.rm(pdfOut, { recursive: true, force: true }).catch(() => {});
+      throw e;
+    }
   } else {
     imagePaths = [abs];
   }
@@ -537,10 +614,16 @@ async function extractPayslipFile(inputPath) {
   }
 
   if (!candidates.length) {
+    if (ext === '.pdf') await fs.rm(path.dirname(imagePaths[0]), { recursive: true, force: true }).catch(() => {});
     if (lastOcrError) {
       throw lastOcrError;
     }
     throw new Error('OCR failed: no text extracted from any pass.');
+  }
+
+  // Clean up temp images after successful extraction
+  if (ext === '.pdf') {
+    await fs.rm(path.dirname(imagePaths[0]), { recursive: true, force: true }).catch(() => {});
   }
 
   return rankExtractionCandidates(candidates)[0];
@@ -549,4 +632,5 @@ async function extractPayslipFile(inputPath) {
 module.exports = {
   extractPayslipFinancialEN,
   extractPayslipFile,
+  splitPayslipSections,
 };

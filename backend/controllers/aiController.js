@@ -104,6 +104,22 @@ function detectIntent(message) {
     return 'national_insurance';
   }
 
+  if (msg.includes('חופשה') || msg.includes('ימי חופש')) {
+    return 'vacation_days';
+  }
+
+  if (msg.includes('מחלה') || msg.includes('ימי מחלה')) {
+    return 'sick_days';
+  }
+
+  if (msg.includes('מעסיק') && (msg.includes('שם') || msg.includes('איפה') || msg.includes('אצל מי'))) {
+    return 'employer_info';
+  }
+
+  if (msg.includes('ניכויי חובה') || msg.includes('כמה מנכים') || msg.includes('סך ניכויים')) {
+    return 'mandatory_deductions';
+  }
+
   if (
     msg.includes('מה יקרה אם') ||
     msg.includes('כמה אקבל אם') ||
@@ -203,16 +219,27 @@ async function buildUserContext(userId) {
     // Salary amounts from OCR summary
     grossSalary: summary.grossSalary ?? null,
     netSalary: summary.netSalary ?? null,
+    baseSalary: summary.baseSalary ?? null,
     tax: summary.tax ?? null,
     nationalInsurance: summary.nationalInsurance ?? null,
     healthInsurance: summary.healthInsurance ?? null,
+    mandatoryDeductionsTotal: summary.mandatoryDeductionsTotal ?? null,
     pensionEmployee: summary.pensionEmployee ?? null,
     pensionEmployer: summary.pensionEmployer ?? null,
+    pensionSeverance: summary.pensionSeverance ?? null,
     trainingFundEmployee: summary.trainingFundEmployee ?? null,
     trainingFundEmployer: summary.trainingFundEmployer ?? null,
     jobPercentage: summary.jobPercentage ?? null,
     employeeName: summary.employeeName ?? null,
+    employerName: summary.employerName ?? null,
     payslipDate: summary.date ?? null,
+    // Leave and work data
+    vacationDays: summary.vacationDays ?? null,
+    sickDays: summary.sickDays ?? null,
+    workingDays: summary.workingDays ?? null,
+    workingHours: summary.workingHours ?? null,
+    // Salary components (overtime, bonus, etc.)
+    salaryComponents: fullAnalysis.salary?.components ?? null,
     // Rates/percents where OCR extracts them
     trainingFundEmployeePercent: fullAnalysis.contributions?.study_fund?.employee_rate_percent ?? null,
     trainingFundEmployerPercent: fullAnalysis.contributions?.study_fund?.employer_rate_percent ?? null,
@@ -327,6 +354,37 @@ function buildRuleBasedAnswer(intent, ctx) {
       return lines.join('\n');
     }
 
+    case 'vacation_days': {
+      const days = ctx.vacationDays;
+      if (days == null) return 'אין לי נתוני ימי חופשה מהתלוש האחרון.';
+      return `לפי תלוש השכר האחרון, יתרת ימי החופשה שלך היא ${days} ימים.`;
+    }
+
+    case 'sick_days': {
+      const days = ctx.sickDays;
+      if (days == null) return 'אין לי נתוני ימי מחלה מהתלוש האחרון.';
+      return `לפי תלוש השכר האחרון, יתרת ימי המחלה שלך היא ${days} ימים.`;
+    }
+
+    case 'employer_info': {
+      const name = ctx.employerName;
+      if (!name) return 'אין לי מידע על שם המעסיק מהתלוש האחרון.';
+      return `לפי תלוש השכר האחרון, שם המעסיק הוא ${name}.`;
+    }
+
+    case 'mandatory_deductions': {
+      const total = formatAmount(ctx.mandatoryDeductionsTotal);
+      if (!total) return 'אין לי נתוני ניכויי חובה מהתלוש האחרון.';
+      const parts = [`סה"כ ניכויי חובה: ${total}`];
+      const tax = formatAmount(ctx.tax);
+      const ni = formatAmount(ctx.nationalInsurance);
+      const hi = formatAmount(ctx.healthInsurance);
+      if (tax) parts.push(`• מס הכנסה: ${tax}`);
+      if (ni) parts.push(`• ביטוח לאומי: ${ni}`);
+      if (hi) parts.push(`• מס בריאות: ${hi}`);
+      return `לפי תלוש השכר האחרון:\n${parts.join('\n')}`;
+    }
+
     default:
       return null; // use LLM
   }
@@ -340,6 +398,9 @@ async function chatWithAI(req, res) {
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ success: false, message: 'message is required (string)' });
   }
+  if (message.length > 2000) {
+    return res.status(400).json({ success: false, message: 'message too long (max 2000 chars)' });
+  }
 
   // Server-side RAG: always fetch from DB, never trust client userData
   const userContext = await buildUserContext(req.user._id);
@@ -351,27 +412,31 @@ async function chatWithAI(req, res) {
   if (intent === 'whatif') {
     const change = parseWhatIfChange(normalizeMessage(message));
     if (!change || userContext.grossSalary == null || userContext.netSalary == null) {
-      finalAnswer = 'אין לי מספיק נתונים לחשב סימולציה. ודאי שיש תלוש מנותח וציני אחוז או סכום, למשל: "מה יקרה אם אקבל העלאה של 10%?"';
+      finalAnswer = 'אין לי מספיק נתונים לחשב סימולציה. יש לוודא שתלוש שכר נותח ולציין אחוז או סכום, למשל: "מה יקרה אם אקבל העלאה של 10%?"';
     } else {
       try {
-        const sim = simulateWhatIf({ gross: userContext.grossSalary, net: userContext.netSalary, change });
+        const sim = simulateWhatIf({
+          gross: userContext.grossSalary,
+          net: userContext.netSalary,
+          change,
+          creditPoints: userContext.taxCreditPoints || undefined,
+        });
         const label = change.type === 'gross_percent'
           ? `העלאה של ${change.value * 100}%`
           : `תוספת של ${formatAmount(change.value)}`;
         finalAnswer =
           `לפי הסימולציה, ${label} תביא לברוטו של ${formatAmount(sim.scenario.gross)} ` +
-          `ולנטו של ${formatAmount(sim.scenario.net)} ` +
-          `(עלייה של ${formatAmount(sim.delta.net)} בנטו).\n` +
-          `שים לב: החישוב מניח יחס קבוע בין ברוטו לנטו ואינו לוקח בחשבון מדרגות מס.`;
+          `ולנטו משוער של ${formatAmount(sim.scenario.net)} ` +
+          `(עלייה של כ-${formatAmount(sim.delta.net)} בנטו).\n` +
+          `החישוב מבוסס על מדרגות מס 2024 וניכויי חובה. הסכום בפועל עשוי להשתנות מעט.`;
       } catch {
         finalAnswer = 'לא הצלחתי לחשב את הסימולציה. בדוק שהנתונים בתלוש תקינים.';
       }
     }
     source = 'rule';
   } else if (intent === 'hello') {
-    const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
-    finalAnswer = await polishHebrewAnswer(ruleAnswer);
-    source = 'rule+polish';
+    finalAnswer = buildRuleBasedAnswer(intent, userContext);
+    source = 'rule';
   } else {
     const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
     if (ruleAnswer === null) {
