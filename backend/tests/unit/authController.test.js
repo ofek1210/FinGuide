@@ -97,6 +97,7 @@ describe('authController - register', () => {
       id: 'user-id-1',
       name: 'Test User',
       email: 'test@test.com',
+      onboardingCompleted: false,
     });
     expect(data.data.token).toBe('test-token');
     expect(next).not.toHaveBeenCalled();
@@ -224,6 +225,7 @@ describe('authController - googleLogin', () => {
           name: 'Existing User',
           email: 'existing@example.com',
           avatarUrl: null,
+          onboardingCompleted: false,
         },
         token: 'jwt-from-google',
       },
@@ -270,6 +272,7 @@ describe('authController - googleLogin', () => {
           name: 'New User',
           email: 'new@example.com',
           avatarUrl: null,
+          onboardingCompleted: false,
         },
         token: 'jwt-for-new-user',
       },
