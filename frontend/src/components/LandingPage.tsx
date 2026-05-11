@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { APP_ROUTES } from "../types/navigation";
 import AppFooter from "./AppFooter";
 import HeroMediaAnimation from "./HeroMediaAnimation";
+import LandingConsultingGrowthSection from "./LandingConsultingGrowthSection";
 import LandingPlatformShowcase from "./LandingPlatformShowcase";
 
 const features = [
@@ -139,6 +140,8 @@ export default function LandingPage() {
             ))}
           </div>
         </section>
+
+        <LandingConsultingGrowthSection />
 
         <LandingPlatformShowcase />
 
