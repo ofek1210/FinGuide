@@ -14,13 +14,13 @@ const DEFAULT_STATE: PayslipHistoryState = {
   error: null,
 };
 
-export const usePayslipHistory = () => {
+export const usePayslipHistory = (year?: number) => {
   const [state, setState] = useState<PayslipHistoryState>(DEFAULT_STATE);
 
   const loadHistory = useCallback(async () => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      const response = await fetchPayslipHistory();
+      const response = await fetchPayslipHistory(year);
       setState({ data: response, isLoading: false, error: null });
     } catch {
       setState({
@@ -29,7 +29,7 @@ export const usePayslipHistory = () => {
         error: "לא הצלחנו לטעון את היסטוריית התלושים.",
       });
     }
-  }, []);
+  }, [year]);
 
   useEffect(() => {
     void loadHistory();

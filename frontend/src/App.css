@@ -1511,6 +1511,10 @@
 }
 
 .payslip-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
   text-align: right;
 }
 
@@ -1522,6 +1526,57 @@
 .payslip-hero p {
   margin: 0;
   color: #6c7586;
+}
+
+.payslip-year-selector {
+  display: grid;
+  gap: 6px;
+}
+
+.payslip-year-selector label {
+  color: #6c7586;
+  font-size: 0.85rem;
+}
+
+.payslip-year-selector select {
+  border-radius: 10px;
+  border: 1px solid #d7ddeb;
+  padding: 8px 12px;
+  background: #fff;
+  color: #1c2333;
+}
+
+.payslip-warning-banner {
+  background: #fff9e8;
+  border: 1px solid #f4dc9a;
+  color: #855f07;
+  border-radius: 14px;
+  padding: 12px 14px;
+  line-height: 1.5;
+}
+
+.payslip-warning-banner.is-soft {
+  background: #f7f9ff;
+  border-color: #dce4ff;
+  color: #455a94;
+}
+
+.payslip-tax-card {
+  background: #fff;
+  border: 1px solid #e4e8f2;
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow: 0 12px 24px rgba(20, 30, 60, 0.05);
+  text-align: right;
+}
+
+.payslip-tax-card h3 {
+  margin: 0 0 8px;
+}
+
+.payslip-tax-card p {
+  margin: 4px 0;
+  color: #4a5568;
 }
 
 .payslip-stats {
@@ -1729,6 +1784,11 @@
 }
 
 @media (max-width: 900px) {
+  .payslip-hero {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .payslip-stats {
     grid-template-columns: 1fr;
   }

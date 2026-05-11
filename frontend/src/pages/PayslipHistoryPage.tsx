@@ -15,7 +15,8 @@ import { formatCurrencyILS, formatNumber, formatShortDate } from "../utils/forma
 
 export default function PayslipHistoryPage() {
   const navigate = useNavigate();
-  const { data, isLoading, error, reload } = usePayslipHistory();
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
+  const { data, isLoading, error, reload } = usePayslipHistory(selectedYear);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -78,7 +79,14 @@ export default function PayslipHistoryPage() {
     );
   }
 
-  const { stats, items } = data;
+  const { stats, items, years, taxAdjustment, dataQualityWarnings } = data;
+  const yearOptions = years.map((y) => y.year).sort((a, b) => b - a);
+  const monthFormatter = new Intl.DateTimeFormat("he-IL", { month: "long" });
+  const missingMonthNames = stats.missingMonths
+    .map((month) => monthFormatter.format(new Date(2026, month - 1, 1)))
+    .join(", ");
+  const taxDirection =
+    (taxAdjustment?.estimatedRefundOrDue || 0) >= 0 ? "החזר צפוי" : "סכום צפוי לתשלום";
 
   return (
     <PayslipHistoryLayout onBackToDashboard={handleBackToDashboard}>
@@ -86,6 +94,23 @@ export default function PayslipHistoryPage() {
         <div>
           <h1>היסטוריית תלושים</h1>
           <p>צפייה והשוואה בין תלושי שכר קודמים</p>
+        </div>
+        <div className="payslip-year-selector">
+          <label htmlFor="payslip-year-select">שנה להצגה</label>
+          <select
+            id="payslip-year-select"
+            value={selectedYear ?? data.selectedYear ?? ""}
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              setSelectedYear(Number.isFinite(value) ? value : undefined);
+            }}
+          >
+            {yearOptions.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
         </div>
       </section>
 
@@ -95,11 +120,39 @@ export default function PayslipHistoryPage() {
         </div>
       ) : null}
 
+      {stats.missingMonths.length > 0 ? (
+        <div className="payslip-warning-banner" role="alert">
+          כדי לקבל תובנות אופטימליות לשנת {stats.year}, מומלץ להעלות גם את החודשים החסרים:{" "}
+          {missingMonthNames}.
+        </div>
+      ) : null}
+
+      {dataQualityWarnings.length > 0 ? (
+        <div className="payslip-warning-banner is-soft">{dataQualityWarnings[0]}</div>
+      ) : null}
+
       <PayslipStats
+        selectedYear={stats.year}
         averageNet={formatCurrencyILS(stats.averageNet)}
         averageGross={formatCurrencyILS(stats.averageGross)}
         totalPayslips={formatNumber(stats.totalPayslips)}
+        coveragePercent={stats.coveragePercent}
       />
+
+      {taxAdjustment ? (
+        <section className="payslip-tax-card">
+          <h3>תיאום מס שנתי ({taxAdjustment.year})</h3>
+          <p>
+            {taxDirection}:{" "}
+            <strong>{formatCurrencyILS(Math.abs(taxAdjustment.estimatedRefundOrDue))}</strong>
+          </p>
+          <p>
+            מס צפוי שנתי: {formatCurrencyILS(taxAdjustment.expectedAnnualTax)} | מס ששולם בפועל:{" "}
+            {formatCurrencyILS(taxAdjustment.actualTaxWithheld)}
+          </p>
+          <small>רמת ביטחון משוערת: {Math.round((taxAdjustment.confidence || 0) * 100)}%</small>
+        </section>
+      ) : null}
 
       <PayslipList
         items={items}

@@ -10,6 +10,8 @@ const {
   extractPayslipFields,
   validatePayslipExtraction,
 } = require('../services/extraction-v2');
+const { serializeDocument } = require('../serializers/documentSerializer');
+const { buildPayslipHistoryIntelligence } = require('../services/payslipHistoryAggregationService');
 
 const unlink = promisify(fs.unlink);
 
@@ -161,6 +163,20 @@ exports.getDocuments = async (req, res, next) => {
       data: documents.map(serializeDocument),
     };
     res.status(200).json(responseBody);
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getPayslipHistory = async (req, res, next) => {
+  try {
+    const documents = await Document.find({ user: req.user.id }).sort('-uploadedAt').lean();
+    const intelligence = buildPayslipHistoryIntelligence(documents, { year: req.query.year });
+
+    res.status(200).json({
+      success: true,
+      data: intelligence,
+    });
   } catch (error) {
     next(error);
   }
