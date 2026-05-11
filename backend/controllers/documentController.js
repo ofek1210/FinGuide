@@ -1,4 +1,5 @@
 const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
 const { promisify } = require('util');
 const Document = require('../models/Document');
@@ -225,6 +226,13 @@ exports.downloadDocument = async (req, res, next) => {
     });
 
     if (!document) {
+      return next(new NotFoundError('מסמך לא נמצא'));
+    }
+
+    // Prevent path traversal — ensure filePath is within uploads dir
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
+    const resolvedPath = path.resolve(document.filePath);
+    if (!resolvedPath.startsWith(uploadsDir)) {
       return next(new NotFoundError('מסמך לא נמצא'));
     }
 

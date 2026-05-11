@@ -1,5 +1,6 @@
 const {
   PAYSLIP_LABEL_MAP,
+  FIELD_ORDER,
   extractAllAmountsFromLine,
   extractFromLinesByLabelMap,
   lineMatchesExclude,
@@ -12,6 +13,7 @@ const {
   extractMonthFromFilename,
   extractMonthYYYYMM,
   isCumulativeLine,
+  isLikelyCumulativeZoneLine,
   isLikelyTaxBaseNoiseLine,
   match1,
   parseMoney,
@@ -41,6 +43,12 @@ const SUPPLEMENTAL_NUMERIC_FIELDS = [
   'study_base',
   'study_employee',
   'study_employer',
+  'bonus',
+  'holiday_pay',
+  'overtime_125',
+  'overtime_150',
+  'convalescence',
+  'clothing_allowance',
 ];
 
 const CORE_TABLE_CANDIDATE_FIELDS = [
@@ -75,6 +83,12 @@ const NUMERIC_FIELD_LIMITS = {
   study_base: { min: 5000, max: 200000 },
   study_employee: { min: 0, max: 30000 },
   study_employer: { min: 0, max: 30000 },
+  bonus: { min: 0, max: 100000 },
+  holiday_pay: { min: 0, max: 30000 },
+  overtime_125: { min: 0, max: 50000 },
+  overtime_150: { min: 0, max: 50000 },
+  convalescence: { min: 0, max: 15000 },
+  clothing_allowance: { min: 0, max: 10000 },
 };
 
 const QUALITY_FIELD_WEIGHTS = {
@@ -114,6 +128,12 @@ const FIELD_SECTIONS = {
   study_base: ['contributions'],
   study_employee: ['contributions'],
   study_employer: ['contributions'],
+  bonus: ['earnings'],
+  holiday_pay: ['earnings'],
+  overtime_125: ['earnings'],
+  overtime_150: ['earnings'],
+  convalescence: ['earnings'],
+  clothing_allowance: ['earnings'],
 };
 
 function inferEvidenceCategory(source) {
@@ -189,9 +209,11 @@ function sortCandidatesByScore(candidates = []) {
       return b.score - a.score;
     }
 
-    if (typeof b.value === 'number' && typeof a.value === 'number') {
-      return b.value - a.value;
-    }
+    // Tie-break: prefer label_same_line over other sources
+    const sourceOrder = { label_same_line: 0, legacy_label_map: 1 };
+    const aOrder = sourceOrder[a.source] ?? 2;
+    const bOrder = sourceOrder[b.source] ?? 2;
+    if (aOrder !== bOrder) return aOrder - bOrder;
 
     return 0;
   });
@@ -211,9 +233,19 @@ function rankFieldAmounts(field, amounts) {
   return filtered.sort((a, b) => b - a);
 }
 
-function isFieldBlockedByNoise(field, rawLine) {
+function isFieldBlockedByNoise(field, rawLine, entry) {
   if (!rawLine) {
     return false;
+  }
+
+  // Block all core/supplemental fields from cumulative section lines
+  if (entry?.sectionHints?.includes('cumulative')) {
+    return true;
+  }
+
+  // Block Michpal cumulative zone lines (שכר חייב מס, שכ.ב.לאומי, etc.)
+  if (isLikelyCumulativeZoneLine(rawLine)) {
+    return true;
   }
 
   if (
@@ -353,7 +385,7 @@ function collectTableCandidates(store, context, fields, { tableMinCols = 6, base
 
       if (
         !isReasonableFieldValue(field, value) ||
-        isFieldBlockedByNoise(field, entry.raw) ||
+        isFieldBlockedByNoise(field, entry.raw, entry) ||
         !linePreferredForField(field, { sectionHints: candidateSectionHints })
       ) {
         continue;
@@ -432,7 +464,7 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
     const patterns = PAYSLIP_LABEL_MAP[field] || [];
 
     for (const entry of context.lines) {
-      if (isFieldBlockedByNoise(field, entry.raw)) {
+      if (isFieldBlockedByNoise(field, entry.raw, entry)) {
         continue;
       }
 
@@ -463,9 +495,18 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
       for (let distance = 1; distance <= adjacentWindow; distance += 1) {
         for (const direction of [1, -1]) {
           const neighbor = context.lines[entry.index + (direction * distance)];
-          if (!neighbor || isFieldBlockedByNoise(field, neighbor.raw) || !linePreferredForField(field, neighbor)) {
+          if (!neighbor || isFieldBlockedByNoise(field, neighbor.raw, neighbor) || !linePreferredForField(field, neighbor)) {
             continue;
           }
+
+          // Skip neighbors that match a DIFFERENT field's label (e.g., don't
+          // pick ביטוח לאומי amounts as income_tax adjacent candidates).
+          const neighborOwned = FIELD_ORDER.some(otherField => {
+            if (otherField === field) return false;
+            const otherPatterns = PAYSLIP_LABEL_MAP[otherField];
+            return otherPatterns && otherPatterns.some(p => lineMatchesPattern(neighbor.normalized, p));
+          });
+          if (neighborOwned) continue;
 
           const neighborAmounts = rankFieldAmounts(field, neighbor.amounts);
           if (neighborAmounts.length !== 1) {
@@ -489,11 +530,18 @@ function collectCoreFieldCandidates(context) {
   const store = {};
   const legacyLabelMap = extractFromLinesByLabelMap(context.lines.map(line => line.raw));
 
+  // For regex extraction, strip text after cumulative section markers
+  // to avoid picking up year-to-date totals as monthly values.
+  const cumulativeMarkerIndex = context.fullText.search(/נתונים\s*מצטברים/i);
+  const monthlyText = cumulativeMarkerIndex > 0
+    ? context.fullText.slice(0, cumulativeMarkerIndex)
+    : context.fullText;
+
   collectLabelCandidates(store, context, CORE_NUMERIC_FIELDS);
   collectTableCandidates(store, context, CORE_TABLE_CANDIDATE_FIELDS, { tableMinCols: 6 });
 
   for (const entry of context.lines) {
-    if (isLikelyTaxBaseNoiseLine(entry.raw) || isCumulativeLine(entry.raw)) {
+    if (isLikelyTaxBaseNoiseLine(entry.raw) || isCumulativeLine(entry.raw) || entry.sectionHints?.includes('cumulative')) {
       continue;
     }
 
@@ -562,6 +610,7 @@ function collectCoreFieldCandidates(context) {
     /נטו\s*לתשלום[^\d]*(\d[\d,.\s₪]+)/i,
     /שכר\s*נטו(?:\s*לתשלום)?[^\d]*(\d[\d,.\s₪]+)/i,
     /סה['"״]כ\s*לתשלום[^\d]*(\d[\d,.\s₪]+)/i,
+    /(\d[\d,.]+)\s*\n\s*לתשלום/i,
   ], {
     source: 'regex_net_label',
     score: 0.93,
@@ -573,6 +622,7 @@ function collectCoreFieldCandidates(context) {
     /כל\s*הניכו\w*[^\d]*(\d[\d,.\s₪]+)/i,
     /סה["״']?כ\s*ניכו\w*[^\d]*(\d[\d,.\s₪]+)/i,
     /ניכויי\s*חובה[^\d]*(\d[\d,.\s₪]+)/i,
+    /(\d[\d,.]+)\s*\n?\s*ניכויי\s*חובה(?!\s*\n\s*\d)/i,
   ], {
     source: 'regex_mandatory_total',
     score: 0.9,
@@ -580,16 +630,20 @@ function collectCoreFieldCandidates(context) {
     section: 'deductions',
   });
 
-  pushRegexValueCandidates(store, 'income_tax', context.fullText, [/מס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i], {
+  pushRegexValueCandidates(store, 'income_tax', monthlyText, [
+    /מס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i,
+    /(\d[\d,.]+)[^\S\n]*מס\s*הכנסה/i,
+  ], {
     source: 'regex_income_tax',
     score: 0.89,
     reason: 'Matched income tax with a dedicated regex.',
     section: 'deductions',
   });
 
-  pushRegexValueCandidates(store, 'national_insurance', context.fullText, [
+  pushRegexValueCandidates(store, 'national_insurance', monthlyText, [
     /ביטוח\s*לאומי[^\d]*(\d[\d,.\s₪]+)/i,
     /National\s+Insurance[^\d]*(\d[\d,.\s₪]+)/i,
+    /(\d[\d,.]+)[^\S\n]*(?:ב\.?\s*לאומי|בט\.\s*לאומי)/i,
   ], {
     source: 'regex_national_insurance',
     score: 0.87,
@@ -597,10 +651,11 @@ function collectCoreFieldCandidates(context) {
     section: 'deductions',
   });
 
-  pushRegexValueCandidates(store, 'health_insurance', context.fullText, [
+  pushRegexValueCandidates(store, 'health_insurance', monthlyText, [
     /ביטוח\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
     /מס\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
     /Health\s+Insurance[^\d]*(\d[\d,.\s₪]+)/i,
+    /(\d[\d,.]+)[^\S\n]*מס\s*בריאות/i,
   ], {
     source: 'regex_health_insurance',
     score: 0.87,
@@ -649,6 +704,10 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     adjacentWindow: 1,
     adjacentScore: 0.8,
   });
+  collectLabelCandidates(store, context, ['bonus', 'holiday_pay', 'overtime_125', 'overtime_150', 'convalescence', 'clothing_allowance'], {
+    adjacentWindow: 1,
+    adjacentScore: 0.78,
+  });
   collectLabelCandidates(store, context, ['gross_for_income_tax', 'gross_for_national_insurance'], {
     adjacentWindow: 2,
     adjacentScore: 0.82,
@@ -687,6 +746,27 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     section: 'earnings',
   });
 
+  pushRegexValueCandidates(store, 'bonus', context.fullText, [
+    /בונוס[^\d]*(\d[\d,.\s₪]+)/i,
+    /מענק[^\d]*(\d[\d,.\s₪]+)/i,
+    /bonus[^\d]*(\d[\d,.\s₪]+)/i,
+  ], {
+    source: 'regex_bonus',
+    score: 0.82,
+    reason: 'Matched bonus with a dedicated regex.',
+    section: 'earnings',
+  });
+
+  pushRegexValueCandidates(store, 'convalescence', context.fullText, [
+    /(?:דמי\s*)?הבראה[^\d]*(\d[\d,.\s₪]+)/i,
+    /convalescence[^\d]*(\d[\d,.\s₪]+)/i,
+  ], {
+    source: 'regex_convalescence',
+    score: 0.82,
+    reason: 'Matched convalescence with a dedicated regex.',
+    section: 'earnings',
+  });
+
   pushRegexValueCandidates(store, 'gross_for_income_tax', context.fullText, [
     /ברוטו\s*למס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i,
     /הכנסה\s*חייבת\s*במס[^\d]*(\d[\d,.\s₪]+)/i,
@@ -717,7 +797,7 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     section: 'summary',
   });
 
-  for (const field of ['base_salary', 'global_overtime', 'travel_expenses']) {
+  for (const field of ['base_salary', 'global_overtime', 'travel_expenses', 'bonus', 'holiday_pay', 'overtime_125', 'overtime_150', 'convalescence', 'clothing_allowance']) {
     const value = labelMap[field];
     if (value !== undefined && isReasonableFieldValue(field, value)) {
       pushCandidate(store, field, value, {
