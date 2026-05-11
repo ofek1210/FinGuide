@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   uploadDocument,
   getDocuments,
+  getPayslipHistory,
   getDocument,
   deleteDocument,
   downloadDocument,
@@ -24,6 +25,9 @@ router.post(
 
 // GET /api/documents - קבלת כל המסמכים
 router.get('/', getDocuments);
+
+// GET /api/documents/payslip-history - תובנות תלושים לפי שנה/חודש
+router.get('/payslip-history', getPayslipHistory);
 
 // GET /api/documents/:id/download - הורדת מסמך (לפני /:id כדי שלא יתפוס "id/download")
 router.get('/:id/download', downloadDocument);

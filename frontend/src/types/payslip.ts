@@ -2,6 +2,8 @@ export type PayslipHistoryItem = {
   id: string;
   periodLabel: string;
   periodDate: string;
+  periodYear?: number;
+  periodMonthNumber?: number;
   netSalary: number | null;
   grossSalary: number | null;
   isLatest: boolean;
@@ -9,14 +11,47 @@ export type PayslipHistoryItem = {
 };
 
 export type PayslipHistoryStats = {
+  year: number | null;
   averageNet: number;
   averageGross: number;
   totalPayslips: number;
+  monthsPresent: number[];
+  missingMonths: number[];
+  coveragePercent: number;
+  grossTotal: number;
+  netTotal: number;
+  taxPaidTotal: number;
+};
+
+export type PayslipYearStat = {
+  year: number;
+  averageNet: number;
+  averageGross: number;
+  monthsPresent: number[];
+  missingMonths: number[];
+  coveragePercent: number;
+  grossTotal: number;
+  netTotal: number;
+  taxPaidTotal: number;
+};
+
+export type PayslipTaxAdjustment = {
+  year: number;
+  status: "complete" | "partial" | "insufficient_data";
+  expectedAnnualTax: number;
+  actualTaxWithheld: number;
+  estimatedRefundOrDue: number;
+  confidence: number;
+  assumptions: string[];
 };
 
 export type PayslipHistoryResponse = {
   stats: PayslipHistoryStats;
   items: PayslipHistoryItem[];
+  years: PayslipYearStat[];
+  selectedYear: number | null;
+  taxAdjustment: PayslipTaxAdjustment | null;
+  dataQualityWarnings: string[];
 };
 
 /** Line item for earnings or deductions (for detail view; will come from OCR/API) */

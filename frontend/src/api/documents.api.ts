@@ -97,6 +97,64 @@ export type DownloadDocumentResponse = {
   filename?: string;
 };
 
+export type PayslipYearStats = {
+  year: number;
+  monthsPresent: number[];
+  missingMonths: number[];
+  monthsMissingCount: number;
+  coveragePercent: number;
+  grossAverage: number | null;
+  netAverage: number | null;
+  grossTotal: number;
+  netTotal: number;
+  taxPaidTotal: number;
+  nationalInsuranceTotal: number;
+  healthInsuranceTotal: number;
+  taxCreditPointsAverage: number | null;
+};
+
+export type PayslipTaxAdjustment = {
+  year: number;
+  status: "complete" | "partial" | "insufficient_data";
+  expectedAnnualTax: number;
+  actualTaxWithheld: number;
+  estimatedRefundOrDue: number;
+  confidence: number;
+  assumptions: string[];
+  calculationBreakdown?: Record<string, unknown>;
+};
+
+export type PayslipHistoryIntelligencePayload = {
+  years: PayslipYearStats[];
+  selectedYear: number;
+  selectedYearStats: PayslipYearStats;
+  items: Array<{
+    id: string;
+    periodMonth: string;
+    periodYear: number;
+    periodMonthNumber: number;
+    grossSalary: number | null;
+    netSalary: number | null;
+    uploadedAt: string | null;
+    isLatest: boolean;
+  }>;
+  missingMonthsByYear: Array<{ year: number; missingMonths: number[] }>;
+  incompletePeriods: Array<{
+    documentId: string;
+    originalName: string | null;
+    uploadedAt: string | null;
+    reason: string;
+  }>;
+  taxAdjustment: PayslipTaxAdjustment;
+  dataQualityWarnings: string[];
+};
+
+export type PayslipHistoryIntelligenceResponse = {
+  success: boolean;
+  message?: string;
+  data?: PayslipHistoryIntelligencePayload;
+};
+
 const getToken = () => localStorage.getItem("token");
 
 const getFilenameFromDisposition = (response: Response) => {
@@ -230,4 +288,28 @@ export const downloadDocument = async (id: string) => {
 
   const filename = getFilenameFromDisposition(result.response) || "document.pdf";
   return { success: true, blob: result.blob, filename } as DownloadDocumentResponse;
+};
+
+export const getPayslipHistoryIntelligence = async (year?: number) => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as PayslipHistoryIntelligenceResponse;
+  }
+
+  const query = Number.isFinite(year) ? `?year=${year}` : "";
+  const result = await apiJson<PayslipHistoryIntelligenceResponse>(
+    `/api/documents/payslip-history${query}`,
+    {
+      auth: true,
+      fallbackErrorMessage: "לא הצלחנו לטעון תובנות תלושים שנתיות.",
+    },
+  );
+
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as PayslipHistoryIntelligenceResponse;
+  }
+
+  return (
+    result.data || ({ success: false, message: "תגובה לא תקינה." } as PayslipHistoryIntelligenceResponse)
+  );
 };

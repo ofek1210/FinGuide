@@ -5,11 +5,18 @@
 
 import type { DocumentItem } from "../api/documents.api";
 import type {
+  PayslipHistoryIntelligencePayload,
+  PayslipTaxAdjustment as ApiPayslipTaxAdjustment,
+  PayslipYearStats,
+} from "../api/documents.api";
+import type {
   PayslipDetail,
   PayslipHistoryItem,
   PayslipHistoryResponse,
   PayslipHistoryStats,
   PayslipLineItem,
+  PayslipTaxAdjustment,
+  PayslipYearStat,
 } from "../types/payslip";
 
 // ---------------------------------------------------------------------------
@@ -227,6 +234,8 @@ export function documentToPayslipItem(doc: DocumentItem, index: number): Payslip
     id: doc._id,
     periodLabel,
     periodDate,
+    periodYear: month ? Number(month.split("-")[0]) : undefined,
+    periodMonthNumber: month ? Number(month.split("-")[1]) : undefined,
     netSalary,
     grossSalary,
     isLatest,
@@ -303,14 +312,100 @@ export function documentToPayslipDetail(doc: DocumentItem): PayslipDetail | null
 export function computePayslipStats(items: PayslipHistoryItem[]): PayslipHistoryStats {
   const n = items.length;
   if (n === 0) {
-    return { averageNet: 0, averageGross: 0, totalPayslips: 0 };
+    return {
+      year: null,
+      averageNet: 0,
+      averageGross: 0,
+      totalPayslips: 0,
+      monthsPresent: [],
+      missingMonths: [],
+      coveragePercent: 0,
+      grossTotal: 0,
+      netTotal: 0,
+      taxPaidTotal: 0,
+    };
   }
   const sumNet = items.reduce((s, i) => s + (i.netSalary ?? 0), 0);
   const sumGross = items.reduce((s, i) => s + (i.grossSalary ?? 0), 0);
+  const monthsPresent = [...new Set(items.map((i) => i.periodMonthNumber).filter((v): v is number => Number.isFinite(v)))];
+  const missingMonths = Array.from({ length: 12 }, (_, idx) => idx + 1).filter((month) => !monthsPresent.includes(month));
   return {
+    year: null,
     averageNet: Math.round(sumNet / n),
     averageGross: Math.round(sumGross / n),
     totalPayslips: n,
+    monthsPresent,
+    missingMonths,
+    coveragePercent: Math.round((monthsPresent.length / 12) * 100),
+    grossTotal: Math.round(sumGross),
+    netTotal: Math.round(sumNet),
+    taxPaidTotal: 0,
+  };
+}
+
+function mapApiYearStat(year: PayslipYearStats): PayslipYearStat {
+  return {
+    year: year.year,
+    averageNet: year.netAverage ?? 0,
+    averageGross: year.grossAverage ?? 0,
+    monthsPresent: year.monthsPresent || [],
+    missingMonths: year.missingMonths || [],
+    coveragePercent: year.coveragePercent ?? 0,
+    grossTotal: year.grossTotal ?? 0,
+    netTotal: year.netTotal ?? 0,
+    taxPaidTotal: year.taxPaidTotal ?? 0,
+  };
+}
+
+function mapApiTaxAdjustment(tax?: ApiPayslipTaxAdjustment | null): PayslipTaxAdjustment | null {
+  if (!tax) return null;
+  return {
+    year: tax.year,
+    status: tax.status,
+    expectedAnnualTax: tax.expectedAnnualTax,
+    actualTaxWithheld: tax.actualTaxWithheld,
+    estimatedRefundOrDue: tax.estimatedRefundOrDue,
+    confidence: tax.confidence,
+    assumptions: Array.isArray(tax.assumptions) ? tax.assumptions : [],
+  };
+}
+
+export function getPayslipHistoryFromIntelligence(
+  payload: PayslipHistoryIntelligencePayload,
+): PayslipHistoryResponse {
+  const items = (payload.items || []).map((item) => ({
+    id: item.id,
+    periodLabel: formatPeriodLabel(item.periodMonth),
+    periodDate: periodMonthToDate(item.periodMonth),
+    periodYear: item.periodYear,
+    periodMonthNumber: item.periodMonthNumber,
+    netSalary: item.netSalary,
+    grossSalary: item.grossSalary,
+    isLatest: item.isLatest,
+    downloadUrl: null,
+  }));
+
+  const selected = payload.selectedYearStats;
+  const stats: PayslipHistoryStats = {
+    year: payload.selectedYear ?? null,
+    averageNet: selected?.netAverage ?? 0,
+    averageGross: selected?.grossAverage ?? 0,
+    totalPayslips: items.length,
+    monthsPresent: selected?.monthsPresent || [],
+    missingMonths: selected?.missingMonths || [],
+    coveragePercent: selected?.coveragePercent ?? 0,
+    grossTotal: selected?.grossTotal ?? 0,
+    netTotal: selected?.netTotal ?? 0,
+    taxPaidTotal: selected?.taxPaidTotal ?? 0,
+  };
+
+  return {
+    stats,
+    items,
+    years: (payload.years || []).map(mapApiYearStat),
+    selectedYear: payload.selectedYear ?? null,
+    taxAdjustment: mapApiTaxAdjustment(payload.taxAdjustment),
+    dataQualityWarnings: payload.dataQualityWarnings || [],
   };
 }
 
@@ -323,5 +418,5 @@ export function getPayslipHistoryFromDocuments(docs: DocumentItem[]): PayslipHis
   const sorted = sortPayslipDocuments(valid);
   const items = sorted.map((doc, index) => documentToPayslipItem(doc, index));
   const stats = computePayslipStats(items);
-  return { stats, items };
+  return { stats, items, years: [], selectedYear: null, taxAdjustment: null, dataQualityWarnings: [] };
 }
