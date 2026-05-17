@@ -13,6 +13,7 @@
     "test:integration": "jest --runInBand --testMatch '**/tests/integration/**/*.test.js'",
     "test:watch": "jest --watch",
     "reprocess:payslips": "node scripts/reprocessPayslips.js",
+    "eval:ocr": "node scripts/evalOcr.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,json,md}\"",
@@ -54,6 +55,7 @@
     "jest-environment-node": "^30.2.0",
     "mongodb-memory-server": "^11.0.1",
     "nodemon": "^3.0.2",
+    "pdf-lib": "^1.17.1",
     "prettier": "^3.8.1",
     "supertest": "^7.2.2"
   }
