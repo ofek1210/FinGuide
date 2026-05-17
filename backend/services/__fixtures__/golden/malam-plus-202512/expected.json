@@ -1,0 +1,10 @@
+{
+  "_note": "Malam Plus (מלם שכר Plus) payslip 12/2025. Header table layout: סכום בבנק=net, סך תשלומים=gross, ניכויי חובה=mandatory. income_tax not present (below threshold). Pension via אלטשולר שחם is voluntary (ניכויי חו\"ז=231.66) and NOT counted in mandatory_total.",
+  "period_month": "12/2025",
+  "gross_total": 4072.05,
+  "net_payable": 3666.51,
+  "mandatory_total": 173.88,
+  "national_insurance": 42.35,
+  "health_insurance": 131.53,
+  "employee_id": "322819145"
+}

@@ -1,0 +1,10 @@
+{
+  "_note": "Michpal payslip 12/2022. No income_tax line. No voluntary deductions, so net_payable == לתשלום == שכר נטו.",
+  "period_month": "12/2022",
+  "gross_total": 6026.30,
+  "net_payable": 5509.29,
+  "mandatory_total": 517.01,
+  "national_insurance": 24.00,
+  "health_insurance": 187.00,
+  "employee_id": "322819145"
+}
