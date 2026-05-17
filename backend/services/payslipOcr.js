@@ -19,6 +19,7 @@ const {
   resolveMandatoryTotalCandidate,
   sortCandidatesByScore,
 } = require('./payslipOcrResolver');
+const { reconcileCoreCandidates } = require('./payslipOcrReconciler');
 const { collectPartyCandidates, resolvePartyCandidates } = require('./payslipOcrParties');
 const {
   collectContributionCandidates,
@@ -27,13 +28,10 @@ const {
 const { buildPayslipSummary } = require('./payslipOcrSummary');
 const {
   extractHMO,
-  extractMonthFromFilename,
-  extractMonthYYYYMM,
   linesOf,
   match1,
   matchAmountFlexible,
   parseDateDDMMYYYYorYY,
-  parseMoney,
   parseNumber,
   parsePercent,
   translateHMO,
@@ -67,6 +65,7 @@ function splitPayslipSections(fullText) {
   const markers = [];
   let m;
 
+  // eslint-disable-next-line no-cond-assign
   while ((m = SECTION_MARKER.exec(fullText)) !== null) {
     markers.push({ index: m.index, period: m[1] });
   }
@@ -234,7 +233,22 @@ function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
   )[0];
   const month = monthCandidate?.value;
 
-  const coreFieldCandidates = collectCoreFieldCandidates(normalizedDoc);
+  const rawCoreFieldCandidates = collectCoreFieldCandidates(normalizedDoc);
+  const reconciliation = reconcileCoreCandidates(rawCoreFieldCandidates);
+  const coreFieldCandidates = reconciliation.refined;
+
+  // Preserve the existing observability contract: when the reconciler rejects
+  // a net candidate that exceeded gross, surface the legacy conflict warning
+  // so downstream consumers (tests, UI badges) keep seeing it.
+  const netExceedsGrossRejection = reconciliation.violations.find(
+    v => v.field === 'net_payable' && v.rule === 'exceeds_gross_minus_mandatory',
+  );
+  if (netExceedsGrossRejection) {
+    warnings.push(
+      'Conflicting gross/net candidates detected; kept only the stronger validated salary field.',
+    );
+  }
+
   const supplementalFieldCandidates = collectSupplementalFieldCandidates(normalizedDoc, labelMap);
 
   const resolvedIncomeTax = resolveBestNumericCandidate('income_tax', coreFieldCandidates.income_tax);
