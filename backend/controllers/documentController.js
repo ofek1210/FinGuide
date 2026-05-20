@@ -11,6 +11,7 @@ const {
   validatePayslipExtraction,
 } = require('../services/extraction-v2');
 const { serializeDocument } = require('../serializers/documentSerializer');
+const { validatePayslipAnalysis, buildFieldsMeta } = require('../schemas/payslipAnalysis.schema');
 const { buildPayslipHistoryIntelligence } = require('../services/payslipHistoryAggregationService');
 
 const unlink = promisify(fs.unlink);
@@ -121,18 +122,38 @@ exports.uploadDocument = async (req, res, next) => {
       const { data } = await extractPayslipFile(req.file.path);
       const shadowData = await applyExtractorV2Shadow(data);
 
+      // Lift per-field confidence/source so the frontend can read it without
+      // walking the resolver-specific quality contract.
+      const fieldsMeta = buildFieldsMeta(shadowData);
+      if (fieldsMeta) {
+        shadowData.fields_meta = fieldsMeta;
+      }
+
+      // Schema gate: if any of the critical fields (period.month, gross_total,
+      // net_payable, mandatory.total) are missing or fail cross-field sanity,
+      // flag the document for human review instead of presenting it as complete.
+      const validation = validatePayslipAnalysis(shadowData);
       document.analysisData = shadowData;
-      document.status = 'completed';
       document.processedAt = new Date();
+      if (validation.ok) {
+        document.status = 'completed';
+        document.processingError = null;
+      } else {
+        document.status = 'needs_review';
+        document.processingError = validation.message;
+      }
       await document.save();
       // eslint-disable-next-line no-console
       console.log('[documents] uploadDocument extraction result', {
         documentId: document._id,
+        status: document.status,
         summary: document.analysisData?.summary,
+        ...(validation.ok ? {} : { validation_reason: validation.reason }),
       });
     } catch (ocrError) {
       console.error('❌ Document extraction failed for document', document._id, ocrError);
       document.status = 'failed';
+      document.processingError = ocrError.message;
       await document.save().catch(() => {});
     }
 
