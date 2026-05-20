@@ -17,6 +17,11 @@
 const fs = require('fs/promises');
 const path = require('path');
 
+// Load .env so ANTHROPIC_API_KEY (and any other extraction env vars) reach
+// the LLM adjudicator. The eval is a standalone script, not booted by the
+// server, so we have to do this explicitly.
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
+
 const { extractPayslipFile } = require('../services/payslipOcr');
 
 const GOLDEN_DIR = path.resolve(__dirname, '..', 'services', '__fixtures__', 'golden');
