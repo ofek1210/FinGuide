@@ -1,0 +1,125 @@
+{
+  "schema_version": "1.9",
+  "period": { "month": "10/2025" },
+
+  "salary": {
+    "gross_total": 18450.00,
+    "net_payable": 13127.45,
+    "gross_minus_mandatory_deductions": 13740.20,
+    "components": [
+      { "type": "base_salary",      "label": "שכר יסוד",      "amount": 16500.00 },
+      { "type": "seniority_bonus",  "label": "ותק",           "amount": 850.00 },
+      { "type": "travel_allowance", "label": "הוצאות נסיעה",  "amount": 600.00 },
+      { "type": "bonus",            "label": "בונוס",         "amount": 500.00 }
+    ]
+  },
+
+  "deductions": {
+    "mandatory": {
+      "total": 4709.80,
+      "total_is_derived": false,
+      "income_tax": 2841.30,
+      "national_insurance": 1305.50,
+      "health_insurance": 563.00
+    },
+    "voluntary": {}
+  },
+
+  "contributions": {
+    "pension": {
+      "base_salary_for_pension": 17350.00,
+      "employee": 1145.10,
+      "employer": 1214.50,
+      "severance": 1474.75,
+      "base_for_severance": 17350.00
+    },
+    "study_fund": {
+      "base_salary_for_study_fund": 15712.00,
+      "employee": 392.80,
+      "employer": 1178.40,
+      "employee_rate_percent": 2.5,
+      "employer_rate_percent": 7.5
+    }
+  },
+
+  "tax": {
+    "gross_for_income_tax": 17850.00,
+    "taxable_income": 16704.90,
+    "marginal_tax_rate_percent": 31,
+    "tax_credit_points": 2.75,
+    "tax_credit_points_breakdown": {
+      "resident": 2.25,
+      "woman": 0.5
+    }
+  },
+
+  "national_insurance": {
+    "gross_for_national_insurance": 18450.00
+  },
+
+  "employment": {
+    "employment_start_date": "01/03/2022",
+    "job_percent": 100
+  },
+
+  "parties": {
+    "employer_name": "טכנולוגיות אבן יסוד בע\"מ",
+    "employee_name": "אופק דיל",
+    "employee_id": "203848571"
+  },
+
+  "insurances": {
+    "hmo": "כללית"
+  },
+
+  "quality": {
+    "score": 0.91,
+    "confidence": "high",
+    "warnings": [],
+    "debug": {
+      "source_type": "pdf_embedded_text",
+      "sections": 1,
+      "study_line": "קרן השתלמות   2.5%   392.80   7.5%   1,178.40",
+      "pension_lines_sample": [
+        "פנסיה מקיפה  6.6%  1,145.10  7.0%  1,214.50",
+        "פיצויים                                  8.5%  1,474.75"
+      ]
+    }
+  },
+
+  "raw": {
+    "ocr_engine": "tesseract-cli",
+    "ocr_lang": "heb+eng",
+    "text_sha256": "9f2d4a1c8b7e6f3a5d2c9e1b4a7f8e6d3c2b1a9f8e7d6c5b4a3f2e1d0c9b8a7",
+    "rawText": "תלוש שכר לחודש 10/2025  שכר יסוד 16,500.00 ...",
+    "ocr_text": "תלוש שכר לחודש 10/2025  שכר יסוד 16,500.00 ..."
+  },
+
+  "summary": {
+    "employeeName": "אופק דיל",
+    "employerName": "טכנולוגיות אבן יסוד בע\"מ",
+    "employeeId": "203848571",
+    "date": "10/2025",
+    "grossSalary": 18450.00,
+    "netSalary": 13127.45,
+    "baseSalary": 16500.00,
+    "vacationDays": 18.5,
+    "sickDays": 22.0,
+    "pensionEmployee": 1145.10,
+    "pensionEmployer": 1214.50,
+    "pensionSeverance": 1474.75,
+    "trainingFundEmployee": 392.80,
+    "trainingFundEmployer": 1178.40,
+    "trainingFundEmployeeRate": 2.5,
+    "trainingFundEmployerRate": 7.5,
+    "tax": 2841.30,
+    "nationalInsurance": 1305.50,
+    "healthInsurance": 563.00,
+    "mandatoryDeductionsTotal": 4709.80,
+    "marginalTaxRate": 31,
+    "taxCreditPoints": 2.75,
+    "jobPercentage": 100,
+    "workingDays": 22,
+    "workingHours": 182
+  }
+}

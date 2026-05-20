@@ -49,7 +49,10 @@ export default function ScanStatusPage() {
       response.data.status === "uploaded"
         ? "pending"
         : response.data.status || "pending";
-    if (nextStatus === "completed") {
+    if (nextStatus === "completed" || nextStatus === "needs_review") {
+      // needs_review is terminal — extraction finished with warnings.
+      // Treat it like completed at this stage; the detail page will surface
+      // the warning banner with the specific reason.
       setStatus("completed");
       setError("");
       return;

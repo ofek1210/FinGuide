@@ -60,12 +60,24 @@ export type PayslipLineItem = {
   amount: number;
 };
 
+/** Backend status of the extraction pipeline for this payslip. */
+export type PayslipExtractionStatus =
+  | "completed"
+  | "needs_review"
+  | "failed"
+  | "processing"
+  | "pending";
+
 /** Single payslip detail – structure ready for backend OCR/API */
 export type PayslipDetail = {
   id: string;
   periodLabel: string;
   periodDate: string;
   paymentDate?: string;
+  /** Extraction pipeline outcome; "needs_review" means the schema gate flagged at least one critical field. */
+  extractionStatus?: PayslipExtractionStatus;
+  /** Human-readable explanation when extractionStatus is "needs_review" or "failed". */
+  extractionMessage?: string | null;
   employerName?: string;
   employeeName?: string;
   employeeId?: string;

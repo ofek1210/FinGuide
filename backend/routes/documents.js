@@ -8,6 +8,7 @@ const {
   getDocument,
   deleteDocument,
   downloadDocument,
+  reprocessDocument,
 } = require('../controllers/documentController');
 const { protect } = require('../middleware/auth');
 const { upload, handleUploadError } = require('../middleware/upload');
@@ -31,6 +32,9 @@ router.get('/payslip-history', getPayslipHistory);
 
 // GET /api/documents/:id/download - הורדת מסמך (לפני /:id כדי שלא יתפוס "id/download")
 router.get('/:id/download', downloadDocument);
+
+// POST /api/documents/:id/reprocess - הרצה מחדש של חילוץ על הקובץ הקיים
+router.post('/:id/reprocess', reprocessDocument);
 
 // GET /api/documents/:id - קבלת מסמך בודד
 router.get('/:id', getDocument);

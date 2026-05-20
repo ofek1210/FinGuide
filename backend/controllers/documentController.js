@@ -130,6 +130,68 @@ exports.getPayslipHistory = async (req, res, next) => {
   }
 };
 
+// POST /api/documents/:id/reprocess - run extraction again on the existing PDF.
+// Lets the user re-extract a payslip after a pipeline upgrade (e.g. the
+// net_payable bug fix) without having to re-upload the file.
+exports.reprocessDocument = async (req, res, next) => {
+  try {
+    const document = await Document.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    });
+
+    if (!document) {
+      return next(new NotFoundError('מסמך לא נמצא'));
+    }
+    if (!document.filePath) {
+      return next(new NotFoundError('הקובץ המקורי לא קיים יותר — לא ניתן להריץ חילוץ מחדש'));
+    }
+
+    // Path-traversal guard: same posture as downloadDocument.
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
+    const resolvedPath = path.resolve(document.filePath);
+    if (!resolvedPath.startsWith(uploadsDir)) {
+      return next(new NotFoundError('מסמך לא נמצא'));
+    }
+
+    document.status = 'processing';
+    document.processingError = null;
+    await document.save();
+
+    try {
+      const { data } = await extractPayslipFile(document.filePath);
+
+      const fieldsMeta = buildFieldsMeta(data);
+      if (fieldsMeta) data.fields_meta = fieldsMeta;
+
+      const validation = validatePayslipAnalysis(data);
+      document.analysisData = data;
+      document.processedAt = new Date();
+      if (validation.ok) {
+        document.status = 'completed';
+        document.processingError = null;
+      } else {
+        document.status = 'needs_review';
+        document.processingError = validation.message;
+      }
+      await document.save();
+    } catch (extractionError) {
+      console.error('❌ Reprocess failed for document', document._id, extractionError);
+      document.status = 'failed';
+      document.processingError = extractionError?.message || 'Reprocess failed';
+      document.processedAt = new Date();
+      await document.save().catch(() => {});
+    }
+
+    res.status(200).json({
+      success: true,
+      data: serializeDocument(document),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // קבלת מסמך בודד
 exports.getDocument = async (req, res, next) => {
   try {

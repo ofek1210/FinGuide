@@ -10,12 +10,13 @@ import {
   Hash,
   Briefcase,
   MessageSquareText,
+  RefreshCw,
   Sun,
   Heart,
 } from "lucide-react";
 import PayslipHistoryLayout from "../components/payslip-history/PayslipHistoryLayout";
 import { downloadDocument } from "../api/documents.api";
-import { fetchPayslipDetail } from "../services/payslip.service";
+import { fetchPayslipDetail, reprocessPayslip } from "../services/payslip.service";
 import type { PayslipDetail } from "../types/payslip";
 import { APP_ROUTES } from "../types/navigation";
 import {
@@ -32,6 +33,8 @@ export default function PayslipDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isReprocessing, setIsReprocessing] = useState(false);
+  const [reprocessNotice, setReprocessNotice] = useState<string | null>(null);
 
   const earningsTotal = useMemo(() => {
     if (!payslip) return 0;
@@ -76,6 +79,28 @@ export default function PayslipDetailPage() {
   const handleBackToHistory = useCallback(() => {
     navigate(APP_ROUTES.payslipHistory);
   }, [navigate]);
+
+  const handleReprocess = useCallback(async () => {
+    if (!payslip?.id || isReprocessing) return;
+    setIsReprocessing(true);
+    setReprocessNotice(null);
+    try {
+      const refreshed = await reprocessPayslip(payslip.id);
+      if (refreshed) {
+        setPayslip(refreshed);
+        setReprocessNotice("החילוץ עודכן — הערכים שמוצגים הם תוצאת הרצה חדשה.");
+      } else {
+        setReprocessNotice("החילוץ הצליח אבל לא הצלחנו להציג את הערכים החדשים. נסה לרענן.");
+      }
+    } catch (reprocessError) {
+      const message = reprocessError instanceof Error
+        ? reprocessError.message
+        : "החילוץ מחדש נכשל.";
+      setReprocessNotice(message);
+    } finally {
+      setIsReprocessing(false);
+    }
+  }, [payslip?.id, isReprocessing]);
 
   const handleDownload = useCallback(async () => {
     if (!payslip?.id) return;
@@ -153,6 +178,32 @@ export default function PayslipDetailPage() {
           <p className="payslip-detail-period">{payslip.periodLabel || "לא זוהה"}</p>
         </div>
       </section>
+
+      {payslip.extractionStatus === "needs_review" && (
+        <section
+          className="payslip-detail-review-banner"
+          role="status"
+          aria-live="polite"
+        >
+          <AlertTriangle aria-hidden="true" />
+          <div className="payslip-detail-review-banner-body">
+            <p className="payslip-detail-review-banner-title">
+              נמצאו בעיות בחילוץ — בדוק ידנית
+            </p>
+            <p className="payslip-detail-review-banner-text">
+              {payslip.extractionMessage ||
+                "אחד או יותר מהשדות הקריטיים (ברוטו, נטו, ניכויי חובה, תאריך) חסר או לא עבר בדיקת שפיות. הערכים מוצגים אך מומלץ לוודא מול ה-PDF המקורי."}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="payslip-detail-review-banner-cta"
+            onClick={handleViewMissingFields}
+          >
+            עבור לשדות חסרים
+          </button>
+        </section>
+      )}
 
       <section className="payslip-detail-card payslip-detail-info">
         <h2 className="payslip-detail-card-title">פרטי התלוש</h2>
@@ -332,6 +383,16 @@ export default function PayslipDetailPage() {
         </button>
       </section>
 
+      {reprocessNotice && (
+        <p
+          className="payslip-detail-reprocess-notice"
+          role="status"
+          aria-live="polite"
+        >
+          {reprocessNotice}
+        </p>
+      )}
+
       <div className="payslip-detail-actions">
         <button
           type="button"
@@ -339,6 +400,20 @@ export default function PayslipDetailPage() {
           onClick={handleBackToHistory}
         >
           חזרה להיסטוריה
+        </button>
+        <button
+          type="button"
+          className="payslip-detail-btn payslip-detail-btn-secondary payslip-detail-btn-reprocess"
+          onClick={handleReprocess}
+          disabled={!payslip.id || isReprocessing}
+          aria-label="הרץ חילוץ מחדש על הקובץ המקורי"
+          title="מריץ את ה-pipeline החדש על אותו PDF — שימושי אחרי שיפורים באלגוריתם"
+        >
+          <RefreshCw
+            aria-hidden="true"
+            className={isReprocessing ? "payslip-detail-reprocess-icon-spinning" : undefined}
+          />
+          {isReprocessing ? "מחלץ מחדש..." : "עדכן חילוץ"}
         </button>
         <button
           type="button"

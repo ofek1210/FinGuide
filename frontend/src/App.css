@@ -2066,6 +2066,87 @@
   height: 26px;
 }
 
+.payslip-detail-review-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(252, 211, 77, 0.18), rgba(245, 158, 11, 0.1));
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  color: #7c2d12;
+  text-align: right;
+}
+
+.payslip-detail-review-banner > svg {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  color: #b45309;
+  margin-top: 2px;
+}
+
+.payslip-detail-review-banner-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.payslip-detail-review-banner-title {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.payslip-detail-review-banner-text {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #92400e;
+  word-break: break-word;
+}
+
+.payslip-detail-review-banner-cta {
+  flex-shrink: 0;
+  align-self: center;
+  padding: 8px 14px;
+  border: 1px solid rgba(180, 83, 9, 0.45);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  color: #7c2d12;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 120ms ease, transform 120ms ease;
+}
+
+.payslip-detail-review-banner-cta:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.payslip-detail-review-banner-cta:active {
+  transform: translateY(1px);
+}
+
+.payslip-detail-reprocess-notice {
+  margin: 8px 0 0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: #3730a3;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.payslip-detail-reprocess-icon-spinning {
+  animation: payslip-reprocess-spin 0.9s linear infinite;
+}
+
+@keyframes payslip-reprocess-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 .payslip-detail-title {
   margin: 0 0 4px;
   font-size: clamp(1.5rem, 2.5vw, 2rem);

@@ -18,6 +18,7 @@ const STATUS_LABELS: Record<DocumentStatus, string> = {
   pending: "ממתין לעיבוד",
   processing: "בעיבוד",
   completed: "מוכן",
+  needs_review: "דורש סקירה",
   failed: "שגיאה",
 };
 
