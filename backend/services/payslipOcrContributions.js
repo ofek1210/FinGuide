@@ -9,6 +9,7 @@ const {
   extractPercentTokens,
 } = require('./payslipOcrNumbers');
 const { pushCandidate, resolveBestNumericCandidate } = require('./payslipOcrResolver');
+const { buildContributionDetection } = require('../utils/detectFundWithoutDeposit');
 
 const STUDY_CONTEXT_REGEX = /קרן\s*השתלמות/i;
 const STUDY_BASE_REGEX = /שכר\s*לקרן\s*השתלמות/i;
@@ -439,6 +440,11 @@ function resolveContributionCandidates(store, stats, warnings) {
       employeeRate: undefined,
       employerRate: undefined,
       debug_line: stats.studyDebugLine,
+      detection: buildContributionDetection({
+        sectionDetected: stats.studyLinesFound,
+        employee: studyEmployee?.value,
+        employer: studyEmployer?.value,
+      }),
       quality: {
         base: studyBase || null,
         employee: studyEmployee || null,
@@ -452,6 +458,11 @@ function resolveContributionCandidates(store, stats, warnings) {
       severance: pensionSeverance?.value,
       base_for_severance: pensionBase?.value,
       debug_lines: stats.pensionDebugLines,
+      detection: buildContributionDetection({
+        sectionDetected: stats.pensionLinesFound,
+        employee: pensionEmployee?.value,
+        employer: pensionEmployer?.value,
+      }),
       quality: {
         base: pensionBase || null,
         employee: pensionEmployee || null,

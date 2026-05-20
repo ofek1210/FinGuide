@@ -1,5 +1,7 @@
 const Document = require('../models/Document');
+const User = require('../models/User');
 const { buildSavingsForecast } = require('../services/savingsForecastService');
+const { buildFundDepositFindings } = require('../utils/detectFundWithoutDeposit');
 
 const STALE_DAYS = 30;
 
@@ -13,8 +15,10 @@ const buildFinding = (id, title, severity, details) => ({
 exports.getFindings = async (req, res, next) => {
   try {
     const documents = await Document.find({ user: req.user.id })
-      .select('originalName fileSize status updatedAt metadata')
+      .select('originalName fileSize status updatedAt uploadedAt metadata analysisData')
       .lean();
+
+    const user = await User.findById(req.user.id).select('onboarding').lean();
 
     if (documents.length === 0) {
       const findings = [
@@ -139,6 +143,13 @@ exports.getFindings = async (req, res, next) => {
         )
       );
     }
+
+    const fundFindings = buildFundDepositFindings(documents, user);
+    fundFindings.forEach(item => {
+      findings.push(
+        buildFinding(item.id, item.title, item.severity, item.details)
+      );
+    });
 
     return res.status(200).json({
       success: true,

@@ -441,6 +441,7 @@ function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
         employer: pension.employer,
         severance: pension.severance,
         base_for_severance: pension.base_for_severance,
+        detection: pension.detection,
       },
       study_fund: {
         base_salary_for_study_fund: study.base,
@@ -448,6 +449,7 @@ function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
         employer: study.employer,
         employee_rate_percent: study.employeeRate,
         employer_rate_percent: study.employerRate,
+        detection: study.detection,
       },
     },
 
