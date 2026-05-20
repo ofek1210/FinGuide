@@ -9,7 +9,6 @@ const { pushCandidate, sortCandidatesByScore } = require('./payslipOcrResolver')
 const EMPLOYEE_LABEL_REGEX = /(?:שם\s+עובד|שם\s+העובד|Employee\s+Name)[:\s-]+([^\n]+)/i;
 const EMPLOYER_LABEL_REGEX = /(?:שם\s+מעסיק|שם\s+מעביד|שם\s+החברה|Employer\s+Name)[:\s-]+([^\n]+)/i;
 const EMPLOYEE_ID_LABEL_REGEX = /(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ID)[:\s-]*(\d{7,9})/i;
-const EMPLOYEE_NUMBER_REGEX = /(?:מס['׳]?\s*עובד|מספר\s+העובד|מספר\s+עובד)[:\s-]*(\d+)/i;
 const CONTRIBUTION_CONTEXT_REGEX =
   /(?:קרן\s*השתלמות|שכר\s*לקצבה|תגמול|תגמולים|פיצוי|פיצויים|הפרשת\s*מעסיק|ניכוי\s*עובד)/i;
 // Michpal format: "חברה: NNN - Company Name בע"מ"
@@ -47,6 +46,44 @@ function isValidEmployerName(value) {
 
 function isValidEmployeeId(value) {
   return /^\d{7,9}$/.test(String(value || '').trim());
+}
+
+// Israeli teudat-zehut checksum: 9 digits, weighted [1,2,1,2,...], digit-sum
+// of each product, total divisible by 10. Helps distinguish a real ID
+// (322819145 ✓) from a 7-digit ZIP code that just happens to be nearby.
+function isLikelyIsraeliId(value) {
+  const digits = String(value || '').trim();
+  if (!/^\d{9}$/.test(digits)) return false;
+  let total = 0;
+  for (let i = 0; i < 9; i += 1) {
+    const product = Number(digits[i]) * ((i % 2) + 1);
+    total += product > 9 ? Math.floor(product / 10) + (product % 10) : product;
+  }
+  return total % 10 === 0;
+}
+
+/**
+ * When the same employee_id value appears in multiple candidate rows (e.g.
+ * once on the header line and again next to the ID label), it is far more
+ * likely the real ID than a one-off ZIP/tax-file token. Boost duplicates so
+ * they cross the 0.4 resolution threshold even when the original heuristics
+ * scored them at 0.30–0.34.
+ */
+function applyEmployeeIdConsistencyBoost(candidates) {
+  if (!Array.isArray(candidates) || candidates.length < 2) return;
+  const occurrences = new Map();
+  for (const candidate of candidates) {
+    if (!candidate || !isValidEmployeeId(candidate.value)) continue;
+    occurrences.set(candidate.value, (occurrences.get(candidate.value) || 0) + 1);
+  }
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const count = occurrences.get(candidate.value) || 0;
+    let boost = 0;
+    if (count >= 2) boost += 0.16;
+    if (isLikelyIsraeliId(candidate.value)) boost += 0.08;
+    if (boost > 0) candidate.score = Math.min(1, candidate.score + boost);
+  }
 }
 
 function isEmployerContextLine(line) {
@@ -244,6 +281,8 @@ function collectPartyCandidates(context) {
 }
 
 function resolvePartyCandidates(store) {
+  applyEmployeeIdConsistencyBoost(store.employee_id);
+
   const employeeName = sortCandidatesByScore(store.employee_name).find(
     candidate => candidate.score >= 0.4 && isValidEmployeeName(candidate.value),
   );
@@ -262,7 +301,9 @@ function resolvePartyCandidates(store) {
 }
 
 module.exports = {
+  applyEmployeeIdConsistencyBoost,
   collectPartyCandidates,
+  isLikelyIsraeliId,
   isValidEmployeeId,
   isValidEmployeeName,
   isValidEmployerName,
