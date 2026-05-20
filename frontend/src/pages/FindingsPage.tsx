@@ -31,6 +31,15 @@ const findingSeverityLabels: Record<FindingSeverity, string> = {
   warning: "אזהרה",
 };
 
+const FUND_DEPOSIT_FINDING_IDS = new Set([
+  "study_fund_no_deposit",
+  "pension_no_deposit",
+  "onboarding_study_fund_mismatch",
+  "onboarding_pension_mismatch",
+]);
+
+const isFundDepositFinding = (id: string) => FUND_DEPOSIT_FINDING_IDS.has(id);
+
 const SEVERITY_ORDER: FindingSeverity[] = ["warning", "info"];
 
 const FORECAST_STORAGE_KEY = "finguide_savings_forecast_inputs";
@@ -923,6 +932,15 @@ export default function FindingsPage() {
                     <span className={`insight-card-badge severity-${finding.severity}`}>
                       {findingSeverityLabels[finding.severity]}
                     </span>
+                    {isFundDepositFinding(finding.id) ? (
+                      <button
+                        type="button"
+                        className="dashboard-hero-action insight-card-action"
+                        onClick={() => navigate(APP_ROUTES.payslipHistory)}
+                      >
+                        לצפייה בתלושים
+                      </button>
+                    ) : null}
                   </div>
                 </li>
               ))}
