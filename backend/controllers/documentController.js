@@ -5,6 +5,7 @@ const { promisify } = require('util');
 const Document = require('../models/Document');
 const { FileUploadError, NotFoundError } = require('../utils/appErrors');
 const { normalizeDocumentMetadataInput } = require('../utils/documentMetadata');
+const { serializeDocument } = require('../serializers/documentSerializer');
 const { extractPayslipFile } = require('../services/payslipOcr');
 const {
   extractPayslipFields,
