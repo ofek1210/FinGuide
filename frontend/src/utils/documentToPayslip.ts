@@ -69,7 +69,10 @@ function getAnalysisData(doc: DocumentItem): DocumentPayslipAnalysis | null {
 // ---------------------------------------------------------------------------
 
 export function isPayslipDocument(doc: DocumentItem): boolean {
-  if (doc.status !== "completed") return false;
+  // Accept both fully-completed extractions and ones that the schema gate
+  // flagged for review — the UI shows them with a warning banner instead of
+  // hiding the document entirely.
+  if (doc.status !== "completed" && doc.status !== "needs_review") return false;
   const analysis = getAnalysisData(doc);
   return analysis !== null && typeof analysis === "object";
 }
@@ -284,11 +287,21 @@ export function documentToPayslipDetail(doc: DocumentItem): PayslipDetail | null
     typeof summary?.sickDays === "number" ? summary.sickDays : undefined;
   const paymentDate = normalizePaymentDate(month, summary?.date);
 
+  const extractionStatus = doc.status === "needs_review"
+    ? "needs_review"
+    : doc.status === "failed"
+      ? "failed"
+      : doc.status === "completed"
+        ? "completed"
+        : undefined;
+
   return {
     id: doc._id,
     periodLabel: formatPeriodLabel(month),
     periodDate: periodMonthToDate(month) || "",
     paymentDate,
+    extractionStatus,
+    extractionMessage: doc.processingError ?? null,
     employerName: analysis.parties?.employer_name ?? undefined,
     employeeName: analysis.parties?.employee_name ?? undefined,
     employeeId: analysis.parties?.employee_id ?? undefined,

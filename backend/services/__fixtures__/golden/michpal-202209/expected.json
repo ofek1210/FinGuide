@@ -1,0 +1,10 @@
+{
+  "_note": "Hand-verified ground truth for the 09/2022 section of the multi-month Michpal PDF. income_tax is intentionally omitted because no מס הכנסה line exists in this payslip (employee was below tax threshold). net_payable=5636.85 is לתשלום (after voluntary deductions), not שכר נטו=5936.85 — the תשלום to bank is what we treat as net.",
+  "period_month": "09/2022",
+  "gross_total": 6504.40,
+  "net_payable": 5636.85,
+  "mandatory_total": 567.55,
+  "national_insurance": 37.00,
+  "health_insurance": 205.00,
+  "employee_id": "322819145"
+}

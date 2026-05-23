@@ -7,10 +7,10 @@ const readFixture = name =>
   fs.readFileSync(path.join(__dirname, '..', 'fixtures', name), 'utf8');
 
 describe('extractPayslipFinancialEN - Hebrew payslip', () => {
-  it('should parse basic gross/net and parties from hebrew OCR text', () => {
+  it('should parse basic gross/net and parties from hebrew OCR text', async () => {
     const text = readFixture('payslip-he-1.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-02.pdf',
     });
 
@@ -27,10 +27,10 @@ describe('extractPayslipFinancialEN - Hebrew payslip', () => {
 });
 
 describe('extractPayslipFinancialEN - English payslip', () => {
-  it('should parse basic fields from english OCR text', () => {
+  it('should parse basic fields from english OCR text', async () => {
     const text = readFixture('payslip-en-1.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-03.pdf',
     });
 
@@ -46,10 +46,10 @@ describe('extractPayslipFinancialEN - English payslip', () => {
 });
 
 describe('extractPayslipFinancialEN - partial data', () => {
-  it('should handle missing fields gracefully and keep raw text', () => {
+  it('should handle missing fields gracefully and keep raw text', async () => {
     const text = readFixture('payslip-partial-1.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'SomePaySlip-2024-04.pdf',
     });
 
@@ -67,10 +67,10 @@ describe('extractPayslipFinancialEN - partial data', () => {
 });
 
 describe('extractPayslipFinancialEN - regression coverage', () => {
-  it('does not swap gross/net when explicit candidates conflict', () => {
+  it('does not swap gross/net when explicit candidates conflict', async () => {
     const text = readFixture('payslip-he-regression-no-swap.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-05.pdf',
     });
 
@@ -84,10 +84,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     );
   });
 
-  it('omits pension and study-fund employee/employer amounts when roles are ambiguous', () => {
+  it('omits pension and study-fund employee/employer amounts when roles are ambiguous', async () => {
     const text = readFixture('payslip-he-regression-ambiguous-pension.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-06.pdf',
     });
 
@@ -104,10 +104,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     );
   });
 
-  it('prefers labeled employee identity over heuristic name-id matches', () => {
+  it('prefers labeled employee identity over heuristic name-id matches', async () => {
     const text = readFixture('payslip-he-regression-party-priority.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-07.pdf',
     });
 
@@ -121,10 +121,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     );
   });
 
-  it('prefers validated table-header totals over tax-base noise lines', () => {
+  it('prefers validated table-header totals over tax-base noise lines', async () => {
     const text = readFixture('payslip-he-regression-table-header.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-08.pdf',
     });
 
@@ -137,10 +137,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.summary.netSalary).toBe(3861);
   });
 
-  it('parses merged numeric tokens without collapsing gross salary fields', () => {
+  it('parses merged numeric tokens without collapsing gross salary fields', async () => {
     const text = readFixture('payslip-he-regression-merged-numbers.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-09.pdf',
     });
 
@@ -150,10 +150,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.summary.grossSalary).toBe(4072.05);
   });
 
-  it('ignores cumulative duplicate labels when resolving deduction amounts', () => {
+  it('ignores cumulative duplicate labels when resolving deduction amounts', async () => {
     const text = readFixture('payslip-he-regression-duplicate-labels.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-10.pdf',
     });
 
@@ -163,10 +163,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.deductions.mandatory.health_insurance).toBe(220);
   });
 
-  it('keeps period.month authoritative when date text disagrees', () => {
+  it('keeps period.month authoritative when date text disagrees', async () => {
     const text = readFixture('payslip-he-regression-month-date-disagreement.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-02.pdf',
     });
 
@@ -174,10 +174,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.summary.date).toBe('2024-02');
   });
 
-  it('does not assign pension amounts when the resolved pension base does not support the OCR amounts', () => {
+  it('does not assign pension amounts when the resolved pension base does not support the OCR amounts', async () => {
     const text = readFixture('payslip-he-regression-pension-base-mismatch.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-11.pdf',
     });
 
@@ -189,10 +189,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     );
   });
 
-  it('resolves wrapped deduction labels from adjacent lines without corrupting salary fields', () => {
+  it('resolves wrapped deduction labels from adjacent lines without corrupting salary fields', async () => {
     const text = readFixture('payslip-he-regression-wrapped-label.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-12.pdf',
     });
 
@@ -202,10 +202,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.deductions.mandatory.income_tax).toBe(2500);
   });
 
-  it('handles mixed Hebrew and English labels in the same payslip', () => {
+  it('handles mixed Hebrew and English labels in the same payslip', async () => {
     const text = readFixture('payslip-he-regression-mixed-labels.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2025-01.pdf',
     });
 
@@ -221,10 +221,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     );
   });
 
-  it('parses broken European decimal separators consistently', () => {
+  it('parses broken European decimal separators consistently', async () => {
     const text = readFixture('payslip-he-regression-broken-decimals.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2025-02.pdf',
     });
 
@@ -234,10 +234,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.deductions.mandatory.total).toBe(3330.75);
   });
 
-  it('keeps tax-base rows separate from earnings rows in row-shifted tables', () => {
+  it('keeps tax-base rows separate from earnings rows in row-shifted tables', async () => {
     const text = readFixture('payslip-he-regression-row-shifted-table.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2025-03.pdf',
     });
 
@@ -248,10 +248,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.summary.tax).toBe(1100);
   });
 
-  it('parses OCR JSON input through the same structured output contract', () => {
+  it('parses OCR JSON input through the same structured output contract', async () => {
     const json = JSON.parse(readFixture('payslip-ocr-json-sample.json'));
 
-    const result = extractPayslipFinancialEN(
+    const result = await extractPayslipFinancialEN(
       {
         ocrJson: json,
       },
@@ -268,10 +268,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.summary.netSalary).toBe(15500);
   });
 
-  it('resolves wrapped pension contribution labels from adjacent amount lines', () => {
+  it('resolves wrapped pension contribution labels from adjacent amount lines', async () => {
     const text = readFixture('payslip-he-regression-wrapped-contributions.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2025-05.pdf',
     });
 
@@ -282,10 +282,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.contributions.pension.severance).toBe(999.6);
   });
 
-  it('ignores cumulative contribution sections when current-period lines are present', () => {
+  it('ignores cumulative contribution sections when current-period lines are present', async () => {
     const text = readFixture('payslip-he-regression-cumulative-contributions.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2025-06.pdf',
     });
 
@@ -295,10 +295,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.contributions.pension.severance).toBe(833);
   });
 
-  it('keeps employee identity authoritative when contribution blocks contain employer identifiers', () => {
+  it('keeps employee identity authoritative when contribution blocks contain employer identifiers', async () => {
     const text = readFixture('payslip-he-regression-contribution-id-collision.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2025-07.pdf',
     });
 
@@ -312,10 +312,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     );
   });
 
-  it('keeps tax-base and net-pay rows separate when values overlap numerically', () => {
+  it('keeps tax-base and net-pay rows separate when values overlap numerically', async () => {
     const text = readFixture('payslip-he-regression-tax-net-overlap.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2025-08.pdf',
     });
 
@@ -326,10 +326,10 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.national_insurance.gross_for_national_insurance).toBe(11200);
   });
 
-  it('attaches normalized warning categories to extraction quality', () => {
+  it('attaches normalized warning categories to extraction quality', async () => {
     const text = readFixture('payslip-he-regression-ambiguous-pension.txt');
 
-    const result = extractPayslipFinancialEN(text, {
+    const result = await extractPayslipFinancialEN(text, {
       sourcePath: 'PaySlip2024-06.pdf',
     });
 

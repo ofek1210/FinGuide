@@ -19,6 +19,8 @@ const {
   resolveMandatoryTotalCandidate,
   sortCandidatesByScore,
 } = require('./payslipOcrResolver');
+const { reconcileCoreCandidates } = require('./payslipOcrReconciler');
+const { adjudicateField, shouldAdjudicate } = require('./llmFieldAdjudicator');
 const { collectPartyCandidates, resolvePartyCandidates } = require('./payslipOcrParties');
 const {
   collectContributionCandidates,
@@ -27,13 +29,10 @@ const {
 const { buildPayslipSummary } = require('./payslipOcrSummary');
 const {
   extractHMO,
-  extractMonthFromFilename,
-  extractMonthYYYYMM,
   linesOf,
   match1,
   matchAmountFlexible,
   parseDateDDMMYYYYorYY,
-  parseMoney,
   parseNumber,
   parsePercent,
   translateHMO,
@@ -67,6 +66,7 @@ function splitPayslipSections(fullText) {
   const markers = [];
   let m;
 
+  // eslint-disable-next-line no-cond-assign
   while ((m = SECTION_MARKER.exec(fullText)) !== null) {
     markers.push({ index: m.index, period: m[1] });
   }
@@ -216,7 +216,51 @@ function logExtractionResult({ sourcePath, extractionMethod, psm, data }) {
   });
 }
 
-function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
+/**
+ * Run the LLM adjudicator for a single field if the gating rules say so.
+ * Returns the (possibly replaced) candidate plus a debug record for the
+ * quality block. Never throws — LLM failures fall back to the heuristic.
+ */
+async function applyLlmAdjudication({
+  field,
+  candidates,
+  bestCandidate,
+  violations,
+  rawLines,
+  currentResolutions,
+}) {
+  const fieldViolations = (violations || []).filter(v => v.field === field);
+  const hasViolation = fieldViolations.length > 0;
+  if (!shouldAdjudicate({ candidates, bestCandidate, hasViolation })) {
+    return { candidate: bestCandidate, llm: null };
+  }
+
+  const result = await adjudicateField({
+    field,
+    candidates,
+    rawLines,
+    currentResolutions,
+  });
+  if (!result || result.chosenIndex === null) {
+    return { candidate: bestCandidate, llm: result };
+  }
+
+  const chosen = candidates[result.chosenIndex];
+  if (!chosen) return { candidate: bestCandidate, llm: result };
+
+  // Boost the chosen candidate's score so downstream quality reporting
+  // reflects that the LLM signed off on it. Preserve original metadata.
+  const adjudicated = {
+    ...chosen,
+    score: Math.max(chosen.score, Math.min(1, 0.85 + (result.confidence - 0.6) * 0.3)),
+    source: chosen.source,
+    evidenceCategory: 'llm_adjudicated',
+    reason: `LLM Haiku 4.5: ${result.reason}`,
+  };
+  return { candidate: adjudicated, llm: result };
+}
+
+async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
   const warnings = [];
   const sourcePayload =
     typeof ocrInput === 'string'
@@ -234,26 +278,63 @@ function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
   )[0];
   const month = monthCandidate?.value;
 
-  const coreFieldCandidates = collectCoreFieldCandidates(normalizedDoc);
+  const rawCoreFieldCandidates = collectCoreFieldCandidates(normalizedDoc);
+  const reconciliation = reconcileCoreCandidates(rawCoreFieldCandidates);
+  const coreFieldCandidates = reconciliation.refined;
+
+  // Preserve the existing observability contract: when the reconciler rejects
+  // a net candidate that exceeded gross, surface the legacy conflict warning
+  // so downstream consumers (tests, UI badges) keep seeing it.
+  const netExceedsGrossRejection = reconciliation.violations.find(
+    v => v.field === 'net_payable' && v.rule === 'exceeds_gross_minus_mandatory',
+  );
+  if (netExceedsGrossRejection) {
+    warnings.push(
+      'Conflicting gross/net candidates detected; kept only the stronger validated salary field.',
+    );
+  }
+
   const supplementalFieldCandidates = collectSupplementalFieldCandidates(normalizedDoc, labelMap);
 
-  const resolvedIncomeTax = resolveBestNumericCandidate('income_tax', coreFieldCandidates.income_tax);
-  const resolvedNationalInsurance = resolveBestNumericCandidate(
+  const llmAdjudications = {};
+  const adjudicate = async (field, candidate, partialResolutions) => {
+    const outcome = await applyLlmAdjudication({
+      field,
+      candidates: coreFieldCandidates[field] || [],
+      bestCandidate: candidate,
+      violations: reconciliation.violations,
+      rawLines: lines,
+      currentResolutions: partialResolutions,
+    });
+    if (outcome.llm) llmAdjudications[field] = outcome.llm;
+    return outcome.candidate;
+  };
+
+  let resolvedIncomeTax = resolveBestNumericCandidate('income_tax', coreFieldCandidates.income_tax);
+  let resolvedNationalInsurance = resolveBestNumericCandidate(
     'national_insurance',
     coreFieldCandidates.national_insurance,
   );
-  const resolvedHealthInsurance = resolveBestNumericCandidate(
+  let resolvedHealthInsurance = resolveBestNumericCandidate(
     'health_insurance',
     coreFieldCandidates.health_insurance,
   );
-  const { grossCandidate, netCandidate } = resolveGrossAndNetCandidates(
+  let { grossCandidate, netCandidate } = resolveGrossAndNetCandidates(
     coreFieldCandidates.gross_total,
     coreFieldCandidates.net_payable,
     warnings,
   );
 
+  // Adjudicate gross first — every other field's adjudication can use it.
+  grossCandidate = await adjudicate('gross_total', grossCandidate, {});
   const gross_total = grossCandidate?.value;
-  const net_payable = netCandidate?.value;
+
+  // Then components in parallel — they don't depend on each other.
+  [resolvedIncomeTax, resolvedNationalInsurance, resolvedHealthInsurance] = await Promise.all([
+    adjudicate('income_tax', resolvedIncomeTax, { gross_total }),
+    adjudicate('national_insurance', resolvedNationalInsurance, { gross_total }),
+    adjudicate('health_insurance', resolvedHealthInsurance, { gross_total }),
+  ]);
 
   const mandatoryResolution = resolveMandatoryTotalCandidate(
     coreFieldCandidates.mandatory_total || [],
@@ -265,7 +346,21 @@ function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
     gross_total,
     warnings,
   );
-  const mandatory_total = mandatoryResolution.candidate?.value;
+  let mandatoryCandidate = mandatoryResolution.candidate;
+  mandatoryCandidate = await adjudicate('mandatory_total', mandatoryCandidate, {
+    gross_total,
+    income_tax: resolvedIncomeTax?.value,
+    national_insurance: resolvedNationalInsurance?.value,
+    health_insurance: resolvedHealthInsurance?.value,
+  });
+  const mandatory_total = mandatoryCandidate?.value;
+
+  // Net last — needs gross and mandatory for its constraint context.
+  netCandidate = await adjudicate('net_payable', netCandidate, {
+    gross_total,
+    mandatory_total,
+  });
+  const net_payable = netCandidate?.value;
 
   const base_salary = resolveBestNumericCandidate(
     'base_salary',
@@ -490,6 +585,7 @@ function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
         sections: normalizedDoc.sections,
         study_line: study.debug_line,
         pension_lines_sample: pension.debug_lines,
+        ...(Object.keys(llmAdjudications).length > 0 ? { llm_adjudications: llmAdjudications } : {}),
       },
     },
 
@@ -526,7 +622,7 @@ async function extractPayslipFile(inputPath) {
         const sections = splitPayslipSections(embeddedText);
         // Use first section (most recent payslip in multi-month PDFs)
         const sectionText = sections[0].text;
-        const data = extractPayslipFinancialEN(sectionText, { sourcePath: abs });
+        const data = await extractPayslipFinancialEN(sectionText, { sourcePath: abs });
         logExtractionResult({
           sourcePath: abs,
           extractionMethod,
@@ -590,7 +686,7 @@ async function extractPayslipFile(inputPath) {
         continue;
       }
 
-      const data = extractPayslipFinancialEN(fullText, { sourcePath: abs });
+      const data = await extractPayslipFinancialEN(fullText, { sourcePath: abs });
       logExtractionResult({
         sourcePath: abs,
         extractionMethod,

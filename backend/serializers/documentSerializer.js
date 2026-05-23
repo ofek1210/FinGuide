@@ -10,7 +10,8 @@ const sanitizeAnalysisDataForApi = analysisData => {
   };
 
   if (safe.raw && typeof safe.raw === 'object') {
-    const { rawText, ocr_text, ...restRaw } = safe.raw;
+    const { rawText, ...restRaw } = safe.raw;
+    delete restRaw['ocr_text'];
     safe.raw = restRaw;
   }
 
@@ -38,6 +39,11 @@ const serializeDocument = document => {
     fileSize: raw.fileSize,
     mimeType: raw.mimeType,
     status: raw.status,
+    // Surface the schema-gate / extraction-failure reason so the UI can
+    // render a meaningful "needs review" / "failed" banner instead of a
+    // generic message. Validation errors describe the user's own document,
+    // not sensitive internals.
+    processingError: raw.processingError || null,
     uploadedAt: raw.uploadedAt,
     processedAt: raw.processedAt || null,
     analysisData: sanitizeAnalysisDataForApi(raw.analysisData),

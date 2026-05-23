@@ -1,5 +1,5 @@
 const Document = require('../models/Document');
-const { polishHebrewAnswer, askLLM } = require('../services/aiService');
+const { askLLM } = require('../services/aiService');
 const { detectSalaryAnomalies } = require('../utils/detectSalaryAnomalies');
 const { simulateWhatIf } = require('../utils/simulateWhatIf');
 

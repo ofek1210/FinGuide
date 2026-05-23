@@ -1,11 +1,18 @@
 import { apiBlob, apiJson } from "./client";
 
-/** Matches backend: pending, processing, completed, failed. "uploaded" is frontend-only for just-uploaded row. */
+/**
+ * Matches backend: pending, processing, completed, needs_review, failed.
+ * "uploaded" is frontend-only for the just-uploaded row.
+ * "needs_review" means extraction ran but the schema gate failed — values
+ * are present in analysisData but at least one critical field is missing
+ * or fails the cross-field sanity checks. UI should warn the user.
+ */
 export type DocumentStatus =
   | "uploaded"
   | "pending"
   | "processing"
   | "completed"
+  | "needs_review"
   | "failed";
 
 export type DocumentCategory =
@@ -49,6 +56,8 @@ export interface DocumentItem {
   originalName: string;
   fileSize: number;
   status?: DocumentStatus;
+  /** Reason the extraction was flagged or failed. Present when status is "needs_review" or "failed". */
+  processingError?: string | null;
   uploadedAt?: string;
   processedAt?: string;
   mimeType?: string;
@@ -253,6 +262,30 @@ export const getDocument = async (id: string) => {
   const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
   console.log("[frontend] getDocument response", payload);
   return payload;
+};
+
+/**
+ * POST /api/documents/:id/reprocess — re-run the extraction pipeline on the
+ * existing uploaded PDF without re-upload. Returns the freshly-resolved
+ * analysis values (and a new status, e.g. `needs_review`).
+ */
+export const reprocessDocument = async (id: string) => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as DocumentResponse;
+  }
+
+  const result = await apiJson<DocumentResponse>(`/api/documents/${id}/reprocess`, {
+    method: "POST",
+    auth: true,
+    fallbackErrorMessage: "החילוץ מחדש נכשל.",
+  });
+
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as DocumentResponse;
+  }
+
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
 };
 
 export const removeDocument = async (id: string) => {
