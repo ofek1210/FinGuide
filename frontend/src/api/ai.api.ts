@@ -5,6 +5,8 @@ export type ChatResponse = {
   answer?: string;
   intent?: string;
   source?: string;
+  conversationId?: string;
+  contextUsed?: string[];
   message?: string;
 };
 
@@ -13,21 +15,33 @@ export type ConversationMessage = {
   content: string;
 };
 
-const getToken = () => localStorage.getItem("token");
+export type StoredChatMessage = {
+  _id: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  metadata?: {
+    intent?: string;
+    contextUsed?: string[];
+    model?: string;
+  };
+  createdAt: string;
+};
+
+export type ConversationSummary = {
+  conversationId: string;
+  preview: string;
+  updatedAt: string;
+};
 
 export const chatWithAI = async (
   message: string,
   history: ConversationMessage[] = [],
+  conversationId?: string,
 ): Promise<ChatResponse> => {
-  const token = getToken();
-  if (!token) {
-    return { success: false, message: "אין הרשאה. נא להתחבר." };
-  }
-
   const result = await apiJson<ChatResponse>("/api/ai/chat", {
     method: "POST",
     auth: true,
-    body: { message, history },
+    body: { message, history, conversationId },
     fallbackErrorMessage: "שגיאה בשיחה עם הבוט.",
   });
 
@@ -37,3 +51,21 @@ export const chatWithAI = async (
 
   return result.data ?? { success: false, message: "תגובה לא תקינה." };
 };
+
+export async function getChatHistory(conversationId: string) {
+  const result = await apiJson<{ success: boolean; data: StoredChatMessage[] }>(
+    `/api/ai/chat/history?conversationId=${encodeURIComponent(conversationId)}`,
+    { auth: true, fallbackErrorMessage: "לא הצלחנו לטעון היסטוריה." },
+  );
+  if (!result.ok) return { success: false, data: [] as StoredChatMessage[] };
+  return result.data ?? { success: false, data: [] };
+}
+
+export async function listConversations() {
+  const result = await apiJson<{ success: boolean; data: ConversationSummary[] }>(
+    "/api/ai/chat/conversations",
+    { auth: true, fallbackErrorMessage: "לא הצלחנו לטעון שיחות." },
+  );
+  if (!result.ok) return { success: false, data: [] as ConversationSummary[] };
+  return result.data ?? { success: false, data: [] };
+}

@@ -6,6 +6,12 @@ export type PayslipHistoryItem = {
   periodMonthNumber?: number;
   netSalary: number | null;
   grossSalary: number | null;
+  tax?: number | null;
+  nationalInsurance?: number | null;
+  healthInsurance?: number | null;
+  pensionEmployee?: number | null;
+  pensionEmployer?: number | null;
+  pensionSeverance?: number | null;
   isLatest: boolean;
   downloadUrl?: string | null;
 };
