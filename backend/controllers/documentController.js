@@ -7,7 +7,6 @@ const { FileUploadError, NotFoundError } = require('../utils/appErrors');
 const { normalizeDocumentMetadataInput } = require('../utils/documentMetadata');
 const { serializeDocument } = require('../serializers/documentSerializer');
 const { extractPayslipFile } = require('../services/payslipOcr');
-const { serializeDocument } = require('../serializers/documentSerializer');
 const { validatePayslipAnalysis, buildFieldsMeta } = require('../schemas/payslipAnalysis.schema');
 const { buildPayslipHistoryIntelligence } = require('../services/payslipHistoryAggregationService');
 
@@ -77,6 +76,17 @@ exports.uploadDocument = async (req, res, next) => {
         status: document.status,
         summary: document.analysisData?.summary,
         ...(validation.ok ? {} : { validation_reason: validation.reason }),
+      });
+
+      setImmediate(() => {
+        const notificationService = require('../services/notificationService');
+        const { runFullAnalysis } = require('../services/insightsEngine');
+        const { run: runRecommendations } = require('../services/insuranceRecommender');
+
+        notificationService.notifyDocumentProcessed(req.user.id, document).catch(() => {});
+        runFullAnalysis(req.user.id)
+          .then(() => runRecommendations(req.user.id))
+          .catch(err => console.error('[documents] post-upload analysis failed', err));
       });
     } catch (ocrError) {
       console.error('❌ Document extraction failed for document', document._id, ocrError);

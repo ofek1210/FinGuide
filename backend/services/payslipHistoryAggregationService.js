@@ -100,6 +100,15 @@ function enrichSummary(document) {
       toFiniteNumber(summary.nationalInsurance) ?? toFiniteNumber(deductions.national_insurance),
     healthInsurance:
       toFiniteNumber(summary.healthInsurance) ?? toFiniteNumber(deductions.health_insurance),
+    pensionEmployee:
+      toFiniteNumber(summary.pensionEmployee)
+      ?? toFiniteNumber(document?.analysisData?.contributions?.pension?.employee_amount),
+    pensionEmployer:
+      toFiniteNumber(summary.pensionEmployer)
+      ?? toFiniteNumber(document?.analysisData?.contributions?.pension?.employer_amount),
+    pensionSeverance:
+      toFiniteNumber(summary.pensionSeverance)
+      ?? toFiniteNumber(document?.analysisData?.contributions?.pension?.severance_amount),
     taxCreditPoints: toFiniteNumber(summary.taxCreditPoints),
   };
 }
@@ -202,6 +211,12 @@ function buildPayslipHistoryIntelligence(documents, { year } = {}) {
       periodMonthNumber: entry.period.month,
       grossSalary: entry.summary.grossSalary,
       netSalary: entry.summary.netSalary,
+      tax: entry.summary.tax,
+      nationalInsurance: entry.summary.nationalInsurance,
+      healthInsurance: entry.summary.healthInsurance,
+      pensionEmployee: entry.summary.pensionEmployee,
+      pensionEmployer: entry.summary.pensionEmployer,
+      pensionSeverance: entry.summary.pensionSeverance,
       uploadedAt: entry.doc.uploadedAt || null,
       isLatest: index === 0,
     }));

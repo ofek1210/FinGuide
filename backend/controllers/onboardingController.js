@@ -1,109 +1,43 @@
 const User = require('../models/User');
+const UserProfile = require('../models/UserProfile');
 const { ValidationError } = require('../utils/appErrors');
+const {
+  validateDraft,
+  validateComplete,
+  normalizeLegacyPatch,
+  mergeProfilePatch,
+} = require('../utils/onboardingValidation');
 
-const isValidDateString = value => {
-  if (typeof value !== 'string') return false;
-  const s = value.trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const t = new Date(s).getTime();
-  return !Number.isNaN(t);
+/**
+ * Build a flat object that is JSON-friendly, exposing the new sectioned
+ * shape but also keeping the legacy flat keys so older clients keep working.
+ */
+const buildProfilePayload = profile => {
+  const plain = profile.toObject ? profile.toObject() : profile;
+  const sections = {
+    personal: plain.personal || {},
+    financial: plain.financial || {},
+    assets: plain.assets || {},
+    insurance: plain.insurance || {},
+    retirement: plain.retirement || {},
+    employment: plain.employment || {},
+  };
+  return {
+    ...sections,
+    legacy: profile.toLegacyOnboardingData ? profile.toLegacyOnboardingData() : {},
+    completedSteps: plain.completedSteps || [],
+    completedAt: plain.completedAt || null,
+  };
 };
 
-const buildResponse = user => ({
+const buildResponse = (user, profile) => ({
   success: true,
   data: {
     completed: Boolean(user.onboarding?.completed),
-    completedAt: user.onboarding?.completedAt || null,
-    data: user.onboarding?.data || {},
+    completedAt: user.onboarding?.completedAt || profile.completedAt || null,
+    data: buildProfilePayload(profile),
   },
 });
-
-const mergeOnboardingData = (existing, patch) => {
-  const safeExisting = existing && typeof existing === 'object' ? existing : {};
-  const safePatch = patch && typeof patch === 'object' ? patch : {};
-  return { ...safeExisting, ...safePatch };
-};
-
-const validateDraft = data => {
-  // Draft: validate only provided fields (types/ranges), no required-ness.
-  const errors = [];
-  if (data.salaryType != null && !['global', 'hourly'].includes(data.salaryType)) {
-    errors.push({ field: 'salaryType', message: 'Invalid salaryType' });
-  }
-  const numeric = [
-    ['expectedMonthlyGross', 0, 500000],
-    ['hourlyRate', 0, 5000],
-    ['expectedMonthlyHours', 0, 400],
-    ['jobPercentage', 0, 100],
-  ];
-  numeric.forEach(([key, min, max]) => {
-    if (data[key] == null) return;
-    if (typeof data[key] !== 'number' || !Number.isFinite(data[key])) {
-      errors.push({ field: key, message: 'Must be a number' });
-      return;
-    }
-    if (data[key] < min || data[key] > max) {
-      errors.push({ field: key, message: `Must be between ${min} and ${max}` });
-    }
-  });
-  const bools = [
-    'isPrimaryJob',
-    'hasMultipleEmployers',
-    'hasPension',
-    'hasStudyFund',
-  ];
-  bools.forEach(key => {
-    if (data[key] == null) return;
-    if (typeof data[key] !== 'boolean') {
-      errors.push({ field: key, message: 'Must be boolean' });
-    }
-  });
-  if (data.employmentStartDate != null && !isValidDateString(data.employmentStartDate)) {
-    errors.push({ field: 'employmentStartDate', message: 'Must be YYYY-MM-DD' });
-  }
-
-  if (errors.length) {
-    throw new ValidationError('שגיאות בולידציה', errors);
-  }
-};
-
-const validateComplete = data => {
-  const errors = [];
-  const requiredAlways = [
-    'salaryType',
-    'jobPercentage',
-    'isPrimaryJob',
-    'employmentStartDate',
-    'hasPension',
-    'hasStudyFund',
-    'hasMultipleEmployers',
-  ];
-  requiredAlways.forEach(key => {
-    if (data[key] == null) {
-      errors.push({ field: key, message: 'Required' });
-    }
-  });
-
-  if (data.salaryType === 'global') {
-    if (data.expectedMonthlyGross == null) {
-      errors.push({ field: 'expectedMonthlyGross', message: 'Required for global salaryType' });
-    }
-  }
-
-  if (data.salaryType === 'hourly') {
-    if (data.hourlyRate == null) {
-      errors.push({ field: 'hourlyRate', message: 'Required for hourly salaryType' });
-    }
-    if (data.expectedMonthlyHours == null) {
-      errors.push({ field: 'expectedMonthlyHours', message: 'Required for hourly salaryType' });
-    }
-  }
-
-  // Reuse draft validation for type/range checks too.
-  if (errors.length) {
-    throw new ValidationError('חסרים פרטים כדי לסיים', errors);
-  }
-};
 
 exports.getOnboarding = async (req, res, next) => {
   try {
@@ -111,7 +45,8 @@ exports.getOnboarding = async (req, res, next) => {
     if (!user) {
       return res.status(404).json({ success: false, message: 'משתמש לא נמצא' });
     }
-    return res.status(200).json(buildResponse(user));
+    const profile = await UserProfile.findOrCreateForUser(user._id);
+    return res.status(200).json(buildResponse(user, profile));
   } catch (err) {
     return next(err);
   }
@@ -119,11 +54,14 @@ exports.getOnboarding = async (req, res, next) => {
 
 exports.updateOnboarding = async (req, res, next) => {
   try {
-    const patch = req.body?.data;
-    if (!patch || typeof patch !== 'object') {
-      throw new ValidationError('שגיאות בולידציה', [{ field: 'data', message: 'Must be an object' }]);
+    const rawPatch = req.body?.data;
+    if (rawPatch == null || typeof rawPatch !== 'object') {
+      throw new ValidationError('שגיאות בולידציה', [
+        { field: 'data', message: 'Must be an object' },
+      ]);
     }
 
+    const patch = normalizeLegacyPatch(rawPatch);
     validateDraft(patch);
 
     const user = await User.findById(req.user._id).select('onboarding');
@@ -131,13 +69,17 @@ exports.updateOnboarding = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'משתמש לא נמצא' });
     }
 
-    const merged = mergeOnboardingData(user.onboarding?.data, patch);
-    user.onboarding = user.onboarding || {};
-    user.onboarding.data = merged;
-    user.onboarding.updatedAt = new Date();
-    await user.save();
+    const profile = await UserProfile.findOrCreateForUser(user._id);
+    mergeProfilePatch(profile, patch);
 
-    return res.status(200).json(buildResponse(user));
+    if (Array.isArray(req.body?.completedSteps)) {
+      const newSteps = req.body.completedSteps.filter(s => typeof s === 'string');
+      const merged = Array.from(new Set([...(profile.completedSteps || []), ...newSteps]));
+      profile.completedSteps = merged;
+    }
+
+    await profile.save();
+    return res.status(200).json(buildResponse(user, profile));
   } catch (err) {
     return next(err);
   }
@@ -145,11 +87,14 @@ exports.updateOnboarding = async (req, res, next) => {
 
 exports.completeOnboarding = async (req, res, next) => {
   try {
-    const patch = req.body?.data;
-    if (patch != null && typeof patch !== 'object') {
-      throw new ValidationError('שגיאות בולידציה', [{ field: 'data', message: 'Must be an object' }]);
+    const rawPatch = req.body?.data;
+    if (rawPatch != null && typeof rawPatch !== 'object') {
+      throw new ValidationError('שגיאות בולידציה', [
+        { field: 'data', message: 'Must be an object' },
+      ]);
     }
 
+    const patch = rawPatch ? normalizeLegacyPatch(rawPatch) : null;
     if (patch) {
       validateDraft(patch);
     }
@@ -159,20 +104,35 @@ exports.completeOnboarding = async (req, res, next) => {
       return res.status(404).json({ success: false, message: 'משתמש לא נמצא' });
     }
 
-    const merged = mergeOnboardingData(user.onboarding?.data, patch || {});
+    const profile = await UserProfile.findOrCreateForUser(user._id);
+    if (patch) {
+      mergeProfilePatch(profile, patch);
+    }
 
-    // Validate completion requirements.
+    const merged = profile.toObject ? profile.toObject() : profile;
     validateComplete(merged);
-    validateDraft(merged);
+
+    profile.completedAt = profile.completedAt || new Date();
+    await profile.save();
 
     user.onboarding = user.onboarding || {};
-    user.onboarding.data = merged;
     user.onboarding.completed = true;
     user.onboarding.completedAt = new Date();
     user.onboarding.updatedAt = new Date();
+    // Mirror a minimal slice into user.onboarding.data so older code that still
+    // reads from User.onboarding.data keeps seeing data.
+    user.onboarding.data = profile.toLegacyOnboardingData();
     await user.save();
 
-    return res.status(200).json(buildResponse(user));
+    setImmediate(() => {
+      const { run: runRecommendations } = require('../services/insuranceRecommender');
+      const { runFullAnalysis } = require('../services/insightsEngine');
+      runFullAnalysis(user._id)
+        .then(() => runRecommendations(user._id))
+        .catch(err => console.error('[onboarding] post-complete analysis failed', err));
+    });
+
+    return res.status(200).json(buildResponse(user, profile));
   } catch (err) {
     return next(err);
   }
@@ -192,4 +152,3 @@ exports.getOnboardingStatus = async (req, res, next) => {
     return next(err);
   }
 };
-

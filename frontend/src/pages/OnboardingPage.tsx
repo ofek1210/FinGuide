@@ -4,27 +4,37 @@ import Loader from "../components/ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
 import { useAuth } from "../auth/AuthProvider";
 import {
+  EMPTY_PROFILE,
   completeOnboarding,
   getOnboarding,
   updateOnboarding,
-  type OnboardingData,
+  type InvestmentType,
+  type MaritalStatus,
+  type OnboardingPatch,
+  type OnboardingProfile,
   type SalaryType,
 } from "../api/onboarding.api";
 
-const EMPTY: OnboardingData = {
-  salaryType: null,
-  expectedMonthlyGross: null,
-  hourlyRate: null,
-  expectedMonthlyHours: null,
-  jobPercentage: null,
-  isPrimaryJob: null,
-  hasMultipleEmployers: null,
-  employmentStartDate: null,
-  hasPension: null,
-  hasStudyFund: null,
-};
+const TOTAL_STEPS = 6;
+type StepNumber = 1 | 2 | 3 | 4 | 5 | 6;
 
-type FieldErrors = Partial<Record<keyof OnboardingData, string>>;
+const MARITAL_OPTIONS: Array<{ id: MaritalStatus; label: string }> = [
+  { id: "single", label: "רווק/ה" },
+  { id: "married", label: "נשוי/ה" },
+  { id: "partnered", label: "ידוע/ה בציבור" },
+  { id: "divorced", label: "גרוש/ה" },
+  { id: "widowed", label: "אלמן/ה" },
+];
+
+const INVESTMENT_OPTIONS: Array<{ id: InvestmentType; label: string }> = [
+  { id: "stocks", label: "מניות" },
+  { id: "bonds", label: "אג\"ח" },
+  { id: "real_estate", label: "נדל\"ן" },
+  { id: "crypto", label: "קריפטו" },
+  { id: "other", label: "אחר" },
+];
+
+type FieldErrors = Record<string, string>;
 
 function toNumberOrNull(raw: string): number | null {
   const trimmed = raw.trim();
@@ -33,21 +43,41 @@ function toNumberOrNull(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+function trimOrNull(raw: string): string | null {
+  const t = raw.trim();
+  return t ? t : null;
+}
+
+function deepMerge(base: OnboardingProfile, patch: Partial<OnboardingProfile>): OnboardingProfile {
+  return {
+    personal: { ...base.personal, ...(patch.personal ?? {}) },
+    financial: { ...base.financial, ...(patch.financial ?? {}) },
+    assets: { ...base.assets, ...(patch.assets ?? {}) },
+    insurance: { ...base.insurance, ...(patch.insurance ?? {}) },
+    retirement: {
+      ...base.retirement,
+      ...(patch.retirement ?? {}),
+      investmentTypes: patch.retirement?.investmentTypes ?? base.retirement.investmentTypes,
+    },
+    employment: { ...base.employment, ...(patch.employment ?? {}) },
+  };
+}
+
 export default function OnboardingPage() {
   const navigate = useNavigate();
   const { refresh } = useAuth();
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<StepNumber>(1);
   const [introOpen, setIntroOpen] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [data, setData] = useState<OnboardingData>(EMPTY);
+  const [profile, setProfile] = useState<OnboardingProfile>(EMPTY_PROFILE);
 
-  const progressPct = useMemo(() => (step / 3) * 100, [step]);
+  const progressPct = useMemo(() => (step / TOTAL_STEPS) * 100, [step]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,8 +90,10 @@ export default function OnboardingPage() {
       return;
     }
 
-    const serverData = res.data?.data ?? {};
-    setData((prev) => ({ ...prev, ...serverData }));
+    const serverData = res.data?.data;
+    if (serverData) {
+      setProfile((prev) => deepMerge(prev, serverData));
+    }
     if (res.data?.completed) {
       await refresh();
       navigate(APP_ROUTES.dashboard, { replace: true });
@@ -80,19 +112,14 @@ export default function OnboardingPage() {
     if (!el) return undefined;
 
     const rand = (min: number, max: number) => min + Math.random() * (max - min);
-
     const tick = () => {
-      // Offsets are intentionally large enough to be noticeable.
       el.style.setProperty("--ob-a-x", `${Math.round(rand(-140, 140))}px`);
       el.style.setProperty("--ob-a-y", `${Math.round(rand(-120, 120))}px`);
       el.style.setProperty("--ob-a-s", `${rand(0.98, 1.08).toFixed(3)}`);
-
       el.style.setProperty("--ob-b-x", `${Math.round(rand(-160, 160))}px`);
       el.style.setProperty("--ob-b-y", `${Math.round(rand(-140, 140))}px`);
       el.style.setProperty("--ob-b-s", `${rand(0.98, 1.08).toFixed(3)}`);
     };
-
-    // Initial positions + periodic random drift.
     tick();
     const id = window.setInterval(tick, 5200);
     return () => window.clearInterval(id);
@@ -102,19 +129,45 @@ export default function OnboardingPage() {
     if (!errs?.length) return;
     const next: FieldErrors = {};
     for (const e of errs) {
-      const field = e.field as keyof OnboardingData | undefined;
-      if (!field) continue;
-      next[field] = e.message || "שדה לא תקין";
+      if (!e.field) continue;
+      next[e.field] = e.message || "שדה לא תקין";
     }
     setFieldErrors(next);
   };
 
-  const saveDraft = useCallback(
-    async (patch: Partial<OnboardingData>) => {
+  const buildPatchForStep = useCallback(
+    (s: StepNumber): OnboardingPatch => {
+      switch (s) {
+        case 1:
+          return { personal: profile.personal };
+        case 2:
+          return { employment: profile.employment };
+        case 3:
+          return { assets: profile.assets };
+        case 4:
+          return { insurance: profile.insurance };
+        case 5:
+          return {
+            retirement: profile.retirement,
+            financial: profile.financial,
+          };
+        case 6:
+        default:
+          return {};
+      }
+    },
+    [profile],
+  );
+
+  const saveStep = useCallback(
+    async (s: StepNumber) => {
+      const patch = buildPatchForStep(s);
+      if (Object.keys(patch).length === 0) return true;
+
       setSaving(true);
       setError(null);
       setFieldErrors({});
-      const res = await updateOnboarding(patch);
+      const res = await updateOnboarding(patch, [`step-${s}`]);
       setSaving(false);
 
       if (!res.success) {
@@ -122,26 +175,26 @@ export default function OnboardingPage() {
         applyErrors(res.errors);
         return false;
       }
-      const serverData = res.data?.data ?? {};
-      setData((prev) => ({ ...prev, ...serverData }));
+      if (res.data?.data) {
+        setProfile((prev) => deepMerge(prev, res.data!.data));
+      }
       return true;
     },
-    [],
+    [buildPatchForStep],
   );
 
   const handleNext = useCallback(async () => {
     if (saving || finishing) return;
-
-    const ok = await saveDraft(data);
+    const ok = await saveStep(step);
     if (!ok) return;
-    setStep((s) => (s === 3 ? 3 : ((s + 1) as 2 | 3)));
-  }, [data, finishing, saveDraft, saving]);
+    setStep((s) => (s < TOTAL_STEPS ? ((s + 1) as StepNumber) : s));
+  }, [finishing, saveStep, saving, step]);
 
   const handleBack = useCallback(() => {
     if (saving || finishing) return;
     setError(null);
     setFieldErrors({});
-    setStep((s) => (s === 1 ? 1 : ((s - 1) as 1 | 2)));
+    setStep((s) => (s > 1 ? ((s - 1) as StepNumber) : s));
   }, [finishing, saving]);
 
   const handleFinish = useCallback(async () => {
@@ -149,15 +202,22 @@ export default function OnboardingPage() {
     setFinishing(true);
     setError(null);
     setFieldErrors({});
-    const res = await completeOnboarding(data);
+
+    // Save the current step's data first, then complete.
+    const stepOk = await saveStep(step);
+    if (!stepOk) {
+      setFinishing(false);
+      return;
+    }
+
+    const res = await completeOnboarding();
     setFinishing(false);
 
     if (!res.success || !res.data?.completed) {
-      // Don't show raw backend message like "Onboarding incomplete" – show a friendly local one.
       if (res.errors && res.errors.length > 0) {
         setError("חסרים עוד כמה פרטים כדי לסיים.");
       } else {
-        setError("לא הצלחנו להשלים את ה-onboarding. נסו שוב.");
+        setError(res.message ?? "לא הצלחנו להשלים את ה-onboarding. נסו שוב.");
       }
       applyErrors(res.errors);
       return;
@@ -165,25 +225,39 @@ export default function OnboardingPage() {
 
     await refresh();
     navigate(APP_ROUTES.dashboard, { replace: true });
-  }, [data, finishing, refresh, saving, navigate]);
+  }, [finishing, navigate, refresh, saveStep, saving, step]);
 
-  const salaryType = data.salaryType;
-  const showMonthlyGross = salaryType === "global";
-  const showHourly = salaryType === "hourly";
+  const updatePersonal = (patch: Partial<OnboardingProfile["personal"]>) =>
+    setProfile((p) => ({ ...p, personal: { ...p.personal, ...patch } }));
+  const updateEmployment = (patch: Partial<OnboardingProfile["employment"]>) =>
+    setProfile((p) => ({ ...p, employment: { ...p.employment, ...patch } }));
+  const updateAssets = (patch: Partial<OnboardingProfile["assets"]>) =>
+    setProfile((p) => ({ ...p, assets: { ...p.assets, ...patch } }));
+  const updateInsurance = (patch: Partial<OnboardingProfile["insurance"]>) =>
+    setProfile((p) => ({ ...p, insurance: { ...p.insurance, ...patch } }));
+  const updateRetirement = (patch: Partial<OnboardingProfile["retirement"]>) =>
+    setProfile((p) => ({ ...p, retirement: { ...p.retirement, ...patch } }));
+  const updateFinancial = (patch: Partial<OnboardingProfile["financial"]>) =>
+    setProfile((p) => ({ ...p, financial: { ...p.financial, ...patch } }));
+
+  const toggleInvestmentType = (type: InvestmentType) => {
+    setProfile((p) => {
+      const has = p.retirement.investmentTypes.includes(type);
+      const next = has
+        ? p.retirement.investmentTypes.filter((t) => t !== type)
+        : [...p.retirement.investmentTypes, type];
+      return { ...p, retirement: { ...p.retirement, investmentTypes: next } };
+    });
+  };
+
+  const renderError = (path: string) =>
+    fieldErrors[path] ? <span className="settings-field-error">{fieldErrors[path]}</span> : null;
 
   if (loading) {
     return (
       <div ref={rootRef} className="auth-page onboarding-page" dir="rtl">
-        <div
-          className="auth-shell"
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            width: "100%",
-          }}
-        >
-          <section className="auth-card" style={{ width: "min(560px, 92vw)" }}>
+        <div className="auth-shell" style={{ display: "flex", justifyContent: "center", alignItems: "center", width: "100%" }}>
+          <section className="auth-card" style={{ width: "min(620px, 92vw)" }}>
             <div className="findings-placeholder">
               <Loader />
               טוענים onboarding...
@@ -194,132 +268,139 @@ export default function OnboardingPage() {
     );
   }
 
+  const showMonthlyGross = profile.employment.salaryType === "global";
+  const showHourly = profile.employment.salaryType === "hourly";
+
   return (
     <div ref={rootRef} className="auth-page onboarding-page" dir="rtl">
-      <div
-        className="auth-shell"
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          width: "100%",
-        }}
-      >
-        <section className="auth-card" style={{ width: "min(560px, 92vw)" }}>
+      <div className="auth-shell" style={{ display: "flex", justifyContent: "center", alignItems: "center", width: "100%" }}>
+        <section className="auth-card" style={{ width: "min(620px, 92vw)" }}>
           <header className="auth-card-header">
             <h1>הגדרה מהירה</h1>
-            <p>כמה פרטים קצרים כדי שנוכל להשוות תלושים ולזהות חריגות.</p>
+            <p>כדי שנוכל להציע לך תובנות, התראות והמלצות מותאמות אישית.</p>
           </header>
 
           <div style={{ marginTop: "0.75rem" }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem" }}>
-              <span>שלב {step} מתוך 3</span>
+              <span>שלב {step} מתוך {TOTAL_STEPS}</span>
               <span style={{ opacity: 0.8 }}>{Math.round(progressPct)}%</span>
             </div>
-            <div
-              style={{
-                height: 6,
-                background: "rgba(0,0,0,0.08)",
-                borderRadius: 999,
-                overflow: "hidden",
-                marginTop: 8,
-              }}
-            >
-              <div
-                style={{
-                  width: `${progressPct}%`,
-                  height: "100%",
-                  background: "rgba(124, 58, 237, 0.9)",
-                  transition: "width 220ms ease",
-                }}
-              />
+            <div style={{ height: 6, background: "rgba(0,0,0,0.08)", borderRadius: 999, overflow: "hidden", marginTop: 8 }}>
+              <div style={{ width: `${progressPct}%`, height: "100%", background: "rgba(124, 58, 237, 0.9)", transition: "width 220ms ease" }} />
             </div>
           </div>
 
           {error ? <div className="auth-error" style={{ marginTop: "1rem" }}>{error}</div> : null}
 
           <div className="auth-form" style={{ marginTop: "1rem", opacity: introOpen ? 0.35 : 1, pointerEvents: introOpen ? "none" : "auto", transition: "opacity 180ms ease" }}>
+            {/* STEP 1: Personal */}
             {step === 1 ? (
               <>
-                <h2 style={{ margin: "0.25rem 0 0.5rem", fontSize: "1.25rem" }}>
-                  איך השכר שלך מחושב?
-                </h2>
+                <h2 style={{ margin: "0.25rem 0 0.5rem", fontSize: "1.25rem" }}>קצת עליך</h2>
 
                 <div className="settings-field onboarding-field">
-                  <label>סוג שכר</label>
-                  <div className="onboarding-choice-grid" style={{ marginTop: 10 }}>
-                    {(
-                      [
-                        { id: "global", label: "גלובלי (חודשי)" },
-                        { id: "hourly", label: "שעתי" },
-                      ] as Array<{ id: SalaryType; label: string }>
-                    ).map((opt) => (
+                  <label htmlFor="fullName">שם מלא</label>
+                  <input
+                    id="fullName"
+                    type="text"
+                    className="settings-input"
+                    value={profile.personal.fullName ?? ""}
+                    onChange={(e) => updatePersonal({ fullName: trimOrNull(e.target.value) || e.target.value })}
+                    placeholder="לדוגמה: דנה כהן"
+                  />
+                  {renderError("personal.fullName")}
+                </div>
+
+                <div className="settings-field onboarding-field">
+                  <label htmlFor="age">גיל</label>
+                  <input
+                    id="age"
+                    type="number"
+                    inputMode="numeric"
+                    className="settings-input"
+                    value={profile.personal.age ?? ""}
+                    onChange={(e) => updatePersonal({ age: toNumberOrNull(e.target.value) })}
+                    min={16}
+                    max={120}
+                  />
+                  {renderError("personal.age")}
+                </div>
+
+                <div className="settings-field onboarding-field">
+                  <label htmlFor="occupation">עיסוק / תפקיד</label>
+                  <input
+                    id="occupation"
+                    type="text"
+                    className="settings-input"
+                    value={profile.personal.occupation ?? ""}
+                    onChange={(e) => updatePersonal({ occupation: e.target.value || null })}
+                    placeholder="לדוגמה: מהנדס/ת תוכנה"
+                  />
+                  {renderError("personal.occupation")}
+                </div>
+
+                <div className="settings-field onboarding-field">
+                  <label>מצב משפחתי</label>
+                  <div className="onboarding-choice-grid" style={{ marginTop: 10, gridTemplateColumns: "1fr 1fr" }}>
+                    {MARITAL_OPTIONS.map((opt) => (
                       <button
                         key={opt.id}
                         type="button"
-                        className={`onboarding-choice ${data.salaryType === opt.id ? "is-selected" : ""}`}
-                        onClick={() => setData((prev) => ({ ...prev, salaryType: opt.id }))}
+                        className={`onboarding-choice ${profile.personal.maritalStatus === opt.id ? "is-selected" : ""}`}
+                        onClick={() => updatePersonal({ maritalStatus: opt.id })}
                         disabled={saving || finishing}
-                        aria-pressed={data.salaryType === opt.id}
+                        aria-pressed={profile.personal.maritalStatus === opt.id}
                       >
                         {opt.label}
                       </button>
                     ))}
                   </div>
-                  {fieldErrors.salaryType ? (
-                    <span className="settings-field-error">{fieldErrors.salaryType}</span>
-                  ) : null}
+                  {renderError("personal.maritalStatus")}
                 </div>
 
                 <div className="settings-field onboarding-field">
-                  <label>זו העבודה העיקרית שלי</label>
-                  <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
-                    <button
-                      type="button"
-                      className={`onboarding-choice ${data.isPrimaryJob === true ? "is-selected" : ""}`}
-                      onClick={() => setData((p) => ({ ...p, isPrimaryJob: true }))}
-                      disabled={saving || finishing}
-                      aria-pressed={data.isPrimaryJob === true}
-                    >
-                      כן
-                    </button>
-                    <button
-                      type="button"
-                      className={`onboarding-choice ${data.isPrimaryJob === false ? "is-selected" : ""}`}
-                      onClick={() => setData((p) => ({ ...p, isPrimaryJob: false }))}
-                      disabled={saving || finishing}
-                      aria-pressed={data.isPrimaryJob === false}
-                    >
-                      לא
-                    </button>
-                  </div>
-                  {fieldErrors.isPrimaryJob ? (
-                    <span className="settings-field-error">{fieldErrors.isPrimaryJob}</span>
-                  ) : null}
-                </div>
-
-                <div className="settings-field onboarding-field">
-                  <label htmlFor="employmentStartDate">תאריך תחילת עבודה</label>
+                  <label htmlFor="childrenCount">מספר ילדים</label>
                   <input
-                    id="employmentStartDate"
-                    type="date"
-                    value={data.employmentStartDate ?? ""}
-                    onChange={(e) => setData((p) => ({ ...p, employmentStartDate: e.target.value || null }))}
+                    id="childrenCount"
+                    type="number"
+                    inputMode="numeric"
                     className="settings-input"
-                    dir="ltr"
+                    value={profile.personal.childrenCount ?? ""}
+                    onChange={(e) => updatePersonal({ childrenCount: toNumberOrNull(e.target.value) })}
+                    min={0}
+                    max={20}
                   />
-                  {fieldErrors.employmentStartDate ? (
-                    <span className="settings-field-error">{fieldErrors.employmentStartDate}</span>
-                  ) : null}
+                  {renderError("personal.childrenCount")}
                 </div>
               </>
             ) : null}
 
+            {/* STEP 2: Employment */}
             {step === 2 ? (
               <>
-                <h2 style={{ margin: "0.25rem 0 0.5rem", fontSize: "1.25rem" }}>
-                  מה מצופה להופיע בתלוש?
-                </h2>
+                <h2 style={{ margin: "0.25rem 0 0.5rem", fontSize: "1.25rem" }}>תעסוקה ושכר</h2>
+
+                <div className="settings-field onboarding-field">
+                  <label>סוג שכר</label>
+                  <div className="onboarding-choice-grid" style={{ marginTop: 10, gridTemplateColumns: "1fr 1fr" }}>
+                    {([
+                      { id: "global", label: "גלובלי (חודשי)" },
+                      { id: "hourly", label: "שעתי" },
+                    ] as Array<{ id: SalaryType; label: string }>).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        className={`onboarding-choice ${profile.employment.salaryType === opt.id ? "is-selected" : ""}`}
+                        onClick={() => updateEmployment({ salaryType: opt.id })}
+                        disabled={saving || finishing}
+                        aria-pressed={profile.employment.salaryType === opt.id}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {renderError("employment.salaryType")}
+                </div>
 
                 {showMonthlyGross ? (
                   <div className="settings-field onboarding-field">
@@ -329,14 +410,10 @@ export default function OnboardingPage() {
                       type="number"
                       inputMode="decimal"
                       className="settings-input"
-                      value={data.expectedMonthlyGross ?? ""}
-                      onChange={(e) =>
-                        setData((p) => ({ ...p, expectedMonthlyGross: toNumberOrNull(e.target.value) }))
-                      }
+                      value={profile.employment.expectedMonthlyGross ?? ""}
+                      onChange={(e) => updateEmployment({ expectedMonthlyGross: toNumberOrNull(e.target.value) })}
                     />
-                    {fieldErrors.expectedMonthlyGross ? (
-                      <span className="settings-field-error">{fieldErrors.expectedMonthlyGross}</span>
-                    ) : null}
+                    {renderError("employment.expectedMonthlyGross")}
                   </div>
                 ) : null}
 
@@ -349,14 +426,11 @@ export default function OnboardingPage() {
                         type="number"
                         inputMode="decimal"
                         className="settings-input"
-                        value={data.hourlyRate ?? ""}
-                        onChange={(e) => setData((p) => ({ ...p, hourlyRate: toNumberOrNull(e.target.value) }))}
+                        value={profile.employment.hourlyRate ?? ""}
+                        onChange={(e) => updateEmployment({ hourlyRate: toNumberOrNull(e.target.value) })}
                       />
-                      {fieldErrors.hourlyRate ? (
-                        <span className="settings-field-error">{fieldErrors.hourlyRate}</span>
-                      ) : null}
+                      {renderError("employment.hourlyRate")}
                     </div>
-
                     <div className="settings-field onboarding-field">
                       <label htmlFor="expectedMonthlyHours">שעות חודשיות צפויות</label>
                       <input
@@ -364,14 +438,10 @@ export default function OnboardingPage() {
                         type="number"
                         inputMode="numeric"
                         className="settings-input"
-                        value={data.expectedMonthlyHours ?? ""}
-                        onChange={(e) =>
-                          setData((p) => ({ ...p, expectedMonthlyHours: toNumberOrNull(e.target.value) }))
-                        }
+                        value={profile.employment.expectedMonthlyHours ?? ""}
+                        onChange={(e) => updateEmployment({ expectedMonthlyHours: toNumberOrNull(e.target.value) })}
                       />
-                      {fieldErrors.expectedMonthlyHours ? (
-                        <span className="settings-field-error">{fieldErrors.expectedMonthlyHours}</span>
-                      ) : null}
+                      {renderError("employment.expectedMonthlyHours")}
                     </div>
                   </>
                 ) : null}
@@ -383,133 +453,265 @@ export default function OnboardingPage() {
                     type="number"
                     inputMode="numeric"
                     className="settings-input"
-                    value={data.jobPercentage ?? ""}
-                    onChange={(e) => setData((p) => ({ ...p, jobPercentage: toNumberOrNull(e.target.value) }))}
+                    value={profile.employment.jobPercentage ?? ""}
+                    onChange={(e) => updateEmployment({ jobPercentage: toNumberOrNull(e.target.value) })}
                   />
-                  {fieldErrors.jobPercentage ? (
-                    <span className="settings-field-error">{fieldErrors.jobPercentage}</span>
-                  ) : null}
-                </div>
-              </>
-            ) : null}
-
-            {step === 3 ? (
-              <>
-                <h2 style={{ margin: "0.25rem 0 0.5rem", fontSize: "1.25rem" }}>
-                  האם אמורות להיות הטבות בתלוש?
-                </h2>
-
-                <div className="settings-field onboarding-field">
-                  <label>יש לי פנסיה</label>
-                  <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
-                    <button
-                      type="button"
-                      className={`onboarding-choice ${data.hasPension === true ? "is-selected" : ""}`}
-                      onClick={() => setData((p) => ({ ...p, hasPension: true }))}
-                      disabled={saving || finishing}
-                      aria-pressed={data.hasPension === true}
-                    >
-                      כן
-                    </button>
-                    <button
-                      type="button"
-                      className={`onboarding-choice ${data.hasPension === false ? "is-selected" : ""}`}
-                      onClick={() => setData((p) => ({ ...p, hasPension: false }))}
-                      disabled={saving || finishing}
-                      aria-pressed={data.hasPension === false}
-                    >
-                      לא
-                    </button>
-                  </div>
-                  {fieldErrors.hasPension ? (
-                    <span className="settings-field-error">{fieldErrors.hasPension}</span>
-                  ) : null}
+                  {renderError("employment.jobPercentage")}
                 </div>
 
                 <div className="settings-field onboarding-field">
-                  <label>יש לי קרן השתלמות</label>
+                  <label>זו העבודה העיקרית שלי</label>
                   <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
-                    <button
-                      type="button"
-                      className={`onboarding-choice ${data.hasStudyFund === true ? "is-selected" : ""}`}
-                      onClick={() => setData((p) => ({ ...p, hasStudyFund: true }))}
-                      disabled={saving || finishing}
-                      aria-pressed={data.hasStudyFund === true}
-                    >
-                      כן
-                    </button>
-                    <button
-                      type="button"
-                      className={`onboarding-choice ${data.hasStudyFund === false ? "is-selected" : ""}`}
-                      onClick={() => setData((p) => ({ ...p, hasStudyFund: false }))}
-                      disabled={saving || finishing}
-                      aria-pressed={data.hasStudyFund === false}
-                    >
-                      לא
-                    </button>
+                    <button type="button" className={`onboarding-choice ${profile.employment.isPrimaryJob === true ? "is-selected" : ""}`} onClick={() => updateEmployment({ isPrimaryJob: true })} disabled={saving || finishing}>כן</button>
+                    <button type="button" className={`onboarding-choice ${profile.employment.isPrimaryJob === false ? "is-selected" : ""}`} onClick={() => updateEmployment({ isPrimaryJob: false })} disabled={saving || finishing}>לא</button>
                   </div>
-                  {fieldErrors.hasStudyFund ? (
-                    <span className="settings-field-error">{fieldErrors.hasStudyFund}</span>
-                  ) : null}
+                  {renderError("employment.isPrimaryJob")}
                 </div>
 
                 <div className="settings-field onboarding-field">
                   <label>יש לי יותר ממעסיק אחד</label>
                   <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
-                    <button
-                      type="button"
-                      className={`onboarding-choice ${data.hasMultipleEmployers === true ? "is-selected" : ""}`}
-                      onClick={() => setData((p) => ({ ...p, hasMultipleEmployers: true }))}
-                      disabled={saving || finishing}
-                      aria-pressed={data.hasMultipleEmployers === true}
-                    >
-                      כן
-                    </button>
-                    <button
-                      type="button"
-                      className={`onboarding-choice ${data.hasMultipleEmployers === false ? "is-selected" : ""}`}
-                      onClick={() => setData((p) => ({ ...p, hasMultipleEmployers: false }))}
-                      disabled={saving || finishing}
-                      aria-pressed={data.hasMultipleEmployers === false}
-                    >
-                      לא
-                    </button>
+                    <button type="button" className={`onboarding-choice ${profile.employment.hasMultipleEmployers === true ? "is-selected" : ""}`} onClick={() => updateEmployment({ hasMultipleEmployers: true })} disabled={saving || finishing}>כן</button>
+                    <button type="button" className={`onboarding-choice ${profile.employment.hasMultipleEmployers === false ? "is-selected" : ""}`} onClick={() => updateEmployment({ hasMultipleEmployers: false })} disabled={saving || finishing}>לא</button>
                   </div>
-                  {fieldErrors.hasMultipleEmployers ? (
-                    <span className="settings-field-error">{fieldErrors.hasMultipleEmployers}</span>
-                  ) : null}
+                  {renderError("employment.hasMultipleEmployers")}
                 </div>
+
+                <div className="settings-field onboarding-field">
+                  <label htmlFor="employmentStartDate">תאריך תחילת עבודה</label>
+                  <input
+                    id="employmentStartDate"
+                    type="date"
+                    className="settings-input"
+                    dir="ltr"
+                    value={profile.employment.employmentStartDate ?? ""}
+                    onChange={(e) => updateEmployment({ employmentStartDate: e.target.value || null })}
+                  />
+                  {renderError("employment.employmentStartDate")}
+                </div>
+              </>
+            ) : null}
+
+            {/* STEP 3: Assets */}
+            {step === 3 ? (
+              <>
+                <h2 style={{ margin: "0.25rem 0 0.5rem", fontSize: "1.25rem" }}>נכסים והתחייבויות</h2>
+
+                <div className="settings-field onboarding-field">
+                  <label>בבעלותי דירה</label>
+                  <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
+                    <button type="button" className={`onboarding-choice ${profile.assets.ownsApartment === true ? "is-selected" : ""}`} onClick={() => updateAssets({ ownsApartment: true })} disabled={saving || finishing}>כן</button>
+                    <button type="button" className={`onboarding-choice ${profile.assets.ownsApartment === false ? "is-selected" : ""}`} onClick={() => updateAssets({ ownsApartment: false })} disabled={saving || finishing}>לא</button>
+                  </div>
+                  {renderError("assets.ownsApartment")}
+                </div>
+
+                <div className="settings-field onboarding-field">
+                  <label>בבעלותי רכב</label>
+                  <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
+                    <button type="button" className={`onboarding-choice ${profile.assets.ownsCar === true ? "is-selected" : ""}`} onClick={() => updateAssets({ ownsCar: true })} disabled={saving || finishing}>כן</button>
+                    <button type="button" className={`onboarding-choice ${profile.assets.ownsCar === false ? "is-selected" : ""}`} onClick={() => updateAssets({ ownsCar: false })} disabled={saving || finishing}>לא</button>
+                  </div>
+                  {renderError("assets.ownsCar")}
+                </div>
+
+                <div className="settings-field onboarding-field">
+                  <label>יש לי משכנתא</label>
+                  <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
+                    <button type="button" className={`onboarding-choice ${profile.assets.hasMortgage === true ? "is-selected" : ""}`} onClick={() => updateAssets({ hasMortgage: true })} disabled={saving || finishing}>כן</button>
+                    <button type="button" className={`onboarding-choice ${profile.assets.hasMortgage === false ? "is-selected" : ""}`} onClick={() => updateAssets({ hasMortgage: false, mortgageMonthlyPayment: null })} disabled={saving || finishing}>לא</button>
+                  </div>
+                  {renderError("assets.hasMortgage")}
+                </div>
+
+                {profile.assets.hasMortgage === true ? (
+                  <div className="settings-field onboarding-field">
+                    <label htmlFor="mortgageMonthlyPayment">תשלום משכנתא חודשי (אופציונלי)</label>
+                    <input
+                      id="mortgageMonthlyPayment"
+                      type="number"
+                      inputMode="decimal"
+                      className="settings-input"
+                      value={profile.assets.mortgageMonthlyPayment ?? ""}
+                      onChange={(e) => updateAssets({ mortgageMonthlyPayment: toNumberOrNull(e.target.value) })}
+                    />
+                    {renderError("assets.mortgageMonthlyPayment")}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+
+            {/* STEP 4: Insurance */}
+            {step === 4 ? (
+              <>
+                <h2 style={{ margin: "0.25rem 0 0.5rem", fontSize: "1.25rem" }}>ביטוחים קיימים</h2>
+                <p style={{ opacity: 0.75, fontSize: "0.95rem", marginBottom: "0.75rem" }}>
+                  סמנו אילו ביטוחים כבר יש לכם. נשתמש בזה כדי להמליץ על מה שחסר.
+                </p>
+
+                {([
+                  ["hasLifeInsurance", "ביטוח חיים"],
+                  ["hasHealthInsurance", "ביטוח בריאות פרטי"],
+                  ["hasDisabilityInsurance", "ביטוח אובדן כושר עבודה"],
+                  ["hasApartmentInsurance", "ביטוח דירה / תכולה"],
+                  ["hasCarInsurance", "ביטוח רכב"],
+                ] as Array<[keyof OnboardingProfile["insurance"], string]>).map(([key, label]) => (
+                  <div key={key} className="settings-field onboarding-field">
+                    <label>{label}</label>
+                    <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
+                      <button
+                        type="button"
+                        className={`onboarding-choice ${profile.insurance[key] === true ? "is-selected" : ""}`}
+                        onClick={() => updateInsurance({ [key]: true } as Partial<OnboardingProfile["insurance"]>)}
+                        disabled={saving || finishing}
+                      >
+                        יש לי
+                      </button>
+                      <button
+                        type="button"
+                        className={`onboarding-choice ${profile.insurance[key] === false ? "is-selected" : ""}`}
+                        onClick={() => updateInsurance({ [key]: false } as Partial<OnboardingProfile["insurance"]>)}
+                        disabled={saving || finishing}
+                      >
+                        אין לי
+                      </button>
+                    </div>
+                    {renderError(`insurance.${key}`)}
+                  </div>
+                ))}
+              </>
+            ) : null}
+
+            {/* STEP 5: Retirement + Investments + Financial */}
+            {step === 5 ? (
+              <>
+                <h2 style={{ margin: "0.25rem 0 0.5rem", fontSize: "1.25rem" }}>פנסיה, חיסכון והשקעות</h2>
+
+                <div className="settings-field onboarding-field">
+                  <label>יש לי פנסיה פעילה</label>
+                  <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
+                    <button type="button" className={`onboarding-choice ${profile.retirement.hasPension === true ? "is-selected" : ""}`} onClick={() => updateRetirement({ hasPension: true })} disabled={saving || finishing}>כן</button>
+                    <button type="button" className={`onboarding-choice ${profile.retirement.hasPension === false ? "is-selected" : ""}`} onClick={() => updateRetirement({ hasPension: false })} disabled={saving || finishing}>לא</button>
+                  </div>
+                  {renderError("retirement.hasPension")}
+                </div>
+
+                <div className="settings-field onboarding-field">
+                  <label>יש לי קרן השתלמות</label>
+                  <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
+                    <button type="button" className={`onboarding-choice ${profile.retirement.hasStudyFund === true ? "is-selected" : ""}`} onClick={() => updateRetirement({ hasStudyFund: true })} disabled={saving || finishing}>כן</button>
+                    <button type="button" className={`onboarding-choice ${profile.retirement.hasStudyFund === false ? "is-selected" : ""}`} onClick={() => updateRetirement({ hasStudyFund: false })} disabled={saving || finishing}>לא</button>
+                  </div>
+                  {renderError("retirement.hasStudyFund")}
+                </div>
+
+                <div className="settings-field onboarding-field">
+                  <label>יש לי השקעות פיננסיות נוספות</label>
+                  <div className="onboarding-choice-row" style={{ marginTop: 10 }}>
+                    <button type="button" className={`onboarding-choice ${profile.retirement.hasInvestmentFunds === true ? "is-selected" : ""}`} onClick={() => updateRetirement({ hasInvestmentFunds: true })} disabled={saving || finishing}>כן</button>
+                    <button type="button" className={`onboarding-choice ${profile.retirement.hasInvestmentFunds === false ? "is-selected" : ""}`} onClick={() => updateRetirement({ hasInvestmentFunds: false, investmentTypes: [] })} disabled={saving || finishing}>לא</button>
+                  </div>
+                  {renderError("retirement.hasInvestmentFunds")}
+                </div>
+
+                {profile.retirement.hasInvestmentFunds === true ? (
+                  <div className="settings-field onboarding-field">
+                    <label>סוגי השקעה (ניתן לסמן מספר)</label>
+                    <div className="onboarding-choice-grid" style={{ marginTop: 10, gridTemplateColumns: "1fr 1fr" }}>
+                      {INVESTMENT_OPTIONS.map((opt) => {
+                        const selected = profile.retirement.investmentTypes.includes(opt.id);
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            className={`onboarding-choice ${selected ? "is-selected" : ""}`}
+                            onClick={() => toggleInvestmentType(opt.id)}
+                            disabled={saving || finishing}
+                            aria-pressed={selected}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {renderError("retirement.investmentTypes")}
+                  </div>
+                ) : null}
+
+                <div className="settings-field onboarding-field">
+                  <label htmlFor="monthlyExpensesEstimate">הוצאות חודשיות משוערות (אופציונלי)</label>
+                  <input
+                    id="monthlyExpensesEstimate"
+                    type="number"
+                    inputMode="decimal"
+                    className="settings-input"
+                    value={profile.financial.monthlyExpensesEstimate ?? ""}
+                    onChange={(e) => updateFinancial({ monthlyExpensesEstimate: toNumberOrNull(e.target.value) })}
+                  />
+                  {renderError("financial.monthlyExpensesEstimate")}
+                </div>
+              </>
+            ) : null}
+
+            {/* STEP 6: Summary */}
+            {step === 6 ? (
+              <>
+                <h2 style={{ margin: "0.25rem 0 0.5rem", fontSize: "1.25rem" }}>סיכום</h2>
+                <p style={{ opacity: 0.75, fontSize: "0.95rem", marginBottom: "1rem" }}>
+                  בסיום נכין עבורך תובנות והמלצות מותאמות אישית. אפשר לחזור ולערוך את הפרטים בכל זמן מ-הגדרות.
+                </p>
+
+                <SummaryBlock label="פרטים אישיים" rows={[
+                  ["שם", profile.personal.fullName],
+                  ["גיל", profile.personal.age],
+                  ["עיסוק", profile.personal.occupation],
+                  ["מצב משפחתי", MARITAL_OPTIONS.find((o) => o.id === profile.personal.maritalStatus)?.label ?? null],
+                  ["ילדים", profile.personal.childrenCount],
+                ]} />
+
+                <SummaryBlock label="תעסוקה" rows={[
+                  ["סוג שכר", profile.employment.salaryType === "global" ? "גלובלי" : profile.employment.salaryType === "hourly" ? "שעתי" : null],
+                  ["ברוטו חודשי צפוי", profile.employment.expectedMonthlyGross],
+                  ["שכר שעתי", profile.employment.hourlyRate],
+                  ["אחוז משרה", profile.employment.jobPercentage],
+                  ["עבודה עיקרית", profile.employment.isPrimaryJob == null ? null : profile.employment.isPrimaryJob ? "כן" : "לא"],
+                ]} />
+
+                <SummaryBlock label="נכסים" rows={[
+                  ["דירה", profile.assets.ownsApartment == null ? null : profile.assets.ownsApartment ? "כן" : "לא"],
+                  ["רכב", profile.assets.ownsCar == null ? null : profile.assets.ownsCar ? "כן" : "לא"],
+                  ["משכנתא", profile.assets.hasMortgage == null ? null : profile.assets.hasMortgage ? "כן" : "לא"],
+                ]} />
+
+                <SummaryBlock label="ביטוחים קיימים" rows={[
+                  ["ביטוח חיים", profile.insurance.hasLifeInsurance == null ? null : profile.insurance.hasLifeInsurance ? "כן" : "לא"],
+                  ["ביטוח בריאות פרטי", profile.insurance.hasHealthInsurance == null ? null : profile.insurance.hasHealthInsurance ? "כן" : "לא"],
+                  ["אובדן כושר", profile.insurance.hasDisabilityInsurance == null ? null : profile.insurance.hasDisabilityInsurance ? "כן" : "לא"],
+                  ["דירה", profile.insurance.hasApartmentInsurance == null ? null : profile.insurance.hasApartmentInsurance ? "כן" : "לא"],
+                  ["רכב", profile.insurance.hasCarInsurance == null ? null : profile.insurance.hasCarInsurance ? "כן" : "לא"],
+                ]} />
+
+                <SummaryBlock label="חיסכון" rows={[
+                  ["פנסיה", profile.retirement.hasPension == null ? null : profile.retirement.hasPension ? "כן" : "לא"],
+                  ["קרן השתלמות", profile.retirement.hasStudyFund == null ? null : profile.retirement.hasStudyFund ? "כן" : "לא"],
+                  ["השקעות נוספות", profile.retirement.hasInvestmentFunds == null ? null : profile.retirement.hasInvestmentFunds ? "כן" : "לא"],
+                ]} />
               </>
             ) : null}
 
             <div style={{ display: "flex", gap: 10, marginTop: "1.25rem" }}>
               {step > 1 ? (
-                <button
-                  className="auth-link is-inline"
-                  type="button"
-                  onClick={handleBack}
-                  disabled={saving || finishing}
-                >
+                <button className="auth-link is-inline" type="button" onClick={handleBack} disabled={saving || finishing}>
                   חזרה
                 </button>
               ) : null}
 
-              {step < 3 ? (
-                <button
-                  className="auth-button"
-                  type="button"
-                  onClick={handleNext}
-                  disabled={saving || finishing}
-                >
+              {step < TOTAL_STEPS ? (
+                <button className="auth-button" type="button" onClick={handleNext} disabled={saving || finishing}>
                   {saving ? "שומר..." : "המשך"}
                 </button>
               ) : (
-                <button
-                  className="auth-button"
-                  type="button"
-                  onClick={handleFinish}
-                  disabled={saving || finishing}
-                >
+                <button className="auth-button" type="button" onClick={handleFinish} disabled={saving || finishing}>
                   {finishing ? "מסיים..." : "סיום"}
                 </button>
               )}
@@ -517,12 +719,7 @@ export default function OnboardingPage() {
           </div>
 
           {introOpen ? (
-            <div
-              className="auth-modal-backdrop"
-              role="presentation"
-              onClick={() => {}}
-              style={{ cursor: "default" }}
-            >
+            <div className="auth-modal-backdrop" role="presentation" onClick={() => {}} style={{ cursor: "default" }}>
               <section
                 className="auth-modal"
                 role="dialog"
@@ -532,21 +729,17 @@ export default function OnboardingPage() {
               >
                 <header className="auth-modal-header">
                   <div>
-                    <h2 id="onboarding-intro-title">הגדרה קצרה (פחות מדקה)</h2>
-                    <p>כדי שנוכל להגן על השכר שלך ולזהות טעויות בתלושים.</p>
+                    <h2 id="onboarding-intro-title">הגדרה קצרה (כמה דקות)</h2>
+                    <p>כדי שנוכל לנתח את התלושים, לזהות חסרים בביטוחים ולתת המלצות אישיות.</p>
                   </div>
                 </header>
                 <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
                   <ul style={{ margin: 0, paddingInlineStart: 18, lineHeight: 1.6 }}>
-                    <li>ננתח תלושים ונזהה טעויות או פערים בשכר.</li>
-                    <li>נשווה בין מה שמגיע לך לבין מה שמופיע בתלוש.</li>
-                    <li>זה עוזר להגן על השכר שלך לאורך זמן.</li>
+                    <li>נשמור על הפרטים שלך מוצפנים – משמש רק להמלצות.</li>
+                    <li>אפשר לדלג על שדות לא חובה ולחזור אליהם מאוחר יותר.</li>
+                    <li>בכל שלב ניתן לחזור אחורה ולערוך.</li>
                   </ul>
-                  <button
-                    className="auth-button"
-                    type="button"
-                    onClick={() => setIntroOpen(false)}
-                  >
+                  <button className="auth-button" type="button" onClick={() => setIntroOpen(false)}>
                     בואו נתחיל
                   </button>
                 </div>
@@ -559,3 +752,20 @@ export default function OnboardingPage() {
   );
 }
 
+function SummaryBlock({ label, rows }: { label: string; rows: Array<[string, string | number | null | undefined]> }) {
+  const filled = rows.filter(([, v]) => v != null && v !== "");
+  if (filled.length === 0) return null;
+  return (
+    <div className="settings-field onboarding-field" style={{ borderRadius: 12, padding: "12px 14px", background: "rgba(124, 58, 237, 0.06)" }}>
+      <strong style={{ display: "block", marginBottom: 8 }}>{label}</strong>
+      <div style={{ display: "grid", gap: 4, fontSize: "0.95rem" }}>
+        {filled.map(([k, v]) => (
+          <div key={k} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+            <span style={{ opacity: 0.75 }}>{k}</span>
+            <span style={{ fontWeight: 500 }}>{String(v)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

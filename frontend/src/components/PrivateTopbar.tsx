@@ -3,6 +3,7 @@ import { useRef, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { getAvatarDisplayUrl } from "../api/profile.api";
+import NotificationBell from "./notifications/NotificationBell";
 import { APP_ROUTES } from "../types/navigation";
 import { logoutWithConfirm } from "../utils/logout";
 
@@ -14,6 +15,8 @@ const navItems = [
   { label: "לוח בקרה", route: APP_ROUTES.dashboard },
   { label: "מסמכים", route: APP_ROUTES.documents },
   { label: "היסטוריית תלושים", route: APP_ROUTES.payslipHistory },
+  { label: "תובנות", route: APP_ROUTES.insights },
+  { label: "ביטוחים", route: APP_ROUTES.insurance },
   { label: "ממצאים", route: APP_ROUTES.findings },
   { label: "עוזר AI", route: APP_ROUTES.assistant },
   { label: "הגדרות", route: APP_ROUTES.settings },
@@ -90,6 +93,7 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
 
       <div className="dashboard-top-actions">
         {rightSlot}
+        <NotificationBell />
         <div className="dashboard-user-menu" ref={dropdownRef}>
           <button
             type="button"

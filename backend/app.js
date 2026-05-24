@@ -10,6 +10,10 @@ const documentRoutes = require('./routes/documents');
 const aiRoutes = require('./routes/ai');
 const findingsRoutes = require('./routes/findings');
 const onboardingRoutes = require('./routes/onboarding');
+const profileRoutes = require('./routes/profile');
+const insightsRoutes = require('./routes/insights');
+const recommendationsRoutes = require('./routes/recommendations');
+const notificationsRoutes = require('./routes/notifications');
 
 const createApp = () => {
   const app = express();
@@ -74,6 +78,10 @@ const createApp = () => {
   app.use('/api/ai', aiRoutes);
   app.use('/api/findings', findingsRoutes);
   app.use('/api/onboarding', onboardingRoutes);
+  app.use('/api/profile', profileRoutes);
+  app.use('/api/insights', insightsRoutes);
+  app.use('/api/recommendations', recommendationsRoutes);
+  app.use('/api/notifications', notificationsRoutes);
 
   // 404 handler
   app.use((req, res) => {

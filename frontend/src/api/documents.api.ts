@@ -144,6 +144,12 @@ export type PayslipHistoryIntelligencePayload = {
     periodMonthNumber: number;
     grossSalary: number | null;
     netSalary: number | null;
+    tax?: number | null;
+    nationalInsurance?: number | null;
+    healthInsurance?: number | null;
+    pensionEmployee?: number | null;
+    pensionEmployer?: number | null;
+    pensionSeverance?: number | null;
     uploadedAt: string | null;
     isLatest: boolean;
   }>;

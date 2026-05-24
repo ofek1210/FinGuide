@@ -1,7 +1,13 @@
 const Document = require('../models/Document');
+const UserProfile = require('../models/UserProfile');
+const Insight = require('../models/Insight');
+const Recommendation = require('../models/Recommendation');
+const ChatMessage = require('../models/ChatMessage');
 const { askLLM } = require('../services/aiService');
+const { chat: claudeChat } = require('../services/claudeChatService');
 const { detectSalaryAnomalies } = require('../utils/detectSalaryAnomalies');
 const { simulateWhatIf } = require('../utils/simulateWhatIf');
+const mongoose = require('mongoose');
 
 const RLM = '\u200F';
 
@@ -77,6 +83,30 @@ function detectIntent(message) {
 
   if (msg.includes('חריג')) {
     return 'anomaly_check';
+  }
+
+  if (msg.includes('המלצ') || msg.includes('ביטוח') && msg.includes('צריך')) {
+    return 'my_recommendations';
+  }
+
+  if (msg.includes('התרא') || msg.includes('notification')) {
+    return 'my_notifications';
+  }
+
+  if (msg.includes('יש לי ביטוח') || msg.includes('האם יש לי')) {
+    return 'profile_insurance';
+  }
+
+  if (msg.includes('מה השתנה') || msg.includes('what changed')) {
+    return 'what_changed';
+  }
+
+  if (msg.includes('פנסיה') && (msg.includes('כמה') || msg.includes('שילמתי'))) {
+    return 'pension_total';
+  }
+
+  if (msg.includes('למה') && (msg.includes('ירד') || msg.includes('ירידה') || msg.includes('פחות'))) {
+    return 'salary_why_down';
   }
 
   if (msg.includes('פנסיה')) {
@@ -188,6 +218,12 @@ async function buildUserContext(userId) {
     .sort({ uploadedAt: -1 })
     .lean();
 
+  const [profile, insights, recommendations] = await Promise.all([
+    UserProfile.findOne({ user: userId }).lean(),
+    Insight.find({ user: userId, status: 'active' }).sort({ createdAt: -1 }).limit(5).lean(),
+    Recommendation.find({ user: userId, status: 'active' }).sort({ importance: 1 }).limit(5).lean(),
+  ]);
+
   // Get last 3 completed payslips for trend analysis
   const completedPayslips = documents.filter(
     d =>
@@ -247,6 +283,9 @@ async function buildUserContext(userId) {
     taxCreditPoints: fullAnalysis.tax?.tax_credit_points ?? null,
     // Prior payslips for trend questions
     payslipHistory,
+    profile,
+    insights,
+    recommendations,
   };
 }
 
@@ -385,6 +424,66 @@ function buildRuleBasedAnswer(intent, ctx) {
       return `לפי תלוש השכר האחרון:\n${parts.join('\n')}`;
     }
 
+    case 'my_recommendations': {
+      const recs = ctx.recommendations || [];
+      if (!recs.length) return 'אין כרגע המלצות ביטוח פעילות. השלם/י את ה-onboarding או העלה תלוש לקבלת המלצות.';
+      const lines = recs.map(r => `• ${r.title} (${r.importance})`);
+      return `ההמלצות הפעילות שלך:\n${lines.join('\n')}\n\nלפרטים מלאים: עמוד הביטוחים.`;
+    }
+
+    case 'my_notifications': {
+      return 'לצפייה בהתראות, לחץ/י על הפעמון בראש הדף או עבור/י לעמוד ההתראות.';
+    }
+
+    case 'profile_insurance': {
+      const ins = ctx.profile?.insurance || {};
+      const labels = {
+        hasLifeInsurance: 'ביטוח חיים',
+        hasHealthInsurance: 'ביטוח בריאות',
+        hasDisabilityInsurance: 'אובדן כושר',
+        hasApartmentInsurance: 'ביטוח דירה',
+        hasCarInsurance: 'ביטוח רכב',
+      };
+      const lines = Object.entries(labels).map(([k, label]) => {
+        const val = ins[k];
+        if (val == null) return `• ${label}: לא ידוע`;
+        return `• ${label}: ${val ? 'כן' : 'לא'}`;
+      });
+      return `לפי הפרופיל שלך:\n${lines.join('\n')}`;
+    }
+
+    case 'what_changed': {
+      const insight = (ctx.insights || []).find(i =>
+        ['salary_drop', 'salary_growth', 'unusual_deduction'].includes(i.kind),
+      );
+      if (insight) return `${insight.title}: ${insight.description}`;
+      const hist = ctx.payslipHistory?.[0];
+      if (hist && ctx.grossSalary != null && hist.grossSalary != null) {
+        const diff = ctx.grossSalary - hist.grossSalary;
+        if (diff !== 0) {
+          return `הברוטו ${diff > 0 ? 'עלה' : 'ירד'} ב-${formatAmount(Math.abs(diff))} לעומת התלוש הקודם.`;
+        }
+        return 'לא זוהו שינויים משמעותיים בברוטו לעומת התלוש הקודם.';
+      }
+      return 'אין מספיק תלושים להשוואה. העלה/י לפחות שני תלושים.';
+    }
+
+    case 'salary_why_down': {
+      const drop = (ctx.insights || []).find(i => i.kind === 'salary_drop');
+      if (drop) return drop.description;
+      return 'לא זוהתה ירידת שכר בתלושים האחרונים. ייתכן שהשינוי קטן או שחסר תלוש להשוואה.';
+    }
+
+    case 'pension_total': {
+      const emp = formatAmount(ctx.pensionEmployee);
+      const empl = formatAmount(ctx.pensionEmployer);
+      if (!emp && !empl) return 'לא מצאתי נתוני פנסיה בתלוש האחרון.';
+      const lines = [];
+      if (emp) lines.push(`הפרשת עובד: ${emp}`);
+      if (empl) lines.push(`הפרשת מעסיק: ${empl}`);
+      return `לפי התלוש האחרון:\n${lines.join('\n')}`;
+    }
+
     default:
       return null; // use LLM
   }
@@ -392,8 +491,26 @@ function buildRuleBasedAnswer(intent, ctx) {
 
 // ── main handler ──────────────────────────────────────────────────────────────
 
+async function saveChatMessage(userId, conversationId, role, content, metadata) {
+  return ChatMessage.create({
+    user: userId,
+    conversationId,
+    role,
+    content,
+    metadata: metadata || {},
+  });
+}
+
+async function getChatHistory(userId, conversationId, limit = 10) {
+  return ChatMessage.find({ user: userId, conversationId })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean()
+    .then(msgs => msgs.reverse());
+}
+
 async function chatWithAI(req, res) {
-  const { message, history } = req.body;
+  const { message, history, conversationId: clientConversationId } = req.body;
 
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ success: false, message: 'message is required (string)' });
@@ -402,12 +519,28 @@ async function chatWithAI(req, res) {
     return res.status(400).json({ success: false, message: 'message too long (max 2000 chars)' });
   }
 
-  // Server-side RAG: always fetch from DB, never trust client userData
+  const conversationId = clientConversationId && mongoose.Types.ObjectId.isValid(clientConversationId)
+    ? new mongoose.Types.ObjectId(clientConversationId)
+    : new mongoose.Types.ObjectId();
+
   const userContext = await buildUserContext(req.user._id);
   const intent = detectIntent(message);
 
   let finalAnswer;
   let source;
+  let model = null;
+  let tokensUsed = null;
+  const contextUsed = [];
+
+  if (userContext.profile) contextUsed.push('profile');
+  if (userContext.documents?.length) contextUsed.push(`${userContext.documents.length} documents`);
+  if (userContext.insights?.length) contextUsed.push(`${userContext.insights.length} insights`);
+  if (userContext.recommendations?.length) contextUsed.push(`${userContext.recommendations.length} recommendations`);
+
+  const dbHistory = await getChatHistory(req.user._id, conversationId);
+  const mergedHistory = dbHistory.length
+    ? dbHistory.map(m => ({ role: m.role, content: m.content }))
+    : (Array.isArray(history) ? history : []);
 
   if (intent === 'whatif') {
     const change = parseWhatIfChange(normalizeMessage(message));
@@ -440,22 +573,82 @@ async function chatWithAI(req, res) {
   } else {
     const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
     if (ruleAnswer === null) {
-      // Open-ended question → LLM with full financial context + conversation history
-      finalAnswer = await askLLM(message, userContext, history);
-      source = 'llm';
+      const chatResult = await claudeChat(message, {
+        userContext,
+        profile: userContext.profile,
+        insights: userContext.insights,
+        recommendations: userContext.recommendations,
+        history: mergedHistory,
+      });
+      finalAnswer = chatResult.answer;
+      source = chatResult.source;
+      model = chatResult.model;
+      tokensUsed = chatResult.tokensUsed;
     } else {
-      // Deterministic rule answer — never touches LLM, no chance of hallucination
       finalAnswer = ruleAnswer;
       source = 'rule';
     }
   }
+
+  await saveChatMessage(req.user._id, conversationId, 'user', message, { intent });
+  await saveChatMessage(req.user._id, conversationId, 'assistant', finalAnswer, {
+    intent,
+    contextUsed,
+    model,
+    tokensUsed,
+  });
 
   return res.json({
     success: true,
     answer: `${RLM}${finalAnswer}`,
     intent,
     source,
+    conversationId: conversationId.toString(),
+    contextUsed,
   });
 }
 
-module.exports = { chatWithAI };
+async function getChatHistoryHandler(req, res) {
+  const conversationId = req.query.conversationId;
+  if (!conversationId || !mongoose.Types.ObjectId.isValid(conversationId)) {
+    return res.status(400).json({ success: false, message: 'conversationId required' });
+  }
+
+  const messages = await ChatMessage.find({
+    user: req.user._id,
+    conversationId,
+    role: { $in: ['user', 'assistant'] },
+  })
+    .sort({ createdAt: 1 })
+    .limit(50)
+    .lean();
+
+  return res.json({ success: true, data: messages, conversationId });
+}
+
+async function listConversations(req, res) {
+  const conversations = await ChatMessage.aggregate([
+    { $match: { user: req.user._id, role: 'user' } },
+    { $sort: { createdAt: -1 } },
+    {
+      $group: {
+        _id: '$conversationId',
+        lastMessage: { $first: '$content' },
+        updatedAt: { $first: '$createdAt' },
+      },
+    },
+    { $sort: { updatedAt: -1 } },
+    { $limit: 20 },
+  ]);
+
+  return res.json({
+    success: true,
+    data: conversations.map(c => ({
+      conversationId: c._id.toString(),
+      preview: c.lastMessage,
+      updatedAt: c.updatedAt,
+    })),
+  });
+}
+
+module.exports = { chatWithAI, getChatHistoryHandler, listConversations };

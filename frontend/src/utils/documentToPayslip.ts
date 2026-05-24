@@ -394,6 +394,12 @@ export function getPayslipHistoryFromIntelligence(
     periodMonthNumber: item.periodMonthNumber,
     netSalary: item.netSalary,
     grossSalary: item.grossSalary,
+    tax: item.tax ?? null,
+    nationalInsurance: item.nationalInsurance ?? null,
+    healthInsurance: item.healthInsurance ?? null,
+    pensionEmployee: item.pensionEmployee ?? null,
+    pensionEmployer: item.pensionEmployer ?? null,
+    pensionSeverance: item.pensionSeverance ?? null,
     isLatest: item.isLatest,
     downloadUrl: null,
   }));
