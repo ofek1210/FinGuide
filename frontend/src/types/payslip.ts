@@ -101,5 +101,9 @@ export type PayslipDetail = {
   deductions: PayslipLineItem[];
   grossSalary: number | null;
   netSalary: number | null;
+  /** נקודות זיכוי ממס */
+  taxCreditPoints?: number | null;
+  /** זיכוי אישי — סכום הפחתת מס בש"ח */
+  personalCredit?: number | null;
   downloadUrl?: string | null;
 };

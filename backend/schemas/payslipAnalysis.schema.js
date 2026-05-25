@@ -53,12 +53,18 @@ function detectCrossFieldIssues(data) {
   const gross = data?.salary?.gross_total;
   const net = data?.salary?.net_payable;
   const mandatory = data?.deductions?.mandatory?.total;
+  const incomeTax = data?.deductions?.mandatory?.income_tax;
+  const personalCredit = data?.tax?.personal_credit;
 
   if (Number.isFinite(gross) && Number.isFinite(net) && net > gross * 1.005) {
     issues.push(`net_payable (${net}) exceeds gross_total (${gross})`);
   }
   if (Number.isFinite(gross) && Number.isFinite(mandatory) && mandatory > gross * 1.005) {
     issues.push(`mandatory_total (${mandatory}) exceeds gross_total (${gross})`);
+  }
+  // personal_credit cannot exceed income_tax — it's a reduction on the tax owed
+  if (Number.isFinite(personalCredit) && Number.isFinite(incomeTax) && personalCredit > incomeTax * 1.005) {
+    issues.push(`personal_credit (${personalCredit}) exceeds income_tax (${incomeTax})`);
   }
   return issues;
 }

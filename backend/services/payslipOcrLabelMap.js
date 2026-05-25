@@ -110,9 +110,21 @@ const PAYSLIP_LABEL_MAP = {
 
   base_salary: [
     'שכר בסיס',
+    'שכר יסוד',
     /שכר\s*בסיס/i,
+    /שכר\s*יסוד/i,
     /Base\s*Salary/i,
   ],
+
+  personal_credit: [
+    'זיכוי אישי',
+    'זיכוי במס',
+    'זיכוי ממס',
+    /זיכוי\s*אישי/i,
+    /זיכוי\s*(?:ב|מ)מס/i,
+    /personal\s*(?:tax\s*)?credit/i,
+  ],
+  _personal_credit_exclude: [/מצטבר/i, /cumulative/i, /נקודות/i],
 
   global_overtime: [
     'ש. נוס. גלובלי',
@@ -186,6 +198,7 @@ const FIELD_ORDER = [
   'income_tax',
   'national_insurance',
   'health_insurance',
+  'personal_credit',
   'base_salary',
   'global_overtime',
   'travel_expenses',
