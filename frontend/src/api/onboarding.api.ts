@@ -1,6 +1,7 @@
 import { apiJson, type ApiErrorPayload } from "./client";
 
 export type SalaryType = "global" | "hourly";
+export type Gender = "male" | "female" | "other";
 export type MaritalStatus =
   | "single"
   | "married"
@@ -20,9 +21,12 @@ export type InvestmentType = "stocks" | "bonds" | "real_estate" | "crypto" | "ot
 export type PersonalSection = {
   fullName: string | null;
   age: number | null;
+  gender: Gender | null;
   occupation: string | null;
   maritalStatus: MaritalStatus | null;
   childrenCount: number | null;
+  childrenAges: number[];
+  spouseWorks: boolean | null;
 };
 
 export type FinancialSection = {
@@ -62,6 +66,11 @@ export type EmploymentSection = {
   isPrimaryJob: boolean | null;
   hasMultipleEmployers: boolean | null;
   employmentStartDate: string | null;
+  hasTaxCoordination: boolean | null;
+  pensionEmployeeRate: number | null;
+  pensionEmployerRate: number | null;
+  studyFundEmployeeRate: number | null;
+  studyFundEmployerRate: number | null;
 };
 
 export type OnboardingProfile = {
@@ -103,9 +112,12 @@ export const EMPTY_PROFILE: OnboardingProfile = {
   personal: {
     fullName: null,
     age: null,
+    gender: null,
     occupation: null,
     maritalStatus: null,
     childrenCount: null,
+    childrenAges: [],
+    spouseWorks: null,
   },
   financial: {
     salaryRange: null,
@@ -140,6 +152,11 @@ export const EMPTY_PROFILE: OnboardingProfile = {
     isPrimaryJob: null,
     hasMultipleEmployers: null,
     employmentStartDate: null,
+    hasTaxCoordination: null,
+    pensionEmployeeRate: null,
+    pensionEmployerRate: null,
+    studyFundEmployeeRate: null,
+    studyFundEmployerRate: null,
   },
 };
 

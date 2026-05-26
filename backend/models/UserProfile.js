@@ -14,6 +14,7 @@ const mongoose = require('mongoose');
 
 const STRING_ENUMS = {
   salaryType: ['global', 'hourly'],
+  gender: ['male', 'female', 'other'],
   maritalStatus: ['single', 'married', 'divorced', 'widowed', 'partnered'],
   salaryRange: [
     'under_5k',
@@ -31,6 +32,11 @@ const personalSchema = new mongoose.Schema(
   {
     fullName: { type: String, default: null, trim: true, maxlength: 120 },
     age: { type: Number, default: null, min: 16, max: 120 },
+    gender: {
+      type: String,
+      enum: [...STRING_ENUMS.gender, null],
+      default: null,
+    },
     occupation: { type: String, default: null, trim: true, maxlength: 120 },
     maritalStatus: {
       type: String,
@@ -38,6 +44,8 @@ const personalSchema = new mongoose.Schema(
       default: null,
     },
     childrenCount: { type: Number, default: null, min: 0, max: 20 },
+    childrenAges: { type: [Number], default: [] },
+    spouseWorks: { type: Boolean, default: null },
   },
   { _id: false }
 );
@@ -109,6 +117,11 @@ const employmentSchema = new mongoose.Schema(
     isPrimaryJob: { type: Boolean, default: null },
     hasMultipleEmployers: { type: Boolean, default: null },
     employmentStartDate: { type: String, default: null, trim: true },
+    hasTaxCoordination: { type: Boolean, default: null },
+    pensionEmployeeRate: { type: Number, default: null, min: 0, max: 20 },
+    pensionEmployerRate: { type: Number, default: null, min: 0, max: 25 },
+    studyFundEmployeeRate: { type: Number, default: null, min: 0, max: 10 },
+    studyFundEmployerRate: { type: Number, default: null, min: 0, max: 20 },
   },
   { _id: false }
 );

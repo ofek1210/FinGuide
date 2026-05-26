@@ -7,9 +7,12 @@ const ALL_FIELDS = {
   personal: {
     fullName: { type: 'string', maxLength: 120 },
     age: { type: 'number', min: 16, max: 120 },
+    gender: { type: 'enum', values: STRING_ENUMS.gender },
     occupation: { type: 'string', maxLength: 120 },
     maritalStatus: { type: 'enum', values: STRING_ENUMS.maritalStatus },
     childrenCount: { type: 'number', min: 0, max: 20, integer: true },
+    childrenAges: { type: 'number-array', min: 0, max: 25 },
+    spouseWorks: { type: 'boolean' },
   },
   financial: {
     salaryRange: { type: 'enum', values: STRING_ENUMS.salaryRange },
@@ -44,6 +47,11 @@ const ALL_FIELDS = {
     isPrimaryJob: { type: 'boolean' },
     hasMultipleEmployers: { type: 'boolean' },
     employmentStartDate: { type: 'date-string' },
+    hasTaxCoordination: { type: 'boolean' },
+    pensionEmployeeRate: { type: 'number', min: 0, max: 20 },
+    pensionEmployerRate: { type: 'number', min: 0, max: 25 },
+    studyFundEmployeeRate: { type: 'number', min: 0, max: 10 },
+    studyFundEmployerRate: { type: 'number', min: 0, max: 20 },
   },
 };
 
@@ -111,6 +119,27 @@ const checkField = (sectionName, fieldName, rule, value, errors) => {
       }
       if (rule.values && !value.every(v => rule.values.includes(v))) {
         errors.push({ field: path, message: `Items must be in: ${rule.values.join(', ')}` });
+      }
+      return;
+
+    case 'number-array':
+      if (!Array.isArray(value)) {
+        errors.push({ field: path, message: 'Must be an array' });
+        return;
+      }
+      for (const item of value) {
+        if (typeof item !== 'number' || !Number.isFinite(item)) {
+          errors.push({ field: path, message: 'All items must be numbers' });
+          return;
+        }
+        if (rule.min != null && item < rule.min) {
+          errors.push({ field: path, message: `Items must be at least ${rule.min}` });
+          return;
+        }
+        if (rule.max != null && item > rule.max) {
+          errors.push({ field: path, message: `Items must be at most ${rule.max}` });
+          return;
+        }
       }
       return;
 
