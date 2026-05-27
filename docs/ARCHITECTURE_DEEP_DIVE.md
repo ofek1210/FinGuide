@@ -337,9 +337,11 @@ flowchart TD
 
 ### 6.1 Findings
 
-[`findingsController.js`](../backend/controllers/findingsController.js) — heuristics על מטא-דאטה:
+[`findingsController.js`](../backend/controllers/findingsController.js) — heuristics על מטא-דאטה + ניתוח `analysisData`:
 
 - אין מסמכים, כפילויות (שם+גודל), pending/processing, מסמכים ישנים (>30 יום), מטא-דאטה חסר, תאריך עתידי.
+- **קרן ללא הפקדה:** [`detectFundWithoutDeposit.js`](../backend/utils/detectFundWithoutDeposit.js) — פנסיה וקה"ש, כולל סתירת onboarding.
+- **פער באחוזי הפרשה:** [`detectContributionRateGap.js`](../backend/utils/detectContributionRateGap.js) — מוצהר מול משתמע (סכום÷בסיס) + סף מינימום מ-[`contributionRateThresholds.js`](../backend/config/contributionRateThresholds.js).
 
 ### 6.2 Savings Forecast
 

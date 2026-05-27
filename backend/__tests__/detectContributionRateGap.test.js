@@ -1,0 +1,141 @@
+const {
+  analyzeContributionRates,
+  buildContributionRateGapFindings,
+  computeImpliedPercent,
+} = require('../utils/detectContributionRateGap');
+const { getContributionRateThresholds } = require('../config/contributionRateThresholds');
+
+const okPensionAnalysis = {
+  period: { month: '2024-06' },
+  contributions: {
+    pension: {
+      base_salary_for_pension: 26000,
+      employee: 1560,
+      employer: 1690,
+      employee_rate_percent: 6,
+      employer_rate_percent: 6.5,
+      detection: { sectionDetected: true, noDeposit: false },
+    },
+  },
+  quality: { warning_categories: [] },
+};
+
+describe('computeImpliedPercent', () => {
+  test('computes percent from amount and base', () => {
+    expect(computeImpliedPercent(1560, 26000)).toBeCloseTo(6, 2);
+  });
+});
+
+describe('analyzeContributionRates', () => {
+  test('no inconsistency when stated matches implied', () => {
+    const result = analyzeContributionRates(okPensionAnalysis, 'pension');
+    expect(result.applies).toBe(false);
+    expect(result.sides.every(side => !side.consistencyGap)).toBe(true);
+  });
+
+  test('detects inconsistency when stated percent does not match amount', () => {
+    const result = analyzeContributionRates(
+      {
+        ...okPensionAnalysis,
+        contributions: {
+          pension: {
+            ...okPensionAnalysis.contributions.pension,
+            employee: 1400,
+            employee_rate_percent: 6,
+          },
+        },
+      },
+      'pension',
+    );
+
+    expect(result.applies).toBe(true);
+    const employeeSide = result.sides.find(side => side.role === 'employee');
+    expect(employeeSide.consistencyGap).toBe(true);
+  });
+
+  test('detects below minimum when effective percent is low', () => {
+    const result = analyzeContributionRates(
+      {
+        period: { month: '2024-06' },
+        contributions: {
+          pension: {
+            base_salary_for_pension: 26000,
+            employee: 1300,
+            employer: 1690,
+            employee_rate_percent: 5,
+            employer_rate_percent: 6.5,
+            detection: { sectionDetected: true, noDeposit: false },
+          },
+        },
+        quality: { warning_categories: [] },
+      },
+      'pension',
+      getContributionRateThresholds(),
+    );
+
+    const employeeSide = result.sides.find(side => side.role === 'employee');
+    expect(employeeSide.belowMinimum).toBe(true);
+    expect(result.applies).toBe(true);
+  });
+
+  test('skips when fund has no deposit', () => {
+    const result = analyzeContributionRates(
+      {
+        contributions: {
+          study_fund: {
+            base_salary_for_study_fund: 20000,
+            employee: 0,
+            employer: 0,
+            detection: { sectionDetected: true, noDeposit: true },
+          },
+        },
+        quality: { warning_categories: [] },
+      },
+      'study_fund',
+    );
+
+    expect(result.skipped).toBe(true);
+    expect(result.applies).toBe(false);
+  });
+
+  test('low confidence when ambiguous roles', () => {
+    const result = analyzeContributionRates(
+      {
+        ...okPensionAnalysis,
+        quality: { warning_categories: ['ambiguous.contributions.pension_roles'] },
+      },
+      'pension',
+    );
+
+    expect(result.confidence).toBe('low');
+  });
+});
+
+describe('buildContributionRateGapFindings', () => {
+  test('returns pension_rate_inconsistency finding', () => {
+    const findings = buildContributionRateGapFindings([
+      {
+        _id: '1',
+        status: 'completed',
+        originalName: 'june.pdf',
+        analysisData: {
+          period: { month: '2024-06' },
+          contributions: {
+            pension: {
+              base_salary_for_pension: 26000,
+              employee: 1400,
+              employer: 1690,
+              employee_rate_percent: 6,
+              employer_rate_percent: 6.5,
+              detection: { sectionDetected: true, noDeposit: false },
+            },
+          },
+          quality: { warning_categories: [] },
+        },
+      },
+    ]);
+
+    const ids = findings.map(item => item.id);
+    expect(ids).toContain('pension_rate_inconsistency');
+  });
+});

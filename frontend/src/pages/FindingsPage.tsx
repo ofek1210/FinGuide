@@ -31,14 +31,18 @@ const findingSeverityLabels: Record<FindingSeverity, string> = {
   warning: "אזהרה",
 };
 
-const FUND_DEPOSIT_FINDING_IDS = new Set([
+const CONTRIBUTION_FINDING_IDS = new Set([
   "study_fund_no_deposit",
   "pension_no_deposit",
   "onboarding_study_fund_mismatch",
   "onboarding_pension_mismatch",
+  "study_fund_rate_inconsistency",
+  "pension_rate_inconsistency",
+  "study_fund_rate_below_minimum",
+  "pension_rate_below_minimum",
 ]);
 
-const isFundDepositFinding = (id: string) => FUND_DEPOSIT_FINDING_IDS.has(id);
+const isContributionFinding = (id: string) => CONTRIBUTION_FINDING_IDS.has(id);
 
 const SEVERITY_ORDER: FindingSeverity[] = ["warning", "info"];
 
@@ -932,7 +936,7 @@ export default function FindingsPage() {
                     <span className={`insight-card-badge severity-${finding.severity}`}>
                       {findingSeverityLabels[finding.severity]}
                     </span>
-                    {isFundDepositFinding(finding.id) ? (
+                    {isContributionFinding(finding.id) ? (
                       <button
                         type="button"
                         className="dashboard-hero-action insight-card-action"

@@ -214,8 +214,121 @@ function pushContributionAmountCandidate(store, field, amount, entry, stats, {
   });
 }
 
+function rememberRateHint(rateHints, key, rate) {
+  if (!rateHints || rate == null || !Number.isFinite(rate)) {
+    return;
+  }
+  if (rateHints[key] == null) {
+    rateHints[key] = rate;
+  }
+}
+
+function parseTableContributionRates(raw, { base, employee, employer, severance }, tolerance = 25) {
+  if (!raw) {
+    return {};
+  }
+
+  const nums = extractAllNumericTokens(raw);
+  const rates = extractPercentTokens(raw);
+  const lineBase = base ?? pickReasonableAmount(nums, { min: 5000, max: 200000 });
+  const amounts = nums.filter(
+    value => value >= 50 && value <= 60000 && !(lineBase && Math.abs(value - lineBase) < 5),
+  );
+
+  const result = {};
+
+  const assignRateForAmount = (targetAmount, roleKey) => {
+    if (targetAmount == null || !Number.isFinite(targetAmount)) {
+      return;
+    }
+
+    amounts.forEach((amount, index) => {
+      if (Math.abs(amount - targetAmount) > tolerance) {
+        return;
+      }
+      if (rates[index] != null) {
+        result[roleKey] = rates[index];
+        return;
+      }
+      rates.forEach(rate => {
+        if (lineBase && Math.abs((lineBase * rate) / 100 - targetAmount) <= tolerance) {
+          result[roleKey] = rate;
+        }
+      });
+    });
+  };
+
+  assignRateForAmount(employee, 'employeeRate');
+  assignRateForAmount(employer, 'employerRate');
+  assignRateForAmount(severance, 'severanceRate');
+
+  if (
+    result.employeeRate == null &&
+    result.employerRate == null &&
+    rates.length >= 2 &&
+    amounts.length >= 2 &&
+    employee != null &&
+    employer != null
+  ) {
+    if (Math.abs(amounts[0] - employee) <= tolerance) {
+      result.employeeRate = rates[0];
+    }
+    if (Math.abs(amounts[1] - employer) <= tolerance) {
+      result.employerRate = rates[1];
+    }
+  }
+
+  if (
+    result.severanceRate == null &&
+    severance != null &&
+    rates.length >= 3 &&
+    amounts.length >= 3
+  ) {
+    const severanceIndex = amounts.findIndex(amount => Math.abs(amount - severance) <= tolerance);
+    if (severanceIndex >= 0 && rates[severanceIndex] != null) {
+      result.severanceRate = rates[severanceIndex];
+    }
+  }
+
+  return result;
+}
+
+function resolveStatedRates({ base, employee, employer, severance }, stats, rateHints, fundPrefix) {
+  const fromHints = {
+    employeeRate: rateHints[`${fundPrefix}_employee`],
+    employerRate: rateHints[`${fundPrefix}_employer`],
+    severanceRate: rateHints[`${fundPrefix}_severance`],
+  };
+
+  const lines =
+    fundPrefix === 'study'
+      ? [stats.studyDebugLine].filter(Boolean)
+      : (stats.pensionDebugLines || []).filter(Boolean);
+
+  const fromTable = {};
+  lines.forEach(line => {
+    const parsed = parseTableContributionRates(
+      line,
+      { base, employee, employer, severance },
+      fundPrefix === 'study' ? 20 : 25,
+    );
+    Object.entries(parsed).forEach(([key, value]) => {
+      if (fromTable[key] == null && value != null) {
+        fromTable[key] = value;
+      }
+    });
+  });
+
+  return {
+    employeeRate: fromHints.employeeRate ?? fromTable.employeeRate ?? undefined,
+    employerRate: fromHints.employerRate ?? fromTable.employerRate ?? undefined,
+    severanceRate: fromHints.severanceRate ?? fromTable.severanceRate ?? undefined,
+  };
+}
+
 function collectContributionCandidates(input) {
   const store = {};
+  const rateHints = {};
   const entries = normalizeContributionEntries(input);
   const { studyLines, pensionLines } = collectContributionLines(entries);
 
@@ -282,6 +395,7 @@ function collectContributionCandidates(input) {
         }
 
         if (isEmployeeLine) {
+          rememberRateHint(rateHints, 'study_employee', rate);
           pushContributionAmountCandidate(store, 'study_employee', matchedAmount, entry, stats, {
             source: stats.hasAdjacentSupport ? 'contribution_adjacent_rate_match' : 'contribution_rate_match',
             score: 0.88,
@@ -290,6 +404,7 @@ function collectContributionCandidates(input) {
         }
 
         if (isEmployerLine) {
+          rememberRateHint(rateHints, 'study_employer', rate);
           pushContributionAmountCandidate(store, 'study_employer', matchedAmount, entry, stats, {
             source: stats.hasAdjacentSupport ? 'contribution_adjacent_rate_match' : 'contribution_rate_match',
             score: 0.88,
@@ -351,18 +466,21 @@ function collectContributionCandidates(input) {
         if (amount === undefined) continue;
 
         if (isSeveranceLine) {
+          rememberRateHint(rateHints, 'pension_severance', rate);
           pushContributionAmountCandidate(store, 'pension_severance', amount, entry, stats, {
             source: stats.hasAdjacentSupport ? 'contribution_adjacent_rate_match' : 'contribution_rate_match',
             score: 0.88,
             reason: 'Matched severance amount from role + base + rate.',
           });
         } else if (isEmployeeLine) {
+          rememberRateHint(rateHints, 'pension_employee', rate);
           pushContributionAmountCandidate(store, 'pension_employee', amount, entry, stats, {
             source: stats.hasAdjacentSupport ? 'contribution_adjacent_rate_match' : 'contribution_rate_match',
             score: 0.88,
             reason: 'Matched pension employee amount from role + base + rate.',
           });
         } else if (isEmployerLine) {
+          rememberRateHint(rateHints, 'pension_employer', rate);
           pushContributionAmountCandidate(store, 'pension_employer', amount, entry, stats, {
             source: stats.hasAdjacentSupport ? 'contribution_adjacent_rate_match' : 'contribution_rate_match',
             score: 0.88,
@@ -406,6 +524,7 @@ function collectContributionCandidates(input) {
       pensionLinesFound: pensionLines.length,
       studyDebugLine: studyLines[0]?.raw,
       pensionDebugLines: pensionLines.slice(0, 8).map(entry => entry.raw),
+      rateHints,
     },
   };
 }
@@ -432,13 +551,36 @@ function resolveContributionCandidates(store, stats, warnings) {
     warnings.push('Pension contribution lines found but employee/employer roles were ambiguous.');
   }
 
+  const studyRates = resolveStatedRates(
+    {
+      base: studyBase?.value,
+      employee: studyEmployee?.value,
+      employer: studyEmployer?.value,
+    },
+    stats,
+    stats.rateHints || {},
+    'study',
+  );
+
+  const pensionRates = resolveStatedRates(
+    {
+      base: pensionBase?.value,
+      employee: pensionEmployee?.value,
+      employer: pensionEmployer?.value,
+      severance: pensionSeverance?.value,
+    },
+    stats,
+    stats.rateHints || {},
+    'pension',
+  );
+
   return {
     study: {
       base: studyBase?.value,
       employee: studyEmployee?.value,
       employer: studyEmployer?.value,
-      employeeRate: undefined,
-      employerRate: undefined,
+      employeeRate: studyRates.employeeRate,
+      employerRate: studyRates.employerRate,
       debug_line: stats.studyDebugLine,
       detection: buildContributionDetection({
         sectionDetected: stats.studyLinesFound,
@@ -457,6 +599,9 @@ function resolveContributionCandidates(store, stats, warnings) {
       employer: pensionEmployer?.value,
       severance: pensionSeverance?.value,
       base_for_severance: pensionBase?.value,
+      employeeRate: pensionRates.employeeRate,
+      employerRate: pensionRates.employerRate,
+      severanceRate: pensionRates.severanceRate,
       debug_lines: stats.pensionDebugLines,
       detection: buildContributionDetection({
         sectionDetected: stats.pensionLinesFound,
@@ -487,5 +632,6 @@ module.exports = {
   collectContributionCandidates,
   extractPension,
   extractStudyFund,
+  parseTableContributionRates,
   resolveContributionCandidates,
 };

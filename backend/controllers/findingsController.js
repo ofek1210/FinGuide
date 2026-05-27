@@ -2,6 +2,7 @@ const Document = require('../models/Document');
 const User = require('../models/User');
 const { buildSavingsForecast } = require('../services/savingsForecastService');
 const { buildFundDepositFindings } = require('../utils/detectFundWithoutDeposit');
+const { buildContributionRateGapFindings } = require('../utils/detectContributionRateGap');
 
 const STALE_DAYS = 30;
 
@@ -146,6 +147,13 @@ exports.getFindings = async (req, res, next) => {
 
     const fundFindings = buildFundDepositFindings(documents, user);
     fundFindings.forEach(item => {
+      findings.push(
+        buildFinding(item.id, item.title, item.severity, item.details)
+      );
+    });
+
+    const rateGapFindings = buildContributionRateGapFindings(documents);
+    rateGapFindings.forEach(item => {
       findings.push(
         buildFinding(item.id, item.title, item.severity, item.details)
       );
