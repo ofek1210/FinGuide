@@ -9,6 +9,7 @@ interface PayslipRowProps {
   onDownload: (item: PayslipHistoryItem) => void;
   onSelect?: (item: PayslipHistoryItem) => void;
   isDownloading?: boolean;
+  isHighlighted?: boolean;
 }
 
 export default function PayslipRow({
@@ -19,6 +20,7 @@ export default function PayslipRow({
   onDownload,
   onSelect,
   isDownloading = false,
+  isHighlighted = false,
 }: PayslipRowProps) {
   const canDownload = Boolean(item.id) && !isDownloading;
 
@@ -34,7 +36,7 @@ export default function PayslipRow({
 
   return (
     <div
-      className={`payslip-row ${onSelect ? "payslip-row-clickable" : ""}`}
+      className={`payslip-row ${onSelect ? "payslip-row-clickable" : ""} ${isHighlighted ? "payslip-row-highlight" : ""}`}
       role={onSelect ? "button" : undefined}
       tabIndex={onSelect ? 0 : undefined}
       onClick={onSelect ? handleRowClick : undefined}

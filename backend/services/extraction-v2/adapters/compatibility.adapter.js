@@ -1,4 +1,6 @@
 const { buildPayslipSummaryV2 } = require('./summary.adapter');
+const { dedupeStrings, categorizeOcrWarning } = require('../../payslipOcrShared');
+const { buildContributionDetection } = require('../../../utils/detectFundWithoutDeposit');
 
 function getFieldValue(fields, key) {
   return fields && fields[key] ? fields[key].value ?? null : null;
@@ -12,6 +14,10 @@ function toWarnings(validationWarnings = [], validationErrors = []) {
     ? validationErrors.map(e => e.message).filter(Boolean)
     : [];
   return [...warningMessages, ...errorMessages];
+}
+
+function hasFieldValue(fields, key) {
+  return Boolean(fields && fields[key] && fields[key].value != null);
 }
 
 /**
@@ -67,6 +73,9 @@ function buildCompatibleAnalysisData(input = {}) {
         employer: getFieldValue(fields, 'pension_employer'),
         severance: getFieldValue(fields, 'pension_severance'),
         base_for_severance: getFieldValue(fields, 'pension_base_for_severance'),
+        employee_rate_percent: getFieldValue(fields, 'pension_employee_rate_percent'),
+        employer_rate_percent: getFieldValue(fields, 'pension_employer_rate_percent'),
+        severance_rate_percent: getFieldValue(fields, 'pension_severance_rate_percent'),
       },
       study_fund: {
         base_salary_for_study_fund: getFieldValue(fields, 'study_fund_base_salary'),
@@ -110,6 +119,13 @@ function buildCompatibleAnalysisData(input = {}) {
     quality: {
       confidence: rawPayload.confidence ?? null,
       warnings: toWarnings(validationResult.warnings, validationResult.errors),
+      warning_categories: [],
+      fields: {
+        study_employee: { abstained: !hasFieldValue(fields, 'study_fund_employee') },
+        study_employer: { abstained: !hasFieldValue(fields, 'study_fund_employer') },
+        pension_employee: { abstained: !hasFieldValue(fields, 'pension_employee') },
+        pension_employer: { abstained: !hasFieldValue(fields, 'pension_employer') },
+      },
       debug: rawPayload.debug || {},
       validation: {
         isValid: validationResult.isValid ?? false,
@@ -132,6 +148,32 @@ function buildCompatibleAnalysisData(input = {}) {
 
     extraction_v2: extractionResult,
   };
+
+  analysisData.quality.warning_categories = dedupeStrings(
+    (analysisData.quality.warnings || []).map(categorizeOcrWarning),
+  );
+
+  analysisData.contributions.study_fund.detection = buildContributionDetection({
+    sectionDetected: Boolean(
+      analysisData.contributions.study_fund.base_salary_for_study_fund != null ||
+      analysisData.contributions.study_fund.employee != null ||
+      analysisData.contributions.study_fund.employer != null,
+    ),
+    employee: analysisData.contributions.study_fund.employee,
+    employer: analysisData.contributions.study_fund.employer,
+  });
+
+  analysisData.contributions.pension.detection = buildContributionDetection({
+    sectionDetected: Boolean(
+      analysisData.contributions.pension.base_salary_for_pension != null ||
+      analysisData.contributions.pension.employee != null ||
+      analysisData.contributions.pension.employer != null ||
+      analysisData.contributions.pension.severance != null,
+    ),
+    employee: analysisData.contributions.pension.employee,
+    employer: analysisData.contributions.pension.employer,
+    severance: analysisData.contributions.pension.severance,
+  });
 
   analysisData.summary = buildPayslipSummaryV2(analysisData);
   return analysisData;

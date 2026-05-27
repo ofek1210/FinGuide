@@ -16,12 +16,21 @@ const readToleranceEnv = (key, fallback) => {
   return Number.isFinite(value) ? value : fallback;
 };
 
+const readBoolEnv = (key, fallback) => {
+  const raw = process.env[key];
+  if (raw == null || raw === '') {
+    return fallback;
+  }
+  return ['1', 'true', 'yes', 'on'].includes(String(raw).toLowerCase());
+};
+
 /**
  * Reference minimum contribution rates (percent) for comparative findings only.
  * Not legal advice — override via environment variables when needed.
  */
 const getContributionRateThresholds = () => ({
   inconsistencyTolerancePercent: readToleranceEnv('CONTRIBUTION_RATE_INCONSISTENCY_TOLERANCE', 0.35),
+  adjustForJobPercent: readBoolEnv('DEPOSIT_RATE_ADJUST_FOR_JOB_PERCENT', false),
   pension: {
     employeeMinPercent: readPercentEnv('PENSION_EMPLOYEE_MIN_RATE_PERCENT', 6.0),
     employerMinPercent: readPercentEnv('PENSION_EMPLOYER_MIN_RATE_PERCENT', 6.5),

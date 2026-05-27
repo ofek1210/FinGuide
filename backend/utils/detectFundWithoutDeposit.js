@@ -1,4 +1,5 @@
 const { normalizeAmount } = require('./numeric');
+const { resolvePayslipPeriod, monthKey } = require('./payslipPeriod');
 
 const FUND_TYPES = Object.freeze(['study_fund', 'pension']);
 
@@ -51,6 +52,16 @@ const sumDeposits = (employee, employer) => {
     total: (emp ?? 0) + (empl ?? 0),
     hasAnyValue: emp !== null || empl !== null,
   };
+};
+
+const severanceOnlyDeposit = (fundType, fundBlock) => {
+  if (fundType !== 'pension') {
+    return false;
+  }
+  const employee = toAmount(fundBlock?.employee) ?? 0;
+  const employer = toAmount(fundBlock?.employer) ?? 0;
+  const severance = toAmount(fundBlock?.severance) ?? 0;
+  return severance > 0 && employee === 0 && employer === 0;
 };
 
 const getWarningCategories = analysisData => {
@@ -140,6 +151,10 @@ const detectFundContributionStatus = (analysisData, fundType) => {
       reasons.push('employee_and_employer_deposits_zero_or_missing');
     }
   }
+  if (noDeposit && severanceOnlyDeposit(fundType, fundBlock)) {
+    noDeposit = false;
+    reasons.push('pension_severance_only_considered_as_deposit');
+  }
 
   let confidence = 'high';
   if (ambiguousRoles) {
@@ -182,13 +197,16 @@ const formatPeriodLabel = analysisData => {
 const severityForStatus = status =>
   status.confidence === 'low' || status.ambiguousRoles ? 'info' : 'warning';
 
-const buildContributionDetection = ({ sectionDetected, employee, employer }) => {
+const buildContributionDetection = ({ sectionDetected, employee, employer, severance }) => {
   const { total } = sumDeposits(employee, employer);
+  const severanceAmount = toAmount(severance) ?? 0;
+  const noDeposit = total === 0 && severanceAmount === 0;
   return {
     sectionDetected: Boolean(sectionDetected),
     employeeAmount: toAmount(employee),
     employerAmount: toAmount(employer),
-    noDeposit: total === 0,
+    severanceAmount: toAmount(severance),
+    noDeposit,
   };
 };
 
@@ -204,7 +222,8 @@ const buildDetailsForStatus = (config, status, docLabel, period) => {
 /**
  * Build per-document fund-without-deposit finding candidates.
  */
-const detectFundFindingsForDocuments = documents => {
+const detectFundFindingsForDocuments = (documents, options = {}) => {
+  const suppressPeriodKeysByFund = options.suppressPeriodKeysByFund || {};
   const hitsByFund = {
     study_fund: [],
     pension: [],
@@ -221,9 +240,20 @@ const detectFundFindingsForDocuments = documents => {
     }
 
     const period = formatPeriodLabel(analysisData);
+    const periodResolved = resolvePayslipPeriod(doc);
+    const periodKey =
+      !periodResolved.incompletePeriod && periodResolved.year
+        ? monthKey(periodResolved.year, periodResolved.month)
+        : null;
     const docLabel = doc.originalName || 'מסמך';
+    const documentId = doc._id?.toString?.() || doc._id || null;
 
     FUND_TYPES.forEach(fundType => {
+      const suppressed = suppressPeriodKeysByFund[fundType];
+      if (suppressed && periodKey && suppressed.has(periodKey)) {
+        return;
+      }
+
       const status = detectFundContributionStatus(analysisData, fundType);
       if (!status.applies) {
         return;
@@ -235,6 +265,8 @@ const detectFundFindingsForDocuments = documents => {
         status,
         details: buildDetailsForStatus(config, status, docLabel, period),
         period,
+        periodKey,
+        documentId,
         severity: severityForStatus(status),
       });
     });
@@ -258,6 +290,12 @@ const detectFundFindingsForDocuments = documents => {
         severity: hit.severity,
         details: hit.details,
         fundType,
+        meta: {
+          fundType,
+          findingKind: 'deposit',
+          periods: hit.period ? [hit.period] : [],
+          documentIds: hit.documentId ? [hit.documentId] : [],
+        },
       });
       return;
     }
@@ -265,6 +303,7 @@ const detectFundFindingsForDocuments = documents => {
     const periods = [...new Set(hits.map(hit => hit.period).filter(Boolean))];
     const periodText = periods.length > 0 ? ` בתקופות: ${periods.join(', ')}` : '';
     const maxSeverity = hits.some(hit => hit.severity === 'warning') ? 'warning' : 'info';
+    const documentIds = [...new Set(hits.map(hit => hit.documentId).filter(Boolean))];
 
     findings.push({
       id: config.findingId,
@@ -272,6 +311,7 @@ const detectFundFindingsForDocuments = documents => {
       severity: maxSeverity,
       details: `נמצאו ${hits.length} תלושים עם ${config.labelHe} ללא הפקדה חודשית${periodText}.`,
       fundType,
+      meta: { fundType, findingKind: 'deposit', periods, documentIds },
     });
   });
 
@@ -360,8 +400,8 @@ const detectOnboardingFundMismatches = (user, documents) => {
 /**
  * Merge fund findings for GET /api/findings (dedupe by id).
  */
-const buildFundDepositFindings = (documents, user) => {
-  const fromDocs = detectFundFindingsForDocuments(documents);
+const buildFundDepositFindings = (documents, user, options = {}) => {
+  const fromDocs = detectFundFindingsForDocuments(documents, options);
   const fromOnboarding = detectOnboardingFundMismatches(user, documents);
 
   const byId = new Map();
@@ -371,11 +411,12 @@ const buildFundDepositFindings = (documents, user) => {
     }
   });
 
-  return Array.from(byId.values()).map(({ id, title, severity, details }) => ({
+  return Array.from(byId.values()).map(({ id, title, severity, details, meta }) => ({
     id,
     title,
     severity,
     details,
+    meta,
   }));
 };
 

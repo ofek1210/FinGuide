@@ -2,11 +2,23 @@ import { apiJson, type ApiErrorPayload } from "./client";
 
 export type FindingSeverity = "info" | "warning";
 
+export type FindingFundType = "pension" | "study_fund";
+
+export type FindingKind = "rate" | "continuity" | "deposit";
+
+export type FindingMeta = {
+  fundType?: FindingFundType;
+  periods?: string[];
+  documentIds?: string[];
+  findingKind?: FindingKind;
+};
+
 export type FindingItem = {
   id: string;
   title: string;
   severity: FindingSeverity;
   details: string;
+  meta?: FindingMeta;
 };
 
 export type ListFindingsResponse = {

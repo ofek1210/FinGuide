@@ -3,14 +3,16 @@ const User = require('../models/User');
 const { buildSavingsForecast } = require('../services/savingsForecastService');
 const { buildFundDepositFindings } = require('../utils/detectFundWithoutDeposit');
 const { buildContributionRateGapFindings } = require('../utils/detectContributionRateGap');
+const { buildDepositContinuityFindings } = require('../utils/detectDepositContinuityGap');
 
 const STALE_DAYS = 30;
 
-const buildFinding = (id, title, severity, details) => ({
+const buildFinding = (id, title, severity, details, meta) => ({
   id,
   title,
   severity,
   details,
+  ...(meta && typeof meta === 'object' ? { meta } : {}),
 });
 
 exports.getFindings = async (req, res, next) => {
@@ -145,17 +147,31 @@ exports.getFindings = async (req, res, next) => {
       );
     }
 
-    const fundFindings = buildFundDepositFindings(documents, user);
+    const continuityResult = buildDepositContinuityFindings(documents);
+    const suppressPeriodKeysByFund =
+      continuityResult.config?.suppressNoDepositWhenBreak
+        ? continuityResult.breakPeriodKeysByFund
+        : {};
+
+    continuityResult.findings.forEach(item => {
+      findings.push(
+        buildFinding(item.id, item.title, item.severity, item.details, item.meta)
+      );
+    });
+
+    const fundFindings = buildFundDepositFindings(documents, user, {
+      suppressPeriodKeysByFund,
+    });
     fundFindings.forEach(item => {
       findings.push(
-        buildFinding(item.id, item.title, item.severity, item.details)
+        buildFinding(item.id, item.title, item.severity, item.details, item.meta)
       );
     });
 
     const rateGapFindings = buildContributionRateGapFindings(documents);
     rateGapFindings.forEach(item => {
       findings.push(
-        buildFinding(item.id, item.title, item.severity, item.details)
+        buildFinding(item.id, item.title, item.severity, item.details, item.meta)
       );
     });
 

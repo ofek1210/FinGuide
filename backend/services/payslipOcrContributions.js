@@ -607,6 +607,7 @@ function resolveContributionCandidates(store, stats, warnings) {
         sectionDetected: stats.pensionLinesFound,
         employee: pensionEmployee?.value,
         employer: pensionEmployer?.value,
+        severance: pensionSeverance?.value,
       }),
       quality: {
         base: pensionBase || null,

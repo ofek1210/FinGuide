@@ -14,6 +14,7 @@ import {
   getSavingsForecast,
   listFindings,
   type FindingItem,
+  type FindingMeta,
   type FindingSeverity,
   type SavingsForecastData,
   type SavingsForecastRequest,
@@ -40,9 +41,53 @@ const CONTRIBUTION_FINDING_IDS = new Set([
   "pension_rate_inconsistency",
   "study_fund_rate_below_minimum",
   "pension_rate_below_minimum",
+  "pension_deposit_break_on_payslip",
+  "pension_deposit_break_missing_payslip",
+  "study_fund_deposit_break_on_payslip",
+  "study_fund_deposit_break_missing_payslip",
+  "pension_rate_data_incomplete",
+  "study_fund_rate_data_incomplete",
+  "pension_deposit_timeline_uncertain",
+  "study_fund_deposit_timeline_uncertain",
 ]);
 
-const isContributionFinding = (id: string) => CONTRIBUTION_FINDING_IDS.has(id);
+const isContributionFinding = (finding: FindingItem) => {
+  const kind = finding.meta?.findingKind;
+  if (kind === "rate" || kind === "continuity" || kind === "deposit") {
+    return true;
+  }
+  return CONTRIBUTION_FINDING_IDS.has(finding.id);
+};
+
+const findingKindLabel = (meta?: FindingMeta): string | null => {
+  switch (meta?.findingKind) {
+    case "rate":
+      return "אחוזי הפרשה";
+    case "continuity":
+      return "רצף הפקדות";
+    case "deposit":
+      return "הפקדה";
+    default:
+      return null;
+  }
+};
+
+const findingFundLabel = (meta?: FindingMeta): string | null => {
+  if (meta?.fundType === "pension") return "פנסיה";
+  if (meta?.fundType === "study_fund") return "קרן השתלמות";
+  return null;
+};
+
+const formatHighlightRange = (periods: string[]) => {
+  if (!periods.length) {
+    return "";
+  }
+  const sorted = [...periods].sort();
+  if (sorted.length === 1) {
+    return sorted[0];
+  }
+  return `${sorted[0]}–${sorted[sorted.length - 1]}`;
+};
 
 const SEVERITY_ORDER: FindingSeverity[] = ["warning", "info"];
 
@@ -254,6 +299,7 @@ export default function FindingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [contributionFilter, setContributionFilter] = useState<"all" | "contributions">("all");
   const [forecastForm, setForecastForm] = useState<ForecastFormState>(
     () => readStoredForecastForm()
   );
@@ -267,26 +313,53 @@ export default function FindingsPage() {
 
   const filteredAndGrouped = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
+    let base =
+      contributionFilter === "contributions"
+        ? findings.filter((f) => isContributionFinding(f))
+        : findings;
     const filtered = q
-      ? findings.filter(
+      ? base.filter(
           (f) =>
             f.title.toLowerCase().includes(q) || f.details.toLowerCase().includes(q),
         )
-      : findings;
+      : base;
     const bySeverity: Record<FindingSeverity, FindingItem[]> = { warning: [], info: [] };
     for (const f of filtered) {
       bySeverity[f.severity].push(f);
     }
     return SEVERITY_ORDER.flatMap((sev) => bySeverity[sev]);
-  }, [findings, searchQuery]);
+  }, [findings, searchQuery, contributionFilter]);
+
+  const contributionFindingsInView = useMemo(
+    () => filteredAndGrouped.filter((f) => isContributionFinding(f)),
+    [filteredAndGrouped],
+  );
+
+  const otherFindingsInView = useMemo(
+    () => filteredAndGrouped.filter((f) => !isContributionFinding(f)),
+    [filteredAndGrouped],
+  );
+
+  const navigateToPayslipHistory = useCallback(
+    (finding: FindingItem) => {
+      const periods = finding.meta?.periods?.filter(Boolean) ?? [];
+      if (periods.length > 0) {
+        navigate(`${APP_ROUTES.payslipHistory}?highlight=${encodeURIComponent(periods.join(","))}`);
+        return;
+      }
+      navigate(APP_ROUTES.payslipHistory);
+    },
+    [navigate],
+  );
 
   const recommendations = useMemo(() => {
-    if (filteredAndGrouped.length === 0) return DEMO_RECOMMENDATIONS;
+    if (findings.length === 0) return DEMO_RECOMMENDATIONS;
+    if (filteredAndGrouped.length === 0) return [];
     return filteredAndGrouped.slice(0, 5).map((f) => ({
       title: f.title,
       text: f.details,
     }));
-  }, [filteredAndGrouped]);
+  }, [filteredAndGrouped, findings.length]);
 
   const chartModel = useMemo(() => buildChartModel(forecast), [forecast]);
   const currentBalanceValue = getNumericStringValue(forecastForm.currentBalance);
@@ -907,7 +980,7 @@ export default function FindingsPage() {
           </main>
         </div>
 
-        {filteredAndGrouped.length > 0 ? (
+        {findings.length > 0 ? (
           <section className="pension-findings-section dashboard-card">
             <div className="insights-toolbar">
               <div className="insights-search-wrap">
@@ -922,33 +995,96 @@ export default function FindingsPage() {
                   aria-label="חיפוש בממצאים"
                 />
               </div>
+              <div className="insights-filter-chips" role="group" aria-label="סינון ממצאים">
+                <button
+                  type="button"
+                  className={`insights-chip ${contributionFilter === "all" ? "is-active" : ""}`}
+                  onClick={() => setContributionFilter("all")}
+                >
+                  הכל
+                </button>
+                <button
+                  type="button"
+                  className={`insights-chip ${contributionFilter === "contributions" ? "is-active" : ""}`}
+                  onClick={() => setContributionFilter("contributions")}
+                >
+                  הפקדות ואחוזים
+                </button>
+              </div>
               <span className="insights-count">{filteredAndGrouped.length} ממצאים</span>
             </div>
-            <ul className="insights-list">
-              {filteredAndGrouped.map((finding) => (
-                <li key={finding.id} className={`insight-card insight-card--${finding.severity}`}>
-                  <span className="insight-card-icon" aria-hidden="true">
-                    {finding.severity === "warning" ? <AlertTriangle /> : <Info />}
-                  </span>
-                  <div className="insight-card-body">
-                    <h3 className="insight-card-title">{finding.title}</h3>
-                    <p className="insight-card-details">{finding.details}</p>
-                    <span className={`insight-card-badge severity-${finding.severity}`}>
-                      {findingSeverityLabels[finding.severity]}
-                    </span>
-                    {isContributionFinding(finding.id) ? (
-                      <button
-                        type="button"
-                        className="dashboard-hero-action insight-card-action"
-                        onClick={() => navigate(APP_ROUTES.payslipHistory)}
+            {filteredAndGrouped.length === 0 ? (
+              <p className="insights-no-results">אין ממצאים התואמים לסינון הנוכחי.</p>
+            ) : null}
+            {contributionFindingsInView.length > 0 ? (
+              <>
+                <h2 className="insights-section-title">הפקדות ואחוזים</h2>
+                <ul className="insights-list">
+                  {contributionFindingsInView.map((finding) => {
+                    const kind = findingKindLabel(finding.meta);
+                    const fund = findingFundLabel(finding.meta);
+                    const periods = finding.meta?.periods ?? [];
+                    return (
+                      <li
+                        key={finding.id}
+                        className={`insight-card insight-card--${finding.severity}`}
                       >
-                        לצפייה בתלושים
-                      </button>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
+                        <span className="insight-card-icon" aria-hidden="true">
+                          {finding.severity === "warning" ? <AlertTriangle /> : <Info />}
+                        </span>
+                        <div className="insight-card-body">
+                          <h3 className="insight-card-title">{finding.title}</h3>
+                          {kind || fund ? (
+                            <span className="insight-card-kind" title="סוג ממצא">
+                              {[kind, fund].filter(Boolean).join(" • ")}
+                            </span>
+                          ) : null}
+                          <p className="insight-card-details">{finding.details}</p>
+                          <span className={`insight-card-badge severity-${finding.severity}`}>
+                            {findingSeverityLabels[finding.severity]}
+                          </span>
+                          <button
+                            type="button"
+                            className="dashboard-hero-action insight-card-action"
+                            onClick={() => navigateToPayslipHistory(finding)}
+                          >
+                            {periods.length > 0
+                              ? `צפייה בחודשים ${formatHighlightRange(periods)}`
+                              : "לצפייה בתלושים"}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            ) : null}
+            {otherFindingsInView.length > 0 ? (
+              <>
+                {contributionFindingsInView.length > 0 ? (
+                  <h2 className="insights-section-title">ממצאים נוספים</h2>
+                ) : null}
+                <ul className="insights-list">
+                  {otherFindingsInView.map((finding) => (
+                    <li
+                      key={finding.id}
+                      className={`insight-card insight-card--${finding.severity}`}
+                    >
+                      <span className="insight-card-icon" aria-hidden="true">
+                        {finding.severity === "warning" ? <AlertTriangle /> : <Info />}
+                      </span>
+                      <div className="insight-card-body">
+                        <h3 className="insight-card-title">{finding.title}</h3>
+                        <p className="insight-card-details">{finding.details}</p>
+                        <span className={`insight-card-badge severity-${finding.severity}`}>
+                          {findingSeverityLabels[finding.severity]}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
           </section>
         ) : null}
 
