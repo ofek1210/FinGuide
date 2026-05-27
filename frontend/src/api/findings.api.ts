@@ -52,9 +52,18 @@ export type SavingsScenario = {
   timeline: SavingsTimelinePoint[];
 };
 
+export type SavingsForecastSummary = {
+  yearsToRetirement: number;
+  monthsToRetirement: number;
+  currentProjectedBalance: number;
+  adjustedProjectedBalance: number;
+  differenceAtRetirement: number;
+};
+
 export type SavingsForecastData = {
   currentScenario: SavingsScenario;
   adjustedScenario: SavingsScenario;
+  summary: SavingsForecastSummary;
   meta: {
     contributionSource: "document" | "manual";
     sourceDocumentId?: string;

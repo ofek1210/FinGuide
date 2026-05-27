@@ -93,6 +93,14 @@ describe('Findings savings forecast integration', () => {
     expect(res.body.data.currentScenario.projectedBalance).toBe(171280);
     expect(res.body.data.adjustedScenario.projectedBalance).toBe(190000);
     expect(res.body.data.currentScenario.timeline).toHaveLength(4);
+    expect(res.body.data.summary).toEqual({
+      yearsToRetirement: 3,
+      monthsToRetirement: 36,
+      currentProjectedBalance: 171280,
+      adjustedProjectedBalance: 190000,
+      differenceAtRetirement: 18720,
+    });
+    expect(Array.isArray(res.body.data.meta.warnings)).toBe(true);
   });
 
   it('falls back to manual contribution when there is no usable document', async () => {
@@ -115,6 +123,8 @@ describe('Findings savings forecast integration', () => {
       'לא נמצא מסמך פנסיוני תקין. נעשה שימוש בהפקדה הידנית שהוזנה.',
     ]);
     expect(res.body.data.currentScenario.monthlyContribution).toBe(1800);
+    expect(res.body.data.summary.differenceAtRetirement).toBe(25200);
+    expect(res.body.data.meta.warnings).toHaveLength(1);
   });
 
   it('returns 400 when there is no document contribution and no manual fallback', async () => {

@@ -201,6 +201,22 @@ const resolveCurrentMonthlyContribution = async ({
   ]);
 };
 
+const buildForecastSummary = (currentScenario, adjustedScenario, { currentAge, retirementAge }) => {
+  const monthsToRetirement = currentScenario.monthsToRetirement;
+  const currentProjectedBalance = currentScenario.projectedBalance;
+  const adjustedProjectedBalance = adjustedScenario.projectedBalance;
+
+  return {
+    yearsToRetirement: retirementAge - currentAge,
+    monthsToRetirement,
+    currentProjectedBalance,
+    adjustedProjectedBalance,
+    differenceAtRetirement: normalizeAmount(
+      adjustedProjectedBalance - currentProjectedBalance
+    ),
+  };
+};
+
 const buildSavingsForecast = async ({ userId, input }) => {
   const normalizedInput = normalizeSavingsForecastInput(input);
   const resolvedContribution = await resolveCurrentMonthlyContribution({
@@ -208,31 +224,41 @@ const buildSavingsForecast = async ({ userId, input }) => {
     currentMonthlyContribution: normalizedInput.currentMonthlyContribution,
   });
 
+  const currentScenario = buildLinearSavingsScenario({
+    currentBalance: normalizedInput.currentBalance,
+    currentAge: normalizedInput.currentAge,
+    retirementAge: normalizedInput.retirementAge,
+    monthlyContribution: resolvedContribution.monthlyContribution,
+  });
+  const adjustedScenario = buildLinearSavingsScenario({
+    currentBalance: normalizedInput.currentBalance,
+    currentAge: normalizedInput.currentAge,
+    retirementAge: normalizedInput.retirementAge,
+    monthlyContribution: normalizedInput.adjustedMonthlyContribution,
+  });
+
   return {
-    currentScenario: buildLinearSavingsScenario({
-      currentBalance: normalizedInput.currentBalance,
+    currentScenario,
+    adjustedScenario,
+    summary: buildForecastSummary(currentScenario, adjustedScenario, {
       currentAge: normalizedInput.currentAge,
       retirementAge: normalizedInput.retirementAge,
-      monthlyContribution: resolvedContribution.monthlyContribution,
-    }),
-    adjustedScenario: buildLinearSavingsScenario({
-      currentBalance: normalizedInput.currentBalance,
-      currentAge: normalizedInput.currentAge,
-      retirementAge: normalizedInput.retirementAge,
-      monthlyContribution: normalizedInput.adjustedMonthlyContribution,
     }),
     meta: {
       contributionSource: resolvedContribution.contributionSource,
       ...(resolvedContribution.sourceDocumentId && {
         sourceDocumentId: resolvedContribution.sourceDocumentId,
       }),
-      warnings: resolvedContribution.warnings,
+      warnings: Array.isArray(resolvedContribution.warnings)
+        ? resolvedContribution.warnings
+        : [],
     },
   };
 };
 
 module.exports = {
   buildSavingsForecast,
+  buildForecastSummary,
   buildLinearSavingsScenario,
   deriveContributionFromDocument,
   normalizeSavingsForecastInput,

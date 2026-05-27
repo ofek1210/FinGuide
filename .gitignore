@@ -37,6 +37,7 @@ build/
 # Testing
 coverage/
 .nyc_output/
+backend/jest-results.json
 
 # Temporary files
 tmp/

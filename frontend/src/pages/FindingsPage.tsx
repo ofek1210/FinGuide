@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -11,15 +11,23 @@ import {
   Sparkles,
 } from "lucide-react";
 import {
-  getSavingsForecast,
   listFindings,
   type FindingItem,
   type FindingMeta,
   type FindingSeverity,
-  type SavingsForecastData,
-  type SavingsForecastRequest,
-  type SavingsTimelinePoint,
 } from "../api/findings.api";
+import { useSavingsForecast, getNumericStringValue } from "../hooks/useSavingsForecast";
+import {
+  SVG_BOTTOM,
+  SVG_HEIGHT,
+  SVG_LABEL_Y,
+  SVG_LEFT,
+  SVG_RIGHT,
+  SVG_TOP,
+  SVG_WIDTH,
+  buildChartModel,
+  formatAxisCurrency,
+} from "../utils/savingsForecastChart";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
@@ -91,70 +99,12 @@ const formatHighlightRange = (periods: string[]) => {
 
 const SEVERITY_ORDER: FindingSeverity[] = ["warning", "info"];
 
-const FORECAST_STORAGE_KEY = "finguide_savings_forecast_inputs";
-
-type ForecastFormState = {
-  currentBalance: string;
-  currentAge: string;
-  retirementAge: string;
-  adjustedMonthlyContribution: string;
-  currentMonthlyContribution: string;
-};
-
-const DEFAULT_FORECAST_FORM: ForecastFormState = {
-  currentBalance: "",
-  currentAge: "",
-  retirementAge: "",
-  adjustedMonthlyContribution: "",
-  currentMonthlyContribution: "",
-};
-
 /** Fallback when GET /api/findings returns no findings. */
 const DEMO_RECOMMENDATIONS = [
   { title: "הגדלת הפקדות", text: "הוספת ₪190/חודש תגדיל את יתרת הפרישה ב-₪324,000" },
   { title: "בדרך הנכונה", text: "את בדרך להשגת יעד הפרישה שלך של ₪1.9 מיליון" },
   { title: "אופטימיזציית מס", text: "ניתן לחסוך עוד ₪1,070/שנה במס על ידי מקסום ההפקדות" },
 ];
-
-const SVG_LEFT = 64;
-const SVG_TOP = 8;
-const SVG_RIGHT = 640;
-const SVG_BOTTOM = 220;
-const SVG_LABEL_Y = 252;
-const SVG_HEIGHT = 280;
-const SVG_WIDTH = 680;
-const CHART_TICKS = 5;
-const X_AXIS_TICKS = 6;
-
-const readStoredForecastForm = (): ForecastFormState => {
-  if (typeof window === "undefined") {
-    return DEFAULT_FORECAST_FORM;
-  }
-
-  try {
-    const raw = window.sessionStorage.getItem(FORECAST_STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_FORECAST_FORM;
-    }
-
-    const parsed = JSON.parse(raw) as Partial<ForecastFormState>;
-    return {
-      currentBalance: typeof parsed.currentBalance === "string" ? parsed.currentBalance : "",
-      currentAge: typeof parsed.currentAge === "string" ? parsed.currentAge : "",
-      retirementAge: typeof parsed.retirementAge === "string" ? parsed.retirementAge : "",
-      adjustedMonthlyContribution:
-        typeof parsed.adjustedMonthlyContribution === "string"
-          ? parsed.adjustedMonthlyContribution
-          : "",
-      currentMonthlyContribution:
-        typeof parsed.currentMonthlyContribution === "string"
-          ? parsed.currentMonthlyContribution
-          : "",
-    };
-  } catch {
-    return DEFAULT_FORECAST_FORM;
-  }
-};
 
 const formatCompactCurrency = (value: number) =>
   new Intl.NumberFormat("he-IL", {
@@ -164,135 +114,6 @@ const formatCompactCurrency = (value: number) =>
     maximumFractionDigits: 1,
   }).format(value);
 
-const formatAxisCurrency = (value: number) => {
-  if (value >= 1_000_000) {
-    return `₪${(value / 1_000_000).toFixed(1)}M`;
-  }
-
-  if (value >= 1_000) {
-    return `₪${Math.round(value / 1_000)}K`;
-  }
-
-  return formatCurrencyILS(value);
-};
-
-const getNumericStringValue = (value: string) => {
-  if (!value.trim()) return null;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return null;
-  return parsed;
-};
-
-const hasCoreForecastInputs = (form: ForecastFormState) =>
-  Boolean(
-    form.currentBalance.trim() &&
-      form.currentAge.trim() &&
-      form.retirementAge.trim() &&
-      form.adjustedMonthlyContribution.trim()
-  );
-
-const buildAreaPath = (points: Array<{ x: number; y: number }>) => {
-  if (points.length === 0) return "";
-  const first = points[0];
-  const last = points[points.length - 1];
-  const line = points.map((point) => `${point.x} ${point.y}`).join(" L ");
-  return `M ${first.x} ${SVG_BOTTOM} L ${line} L ${last.x} ${SVG_BOTTOM} Z`;
-};
-
-const buildLinePath = (points: Array<{ x: number; y: number }>) => {
-  if (points.length === 0) return "";
-  return `M ${points.map((point) => `${point.x} ${point.y}`).join(" L ")}`;
-};
-
-const pickTickIndexes = (length: number, maxTicks: number) => {
-  if (length <= maxTicks) {
-    return Array.from({ length }, (_, index) => index);
-  }
-
-  const lastIndex = length - 1;
-  const indexes = new Set<number>([0, lastIndex]);
-
-  for (let i = 1; i < maxTicks - 1; i += 1) {
-    indexes.add(Math.round((i / (maxTicks - 1)) * lastIndex));
-  }
-
-  return Array.from(indexes).sort((a, b) => a - b);
-};
-
-const buildChartModel = (forecast: SavingsForecastData | null) => {
-  if (!forecast) {
-    return null;
-  }
-
-  const currentTimeline = forecast.currentScenario.timeline;
-  const adjustedTimeline = forecast.adjustedScenario.timeline;
-  const maxProjectedBalance = Math.max(
-    ...currentTimeline.map((point) => point.projectedBalance),
-    ...adjustedTimeline.map((point) => point.projectedBalance),
-    1
-  );
-
-  const mapPoint = (point: SavingsTimelinePoint, index: number, totalPoints: number) => {
-    const usableWidth = SVG_RIGHT - SVG_LEFT;
-    const usableHeight = SVG_BOTTOM - SVG_TOP;
-    const x =
-      totalPoints === 1
-        ? SVG_LEFT
-        : SVG_LEFT + (index / (totalPoints - 1)) * usableWidth;
-    const y =
-      SVG_BOTTOM - (point.projectedBalance / maxProjectedBalance) * usableHeight;
-    return {
-      x,
-      y,
-      ...point,
-    };
-  };
-
-  const currentPoints = currentTimeline.map((point, index) =>
-    mapPoint(point, index, currentTimeline.length)
-  );
-  const adjustedPoints = adjustedTimeline.map((point, index) =>
-    mapPoint(point, index, adjustedTimeline.length)
-  );
-
-  const yTickValues = Array.from({ length: CHART_TICKS }, (_, index) => {
-    const ratio = (CHART_TICKS - 1 - index) / (CHART_TICKS - 1);
-    return normalizeForAxis(maxProjectedBalance * ratio);
-  });
-
-  const xTickIndexes = pickTickIndexes(adjustedTimeline.length, X_AXIS_TICKS);
-
-  return {
-    maxProjectedBalance,
-    currentPoints,
-    adjustedPoints,
-    currentAreaPath: buildAreaPath(currentPoints),
-    adjustedAreaPath: buildAreaPath(adjustedPoints),
-    currentLinePath: buildLinePath(currentPoints),
-    adjustedLinePath: buildLinePath(adjustedPoints),
-    yTicks: yTickValues.map((value) => ({
-      value,
-      y:
-        SVG_BOTTOM -
-        (maxProjectedBalance === 0
-          ? 0
-          : (value / maxProjectedBalance) * (SVG_BOTTOM - SVG_TOP)),
-    })),
-    xTicks: xTickIndexes.map((index) => ({
-      x: adjustedPoints[index].x,
-      age: adjustedPoints[index].age,
-      calendarYear: adjustedPoints[index].calendarYear,
-    })),
-  };
-};
-
-function normalizeForAxis(value: number) {
-  if (value <= 0) return 0;
-  if (value < 10_000) return Math.round(value / 100) * 100;
-  if (value < 100_000) return Math.round(value / 1_000) * 1_000;
-  return Math.round(value / 10_000) * 10_000;
-}
-
 export default function FindingsPage() {
   const navigate = useNavigate();
   const [findings, setFindings] = useState<FindingItem[]>([]);
@@ -300,16 +121,18 @@ export default function FindingsPage() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [contributionFilter, setContributionFilter] = useState<"all" | "contributions">("all");
-  const [forecastForm, setForecastForm] = useState<ForecastFormState>(
-    () => readStoredForecastForm()
-  );
-  const [showManualContributionInput, setShowManualContributionInput] = useState(
-    () => Boolean(readStoredForecastForm().currentMonthlyContribution)
-  );
-  const [forecast, setForecast] = useState<SavingsForecastData | null>(null);
-  const [forecastError, setForecastError] = useState("");
-  const [isForecastLoading, setIsForecastLoading] = useState(false);
-  const didAttemptInitialForecastRef = useRef(false);
+  const {
+    forecastForm,
+    showManualContributionInput,
+    forecast,
+    forecastError,
+    isForecastLoading,
+    forecastDelta,
+    forecastWarnings,
+    handleForecastFieldChange,
+    handleForecastSubmit,
+    refreshForecast,
+  } = useSavingsForecast();
 
   const filteredAndGrouped = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -374,15 +197,13 @@ export default function FindingsPage() {
     () => [
       {
         label: "שנים לפרישה",
-        value: forecast
-          ? formatNumber(Math.round(forecast.currentScenario.monthsToRetirement / 12))
-          : "—",
+        value: forecast ? formatNumber(forecast.summary.yearsToRetirement) : "—",
         icon: Calendar,
       },
       {
         label: "תחזית בגיל פרישה",
         value: forecast
-          ? formatCompactCurrency(forecast.adjustedScenario.projectedBalance)
+          ? formatCompactCurrency(forecast.summary.adjustedProjectedBalance)
           : "—",
         icon: PiggyBank,
       },
@@ -404,11 +225,6 @@ export default function FindingsPage() {
     [currentBalanceValue, forecast]
   );
 
-  const forecastDelta = useMemo(() => {
-    if (!forecast) return null;
-    return forecast.adjustedScenario.projectedBalance - forecast.currentScenario.projectedBalance;
-  }, [forecast]);
-
   const loadFindings = useCallback(async () => {
     setIsLoading(true);
     const response = await listFindings();
@@ -427,191 +243,15 @@ export default function FindingsPage() {
     setIsLoading(false);
   }, []);
 
-  const buildForecastPayload = useCallback(
-    (
-      form: ForecastFormState,
-      { manualContributionRequired = false }: { manualContributionRequired?: boolean } = {}
-    ): SavingsForecastRequest | null => {
-      if (!hasCoreForecastInputs(form)) {
-        return null;
-      }
-
-      const currentBalance = getNumericStringValue(form.currentBalance);
-      const currentAge = getNumericStringValue(form.currentAge);
-      const retirementAge = getNumericStringValue(form.retirementAge);
-      const adjustedMonthlyContribution = getNumericStringValue(
-        form.adjustedMonthlyContribution
-      );
-      const currentMonthlyContribution = getNumericStringValue(
-        form.currentMonthlyContribution
-      );
-
-      if (
-        currentBalance === null ||
-        currentAge === null ||
-        retirementAge === null ||
-        adjustedMonthlyContribution === null
-      ) {
-        setForecastError("נא להזין מספרים תקינים לכל שדות החובה.");
-        return null;
-      }
-
-      if (
-        currentBalance < 0 ||
-        currentAge < 0 ||
-        retirementAge < 0 ||
-        adjustedMonthlyContribution < 0
-      ) {
-        setForecastError("כל הערכים חייבים להיות גדולים או שווים ל-0.");
-        return null;
-      }
-
-      if (!Number.isInteger(currentAge) || !Number.isInteger(retirementAge)) {
-        setForecastError("גיל נוכחי וגיל פרישה חייבים להיות מספרים שלמים.");
-        return null;
-      }
-
-      if (retirementAge <= currentAge) {
-        setForecastError("גיל הפרישה חייב להיות גדול מהגיל הנוכחי.");
-        return null;
-      }
-
-      if (manualContributionRequired) {
-        if (currentMonthlyContribution === null) {
-          setForecastError("לא נמצאה הפקדה במסמכים. הזינו הפקדה חודשית נוכחית ידנית.");
-          return null;
-        }
-
-        if (currentMonthlyContribution < 0) {
-          setForecastError("הפקדה חודשית נוכחית חייבת להיות גדולה או שווה ל-0.");
-          return null;
-        }
-      }
-
-      return {
-        currentBalance,
-        currentAge,
-        retirementAge,
-        adjustedMonthlyContribution,
-        ...(currentMonthlyContribution !== null && { currentMonthlyContribution }),
-      };
-    },
-    []
-  );
-
-  const loadForecast = useCallback(
-    async (
-      form: ForecastFormState,
-      { manualContributionRequired = false }: { manualContributionRequired?: boolean } = {}
-    ) => {
-      const payload = buildForecastPayload(form, { manualContributionRequired });
-      if (!payload) {
-        return false;
-      }
-
-      setIsForecastLoading(true);
-      setForecastError("");
-
-      const response = await getSavingsForecast(payload);
-      setIsForecastLoading(false);
-
-      if (!response.success || !response.data) {
-        const resolvedMessage = getApiErrorMessage(
-          response.message || "לא הצלחנו לחשב תחזית חיסכון.",
-          response.status
-        );
-
-        const requiresManualContribution = Array.isArray(response.errors)
-          ? response.errors.some((item) => {
-              if (!item || typeof item !== "object") {
-                return false;
-              }
-              const field = (item as { field?: string }).field;
-              return field === "currentMonthlyContribution";
-            })
-          : false;
-
-        if (requiresManualContribution) {
-          setShowManualContributionInput(true);
-          setForecastError(
-            "לא נמצאה הפקדה חודשית תקינה במסמכים. הזינו הפקדה נוכחית ידנית כדי להמשיך."
-          );
-        } else {
-          setForecastError(resolvedMessage);
-        }
-
-        return false;
-      }
-
-      setForecast(response.data);
-      setShowManualContributionInput(response.data.meta.contributionSource === "manual");
-      return true;
-    },
-    [buildForecastPayload]
-  );
-
   const handleRefresh = useCallback(async () => {
     await loadFindings();
-    if (hasCoreForecastInputs(forecastForm)) {
-      await loadForecast(forecastForm, {
-        manualContributionRequired: showManualContributionInput,
-      });
-    }
-  }, [forecastForm, loadFindings, loadForecast, showManualContributionInput]);
-
-  const handleForecastFieldChange = (
-    field: keyof ForecastFormState,
-    value: string
-  ) => {
-    setForecastForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleForecastSubmit = async () => {
-    await loadForecast(forecastForm, {
-      manualContributionRequired: showManualContributionInput,
-    });
-  };
+    await refreshForecast();
+  }, [loadFindings, refreshForecast]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadFindings();
   }, [loadFindings]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    window.sessionStorage.setItem(
-      FORECAST_STORAGE_KEY,
-      JSON.stringify(forecastForm)
-    );
-  }, [forecastForm]);
-
-  useEffect(() => {
-    if (didAttemptInitialForecastRef.current) {
-      return;
-    }
-
-    didAttemptInitialForecastRef.current = true;
-
-    if (!hasCoreForecastInputs(forecastForm)) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      void loadForecast(forecastForm, {
-        manualContributionRequired: Boolean(
-          forecastForm.currentMonthlyContribution.trim()
-        ),
-      });
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, [forecastForm, loadForecast]);
 
   return (
     <div className="pension-insights-page dashboard-page" dir="rtl">
@@ -742,6 +382,13 @@ export default function FindingsPage() {
                   </div>
                 )}
               </div>
+              {forecastWarnings.length > 0 ? (
+                <ul className="pension-form-warnings" role="status">
+                  {forecastWarnings.map((warning) => (
+                    <li key={warning}>{warning}</li>
+                  ))}
+                </ul>
+              ) : null}
               <div className="pension-simulator-actions">
                 <button
                   className="dashboard-hero-action"
