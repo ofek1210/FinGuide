@@ -293,14 +293,14 @@ const detectFundFindingsForDocuments = (documents, options = {}) => {
         meta: {
           fundType,
           findingKind: 'deposit',
-          periods: hit.period ? [hit.period] : [],
+          periods: hit.periodKey ? [hit.periodKey] : hit.period ? [hit.period] : [],
           documentIds: hit.documentId ? [hit.documentId] : [],
         },
       });
       return;
     }
 
-    const periods = [...new Set(hits.map(hit => hit.period).filter(Boolean))];
+    const periods = [...new Set(hits.map(hit => hit.periodKey).filter(Boolean))];
     const periodText = periods.length > 0 ? ` בתקופות: ${periods.join(', ')}` : '';
     const maxSeverity = hits.some(hit => hit.severity === 'warning') ? 'warning' : 'info';
     const documentIds = [...new Set(hits.map(hit => hit.documentId).filter(Boolean))];
@@ -357,6 +357,11 @@ const detectOnboardingFundMismatches = (user, documents) => {
 
   const findings = [];
   const period = formatPeriodLabel(latest.analysisData);
+  const periodResolved = resolvePayslipPeriod(latest);
+  const periodKey =
+    !periodResolved.incompletePeriod && periodResolved.year
+      ? monthKey(periodResolved.year, periodResolved.month)
+      : null;
   const periodPart = period ? ` (תלוש ${period})` : '';
 
   FUND_TYPES.forEach(fundType => {
@@ -391,6 +396,12 @@ const detectOnboardingFundMismatches = (user, documents) => {
       severity: status.confidence === 'low' ? 'info' : 'warning',
       details: `באונבורדינג סימנתם שיש ${config.labelHe}, אך בתלוש האחרון${periodPart} ${detailReason}. מומלץ לעדכן את ההצהרה או לבדוק מול המעסיק.`,
       fundType,
+      meta: {
+        fundType,
+        findingKind: 'deposit',
+        periods: periodKey ? [periodKey] : [],
+        documentIds: latest._id ? [latest._id.toString()] : [],
+      },
     });
   });
 

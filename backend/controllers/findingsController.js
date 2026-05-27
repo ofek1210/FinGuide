@@ -7,13 +7,47 @@ const { buildDepositContinuityFindings } = require('../utils/detectDepositContin
 
 const STALE_DAYS = 30;
 
-const buildFinding = (id, title, severity, details, meta) => ({
-  id,
-  title,
-  severity,
-  details,
-  ...(meta && typeof meta === 'object' ? { meta } : {}),
-});
+const normalizeStringArray = values =>
+  [...new Set((Array.isArray(values) ? values : []).filter(value => typeof value === 'string' && value.trim()))];
+
+const normalizeMeta = meta => {
+  if (!meta || typeof meta !== 'object') {
+    return undefined;
+  }
+  const normalized = {
+    ...meta,
+    periods: normalizeStringArray(meta.periods),
+    documentIds: normalizeStringArray(meta.documentIds),
+  };
+  return normalized;
+};
+
+const buildFinding = (id, title, severity, details, meta) => {
+  const safeId = typeof id === 'string' && id.trim() ? id : 'unknown_finding';
+  const safeTitle = typeof title === 'string' && title.trim() ? title : safeId;
+  const safeSeverity = severity === 'warning' ? 'warning' : 'info';
+  const safeDetails = typeof details === 'string' && details.trim() ? details : 'ממצא ללא פירוט.';
+  const normalizedMeta = normalizeMeta(meta);
+
+  return {
+    id: safeId,
+    title: safeTitle,
+    severity: safeSeverity,
+    details: safeDetails,
+    ...(normalizedMeta ? { meta: normalizedMeta } : {}),
+  };
+};
+
+const sortFindingsDeterministic = findings => {
+  const severityOrder = { warning: 0, info: 1 };
+  return [...findings].sort((a, b) => {
+    const sev = (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
+    if (sev !== 0) return sev;
+    const titleCmp = a.title.localeCompare(b.title, 'he');
+    if (titleCmp !== 0) return titleCmp;
+    return a.id.localeCompare(b.id, 'en');
+  });
+};
 
 exports.getFindings = async (req, res, next) => {
   try {
@@ -175,10 +209,12 @@ exports.getFindings = async (req, res, next) => {
       );
     });
 
+    const sortedFindings = sortFindingsDeterministic(findings);
+
     return res.status(200).json({
       success: true,
-      count: findings.length,
-      data: findings,
+      count: sortedFindings.length,
+      data: sortedFindings,
     });
   } catch (error) {
     return next(error);

@@ -318,10 +318,16 @@ export default function FindingsPage() {
         ? findings.filter((f) => isContributionFinding(f))
         : findings;
     const filtered = q
-      ? base.filter(
-          (f) =>
-            f.title.toLowerCase().includes(q) || f.details.toLowerCase().includes(q),
-        )
+      ? base.filter((f) => {
+          const kind = findingKindLabel(f.meta)?.toLowerCase() ?? "";
+          const fund = findingFundLabel(f.meta)?.toLowerCase() ?? "";
+          return (
+            f.title.toLowerCase().includes(q) ||
+            f.details.toLowerCase().includes(q) ||
+            kind.includes(q) ||
+            fund.includes(q)
+          );
+        })
       : base;
     const bySeverity: Record<FindingSeverity, FindingItem[]> = { warning: [], info: [] };
     for (const f of filtered) {
