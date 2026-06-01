@@ -268,6 +268,7 @@ async function runReprocess(options) {
 
     for (const document of documents) {
       try {
+        // eslint-disable-next-line no-await-in-loop
         const { data } = await extractPayslipFile(document.filePath);
         const report = buildReport(document, data);
         report.dryRun = !options.write;
@@ -277,6 +278,7 @@ async function runReprocess(options) {
           document.status = 'completed';
           document.processingError = null;
           document.processedAt = new Date();
+          // eslint-disable-next-line no-await-in-loop
           await document.save();
         }
 

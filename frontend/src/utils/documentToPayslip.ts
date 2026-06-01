@@ -42,6 +42,10 @@ interface DocumentPayslipAnalysis {
     pension?: { employee?: number; employer?: number };
     study_fund?: { employee?: number; employer?: number };
   };
+  tax?: {
+    tax_credit_points?: number | null;
+    personal_credit?: number | null;
+  };
   parties?: {
     employer_name?: string;
     employee_name?: string;
@@ -69,7 +73,10 @@ function getAnalysisData(doc: DocumentItem): DocumentPayslipAnalysis | null {
 // ---------------------------------------------------------------------------
 
 export function isPayslipDocument(doc: DocumentItem): boolean {
-  if (doc.status !== "completed") return false;
+  // Accept both fully-completed extractions and ones that the schema gate
+  // flagged for review — the UI shows them with a warning banner instead of
+  // hiding the document entirely.
+  if (doc.status !== "completed" && doc.status !== "needs_review") return false;
   const analysis = getAnalysisData(doc);
   return analysis !== null && typeof analysis === "object";
 }
@@ -285,11 +292,21 @@ export function documentToPayslipDetail(doc: DocumentItem): PayslipDetail | null
     typeof summary?.sickDays === "number" ? summary.sickDays : undefined;
   const paymentDate = normalizePaymentDate(month, summary?.date);
 
+  const extractionStatus = doc.status === "needs_review"
+    ? "needs_review"
+    : doc.status === "failed"
+      ? "failed"
+      : doc.status === "completed"
+        ? "completed"
+        : undefined;
+
   return {
     id: doc._id,
     periodLabel: formatPeriodLabel(month),
     periodDate: periodMonthToDate(month) || "",
     paymentDate,
+    extractionStatus,
+    extractionMessage: doc.processingError ?? null,
     employerName: analysis.parties?.employer_name ?? undefined,
     employeeName: analysis.parties?.employee_name ?? undefined,
     employeeId: analysis.parties?.employee_id ?? undefined,
@@ -302,6 +319,8 @@ export function documentToPayslipDetail(doc: DocumentItem): PayslipDetail | null
     deductions: mapDeductions(analysis),
     grossSalary: gross,
     netSalary: net,
+    taxCreditPoints: analysis.tax?.tax_credit_points ?? null,
+    personalCredit: analysis.tax?.personal_credit ?? null,
     downloadUrl: null,
   };
 }
@@ -383,6 +402,12 @@ export function getPayslipHistoryFromIntelligence(
     periodMonthNumber: item.periodMonthNumber,
     netSalary: item.netSalary,
     grossSalary: item.grossSalary,
+    tax: item.tax ?? null,
+    nationalInsurance: item.nationalInsurance ?? null,
+    healthInsurance: item.healthInsurance ?? null,
+    pensionEmployee: item.pensionEmployee ?? null,
+    pensionEmployer: item.pensionEmployer ?? null,
+    pensionSeverance: item.pensionSeverance ?? null,
     isLatest: item.isLatest,
     downloadUrl: null,
   }));
