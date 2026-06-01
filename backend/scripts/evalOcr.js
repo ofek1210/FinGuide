@@ -37,6 +37,9 @@ const TRACKED_FIELDS = [
   'national_insurance',
   'health_insurance',
   'employee_id',
+  'base_salary',
+  'tax_credit_points',
+  'personal_credit',
 ];
 
 function parseArgs(argv) {
@@ -74,6 +77,12 @@ function pickActualField(analysisData, field) {
     case 'national_insurance': return mandatory.national_insurance ?? summary.nationalInsurance ?? null;
     case 'health_insurance': return mandatory.health_insurance ?? summary.healthInsurance ?? null;
     case 'employee_id': return parties.employee_id ?? summary.employeeId ?? null;
+    case 'base_salary': {
+      const comp = (salary.components || []).find(c => c.type === 'base_salary');
+      return comp?.amount ?? summary.baseSalary ?? null;
+    }
+    case 'tax_credit_points': return analysisData?.tax?.tax_credit_points ?? null;
+    case 'personal_credit': return analysisData?.tax?.personal_credit ?? null;
     default: return null;
   }
 }

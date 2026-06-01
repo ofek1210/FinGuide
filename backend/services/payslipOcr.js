@@ -442,11 +442,24 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
 
   const taxable_income = matchAmountFlexible(full, /הכנסה\s*חייבת\s*במס\s+(\d[\d,]*(?:\.\d{1,2})?)/i);
   const marginal_tax_rate = parsePercent(match1(full, /אחוז\s*מס\s*שולי\s+(\d+(?:\.\d+)?)%/i));
-  const tax_credit_points = parseNumber(match1(full, /נקודות\s*זיכוי\s+(\d+(?:\.\d+)?)/i));
+  const tax_credit_points =
+    parseNumber(match1(full, /נקודות\s*זיכוי[:\s]+(\d+(?:[.,]\d+)?)/i)) ??
+    parseNumber(match1(full, /נקודות\s*זיכוי\s+(\d+(?:[.,]\d+)?)/i)) ??
+    parseNumber(match1(full, /(\d+(?:[.,]\d+)?)\s*נקודות\s*זיכוי/i)) ??
+    parseNumber(match1(full, /נק\.?\s*רגילות\s*(\d+(?:[.,]\d+)?)/i)) ??
+    // Malam Plus: credit points appear 2 lines after "קוד ב.לאומי..." label, before a date
+    parseNumber(match1(full, /קוד\s*ב\.?\s*לאומי[^\n]*\n[\d,.]+\n(\d+(?:[.,]\d+)?)\n\d{2}\/\d{2}\/\d{4}/im)) ??
+    parseNumber(match1(full, /נ\.?\s*זיכוי[:\s]+(\d+(?:[.,]\d+)?)/i));
   const credit_resident = parseNumber(match1(full, /תושב\s*ישראל\s+(\d+(?:\.\d+)?)/i));
   const credit_woman =
     parseNumber(match1(full, /(?:אישה|אשה)\s+(\d+(?:\.\d+)?)/i)) ??
     parseNumber(match1(full, /\bAWN\b\s+(\d+(?:\.\d+)?)/i));
+
+  const personal_credit = resolveBestNumericCandidate(
+    'personal_credit',
+    supplementalFieldCandidates.personal_credit,
+    { minScore: 0.4 },
+  )?.value;
 
   const employment_start_raw = match1(full, /התחלת\s*עבודה\s+(\d{2}\/\d{2}\/\d{2,4})/i);
   const employment_start_date = parseDateDDMMYYYYorYY(employment_start_raw);
@@ -557,6 +570,7 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
         resident: credit_resident,
         woman: credit_woman,
       },
+      personal_credit,
     },
 
     national_insurance: {

@@ -42,6 +42,10 @@ interface DocumentPayslipAnalysis {
     pension?: { employee?: number; employer?: number };
     study_fund?: { employee?: number; employer?: number };
   };
+  tax?: {
+    tax_credit_points?: number | null;
+    personal_credit?: number | null;
+  };
   parties?: {
     employer_name?: string;
     employee_name?: string;
@@ -314,6 +318,8 @@ export function documentToPayslipDetail(doc: DocumentItem): PayslipDetail | null
     deductions: mapDeductions(analysis),
     grossSalary: gross,
     netSalary: net,
+    taxCreditPoints: analysis.tax?.tax_credit_points ?? null,
+    personalCredit: analysis.tax?.personal_credit ?? null,
     downloadUrl: null,
   };
 }

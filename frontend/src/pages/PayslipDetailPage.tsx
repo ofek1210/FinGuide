@@ -13,6 +13,8 @@ import {
   RefreshCw,
   Sun,
   Heart,
+  Award,
+  BadgeDollarSign,
 } from "lucide-react";
 import PayslipHistoryLayout from "../components/payslip-history/PayslipHistoryLayout";
 import { downloadDocument } from "../api/documents.api";
@@ -285,6 +287,32 @@ export default function PayslipDetailPage() {
                 <span className="payslip-detail-info-label">ימי מחלה</span>
                 <span className="payslip-detail-info-value">
                   {formatNumber(payslip.sickDays)}
+                </span>
+              </li>
+            )}
+          </ul>
+        </section>
+      )}
+
+      {(payslip.taxCreditPoints != null || payslip.personalCredit != null) && (
+        <section className="payslip-detail-card payslip-detail-info">
+          <h2 className="payslip-detail-card-title">מידע מס</h2>
+          <ul className="payslip-detail-info-list">
+            {payslip.taxCreditPoints != null && (
+              <li>
+                <Award aria-hidden="true" />
+                <span className="payslip-detail-info-label">נקודות זיכוי</span>
+                <span className="payslip-detail-info-value">
+                  {formatNumber(payslip.taxCreditPoints)}
+                </span>
+              </li>
+            )}
+            {payslip.personalCredit != null && (
+              <li>
+                <BadgeDollarSign aria-hidden="true" />
+                <span className="payslip-detail-info-label">זיכוי אישי</span>
+                <span className="payslip-detail-info-value">
+                  {formatCurrencyILS(payslip.personalCredit)}
                 </span>
               </li>
             )}
