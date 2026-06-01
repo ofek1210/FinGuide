@@ -44,4 +44,44 @@ describe('buildLinearSavingsScenario', () => {
       },
     ]);
   });
+
+  it('handles a single year until retirement', () => {
+    const scenario = buildLinearSavingsScenario({
+      currentBalance: 50000,
+      currentAge: 64,
+      retirementAge: 65,
+      monthlyContribution: 2000,
+      currentYear: 2026,
+    });
+
+    expect(scenario.monthsToRetirement).toBe(12);
+    expect(scenario.projectedBalance).toBe(74000);
+    expect(scenario.timeline).toHaveLength(2);
+  });
+
+  it('supports zero balance and zero contribution', () => {
+    const scenario = buildLinearSavingsScenario({
+      currentBalance: 0,
+      currentAge: 40,
+      retirementAge: 42,
+      monthlyContribution: 0,
+      currentYear: 2026,
+    });
+
+    expect(scenario.projectedBalance).toBe(0);
+    expect(scenario.timeline.every(point => point.projectedBalance === 0)).toBe(true);
+  });
+
+  it('normalizes decimal contribution totals', () => {
+    const scenario = buildLinearSavingsScenario({
+      currentBalance: 1000,
+      currentAge: 30,
+      retirementAge: 31,
+      monthlyContribution: 100.555,
+      currentYear: 2026,
+    });
+
+    expect(scenario.monthlyContribution).toBe(100.56);
+    expect(scenario.projectedBalance).toBe(2206.66);
+  });
 });

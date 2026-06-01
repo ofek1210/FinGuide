@@ -42,6 +42,31 @@ GOOGLE_CLIENT_ID=your-google-web-client-id
 
 **חשוב:** שנה את `JWT_SECRET` למפתח אקראי וחזק!
 
+### ממצאי הפקדות (משתני סביבה אופציונליים)
+
+| משתנה | ברירת מחדל | תיאור |
+|--------|------------|--------|
+| `CONTRIBUTION_RATE_INCONSISTENCY_TOLERANCE` | `0.35` | סטייה מותרת (%) בין אחוז מוצהר למשתמע |
+| `DEPOSIT_RATE_ADJUST_FOR_JOB_PERCENT` | `false` | התאמת בסיס לפי אחוז משרה בחישוב אחוז משתמע |
+| `PENSION_EMPLOYEE_MIN_RATE_PERCENT` | `6.0` | סף ייחוס מינימום – עובד (פנסיה) |
+| `PENSION_EMPLOYER_MIN_RATE_PERCENT` | `6.5` | סף ייחוס – מעסיק (פנסיה) |
+| `PENSION_SEVERANCE_MIN_RATE_PERCENT` | `6.0` | סף ייחוס – פיצויים |
+| `STUDY_FUND_EMPLOYEE_MIN_RATE_PERCENT` | `2.5` | סף ייחוס – עובד (קה"ש) |
+| `STUDY_FUND_EMPLOYER_MIN_RATE_PERCENT` | `7.5` | סף ייחוס – מעסיק (קה"ש) |
+| `DEPOSIT_CONTINUITY_MIN_MONTHS_WITH_DEPOSIT` | `2` | מינימום חודשים עם הפקדה לפני זיהוי רצף |
+| `DEPOSIT_CONTINUITY_MIN_GAP_MONTHS` | `1` | אורך מינימלי של חור (חודשים) |
+| `DEPOSIT_CONTINUITY_MISSING_PAYSLIP_WARNING_MONTHS` | `2` | חור ללא תלוש – severity warning מעל ערך זה |
+| `DEPOSIT_CONTINUITY_LOOKBACK_MONTHS` | `36` | חלון lookback לניתוח רצף |
+| `DEPOSIT_CONTINUITY_COUNT_SEVERANCE_AS_DEPOSIT` | `true` | לספור פיצויים בלבד כהפקדה לצורך רצף |
+| `DEPOSIT_CONTINUITY_SUPPRESS_NO_DEPOSIT_WHEN_BREAK` | `true` | לא לשכפל ממצא "ללא הפקדה" בחודשים שכבר ב"נפסק רצף" |
+
+**עיבוד מחדש לתלושים ישנים (אחוזי הפרשה):**
+
+```bash
+cd backend
+node scripts/reprocessPayslips.js --only-missing-rates --limit 50 --write
+```
+
 4. **הרצת השרת**
 ```bash
 # Development mode (עם nodemon)

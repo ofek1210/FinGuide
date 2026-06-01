@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PayslipEmptyState from "../components/payslip-history/PayslipEmptyState";
 import PayslipErrorState from "../components/payslip-history/PayslipErrorState";
 import PayslipFooterAction from "../components/payslip-history/PayslipFooterAction";
@@ -15,10 +15,50 @@ import { formatCurrencyILS, formatNumber, formatShortDate } from "../utils/forma
 
 export default function PayslipHistoryPage() {
   const navigate = useNavigate();
-  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
+  const [searchParams] = useSearchParams();
+  const highlightedPeriods = useMemo(() => {
+    const raw = searchParams.get("highlight");
+    if (!raw) {
+      return undefined;
+    }
+    return new Set(
+      raw
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean),
+    );
+  }, [searchParams]);
+  const highlightedYear = useMemo(() => {
+    const first = highlightedPeriods ? Array.from(highlightedPeriods)[0] : "";
+    const parsed = Number(first?.split("-")[0]);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, [highlightedPeriods]);
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(highlightedYear);
   const { data, isLoading, error, reload } = usePayslipHistory(selectedYear);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (highlightedYear && selectedYear == null) {
+      setSelectedYear(highlightedYear);
+    }
+  }, [highlightedYear, selectedYear]);
+
+  useEffect(() => {
+    if (!highlightedPeriods || !data?.items?.length) {
+      return;
+    }
+    const hasMatches = data.items.some(
+      (item) => item.periodMonth && highlightedPeriods.has(item.periodMonth),
+    );
+    if (!hasMatches) {
+      return;
+    }
+    const first = window.document.querySelector(".payslip-row-highlight");
+    if (first && "scrollIntoView" in first) {
+      first.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }, [data?.items, highlightedPeriods]);
 
   const handleBackToDashboard = useCallback(() => {
     navigate(APP_ROUTES.dashboard);
@@ -80,6 +120,12 @@ export default function PayslipHistoryPage() {
   }
 
   const { stats, items, years, taxAdjustment, dataQualityWarnings } = data;
+  const highlightedMatches = highlightedPeriods
+    ? items.filter((item) => item.periodMonth && highlightedPeriods.has(item.periodMonth))
+    : [];
+  const highlightedRange = highlightedPeriods
+    ? Array.from(highlightedPeriods).sort()
+    : [];
   const yearOptions = years.map((y) => y.year).sort((a, b) => b - a);
   const monthFormatter = new Intl.DateTimeFormat("he-IL", { month: "long" });
   const missingMonthNames = stats.missingMonths
@@ -117,6 +163,24 @@ export default function PayslipHistoryPage() {
       {downloadError ? (
         <div className="payslip-inline-error" role="alert">
           {downloadError}
+        </div>
+      ) : null}
+
+      {highlightedPeriods && highlightedPeriods.size > 0 ? (
+        <div className="payslip-warning-banner is-soft" role="status">
+          מעבר מממצאים: חודשים מסומנים{" "}
+          {highlightedRange.length > 0
+            ? highlightedRange.length === 1
+              ? highlightedRange[0]
+              : `${highlightedRange[0]}–${highlightedRange[highlightedRange.length - 1]}`
+            : "—"}
+          .
+        </div>
+      ) : null}
+
+      {highlightedPeriods && highlightedPeriods.size > 0 && highlightedMatches.length === 0 ? (
+        <div className="payslip-warning-banner" role="alert">
+          החודשים שסומנו לא מופיעים בתלושים של השנה הנבחרת או חסרים תלושים לחודשים אלה.
         </div>
       ) : null}
 
@@ -161,6 +225,7 @@ export default function PayslipHistoryPage() {
         formatCurrency={(v) => (v != null ? formatCurrencyILS(v) : "לא זוהה")}
         formatDate={formatShortDate}
         downloadingId={downloadingId}
+        highlightedPeriods={highlightedPeriods}
       />
 
       <PayslipFooterAction onUploadNew={handleUploadNew} />

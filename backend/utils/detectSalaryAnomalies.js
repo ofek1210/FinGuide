@@ -44,7 +44,7 @@ const detectSalaryAnomalies = (
 
   if (normalizedGross > 0) {
     const ratio = normalizedNet / normalizedGross;
-    if (ratio > config.netToGrossRatioThreshold) {
+    if (ratio >= config.netToGrossRatioThreshold) {
       anomalies.push(
         buildAnomaly(
           'NET_TOO_CLOSE_TO_GROSS',

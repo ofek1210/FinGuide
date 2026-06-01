@@ -8,15 +8,52 @@ const Document = require('../models/Document');
 const { extractPayslipFile } = require('../services/payslipOcr');
 const { categorizeOcrWarning, dedupeStrings } = require('../services/payslipOcrShared');
 
+function documentMissingContributionRates(analysisData) {
+  if (!analysisData?.contributions) {
+    return false;
+  }
+  const funds = [
+    { key: 'pension', sides: ['employee', 'employer'] },
+    { key: 'study_fund', sides: ['employee', 'employer'] },
+  ];
+  for (const { key, sides } of funds) {
+    const block = analysisData.contributions[key];
+    if (!block) {
+      continue;
+    }
+    const hasDeposit = sides.some(side => {
+      const amount = Number(block[side]);
+      return Number.isFinite(amount) && amount > 0;
+    });
+    if (!hasDeposit) {
+      continue;
+    }
+    const hasAnyRate =
+      block.employee_rate_percent != null ||
+      block.employer_rate_percent != null ||
+      block.severance_rate_percent != null;
+    if (!hasAnyRate) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function parseArgs(argv) {
   const options = {
     ids: [],
     limit: 20,
     write: false,
+    onlyMissingRates: false,
   };
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
+
+    if (arg === '--only-missing-rates') {
+      options.onlyMissingRates = true;
+      continue;
+    }
 
     if (arg === '--ids') {
       const raw = argv[index + 1] || '';
@@ -63,8 +100,13 @@ function buildResolvedFieldsSummary(data) {
     employer_name: data.parties?.employer_name ?? null,
     pension_employee: data.contributions?.pension?.employee ?? null,
     pension_employer: data.contributions?.pension?.employer ?? null,
+    pension_employee_rate_percent: data.contributions?.pension?.employee_rate_percent ?? null,
+    pension_employer_rate_percent: data.contributions?.pension?.employer_rate_percent ?? null,
+    pension_severance_rate_percent: data.contributions?.pension?.severance_rate_percent ?? null,
     study_employee: data.contributions?.study_fund?.employee ?? null,
     study_employer: data.contributions?.study_fund?.employer ?? null,
+    study_employee_rate_percent: data.contributions?.study_fund?.employee_rate_percent ?? null,
+    study_employer_rate_percent: data.contributions?.study_fund?.employer_rate_percent ?? null,
   };
 }
 
@@ -183,16 +225,23 @@ function buildAggregateReport(reports = []) {
 }
 
 async function loadDocuments(options) {
+  let documents;
   if (options.ids.length > 0) {
-    return Document.find({ _id: { $in: options.ids } })
+    documents = await Document.find({ _id: { $in: options.ids } })
       .sort({ uploadedAt: -1 })
+      .exec();
+  } else {
+    documents = await Document.find({ status: 'completed' })
+      .sort({ uploadedAt: -1 })
+      .limit(options.limit)
       .exec();
   }
 
-  return Document.find({ status: 'completed' })
-    .sort({ uploadedAt: -1 })
-    .limit(options.limit)
-    .exec();
+  if (!options.onlyMissingRates) {
+    return documents;
+  }
+
+  return documents.filter(doc => documentMissingContributionRates(doc.analysisData));
 }
 
 async function runReprocess(options) {
@@ -208,6 +257,7 @@ async function runReprocess(options) {
           count: 0,
           ids: options.ids,
           limit: options.limit,
+          onlyMissingRates: options.onlyMissingRates,
         },
         reports: [],
         aggregate: initializeAggregateReport(),
@@ -248,6 +298,7 @@ async function runReprocess(options) {
         count: documents.length,
         ids: options.ids,
         limit: options.limit,
+        onlyMissingRates: options.onlyMissingRates,
       },
       reports,
       aggregate: buildAggregateReport(reports.filter(report => !report.error)),
@@ -292,6 +343,7 @@ module.exports = {
   buildReport,
   buildResolvedFieldsSummary,
   diffWarnings,
+  documentMissingContributionRates,
   initializeAggregateReport,
   parseArgs,
   runReprocess,

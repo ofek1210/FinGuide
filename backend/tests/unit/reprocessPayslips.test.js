@@ -1,6 +1,8 @@
 const {
   buildAggregateReport,
   buildReport,
+  documentMissingContributionRates,
+  parseArgs,
 } = require('../../scripts/reprocessPayslips');
 
 describe('reprocessPayslips script helpers', () => {
@@ -48,5 +50,33 @@ describe('reprocessPayslips script helpers', () => {
     expect(aggregate.warning_counts.removed['Missing salary.gross_total']).toBe(1);
     expect(aggregate.warning_counts.added_categories['ambiguous.contributions.pension_roles']).toBe(1);
     expect(aggregate.warning_counts.removed_categories['missing.salary.gross_total']).toBe(1);
+  });
+
+  it('parseArgs accepts --only-missing-rates', () => {
+    const options = parseArgs(['--only-missing-rates', '--limit', '5']);
+    expect(options.onlyMissingRates).toBe(true);
+    expect(options.limit).toBe(5);
+  });
+
+  it('documentMissingContributionRates detects missing rate fields', () => {
+    expect(
+      documentMissingContributionRates({
+        contributions: {
+          pension: { employee: 100, employer: 200 },
+          study_fund: { employee: 50, employer: 150, employee_rate_percent: 2.5 },
+        },
+      }),
+    ).toBe(true);
+    expect(
+      documentMissingContributionRates({
+        contributions: {
+          pension: {
+            employee: 100,
+            employer: 200,
+            employee_rate_percent: 6,
+          },
+        },
+      }),
+    ).toBe(false);
   });
 });

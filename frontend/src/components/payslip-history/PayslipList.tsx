@@ -8,6 +8,7 @@ interface PayslipListProps {
   formatCurrency: (value: number | null) => string;
   formatDate: (value: string) => string;
   downloadingId?: string | null;
+  highlightedPeriods?: Set<string>;
 }
 
 export default function PayslipList({
@@ -17,6 +18,7 @@ export default function PayslipList({
   formatCurrency,
   formatDate,
   downloadingId = null,
+  highlightedPeriods,
 }: PayslipListProps) {
   return (
     <section className="payslip-list">
@@ -34,6 +36,9 @@ export default function PayslipList({
             onDownload={onDownload}
             onSelect={onSelect}
             isDownloading={downloadingId === item.id}
+            isHighlighted={Boolean(
+              item.periodMonth && highlightedPeriods?.has(item.periodMonth),
+            )}
           />
         ))}
       </div>

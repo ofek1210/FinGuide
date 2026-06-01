@@ -1899,6 +1899,15 @@
   background: #f7f9fd;
 }
 
+.payslip-row-highlight {
+  background: #fff8e6;
+  border-inline-start: 3px solid #e6a817;
+}
+
+.payslip-row-highlight.payslip-row-clickable:hover {
+  background: #fff3d6;
+}
+
 .payslip-row-icon {
   width: 40px;
   height: 40px;
@@ -4238,6 +4247,41 @@
   margin-bottom: 20px;
 }
 
+.insights-filter-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.insights-chip {
+  border: 1px solid #d8dee9;
+  background: #fff;
+  color: #2f3a4a;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.insights-chip.is-active {
+  border-color: #2f6fed;
+  background: #eef4ff;
+  color: #1d4ed8;
+}
+
+.insights-section-title {
+  font-size: 1.05rem;
+  margin: 0 0 12px;
+  color: #2f3a4a;
+}
+
+.insight-card-kind {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: #5c6b7a;
+  margin-bottom: 6px;
+}
+
 .insights-search-wrap {
   position: relative;
   flex: 1;
@@ -4533,6 +4577,21 @@
 
 .pension-form-field input::placeholder {
   color: #94a3b8;
+}
+
+.pension-form-warnings {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  list-style: none;
+  font-size: 0.85rem;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+}
+
+.pension-form-warnings li + li {
+  margin-top: 0.35rem;
 }
 
 .pension-form-inline-note {

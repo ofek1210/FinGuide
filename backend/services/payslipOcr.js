@@ -549,6 +549,9 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
         employer: pension.employer,
         severance: pension.severance,
         base_for_severance: pension.base_for_severance,
+        employee_rate_percent: pension.employeeRate,
+        employer_rate_percent: pension.employerRate,
+        severance_rate_percent: pension.severanceRate,
         detection: pension.detection,
       },
       study_fund: {

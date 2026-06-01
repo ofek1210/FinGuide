@@ -82,6 +82,13 @@ const normalizeDocumentMetadataInput = rawInput => {
   const input = rawInput || {};
   const errors = [];
   const rawCategory = toTrimmedString(input.category);
+  if (!rawCategory) {
+    errors.push({
+      field: 'category',
+      message: 'קטגוריה היא שדה חובה',
+      value: input.category,
+    });
+  }
   const category = rawCategory || DEFAULT_DOCUMENT_METADATA.category;
   const periodMonth = toOptionalInteger(input.periodMonth);
   const periodYear = toOptionalInteger(input.periodYear);

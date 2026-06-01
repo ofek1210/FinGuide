@@ -2,15 +2,52 @@ const Document = require('../models/Document');
 const User = require('../models/User');
 const { buildSavingsForecast } = require('../services/savingsForecastService');
 const { buildFundDepositFindings } = require('../utils/detectFundWithoutDeposit');
+const { buildContributionRateGapFindings } = require('../utils/detectContributionRateGap');
+const { buildDepositContinuityFindings } = require('../utils/detectDepositContinuityGap');
 
 const STALE_DAYS = 30;
 
-const buildFinding = (id, title, severity, details) => ({
-  id,
-  title,
-  severity,
-  details,
-});
+const normalizeStringArray = values =>
+  [...new Set((Array.isArray(values) ? values : []).filter(value => typeof value === 'string' && value.trim()))];
+
+const normalizeMeta = meta => {
+  if (!meta || typeof meta !== 'object') {
+    return undefined;
+  }
+  const normalized = {
+    ...meta,
+    periods: normalizeStringArray(meta.periods),
+    documentIds: normalizeStringArray(meta.documentIds),
+  };
+  return normalized;
+};
+
+const buildFinding = (id, title, severity, details, meta) => {
+  const safeId = typeof id === 'string' && id.trim() ? id : 'unknown_finding';
+  const safeTitle = typeof title === 'string' && title.trim() ? title : safeId;
+  const safeSeverity = severity === 'warning' ? 'warning' : 'info';
+  const safeDetails = typeof details === 'string' && details.trim() ? details : 'ממצא ללא פירוט.';
+  const normalizedMeta = normalizeMeta(meta);
+
+  return {
+    id: safeId,
+    title: safeTitle,
+    severity: safeSeverity,
+    details: safeDetails,
+    ...(normalizedMeta ? { meta: normalizedMeta } : {}),
+  };
+};
+
+const sortFindingsDeterministic = findings => {
+  const severityOrder = { warning: 0, info: 1 };
+  return [...findings].sort((a, b) => {
+    const sev = (severityOrder[a.severity] ?? 99) - (severityOrder[b.severity] ?? 99);
+    if (sev !== 0) return sev;
+    const titleCmp = a.title.localeCompare(b.title, 'he');
+    if (titleCmp !== 0) return titleCmp;
+    return a.id.localeCompare(b.id, 'en');
+  });
+};
 
 exports.getFindings = async (req, res, next) => {
   try {
@@ -144,17 +181,40 @@ exports.getFindings = async (req, res, next) => {
       );
     }
 
-    const fundFindings = buildFundDepositFindings(documents, user);
-    fundFindings.forEach(item => {
+    const continuityResult = buildDepositContinuityFindings(documents);
+    const suppressPeriodKeysByFund =
+      continuityResult.config?.suppressNoDepositWhenBreak
+        ? continuityResult.breakPeriodKeysByFund
+        : {};
+
+    continuityResult.findings.forEach(item => {
       findings.push(
-        buildFinding(item.id, item.title, item.severity, item.details)
+        buildFinding(item.id, item.title, item.severity, item.details, item.meta)
       );
     });
 
+    const fundFindings = buildFundDepositFindings(documents, user, {
+      suppressPeriodKeysByFund,
+    });
+    fundFindings.forEach(item => {
+      findings.push(
+        buildFinding(item.id, item.title, item.severity, item.details, item.meta)
+      );
+    });
+
+    const rateGapFindings = buildContributionRateGapFindings(documents);
+    rateGapFindings.forEach(item => {
+      findings.push(
+        buildFinding(item.id, item.title, item.severity, item.details, item.meta)
+      );
+    });
+
+    const sortedFindings = sortFindingsDeterministic(findings);
+
     return res.status(200).json({
       success: true,
-      count: findings.length,
-      data: findings,
+      count: sortedFindings.length,
+      data: sortedFindings,
     });
   } catch (error) {
     return next(error);

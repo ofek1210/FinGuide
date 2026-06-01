@@ -2,6 +2,7 @@ export type PayslipHistoryItem = {
   id: string;
   periodLabel: string;
   periodDate: string;
+  periodMonth?: string;
   periodYear?: number;
   periodMonthNumber?: number;
   netSalary: number | null;

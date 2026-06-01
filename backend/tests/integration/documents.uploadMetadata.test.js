@@ -8,6 +8,17 @@ jest.mock('../../services/documentProcessingService', () => ({
   processDocumentAsync: jest.fn(),
 }));
 
+jest.mock('../../services/payslipOcr', () => ({
+  extractPayslipFile: jest.fn().mockResolvedValue({
+    data: {
+      period: { month: '2026-03' },
+      salary: { gross_total: 10000, net_payable: 7500 },
+      summary: {},
+      quality: { warnings: [] },
+    },
+  }),
+}));
+
 const createApp = require('../../app');
 const Document = require('../../models/Document');
 
@@ -96,7 +107,7 @@ describe('Document upload metadata integration', () => {
     expect(res.statusCode).toBe(201);
     expect(res.body.success).toBe(true);
     expect(res.body.data.originalName).toBe('sample.pdf');
-    expect(res.body.data.status).toBe('pending');
+    expect(res.body.data.status).toBe('completed');
     expect(res.body.data.metadata).toEqual({
       category: 'payslip',
       periodMonth: 3,
@@ -111,7 +122,7 @@ describe('Document upload metadata integration', () => {
     const createdDocument = await Document.findById(res.body.data._id);
     expect(createdDocument).toBeTruthy();
     expect(createdDocument.metadata.category).toBe('payslip');
-    expect(createdDocument.status).toBe('pending');
+    expect(createdDocument.status).toBe('completed');
     expect(createdDocument.checksumSha256).toHaveLength(64);
 
     const uploadEntries = await getUploadEntries();

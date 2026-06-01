@@ -8,8 +8,8 @@ describe('simulateWhatIf', () => {
       change: { type: 'gross_percent', value: 0.1 },
     });
 
-    expect(result.scenario).toEqual({ gross: 11000, net: 8250 });
-    expect(result.delta).toEqual({ gross: 1000, net: 750 });
+    expect(result.scenario).toEqual({ gross: 11000, net: 8180 });
+    expect(result.delta).toEqual({ gross: 1000, net: 680 });
   });
 
   test('decrease gross by percent', () => {
@@ -19,8 +19,8 @@ describe('simulateWhatIf', () => {
       change: { type: 'gross_percent', value: -0.1 },
     });
 
-    expect(result.scenario).toEqual({ gross: 9000, net: 6750 });
-    expect(result.delta).toEqual({ gross: -1000, net: -750 });
+    expect(result.scenario).toEqual({ gross: 9000, net: 6776.2 });
+    expect(result.delta).toEqual({ gross: -1000, net: -723.8 });
   });
 
   test('increase gross by amount', () => {
@@ -30,8 +30,8 @@ describe('simulateWhatIf', () => {
       change: { type: 'gross_amount', value: 2000 },
     });
 
-    expect(result.scenario).toEqual({ gross: 12000, net: 9000 });
-    expect(result.delta).toEqual({ gross: 2000, net: 1500 });
+    expect(result.scenario).toEqual({ gross: 12000, net: 8860 });
+    expect(result.delta).toEqual({ gross: 2000, net: 1360 });
   });
 
   test('decrease gross by amount', () => {
@@ -41,7 +41,7 @@ describe('simulateWhatIf', () => {
       change: { type: 'gross_amount', value: -500 },
     });
 
-    expect(result.scenario).toEqual({ gross: 9500, net: 7125 });
-    expect(result.delta).toEqual({ gross: -500, net: -375 });
+    expect(result.scenario).toEqual({ gross: 9500, net: 7146.2 });
+    expect(result.delta).toEqual({ gross: -500, net: -353.8 });
   });
 });

@@ -85,6 +85,26 @@ describe('detectFundContributionStatus', () => {
     expect(result.confidence).toBe('low');
     expect(result.ambiguousRoles).toBe(true);
   });
+
+  test('pension: severance only does not count as no deposit', () => {
+    const result = detectFundContributionStatus(
+      {
+        contributions: {
+          pension: {
+            base_salary_for_pension: 26000,
+            employee: 0,
+            employer: 0,
+            severance: 1560,
+          },
+        },
+        quality: { warning_categories: [] },
+      },
+      'pension',
+    );
+
+    expect(result.noDeposit).toBe(false);
+    expect(result.applies).toBe(false);
+  });
 });
 
 describe('detectFundFindingsForDocuments', () => {
@@ -207,6 +227,7 @@ describe('buildContributionDetection', () => {
       sectionDetected: true,
       employeeAmount: 0,
       employerAmount: 0,
+      severanceAmount: null,
       noDeposit: true,
     });
   });

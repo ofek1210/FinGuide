@@ -337,13 +337,39 @@ flowchart TD
 
 ### 6.1 Findings
 
-[`findingsController.js`](../backend/controllers/findingsController.js) — heuristics על מטא-דאטה:
+[`findingsController.js`](../backend/controllers/findingsController.js) — heuristics על מטא-דאטה + ניתוח `analysisData`:
 
 - אין מסמכים, כפילויות (שם+גודל), pending/processing, מסמכים ישנים (>30 יום), מטא-דאטה חסר, תאריך עתידי.
+- **קרן ללא הפקדה:** [`detectFundWithoutDeposit.js`](../backend/utils/detectFundWithoutDeposit.js) — פנסיה וקה"ש, כולל סתירת onboarding.
+- **פער באחוזי הפרשה:** [`detectContributionRateGap.js`](../backend/utils/detectContributionRateGap.js) — מוצהר מול משתמע (סכום÷בסיס) + סף מינימום מ-[`contributionRateThresholds.js`](../backend/config/contributionRateThresholds.js).
+- **חוסר רצף בהפקדות:** [`detectDepositContinuityGap.js`](../backend/utils/detectDepositContinuityGap.js) — ציר זמן משותף [`contributionTimeline.js`](../backend/utils/contributionTimeline.js) + [`payslipPeriod.js`](../backend/utils/payslipPeriod.js); ממצאי חור בתלוש / חודש ללא תלוש / אי-ודאות; קונפיג [`depositContinuityConfig.js`](../backend/config/depositContinuityConfig.js).
+- **מטא-דאטה בממצאים:** `GET /api/findings` מחזיר אופציונלית `meta: { fundType, periods, documentIds, findingKind }` לקישור UI להיסטוריית תלושים (`?highlight=YYYY-MM,...`).
 
-### 6.2 Savings Forecast
+### 6.2 Savings Forecast (לינארי, ללא תשואה)
 
-`POST /api/findings/savings-forecast` → [`savingsForecastService.js`](../backend/services/savingsForecastService.js) + [`linearSavingsForecast.js`](../backend/utils/linearSavingsForecast.js).
+`POST /api/findings/savings-forecast` (מוגן ב-JWT) → [`savingsForecastService.js`](../backend/services/savingsForecastService.js) + [`linearSavingsForecast.js`](../backend/utils/linearSavingsForecast.js).
+
+**מודל:** `projectedBalance = currentBalance + monthlyContribution × monthsToRetirement` — ללא ריבית, ללא אינפלציה. שני תרחישים: **נוכחי** (הפקדה ממסמך או ידנית) ו**מותאם** (הפקדה מהבקשה).
+
+**Request body:**
+
+| שדה | חובה | תיאור |
+|-----|------|--------|
+| `currentBalance` | כן | יתרה נוכחית (≥ 0) |
+| `currentAge` | כן | גיל שלם |
+| `retirementAge` | כן | גיל פרישה (> currentAge) |
+| `adjustedMonthlyContribution` | כן | הפקדה חודשית בתרחיש המותאם |
+| `currentMonthlyContribution` | לא | נדרש אם אין מסמך completed עם הפקדות פנסיה |
+
+**מקור הפקדה לתרחיש הנוכחי:** המסמך ה-completed האחרון עם `analysisData.contributions.pension` (סכום employee+employer+severance); אחרת `currentMonthlyContribution` ידני; אחרת 400.
+
+**Response (`data`):**
+
+- `currentScenario` / `adjustedScenario`: `{ monthlyContribution, monthsToRetirement, projectedBalance, timeline[] }`
+- `summary`: `{ yearsToRetirement, monthsToRetirement, currentProjectedBalance, adjustedProjectedBalance, differenceAtRetirement }`
+- `meta`: `{ contributionSource: "document"|"manual", sourceDocumentId?, warnings: string[] }`
+
+**Frontend:** [`FindingsPage.tsx`](../frontend/src/pages/FindingsPage.tsx) + [`useSavingsForecast.ts`](../frontend/src/hooks/useSavingsForecast.ts) + [`savingsForecastChart.ts`](../frontend/src/utils/savingsForecastChart.ts).
 
 ### 6.3 Payslip History Intelligence
 
