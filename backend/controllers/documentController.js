@@ -5,83 +5,12 @@ const { promisify } = require('util');
 const Document = require('../models/Document');
 const { FileUploadError, NotFoundError } = require('../utils/appErrors');
 const { normalizeDocumentMetadataInput } = require('../utils/documentMetadata');
-const { extractPayslipFile } = require('../services/payslipOcr');
-const {
-  extractPayslipFields,
-  validatePayslipExtraction,
-} = require('../services/extraction-v2');
 const { serializeDocument } = require('../serializers/documentSerializer');
+const { extractPayslipFile } = require('../services/payslipOcr');
+const { validatePayslipAnalysis, buildFieldsMeta } = require('../schemas/payslipAnalysis.schema');
 const { buildPayslipHistoryIntelligence } = require('../services/payslipHistoryAggregationService');
 
 const unlink = promisify(fs.unlink);
-
-const toRawLinesFallback = rawText => String(rawText || '')
-  .split(/\r?\n/)
-  .map(line => line.trim())
-  .filter(Boolean);
-
-const normalizeRawLinesForV2 = (rawLines, rawText) => {
-  if (Array.isArray(rawLines) && rawLines.length > 0) {
-    const cleaned = rawLines
-      .map(line => (line == null ? '' : String(line).trim()))
-      .filter(Boolean);
-    if (cleaned.length > 0) {
-      return cleaned;
-    }
-  }
-  return toRawLinesFallback(rawText);
-};
-
-const applyExtractorV2Shadow = async analysisData => {
-  if (!analysisData || typeof analysisData !== 'object') {
-    return analysisData;
-  }
-
-  const data = { ...analysisData };
-  const rawText = data.raw?.rawText || data.raw?.ocr_text || '';
-  const rawLines = normalizeRawLinesForV2(data.raw?.rawLines, rawText);
-  const extractionMethod = data.raw?.extractionMethod || null;
-
-  if (!rawText || !String(rawText).trim()) {
-    return analysisData;
-  }
-
-  data.pipeline_version = 'extractor-v2-shadow';
-  data.quality = data.quality && typeof data.quality === 'object' ? data.quality : {};
-  data.quality.warnings = Array.isArray(data.quality.warnings) ? data.quality.warnings : [];
-  data.quality.debug = data.quality.debug && typeof data.quality.debug === 'object'
-    ? data.quality.debug
-    : {};
-
-  try {
-    const extractionResult = await extractPayslipFields({
-      rawText,
-      rawLines,
-      extractionMethod,
-      rawPayload: data.raw || {},
-    });
-    const validationResult = validatePayslipExtraction({ extractionResult });
-
-    data.extraction_v2 = extractionResult;
-    data.quality.validation = validationResult;
-    data.quality.debug.extraction_v2_shadow = {
-      status: 'ok',
-      rawLinesCount: rawLines.length,
-      extracted_field_count: Object.keys(extractionResult.fields || {}).length,
-      extracted_field_keys: Object.keys(extractionResult.fields || {}),
-      amount_logic: extractionResult.meta?.debug?.amountExtraction || null,
-    };
-  } catch (error) {
-    data.quality.warnings.push('[extractor-v2-shadow] v2 extraction failed; legacy output kept.');
-    data.quality.debug.extraction_v2_shadow = {
-      status: 'failed',
-      rawLinesCount: rawLines.length,
-      error: error?.message || 'unknown extractor-v2 error',
-    };
-  }
-
-  return data;
-};
 
 const computeFileChecksum = filePath =>
   new Promise((resolve, reject) => {
@@ -119,20 +48,50 @@ exports.uploadDocument = async (req, res, next) => {
     // ניסיון לבצע חילוץ טקסט ו-OCR (אם יש צורך) ולחלץ נתונים מהתלוש
     try {
       const { data } = await extractPayslipFile(req.file.path);
-      const shadowData = await applyExtractorV2Shadow(data);
 
-      document.analysisData = shadowData;
-      document.status = 'completed';
+      // Lift per-field confidence/source so the frontend can read it without
+      // walking the resolver-specific quality contract.
+      const fieldsMeta = buildFieldsMeta(data);
+      if (fieldsMeta) {
+        data.fields_meta = fieldsMeta;
+      }
+
+      // Schema gate: if any of the critical fields (period.month, gross_total,
+      // net_payable, mandatory.total) are missing or fail cross-field sanity,
+      // flag the document for human review instead of presenting it as complete.
+      const validation = validatePayslipAnalysis(data);
+      document.analysisData = data;
       document.processedAt = new Date();
+      if (validation.ok) {
+        document.status = 'completed';
+        document.processingError = null;
+      } else {
+        document.status = 'needs_review';
+        document.processingError = validation.message;
+      }
       await document.save();
       // eslint-disable-next-line no-console
       console.log('[documents] uploadDocument extraction result', {
         documentId: document._id,
+        status: document.status,
         summary: document.analysisData?.summary,
+        ...(validation.ok ? {} : { validation_reason: validation.reason }),
+      });
+
+      setImmediate(() => {
+        const notificationService = require('../services/notificationService');
+        const { runFullAnalysis } = require('../services/insightsEngine');
+        const { run: runRecommendations } = require('../services/insuranceRecommender');
+
+        notificationService.notifyDocumentProcessed(req.user.id, document).catch(() => {});
+        runFullAnalysis(req.user.id)
+          .then(() => runRecommendations(req.user.id))
+          .catch(err => console.error('[documents] post-upload analysis failed', err));
       });
     } catch (ocrError) {
       console.error('❌ Document extraction failed for document', document._id, ocrError);
       document.status = 'failed';
+      document.processingError = ocrError.message;
       await document.save().catch(() => {});
     }
 
@@ -176,6 +135,68 @@ exports.getPayslipHistory = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: intelligence,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/documents/:id/reprocess - run extraction again on the existing PDF.
+// Lets the user re-extract a payslip after a pipeline upgrade (e.g. the
+// net_payable bug fix) without having to re-upload the file.
+exports.reprocessDocument = async (req, res, next) => {
+  try {
+    const document = await Document.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    });
+
+    if (!document) {
+      return next(new NotFoundError('מסמך לא נמצא'));
+    }
+    if (!document.filePath) {
+      return next(new NotFoundError('הקובץ המקורי לא קיים יותר — לא ניתן להריץ חילוץ מחדש'));
+    }
+
+    // Path-traversal guard: same posture as downloadDocument.
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
+    const resolvedPath = path.resolve(document.filePath);
+    if (!resolvedPath.startsWith(uploadsDir)) {
+      return next(new NotFoundError('מסמך לא נמצא'));
+    }
+
+    document.status = 'processing';
+    document.processingError = null;
+    await document.save();
+
+    try {
+      const { data } = await extractPayslipFile(document.filePath);
+
+      const fieldsMeta = buildFieldsMeta(data);
+      if (fieldsMeta) data.fields_meta = fieldsMeta;
+
+      const validation = validatePayslipAnalysis(data);
+      document.analysisData = data;
+      document.processedAt = new Date();
+      if (validation.ok) {
+        document.status = 'completed';
+        document.processingError = null;
+      } else {
+        document.status = 'needs_review';
+        document.processingError = validation.message;
+      }
+      await document.save();
+    } catch (extractionError) {
+      console.error('❌ Reprocess failed for document', document._id, extractionError);
+      document.status = 'failed';
+      document.processingError = extractionError?.message || 'Reprocess failed';
+      document.processedAt = new Date();
+      await document.save().catch(() => {});
+    }
+
+    res.status(200).json({
+      success: true,
+      data: serializeDocument(document),
     });
   } catch (error) {
     next(error);

@@ -15,7 +15,7 @@ describe('documentProcessingService', () => {
     jest.clearAllMocks();
   });
 
-  it('marks document as completed when background processing succeeds', async () => {
+  it('marks document as completed when extraction satisfies the schema gate', async () => {
     const save = jest.fn().mockResolvedValue(undefined);
     const document = {
       _id: 'doc-success',
@@ -26,14 +26,45 @@ describe('documentProcessingService', () => {
 
     Document.findById.mockResolvedValue(document);
     extractPayslipFile.mockResolvedValue({
-      data: { grossSalary: 10000 },
+      data: {
+        period: { month: '09/2022' },
+        salary: { gross_total: 10000, net_payable: 7500 },
+        deductions: { mandatory: { total: 2000 } },
+      },
     });
 
     await processDocumentNow('doc-success');
 
     expect(document.status).toBe('completed');
-    expect(document.analysisData).toEqual({ grossSalary: 10000 });
+    expect(document.analysisData.salary.gross_total).toBe(10000);
     expect(document.processingError).toBeNull();
+    expect(document.processedAt).toBeInstanceOf(Date);
+    expect(save).toHaveBeenCalledTimes(2);
+  });
+
+  it('marks document as needs_review when extraction omits critical fields', async () => {
+    const save = jest.fn().mockResolvedValue(undefined);
+    const document = {
+      _id: 'doc-needs-review',
+      filePath: '/tmp/needs-review.pdf',
+      status: 'pending',
+      save,
+    };
+
+    Document.findById.mockResolvedValue(document);
+    // Missing salary.net_payable — should trigger schema gate.
+    extractPayslipFile.mockResolvedValue({
+      data: {
+        period: { month: '09/2022' },
+        salary: { gross_total: 10000 },
+        deductions: { mandatory: { total: 2000 } },
+      },
+    });
+
+    await processDocumentNow('doc-needs-review');
+
+    expect(document.status).toBe('needs_review');
+    expect(document.processingError).toMatch(/net_payable/);
     expect(document.processedAt).toBeInstanceOf(Date);
     expect(save).toHaveBeenCalledTimes(2);
   });

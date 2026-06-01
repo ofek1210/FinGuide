@@ -11,6 +11,9 @@ import ScanCompletePage from "./pages/ScanCompletePage";
 import PayslipHistoryPage from "./pages/PayslipHistoryPage";
 import PayslipDetailPage from "./pages/PayslipDetailPage";
 import PayslipMissingFieldsPage from "./pages/PayslipMissingFieldsPage";
+import InsightsPage from "./pages/InsightsPage";
+import InsurancePage from "./pages/InsurancePage";
+import NotificationsPage from "./pages/NotificationsPage";
 import AssistantPage from "./pages/AssistantPage";
 import FindingsPage from "./pages/FindingsPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -96,6 +99,30 @@ export default function App() {
           element={
             <RequireAuth>
               <FindingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.insights}
+          element={
+            <RequireAuth>
+              <InsightsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.insurance}
+          element={
+            <RequireAuth>
+              <InsurancePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.notifications}
+          element={
+            <RequireAuth>
+              <NotificationsPage />
             </RequireAuth>
           }
         />

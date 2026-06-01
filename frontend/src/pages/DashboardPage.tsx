@@ -10,6 +10,9 @@ import DashboardHero from "../components/dashboard/DashboardHero";
 import DashboardMetrics from "../components/dashboard/DashboardMetrics";
 import DashboardPayslipHistoryCard from "../components/dashboard/DashboardPayslipHistoryCard";
 import DashboardQuickActions from "../components/dashboard/DashboardQuickActions";
+import DashboardCharts from "../components/dashboard/DashboardCharts";
+import DashboardInsightsCard from "../components/dashboard/DashboardInsightsCard";
+import DashboardRecommendationsCard from "../components/dashboard/DashboardRecommendationsCard";
 import DashboardRecentDocuments from "../components/dashboard/DashboardRecentDocuments";
 import DashboardSummaryCard from "../components/dashboard/DashboardSummaryCard";
 import { useDashboardDocuments } from "../hooks/useDashboardDocuments";
@@ -135,6 +138,8 @@ export default function DashboardPage() {
 
         <DashboardMetrics metrics={metrics} />
 
+        <DashboardCharts />
+
         {documents.uploadError ? (
           <div className="dashboard-inline-error">{documents.uploadError}</div>
         ) : null}
@@ -171,6 +176,10 @@ export default function DashboardPage() {
               message={alertMessage}
               onViewDocuments={() => navigate(APP_ROUTES.documents)}
             />
+
+            <DashboardInsightsCard />
+
+            <DashboardRecommendationsCard />
 
             <DashboardPayslipHistoryCard
               items={payslips.items}

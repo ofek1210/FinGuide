@@ -2,7 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 
-const { chatWithAI } = require('../controllers/aiController');
+const { chatWithAI, getChatHistoryHandler, listConversations } = require('../controllers/aiController');
 const { protect } = require('../middleware/auth');
 
 // כל הroutes כאן מוגנים - דורשים authentication
@@ -10,6 +10,14 @@ router.use(protect);
 
 router.post('/chat', (req, res, next) => {
   Promise.resolve(chatWithAI(req, res)).catch(next);
+});
+
+router.get('/chat/history', (req, res, next) => {
+  Promise.resolve(getChatHistoryHandler(req, res)).catch(next);
+});
+
+router.get('/chat/conversations', (req, res, next) => {
+  Promise.resolve(listConversations(req, res)).catch(next);
 });
 
 module.exports = router;

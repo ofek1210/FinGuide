@@ -33,6 +33,7 @@ const SUPPLEMENTAL_NUMERIC_FIELDS = [
   'base_salary',
   'global_overtime',
   'travel_expenses',
+  'personal_credit',
   'gross_for_income_tax',
   'gross_for_national_insurance',
   'job_percent',
@@ -73,6 +74,7 @@ const NUMERIC_FIELD_LIMITS = {
   base_salary: { min: 500, max: 200000 },
   global_overtime: { min: 0, max: 100000 },
   travel_expenses: { min: 0, max: 50000 },
+  personal_credit: { min: 0, max: 15000 },
   gross_for_income_tax: { min: 0, max: 200000 },
   gross_for_national_insurance: { min: 0, max: 200000 },
   job_percent: { min: 1, max: 200 },
@@ -118,6 +120,7 @@ const FIELD_SECTIONS = {
   base_salary: ['earnings'],
   global_overtime: ['earnings'],
   travel_expenses: ['earnings'],
+  personal_credit: ['deductions', 'tax'],
   gross_for_income_tax: ['tax_base', 'deductions'],
   gross_for_national_insurance: ['tax_base', 'deductions'],
   job_percent: ['summary', 'identity'],
@@ -700,7 +703,7 @@ function collectCoreFieldCandidates(context) {
 function collectSupplementalFieldCandidates(context, labelMap = {}) {
   const store = {};
 
-  collectLabelCandidates(store, context, ['base_salary', 'global_overtime', 'travel_expenses'], {
+  collectLabelCandidates(store, context, ['base_salary', 'global_overtime', 'travel_expenses', 'personal_credit'], {
     adjacentWindow: 1,
     adjacentScore: 0.8,
   });
@@ -767,6 +770,17 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     section: 'earnings',
   });
 
+  pushRegexValueCandidates(store, 'personal_credit', context.fullText, [
+    /זיכוי\s*אישי[^\d]*(\d[\d,.\s₪]+)/i,
+    /זיכוי\s*(?:ב|מ)מס[^\d]*(\d[\d,.\s₪]+)/i,
+    /personal\s*(?:tax\s*)?credit[^\d]*(\d[\d,.\s₪]+)/i,
+  ], {
+    source: 'regex_personal_credit',
+    score: 0.86,
+    reason: 'Matched personal tax credit amount with a dedicated regex.',
+    section: 'deductions',
+  });
+
   pushRegexValueCandidates(store, 'gross_for_income_tax', context.fullText, [
     /ברוטו\s*למס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i,
     /הכנסה\s*חייבת\s*במס[^\d]*(\d[\d,.\s₪]+)/i,
@@ -797,7 +811,7 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
     section: 'summary',
   });
 
-  for (const field of ['base_salary', 'global_overtime', 'travel_expenses', 'bonus', 'holiday_pay', 'overtime_125', 'overtime_150', 'convalescence', 'clothing_allowance']) {
+  for (const field of ['base_salary', 'global_overtime', 'travel_expenses', 'personal_credit', 'bonus', 'holiday_pay', 'overtime_125', 'overtime_150', 'convalescence', 'clothing_allowance']) {
     const value = labelMap[field];
     if (value !== undefined && isReasonableFieldValue(field, value)) {
       pushCandidate(store, field, value, {
