@@ -216,22 +216,10 @@ export default function OnboardingPage() {
               <span>שלב {step} מתוך 3</span>
               <span style={{ opacity: 0.8 }}>{Math.round(progressPct)}%</span>
             </div>
-            <div
-              style={{
-                height: 6,
-                background: "rgba(0,0,0,0.08)",
-                borderRadius: 999,
-                overflow: "hidden",
-                marginTop: 8,
-              }}
-            >
+            <div className="onboarding-progress-track">
               <div
-                style={{
-                  width: `${progressPct}%`,
-                  height: "100%",
-                  background: "rgba(124, 58, 237, 0.9)",
-                  transition: "width 220ms ease",
-                }}
+                className="onboarding-progress-fill"
+                style={{ width: `${progressPct}%` }}
               />
             </div>
           </div>

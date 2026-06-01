@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FinGuide – ניתוח תלושי שכר עם AI</title>
+    <script>
+      // Apply persisted theme BEFORE first paint to avoid FOUC.
+      try {
+        var t = localStorage.getItem("finguide-theme");
+        document.documentElement.setAttribute(
+          "data-theme",
+          t === "light" || t === "dark" ? t : "dark"
+        );
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
