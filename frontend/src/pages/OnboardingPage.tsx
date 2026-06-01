@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Loader from "../components/ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
@@ -89,6 +89,8 @@ export default function OnboardingPage() {
   const [error, setError]       = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [profile, setProfile]   = useState<OnboardingProfile>(EMPTY_PROFILE);
+
+  const progressPct = useMemo(() => (step / 3) * 100, [step]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -246,6 +248,19 @@ export default function OnboardingPage() {
           </header>
 
           {error ? <div className="ob2-error-bar">{error}</div> : null}
+
+          <div style={{ marginTop: "0.75rem" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.95rem" }}>
+              <span>שלב {step} מתוך 3</span>
+              <span style={{ opacity: 0.8 }}>{Math.round(progressPct)}%</span>
+            </div>
+            <div className="onboarding-progress-track">
+              <div
+                className="onboarding-progress-fill"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
 
           <div className="ob2-fields" key={`step-${step}`} style={{ animation: "ob2-step-in 0.22s ease-out" }}>
 

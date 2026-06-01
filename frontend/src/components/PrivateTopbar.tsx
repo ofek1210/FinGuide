@@ -61,9 +61,6 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
   return (
     <header className="dashboard-topbar" dir="rtl">
       <div className="dashboard-brand">
-        <span className="dashboard-brand-badge" aria-hidden="true">
-          ✦
-        </span>
         <span>FinGuide</span>
       </div>
 

@@ -4,7 +4,6 @@ import {
   FileText,
   Mail,
   ShieldCheck,
-  Sparkles,
   Wand2,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -52,9 +51,6 @@ export default function LandingPage() {
     <div className="landing-page" dir="rtl">
       <header className="landing-nav landing-container">
         <div className="landing-logo">
-          <span className="landing-logo-badge" aria-hidden="true">
-            <Sparkles />
-          </span>
           <span>FinGuide</span>
         </div>
         <div className="landing-nav-actions">
@@ -75,10 +71,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="hero-content">
-            <div className="hero-pill">
-              <Sparkles aria-hidden="true" />
-              ניתוח פיננסי מבוסס בינה מלאכותית
-            </div>
+            <div className="hero-pill">ניתוח פיננסי מבוסס בינה מלאכותית</div>
             <h1 className="hero-title">
               הבינו את המצב הפיננסי שלכם
               <br />

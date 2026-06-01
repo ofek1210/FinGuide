@@ -4,6 +4,7 @@ import AuthScreen from "./components/AuthScreen";
 import DashboardPage from "./pages/DashboardPage";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import BackButton from "./components/BackButton";
+import ThemeToggle from "./components/ThemeToggle";
 import DocumentsPage from "./pages/DocumentsPage";
 import ScanStatusPage from "./pages/ScanStatusPage";
 import ScanCompletePage from "./pages/ScanCompletePage";
@@ -34,6 +35,7 @@ export default function App() {
   return (
     <>
       <BackButton />
+      <ThemeToggle />
       <Routes>
         <Route
           path={APP_ROUTES.home}

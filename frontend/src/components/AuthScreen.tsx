@@ -315,10 +315,10 @@ export default function AuthScreen({
 
       googleButtonRef.current.innerHTML = "";
       window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "outline",
+        theme: "filled_black",
         size: "large",
         text: isRegister ? "signup_with" : "signin_with",
-        shape: "pill",
+        shape: "rectangular",
         width: 320,
         locale: "he",
         logo_alignment: "left",
