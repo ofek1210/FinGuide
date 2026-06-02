@@ -250,6 +250,10 @@ export default function AuthScreen({
       if (user) {
         localStorage.setItem("auth_user", JSON.stringify(user));
       }
+      // Fires synchronously → AuthProvider's listener calls refresh() which queues
+      // setStatus("checking"). By batching it with the navigate() below, RequireAuth
+      // on /dashboard renders the loader (correct place), instead of RequireGuest
+      // unmounting AuthScreen mid-flight on /login.
       emitAuthChanged();
       navigate(APP_ROUTES.dashboard);
     },

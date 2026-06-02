@@ -10,7 +10,7 @@ type AuthContextValue = {
   status: AuthStatus;
   user: AuthUser | null;
   error: string;
-  refresh: () => Promise<void>;
+  refresh: () => Promise<boolean>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -22,13 +22,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [error, setError] = useState("");
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<boolean> => {
     setError("");
 
     if (!hasToken()) {
       setUser(null);
       setStatus("guest");
-      return;
+      return false;
     }
 
     setStatus("checking");
@@ -37,13 +37,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (response.success && response.data?.user) {
       setUser(response.data.user);
       setStatus("authenticated");
-      return;
+      return true;
     }
 
     clearSession();
     setUser(null);
     setStatus("guest");
     setError(response.message || "פג תוקף ההתחברות. נא להתחבר מחדש.");
+    return false;
   }, []);
 
   useEffect(() => {
