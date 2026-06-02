@@ -32,9 +32,9 @@ export default function PensionTrendChart({ data }: Props) {
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip formatter={(v) => [`₪${Number(v ?? 0).toLocaleString("he-IL")}`, ""]} />
           <Legend />
-          <Area type="monotone" dataKey="employee" name="עובד" stackId="1" stroke="#7c3aed" fill="#7c3aed33" />
-          <Area type="monotone" dataKey="employer" name="מעסיק" stackId="1" stroke="#2563eb" fill="#2563eb33" />
-          <Area type="monotone" dataKey="severance" name="פיצויים" stackId="1" stroke="#d97706" fill="#d9770633" />
+          <Area type="monotone" dataKey="employee" name="עובד" stackId="1" stroke="#FF00A8" fill="#FF00A833" />
+          <Area type="monotone" dataKey="employer" name="מעסיק" stackId="1" stroke="#00FFD0" fill="#00FFD033" />
+          <Area type="monotone" dataKey="severance" name="פיצויים" stackId="1" stroke="#5C2EFF" fill="#5C2EFF33" />
         </AreaChart>
       </ResponsiveContainer>
     </div>

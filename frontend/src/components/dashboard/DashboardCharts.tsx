@@ -36,9 +36,9 @@ export default function DashboardCharts() {
     const latest = items[items.length - 1];
     const taxBreakdown = latest
       ? [
-          { name: "מס הכנסה", value: latest.tax ?? 0, color: "#7c3aed" },
-          { name: "ביטוח לאומי", value: latest.nationalInsurance ?? 0, color: "#2563eb" },
-          { name: "בריאות", value: latest.healthInsurance ?? 0, color: "#059669" },
+          { name: "מס הכנסה", value: latest.tax ?? 0, color: "#FF00A8" },
+          { name: "ביטוח לאומי", value: latest.nationalInsurance ?? 0, color: "#00FFD0" },
+          { name: "בריאות", value: latest.healthInsurance ?? 0, color: "#FAFF00" },
         ]
       : [];
 

@@ -27,8 +27,8 @@ export default function SalaryTrendChart({ data }: Props) {
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip formatter={(v) => [`₪${Number(v ?? 0).toLocaleString("he-IL")}`, ""]} />
           <Legend />
-          <Line type="monotone" dataKey="gross" name="ברוטו" stroke="#7c3aed" strokeWidth={2} dot={{ r: 3 }} />
-          <Line type="monotone" dataKey="net" name="נטו" stroke="#059669" strokeWidth={2} dot={{ r: 3 }} />
+          <Line type="monotone" dataKey="gross" name="ברוטו" stroke="#FAFF00" strokeWidth={2} dot={{ r: 3 }} />
+          <Line type="monotone" dataKey="net" name="נטו" stroke="#00FFD0" strokeWidth={2} dot={{ r: 3 }} />
         </LineChart>
       </ResponsiveContainer>
     </div>

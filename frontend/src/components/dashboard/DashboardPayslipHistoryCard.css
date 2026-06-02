@@ -22,16 +22,26 @@
 }
 
 .payslip-history-link {
-  border: none;
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--landing-text);
+  border: 2px solid #FFF;
+  background: #000;
+  color: #FFF;
   padding: 12px 16px;
   min-height: 48px;
-  border-radius: 8px;
+  border-radius: 0;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: background 0.15s, color 0.15s;
+}
+
+.payslip-history-link:hover {
+  background: #FAFF00;
+  color: #000;
+  border-color: #000;
 }
 
 .payslip-history-link svg {
@@ -50,9 +60,10 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0;
+  background: #000;
+  border: 2px solid #FFF;
+  box-shadow: 4px 4px 0 #FAFF00;
 }
 
 .payslip-history-period {
@@ -70,23 +81,27 @@
 
 .payslip-history-latest {
   width: fit-content;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(90, 86, 246, 0.2);
-  color: #a78bfa;
+  padding: 2px 10px;
+  border-radius: 0;
+  background: #FAFF00;
+  color: #000;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .payslip-history-missing {
   width: fit-content;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(255, 107, 71, 0.18);
-  border: 1px solid rgba(255, 107, 71, 0.35);
-  color: #ffd3c7;
+  padding: 2px 10px;
+  border-radius: 0;
+  background: #FF00A8;
+  border: none;
+  color: #FFF;
   font-size: 0.7rem;
-  font-weight: 600;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .payslip-history-amounts {
@@ -97,8 +112,8 @@
 }
 
 .payslip-history-net {
-  color: #c4b5fd;
-  font-weight: 600;
+  color: #FAFF00;
+  font-weight: 700;
 }
 
 .payslip-history-gross {
@@ -120,15 +135,24 @@
 }
 
 .payslip-history-state.is-error {
-  color: #fca5a5;
+  color: #FF00A8;
 }
 
 .payslip-history-state button {
-  border: none;
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--landing-text);
+  border: 2px solid #FFF;
+  background: #000;
+  color: #FFF;
   padding: 12px 16px;
   min-height: 48px;
-  border-radius: 8px;
+  border-radius: 0;
   cursor: pointer;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.payslip-history-state button:hover {
+  background: #FAFF00;
+  color: #000;
+  border-color: #000;
 }
