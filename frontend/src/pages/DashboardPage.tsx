@@ -66,6 +66,7 @@ export default function DashboardPage() {
   const greetingLine = user.isLoading
     ? "טוענים את הנתונים..."
     : `${user.name}, ברוך/ה הבא/ה`;
+  const heroUserName = user.isLoading ? undefined : user.name;
 
   const metrics: DashboardMetric[] = [
     {
@@ -132,6 +133,7 @@ export default function DashboardPage() {
 
         <DashboardHero
           greetingLine={greetingLine}
+          userName={heroUserName}
           documentsThisMonth={documents.documentsThisMonth}
           onViewDocuments={() => navigate(APP_ROUTES.documents)}
         />

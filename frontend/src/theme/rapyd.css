@@ -857,10 +857,8 @@ label,
  * Auth screen
  * ================================================================= */
 .auth-page {
-  background: var(--rapyd-black) !important;
-  background-image:
-    linear-gradient(135deg, rgba(255, 0, 168, 0.12) 0%, transparent 35%),
-    linear-gradient(225deg, rgba(0, 255, 208, 0.10) 0%, transparent 35%) !important;
+  background: #000 !important;
+  background-image: none !important;
 }
 
 .auth-page::before,
@@ -984,64 +982,150 @@ hr,
   box-shadow: var(--rapyd-sticker-black);
 }
 
-/* App footer — pink stripe / black core like Rapyd careers footer */
+/* App footer — Rapyd multi-zone footer */
 .app-footer {
-  background: var(--rapyd-black) !important;
-  color: var(--rapyd-white) !important;
+  background: #000 !important;
+  color: #FFF !important;
   border-top: 0;
-  position: relative;
-  padding: 28px 24px 24px !important;
+  padding: 0 !important;
 }
 
-.app-footer::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 6px;
-  background: var(--rapyd-pink);
+.app-footer-newsletter {
+  background: #5C2EFF !important;
+  padding: 20px 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  flex-wrap: wrap !important;
 }
 
-.app-footer::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 6px;
-  background: var(--rapyd-pink);
+.app-footer-newsletter-label {
+  color: #FFF !important;
+  font-weight: 800 !important;
+  font-size: 1rem !important;
+  letter-spacing: 0.04em !important;
 }
 
-.app-footer-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px;
-  justify-content: center;
-  margin-bottom: 14px;
+.app-footer-newsletter-btn {
+  background: #FAFF00 !important;
+  color: #000 !important;
+  font-weight: 900 !important;
+  font-size: 0.85rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  padding: 10px 24px !important;
+  border: none !important;
+  border-radius: 0 !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  box-shadow: 4px 4px 0 #000 !important;
+  transition: box-shadow 0.12s, transform 0.12s !important;
+  display: inline-block !important;
+}
+
+.app-footer-newsletter-btn:hover {
+  box-shadow: 2px 2px 0 #000 !important;
+  transform: translate(2px, 2px) !important;
+  color: #000 !important;
+}
+
+.app-footer-columns {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 0 !important;
+  padding: 40px 32px !important;
+  background: #000 !important;
+  border-top: 2px solid #FFF !important;
+}
+
+.app-footer-col {
+  padding: 0 24px !important;
+  border-right: 1px solid rgba(255,255,255,0.12) !important;
+}
+
+.app-footer-col:last-child {
+  border-right: none !important;
+}
+
+.app-footer-col-heading {
+  color: #FF00A8 !important;
+  font-weight: 900 !important;
+  font-size: 0.78rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.12em !important;
+  margin: 0 0 16px !important;
+}
+
+.app-footer-col ul {
+  list-style: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
 }
 
 .app-footer a,
-.app-footer-nav a {
-  color: var(--rapyd-white) !important;
-  font-weight: 800;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  text-decoration: none;
-  transition: color var(--rapyd-transition);
+.app-footer-col a {
+  color: #FFF !important;
+  font-weight: 500 !important;
+  font-size: 0.85rem !important;
+  text-decoration: none !important;
+  transition: color 0.12s !important;
 }
 
 .app-footer a:hover,
-.app-footer-nav a:hover {
-  color: var(--rapyd-yellow) !important;
+.app-footer-col a:hover {
+  color: #FAFF00 !important;
 }
 
-.app-footer-copyright {
-  text-align: center;
-  color: var(--rapyd-text-muted);
-  font-size: 0.72rem;
-  margin: 0;
+.app-footer-bottom {
+  background: #FF00A8 !important;
+  color: #000 !important;
+  padding: 14px 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 16px !important;
+  flex-wrap: wrap !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+}
+
+.app-footer-bottom span {
+  color: #000 !important;
+}
+
+.app-footer-bottom-links {
+  display: flex !important;
+  gap: 16px !important;
+}
+
+.app-footer-bottom-links a {
+  color: #000 !important;
+  font-weight: 700 !important;
+  font-size: 0.78rem !important;
+  text-decoration: none !important;
+}
+
+.app-footer-bottom-links a:hover {
+  text-decoration: underline !important;
+  color: #000 !important;
+}
+
+@media (max-width: 640px) {
+  .app-footer-columns {
+    grid-template-columns: 1fr !important;
+  }
+  .app-footer-col {
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.12) !important;
+    padding: 20px 0 !important;
+  }
+  .app-footer-col:last-child {
+    border-bottom: none !important;
+  }
 }
 
 /* Brand badge — legacy support; remove visual */
@@ -1133,7 +1217,7 @@ hr,
 }
 
 .landing-page .hero-media {
-  display: none !important;
+  display: block !important;
 }
 
 .landing-page .hero-pill {
@@ -2867,19 +2951,31 @@ hr,
 
 /* ── DASHBOARD WIDGETS — finish the SaaS bleed-through cleanup ── */
 .dashboard-hero {
-  background: var(--rapyd-black) !important;
-  border: 2px solid var(--rapyd-white) !important;
-  border-radius: var(--rapyd-radius-md) !important;
-  box-shadow: var(--rapyd-sticker-yellow) !important;
-  padding: 32px 36px !important;
+  background: #000 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 4rem 2rem !important;
+  margin: 0 -2rem 2rem !important;
+  border-bottom: 4px solid #FAFF00 !important;
 }
 
 .dashboard-hero h1 {
-  color: var(--rapyd-white) !important;
+  font-size: clamp(2.5rem, 6vw, 5rem) !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+  color: #FFF !important;
+  line-height: 0.95 !important;
+}
+
+.dashboard-hero h1 strong {
+  color: #FAFF00 !important;
+  font-weight: 900 !important;
 }
 
 .dashboard-hero p {
-  color: var(--rapyd-text-secondary) !important;
+  color: #FFF !important;
+  opacity: 0.7;
 }
 
 .dashboard-documents-icon {
@@ -4067,23 +4163,28 @@ body {
   color: #000000 !important;
 }
 
-/* Footer — black stripe over white core; pink rules stay */
+/* Footer — light theme keeps the Rapyd zone colors intact; only text links adapt */
 [data-theme="light"] .app-footer {
-  background: var(--rapyd-cream) !important;
-  color: #000000 !important;
+  background: #000 !important;
+  color: #FFF !important;
 }
 
 [data-theme="light"] .app-footer a,
-[data-theme="light"] .app-footer-nav a {
-  color: #000000 !important;
+[data-theme="light"] .app-footer-col a {
+  color: #FFF !important;
 }
 
-[data-theme="light"] .app-footer a:hover {
-  color: var(--rapyd-purple) !important;
+[data-theme="light"] .app-footer a:hover,
+[data-theme="light"] .app-footer-col a:hover {
+  color: #FAFF00 !important;
 }
 
-[data-theme="light"] .app-footer-copyright {
-  color: rgba(0, 0, 0, 0.6) !important;
+[data-theme="light"] .app-footer-bottom-links a {
+  color: #000 !important;
+}
+
+[data-theme="light"] .app-footer-newsletter-btn {
+  color: #000 !important;
 }
 
 /* Scrollbars */
@@ -4188,4 +4289,25 @@ body {
 [data-theme="light"] .missing-fields-ok,
 [data-theme="light"] .toast {
   box-shadow: 6px 6px 0 #000000 !important;
+}
+
+/* #7 — Kill glassmorphism blur on scan-complete-card */
+.scan-complete-card {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: #000 !important;
+  border: 3px solid #FFF !important;
+  border-radius: 0 !important;
+  box-shadow: 8px 8px 0 #FAFF00 !important;
+}
+
+/* #8 — Fix Bootstrap blue on accent-blue metric icon and insight-severity-info */
+.metric-icon.accent-blue {
+  background: rgba(0, 255, 208, 0.12) !important;
+  color: var(--rapyd-mint) !important;
+}
+
+.insight-severity-info {
+  border-right-color: var(--rapyd-mint) !important;
+  color: var(--rapyd-mint) !important;
 }

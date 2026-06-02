@@ -27,7 +27,7 @@ export default function MonthlyChangesChart({ data }: Props) {
           <YAxis tick={{ fontSize: 12 }} unit="%" />
           <Tooltip formatter={(v) => [`${Number(v ?? 0)}%`, "שינוי נטו"]} />
           <Legend />
-          <Bar dataKey="change" name="שינוי נטו (%)" fill="#7c3aed" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="change" name="שינוי נטו (%)" fill="#FAFF00" radius={[0, 0, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>
