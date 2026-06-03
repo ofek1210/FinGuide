@@ -318,6 +318,9 @@ const buildTaxAssistantSummary = async (userId, yearInput) => {
 
 module.exports = {
   buildTaxAssistantSummary,
+  buildYearEntries,
+  enrichEntrySummary,
+  getEmployerName,
   isPayslipDocument,
   isForm106Document,
   HEBREW_MONTHS,

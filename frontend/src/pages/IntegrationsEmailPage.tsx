@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Mail, RefreshCw, Unplug } from "lucide-react";
+import { ArrowRight, Mail, RefreshCw, Unplug } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import Loader from "../components/ui/Loader";
@@ -15,6 +15,8 @@ import {
 } from "../api/integrations.api";
 import { formatLongDate } from "../utils/formatters";
 import { getDocumentImportSourceLabel } from "../utils/documentSource";
+
+const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 
 const formatSyncSummary = (summary: GmailSyncSummary) => {
   const parts = [
@@ -44,6 +46,7 @@ export default function IntegrationsEmailPage() {
 
   const oauthCode = searchParams.get("code");
   const oauthError = searchParams.get("error");
+  const fromDocuments = searchParams.get("from") === "documents";
 
   const redirectUri = useMemo(
     () => status?.redirectUri || `${window.location.origin}/integrations/email`,
@@ -165,6 +168,30 @@ export default function IntegrationsEmailPage() {
     <div className="feature-page dashboard-page gmail-integration-page" dir="rtl">
       <div className="dashboard-shell">
         <PrivateTopbar />
+
+        {fromDocuments ? (
+          <section className="dashboard-card feature-page-actions">
+            <button
+              type="button"
+              className="dashboard-link-btn"
+              onClick={() => navigate(APP_ROUTES.documents)}
+            >
+              <ArrowRight aria-hidden="true" />
+              חזרה למסמכים
+            </button>
+          </section>
+        ) : null}
+
+        <section className="dashboard-card gmail-integration-permissions-card">
+          <h2>הרשאות Gmail</h2>
+          <ul className="gmail-integration-permissions-list">
+            <li>גישה לקריאה בלבד — {GMAIL_READONLY_SCOPE}</li>
+            <li>חיפוש רק במיילים הקשורים לתלושי שכר (מילות מפתח רלוונטיות)</li>
+            <li>ייבוא מצורפי PDF בלבד</li>
+            <li>FinGuide לא שולח, לא מוחק ולא משנה הודעות בתיבת המייל</li>
+            <li>סיסמת PDF מוגן: תתבקשו להזין סיסמה לפתיחה בלבד — לא נשמרת כברירת מחדל</li>
+          </ul>
+        </section>
 
         <section className="dashboard-card">
           <div className="gmail-integration-hero">
