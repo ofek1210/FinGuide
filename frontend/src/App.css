@@ -3512,6 +3512,253 @@
   flex-wrap: wrap;
 }
 
+.gmail-integration-hero {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.gmail-integration-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: var(--dash-surface-elevated, rgba(255, 255, 255, 0.06));
+  color: var(--dash-accent, #6ea8fe);
+}
+
+.gmail-integration-status-card h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.gmail-integration-badge {
+  display: inline-block;
+  margin: 0 0 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.gmail-integration-badge.is-connected {
+  background: rgba(61, 214, 140, 0.15);
+  color: var(--dash-success, #3dd68c);
+}
+
+.gmail-integration-badge.is-disconnected {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--dash-muted);
+}
+
+.gmail-integration-connected p {
+  margin: 0 0 8px;
+  color: var(--dash-muted);
+}
+
+.gmail-integration-disconnected {
+  margin: 0 0 12px;
+  color: var(--dash-muted);
+}
+
+.gmail-integration-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.gmail-integration-disconnect {
+  background: transparent;
+  border: 1px solid var(--dash-border, rgba(255, 255, 255, 0.12));
+}
+
+.gmail-integration-success {
+  margin-top: 12px;
+  color: var(--dash-success, #3dd68c);
+  font-size: 0.95rem;
+}
+
+.gmail-integration-sync-detail {
+  margin: 8px 0 0;
+  color: var(--dash-muted);
+  font-size: 0.9rem;
+}
+
+.gmail-integration-empty {
+  margin: 0;
+  color: var(--dash-muted);
+}
+
+.gmail-integration-import-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gmail-integration-import-item {
+  width: 100%;
+  text-align: right;
+  border: 1px solid var(--dash-border, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.gmail-integration-import-item:hover {
+  border-color: var(--dash-accent, #6ea8fe);
+}
+
+.gmail-integration-import-name {
+  display: block;
+  font-weight: 600;
+}
+
+.gmail-integration-import-meta {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.85rem;
+  color: var(--dash-muted);
+}
+
+.tax-assistant-header {
+  align-items: flex-end;
+}
+
+.tax-assistant-year-select {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--dash-muted);
+}
+
+.tax-assistant-year-select select {
+  min-width: 120px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--dash-border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: inherit;
+}
+
+.tax-assistant-disclaimer {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 193, 7, 0.08);
+  border: 1px solid rgba(255, 193, 7, 0.25);
+  color: var(--dash-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.tax-assistant-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tax-assistant-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tax-assistant-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tax-assistant-stat-label {
+  font-size: 0.85rem;
+  color: var(--dash-muted);
+}
+
+.tax-assistant-stat-card strong {
+  font-size: 1.25rem;
+}
+
+.tax-assistant-employers {
+  margin: 0;
+  color: var(--dash-muted);
+}
+
+.tax-assistant-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tax-assistant-empty {
+  margin: 0;
+  color: var(--dash-muted);
+}
+
+.tax-assistant-issues {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tax-assistant-issue {
+  border: 1px solid var(--dash-border, rgba(255, 255, 255, 0.1));
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.tax-assistant-issue.severity-high {
+  border-color: rgba(255, 99, 99, 0.35);
+}
+
+.tax-assistant-issue.severity-medium {
+  border-color: rgba(255, 193, 7, 0.35);
+}
+
+.tax-assistant-issue-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tax-assistant-issue-head h3 {
+  margin: 0;
+  flex: 1;
+  font-size: 1.05rem;
+}
+
+.tax-assistant-severity {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tax-assistant-issue-message {
+  margin: 0 0 8px;
+  font-weight: 500;
+}
+
+.tax-assistant-issue-explanation {
+  margin: 0;
+  color: var(--dash-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
 .feature-placeholder-card {
   text-align: center;
 }

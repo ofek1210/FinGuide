@@ -1,8 +1,9 @@
 import type { DocumentCategory, DocumentMetadata } from "../api/documents.api";
 
-export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory, string> = {
+export const DOCUMENT_CATEGORY_LABELS: Record<DocumentCategory | "form_106", string> = {
   payslip: "תלוש שכר",
   tax_report: "דוח מס",
+  form_106: "טופס 106",
   pension_report: "דוח פנסיה",
   invoice: "חשבונית",
   other: "מסמך כללי",

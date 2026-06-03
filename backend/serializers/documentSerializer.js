@@ -1,4 +1,5 @@
 const { getDocumentMetadata } = require('../utils/documentMetadata');
+const { normalizeEmailMetadataForApi } = require('../utils/emailMetadata');
 
 const sanitizeAnalysisDataForApi = analysisData => {
   if (!analysisData || typeof analysisData !== 'object') {
@@ -39,15 +40,13 @@ const serializeDocument = document => {
     fileSize: raw.fileSize,
     mimeType: raw.mimeType,
     status: raw.status,
-    // Surface the schema-gate / extraction-failure reason so the UI can
-    // render a meaningful "needs review" / "failed" banner instead of a
-    // generic message. Validation errors describe the user's own document,
-    // not sensitive internals.
     processingError: raw.processingError || null,
     uploadedAt: raw.uploadedAt,
     processedAt: raw.processedAt || null,
     analysisData: sanitizeAnalysisDataForApi(raw.analysisData),
     metadata: getDocumentMetadata(raw),
+    source: raw.source === 'gmail' ? 'gmail' : 'manual',
+    emailMetadata: normalizeEmailMetadataForApi(raw),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };

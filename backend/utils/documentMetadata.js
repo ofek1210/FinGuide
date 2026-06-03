@@ -3,6 +3,7 @@ const { ValidationError } = require('./appErrors');
 const DOCUMENT_CATEGORIES = Object.freeze([
   'payslip',
   'tax_report',
+  'form_106',
   'pension_report',
   'invoice',
   'other',

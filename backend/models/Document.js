@@ -4,7 +4,7 @@ const DocumentMetadataSchema = new mongoose.Schema(
   {
     category: {
       type: String,
-      enum: ['payslip', 'tax_report', 'pension_report', 'invoice', 'other'],
+      enum: ['payslip', 'tax_report', 'form_106', 'pension_report', 'invoice', 'other'],
       default: 'other',
     },
     periodMonth: {
@@ -22,13 +22,24 @@ const DocumentMetadataSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['manual_upload'],
+      enum: ['manual_upload', 'gmail'],
       default: 'manual_upload',
     },
   },
   {
     _id: false,
   }
+);
+
+const EmailMetadataSchema = new mongoose.Schema(
+  {
+    subject: { type: String, default: null },
+    from: { type: String, default: null },
+    date: { type: Date, default: null },
+    gmailMessageId: { type: String, default: null },
+    gmailAttachmentId: { type: String, default: null },
+  },
+  { _id: false }
 );
 
 const DocumentSchema = new mongoose.Schema(
@@ -90,13 +101,36 @@ const DocumentSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    source: {
+      type: String,
+      enum: ['manual', 'gmail'],
+      default: 'manual',
+      index: true,
+    },
+    emailMetadata: {
+      type: EmailMetadataSchema,
+      default: null,
+    },
   },
   {
     timestamps: true,
   }
 );
 
-// אינדקס לחיפוש מהיר לפי משתמש
 DocumentSchema.index({ user: 1, uploadedAt: -1 });
+DocumentSchema.index(
+  {
+    user: 1,
+    'emailMetadata.gmailMessageId': 1,
+    'emailMetadata.gmailAttachmentId': 1,
+  },
+  {
+    unique: true,
+    partialFilterExpression: {
+      'emailMetadata.gmailMessageId': { $type: 'string' },
+      'emailMetadata.gmailAttachmentId': { $type: 'string' },
+    },
+  }
+);
 
 module.exports = mongoose.model('Document', DocumentSchema);
