@@ -16,7 +16,6 @@ import DashboardRecommendationsCard from "../components/dashboard/DashboardRecom
 import DashboardRecentDocuments from "../components/dashboard/DashboardRecentDocuments";
 import DashboardSummaryCard from "../components/dashboard/DashboardSummaryCard";
 import { useDashboardDocuments } from "../hooks/useDashboardDocuments";
-import { useDashboardHealth } from "../hooks/useDashboardHealth";
 import { useDashboardPayslipsPreview } from "../hooks/useDashboardPayslipsPreview";
 import { useDashboardUser } from "../hooks/useDashboardUser";
 import { APP_ROUTES } from "../types/navigation";
@@ -31,7 +30,6 @@ export default function DashboardPage() {
 
   const user = useDashboardUser();
   const documents = useDashboardDocuments();
-  const health = useDashboardHealth();
   const payslips = useDashboardPayslipsPreview();
 
   const handleUploadClick = useCallback(() => {
@@ -120,7 +118,6 @@ export default function DashboardPage() {
     <div className="dashboard-page" dir="rtl">
       <div className="dashboard-shell">
         <DashboardHeader
-          healthStatus={health.status}
           isUploading={documents.isUploading}
           fileInputRef={fileInputRef}
           onUploadClick={handleUploadClick}

@@ -40,20 +40,18 @@ export default function AppFooter({ variant }: AppFooterProps) {
         <div className="app-footer-col">
           <p className="app-footer-col-heading">משאבים</p>
           <ul>
-            <li><Link to={APP_ROUTES.help}>שאלות נפוצות</Link></li>
-            <li><a href="#">מדיניות פרטיות</a></li>
-            <li><a href="#">תנאי שימוש</a></li>
+            <li><Link to={APP_ROUTES.faq}>שאלות נפוצות</Link></li>
+            <li><Link to={APP_ROUTES.privacy}>מדיניות פרטיות</Link></li>
+            <li><Link to={APP_ROUTES.terms}>תנאי שימוש</Link></li>
           </ul>
         </div>
 
         <div className="app-footer-col">
           <p className="app-footer-col-heading">החברה</p>
           <ul>
-            <li><a href="#">אודות</a></li>
-            <li><a href="#">צור קשר</a></li>
-            {variant === "private" && (
-              <li><Link to={APP_ROUTES.status}>מצב מערכת</Link></li>
-            )}
+            <li><Link to={APP_ROUTES.team}>הצוות שלנו</Link></li>
+            <li><Link to={APP_ROUTES.careers}>קריירה</Link></li>
+            <li><Link to={APP_ROUTES.contact}>צור קשר</Link></li>
           </ul>
         </div>
       </div>
@@ -61,8 +59,8 @@ export default function AppFooter({ variant }: AppFooterProps) {
       <div className="app-footer-bottom">
         <span>© 2026 FinGuide. כל הזכויות שמורות.</span>
         <div className="app-footer-bottom-links">
-          <a href="#">פרטיות</a>
-          <a href="#">תנאים</a>
+          <Link to={APP_ROUTES.privacy}>פרטיות</Link>
+          <Link to={APP_ROUTES.terms}>תנאים</Link>
         </div>
       </div>
     </footer>

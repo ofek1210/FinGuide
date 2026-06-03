@@ -7,10 +7,7 @@ import { getAvatarDisplayUrl } from "../../api/profile.api";
 import { APP_ROUTES } from "../../types/navigation";
 import { logoutWithConfirm } from "../../utils/logout";
 
-type HealthStatus = "online" | "offline" | "checking";
-
 interface DashboardHeaderProps {
-  healthStatus: HealthStatus;
   isUploading: boolean;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onUploadClick: () => void;
@@ -27,7 +24,6 @@ function getInitial(name: string | undefined): string {
 }
 
 export default function DashboardHeader({
-  healthStatus,
   isUploading,
   fileInputRef,
   onUploadClick,
@@ -122,13 +118,6 @@ export default function DashboardHeader({
         >
           עזרה
         </button>
-        <button
-          className="dashboard-nav-link"
-          type="button"
-          onClick={() => navigate(APP_ROUTES.status)}
-        >
-          מצב מערכת
-        </button>
       </nav>
 
       <div className="dashboard-top-actions">
@@ -141,13 +130,6 @@ export default function DashboardHeader({
           <Upload aria-hidden="true" />
           {isUploading ? "מעלה..." : "העלאת מסמך"}
         </button>
-        <span className={`dashboard-health is-${healthStatus}`}>
-          {healthStatus === "checking"
-            ? "בודק שרת..."
-            : healthStatus === "online"
-              ? "השרת זמין"
-              : "השרת לא זמין"}
-        </span>
         <div className="dashboard-user-menu" ref={dropdownRef}>
           <button
             type="button"

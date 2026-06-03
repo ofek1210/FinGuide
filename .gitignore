@@ -43,3 +43,10 @@ backend/jest-results.json
 tmp/
 temp/
 backend/.work/
+
+# Claude Code workspace artifacts
+.claude/agent-memory/
+.claude/projects/
+
+# Source-only assets (copied into frontend/public/ as needed)
+The_Team/

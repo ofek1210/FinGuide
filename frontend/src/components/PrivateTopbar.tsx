@@ -21,7 +21,6 @@ const navItems = [
   { label: "עוזר AI", route: APP_ROUTES.assistant },
   { label: "הגדרות", route: APP_ROUTES.settings },
   { label: "עזרה", route: APP_ROUTES.help },
-  { label: "מצב מערכת", route: APP_ROUTES.status },
 ];
 
 function getInitial(name: string | undefined): string {
