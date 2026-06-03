@@ -17,12 +17,18 @@ import NotificationsPage from "./pages/NotificationsPage";
 import AssistantPage from "./pages/AssistantPage";
 import FindingsPage from "./pages/FindingsPage";
 import SettingsPage from "./pages/SettingsPage";
-import StatusPage from "./pages/StatusPage";
 import HelpPage from "./pages/HelpPage";
 import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import TeamPage from "./pages/TeamPage";
+import ContactPage from "./pages/ContactPage";
+import FAQPage from "./pages/FAQPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import TermsPage from "./pages/TermsPage";
+import CareersPage from "./pages/CareersPage";
+import JobDetailsPage from "./pages/JobDetailsPage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
@@ -151,14 +157,6 @@ export default function App() {
           }
         />
         <Route
-          path={APP_ROUTES.status}
-          element={
-            <RequireAuth>
-              <StatusPage />
-            </RequireAuth>
-          }
-        />
-        <Route
           path={APP_ROUTES.help}
           element={
             <RequireAuth>
@@ -206,6 +204,13 @@ export default function App() {
             </RequireAuth>
           }
         />
+        <Route path={APP_ROUTES.team} element={<TeamPage />} />
+        <Route path={APP_ROUTES.contact} element={<ContactPage />} />
+        <Route path={APP_ROUTES.faq} element={<FAQPage />} />
+        <Route path={APP_ROUTES.privacy} element={<PrivacyPage />} />
+        <Route path={APP_ROUTES.terms} element={<TermsPage />} />
+        <Route path={APP_ROUTES.careers} element={<CareersPage />} />
+        <Route path="/careers/:slug" element={<JobDetailsPage />} />
         <Route path="/400" element={<Error400 />} />
         <Route path="/401" element={<Error401 />} />
         <Route path="/403" element={<Error403 />} />

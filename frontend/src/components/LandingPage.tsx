@@ -54,7 +54,7 @@ export default function LandingPage() {
           <span>FinGuide</span>
         </div>
         <div className="landing-nav-actions">
-          <button className="landing-link" type="button" onClick={() => navigate(APP_ROUTES.login)}>
+          <button className="landing-secondary" type="button" onClick={() => navigate(APP_ROUTES.login)}>
             התחברות
           </button>
           <button className="landing-primary landing-nav-primary" type="button" onClick={() => navigate(APP_ROUTES.register)}>

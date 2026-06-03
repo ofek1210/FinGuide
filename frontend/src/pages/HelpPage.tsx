@@ -65,13 +65,6 @@ export default function HelpPage() {
           >
             מעבר להגדרות
           </button>
-          <button
-            className="dashboard-hero-action"
-            type="button"
-            onClick={() => navigate(APP_ROUTES.status)}
-          >
-            מצב מערכת
-          </button>
         </section>
 
         <AppFooter variant="private" />
