@@ -1,4 +1,5 @@
 const { getDocumentMetadata } = require('../utils/documentMetadata');
+const { normalizeEmailMetadataForApi } = require('../utils/emailMetadata');
 
 const sanitizeAnalysisDataForApi = analysisData => {
   if (!analysisData || typeof analysisData !== 'object') {
@@ -45,6 +46,7 @@ const serializeDocument = document => {
     analysisData: sanitizeAnalysisDataForApi(raw.analysisData),
     metadata: getDocumentMetadata(raw),
     source: raw.source === 'gmail' ? 'gmail' : 'manual',
+    emailMetadata: normalizeEmailMetadataForApi(raw),
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,
   };
