@@ -16,6 +16,7 @@ import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AssistantPage from "./pages/AssistantPage";
 import FindingsPage from "./pages/FindingsPage";
+import TaxAssistantPage from "./pages/TaxAssistantPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
 import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
@@ -105,6 +106,14 @@ export default function App() {
           element={
             <RequireAuth>
               <FindingsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.taxAssistant}
+          element={
+            <RequireAuth>
+              <TaxAssistantPage />
             </RequireAuth>
           }
         />

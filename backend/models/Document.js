@@ -4,7 +4,7 @@ const DocumentMetadataSchema = new mongoose.Schema(
   {
     category: {
       type: String,
-      enum: ['payslip', 'tax_report', 'pension_report', 'invoice', 'other'],
+      enum: ['payslip', 'tax_report', 'form_106', 'pension_report', 'invoice', 'other'],
       default: 'other',
     },
     periodMonth: {

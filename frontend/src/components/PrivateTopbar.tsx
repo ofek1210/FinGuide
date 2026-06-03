@@ -18,6 +18,7 @@ const navItems = [
   { label: "תובנות", route: APP_ROUTES.insights },
   { label: "ביטוחים", route: APP_ROUTES.insurance },
   { label: "ממצאים", route: APP_ROUTES.findings },
+  { label: "עוזר מס", route: APP_ROUTES.taxAssistant },
   { label: "עוזר AI", route: APP_ROUTES.assistant },
   { label: "הגדרות", route: APP_ROUTES.settings },
   { label: "עזרה", route: APP_ROUTES.help },
