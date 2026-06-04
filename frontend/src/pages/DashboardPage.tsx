@@ -1,29 +1,18 @@
-import { BarChart3, FileText, ShieldCheck, Sparkles } from "lucide-react";
+import { FileText, Sparkles, Upload } from "lucide-react";
 import { useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AppFooter from "../components/AppFooter";
 import type { DocumentItem } from "../api/documents.api";
-import DashboardAlertCard from "../components/dashboard/DashboardAlertCard";
 import DashboardChatPanel from "../components/dashboard/DashboardChatPanel";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
-import DashboardHero from "../components/dashboard/DashboardHero";
-import DashboardMetrics from "../components/dashboard/DashboardMetrics";
-import DashboardPayslipHistoryCard from "../components/dashboard/DashboardPayslipHistoryCard";
-import DashboardQuickActions from "../components/dashboard/DashboardQuickActions";
 import DashboardCharts from "../components/dashboard/DashboardCharts";
 import DashboardInsightsCard from "../components/dashboard/DashboardInsightsCard";
 import DashboardRecommendationsCard from "../components/dashboard/DashboardRecommendationsCard";
 import DashboardRecentDocuments from "../components/dashboard/DashboardRecentDocuments";
-import DashboardSummaryCard from "../components/dashboard/DashboardSummaryCard";
 import DashboardFinancialHealthCard from "../components/dashboard/DashboardFinancialHealthCard";
 import { useDashboardDocuments } from "../hooks/useDashboardDocuments";
-import { useDashboardPayslipsPreview } from "../hooks/useDashboardPayslipsPreview";
 import { useDashboardUser } from "../hooks/useDashboardUser";
 import { APP_ROUTES } from "../types/navigation";
-import { formatCurrencyILS, formatFileSize, formatLongDate, formatNumber } from "../utils/formatters";
-import type { DashboardMetric } from "../types/dashboard";
-
-const AI_INSIGHT_VALUE_PER_DOC = 850;
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -31,7 +20,6 @@ export default function DashboardPage() {
 
   const user = useDashboardUser();
   const documents = useDashboardDocuments();
-  const payslips = useDashboardPayslipsPreview();
 
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -62,58 +50,7 @@ export default function DashboardPage() {
     [documents.actions],
   );
 
-  const greetingLine = user.isLoading
-    ? "טוענים את הנתונים..."
-    : `${user.name}, ברוך/ה הבא/ה`;
-  const heroUserName = user.isLoading ? undefined : user.name;
-
-  const metrics: DashboardMetric[] = [
-    {
-      label: "מסמכים",
-      value: formatNumber(documents.stats.total),
-      subtitle: documents.documentsThisMonth
-        ? `${documents.documentsThisMonth} הועלו החודש`
-        : "אין העלאות החודש",
-      icon: FileText,
-    },
-    {
-      label: "סטטוס עיבוד",
-      value: `${documents.stats.completed}/${documents.stats.total || 0}`,
-      subtitle: "מסמכים שהושלמו",
-      icon: BarChart3,
-      accentClass: "accent-green",
-    },
-    {
-      label: "נפח מסמכים",
-      value: formatFileSize(documents.stats.totalSize),
-      subtitle: 'סה"כ אחסון',
-      icon: ShieldCheck,
-      accentClass: "accent-blue",
-    },
-    {
-      label: "תובנות AI",
-      value: formatCurrencyILS(
-        Math.max(documents.stats.total * AI_INSIGHT_VALUE_PER_DOC, 0),
-      ),
-      subtitle: "דוגמה לתובנה פוטנציאלית",
-      icon: Sparkles,
-      accentClass: "accent-amber",
-    },
-  ];
-
-  const alertTitle =
-    documents.stats.failed > 0
-      ? "יש מסמכים שנכשלו"
-      : documents.stats.processing > 0
-        ? "מסמכים בעיבוד"
-        : "הכל נראה מעולה";
-
-  const alertMessage =
-    documents.stats.failed > 0
-      ? `נמצאו ${documents.stats.failed} מסמכים עם שגיאה. אפשר לחזור למסמכים ולנסות שוב.`
-      : documents.stats.processing > 0
-        ? `יש ${documents.stats.processing} מסמכים בתהליך עיבוד. נעדכן כשמוכנים.`
-        : "כל המסמכים מעודכנים ואין משימות דחופות.";
+  const hasDocuments = documents.stats.total > 0;
 
   return (
     <div className="dashboard-page" dir="rtl">
@@ -129,68 +66,63 @@ export default function DashboardPage() {
           onNavigateFindings={() => navigate(APP_ROUTES.findings)}
         />
 
-        <DashboardHero
-          greetingLine={greetingLine}
-          userName={heroUserName}
-          documentsThisMonth={documents.documentsThisMonth}
-          onViewDocuments={() => navigate(APP_ROUTES.documents)}
-        />
-
-        <DashboardMetrics metrics={metrics} />
-
-        <DashboardCharts />
-
-        {documents.uploadError ? (
-          <div className="dashboard-inline-error">{documents.uploadError}</div>
-        ) : null}
-        {documents.actionError ? (
-          <div className="dashboard-inline-error">{documents.actionError}</div>
-        ) : null}
-        {user.error ? <div className="dashboard-inline-error">{user.error}</div> : null}
-        {documents.error ? (
-          <div className="dashboard-inline-error">{documents.error}</div>
-        ) : null}
-
-        <section className="dashboard-grid">
-          <div className="dashboard-column">
-            <DashboardSummaryCard
-              lastUpdated={formatLongDate(documents.items[0]?.uploadedAt)}
-              totalDocuments={documents.stats.total}
-              completedDocuments={documents.stats.completed}
-              processingDocuments={documents.stats.processing}
-              failedDocuments={documents.stats.failed}
-              onViewDocuments={() => navigate(APP_ROUTES.documents)}
-            />
-
-            <DashboardFinancialHealthCard />
-
-            <DashboardChatPanel />
-
-            <DashboardQuickActions
-              onUploadClick={handleUploadClick}
-              onViewDocuments={() => navigate(APP_ROUTES.documents)}
-            />
+        {/* Error banners */}
+        {(documents.uploadError || documents.actionError || user.error || documents.error) ? (
+          <div className="dashboard-errors">
+            {[documents.uploadError, documents.actionError, user.error, documents.error]
+              .filter(Boolean)
+              .map((err, i) => (
+                <div key={i} className="dashboard-inline-error">{err}</div>
+              ))}
           </div>
+        ) : null}
 
-          <div className="dashboard-column">
-            <DashboardAlertCard
-              title={alertTitle}
-              message={alertMessage}
-              onViewDocuments={() => navigate(APP_ROUTES.documents)}
-            />
+        {/* Upload prompt — shown when no documents yet */}
+        {!hasDocuments && !documents.isLoading ? (
+          <section className="dashboard-upload-hero">
+            <div className="dashboard-upload-hero-inner">
+              <div className="dashboard-upload-hero-icon">
+                <Sparkles aria-hidden="true" />
+              </div>
+              <h2>ברוכים הבאים ל-FinGuide</h2>
+              <p>העלו את תלוש השכר הראשון שלכם — הבינה המלאכותית תנתח אותו ותספק תובנות מיידיות</p>
+              <button
+                type="button"
+                className="dashboard-upload-hero-btn"
+                onClick={handleUploadClick}
+                disabled={documents.isUploading}
+              >
+                <Upload aria-hidden="true" />
+                {documents.isUploading ? "מעלה..." : "העלאת תלוש שכר"}
+              </button>
+              <p className="dashboard-upload-hero-hint">
+                <FileText aria-hidden="true" />
+                קבצי PDF · מוצפן ומאובטח
+              </p>
+            </div>
+          </section>
+        ) : (
+          <>
+            {/* AI Chat — the main feature, top of page */}
+            <section className="dashboard-ai-hero">
+              <div className="dashboard-ai-hero-label">
+                <Sparkles aria-hidden="true" />
+                עוזר AI פיננסי
+              </div>
+              <DashboardChatPanel />
+            </section>
 
-            <DashboardInsightsCard />
+            {/* Secondary row: health score + insights */}
+            <div className="dashboard-secondary-grid">
+              <DashboardFinancialHealthCard />
+              <DashboardInsightsCard />
+              <DashboardRecommendationsCard />
+            </div>
 
-            <DashboardRecommendationsCard />
+            {/* Charts */}
+            <DashboardCharts />
 
-            <DashboardPayslipHistoryCard
-              items={payslips.items}
-              isLoading={payslips.isLoading}
-              error={payslips.error}
-              onRetry={payslips.reload}
-              onViewAll={() => navigate(APP_ROUTES.payslipHistory)}
-            />
-
+            {/* Recent documents */}
             <DashboardRecentDocuments
               documents={documents.recent}
               isLoading={documents.isLoading}
@@ -201,8 +133,8 @@ export default function DashboardPage() {
               onDelete={handleDelete}
               onViewAll={() => navigate(APP_ROUTES.documents)}
             />
-          </div>
-        </section>
+          </>
+        )}
 
         <AppFooter variant="private" />
       </div>

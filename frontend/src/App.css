@@ -3354,6 +3354,125 @@
   display: none;
 }
 
+/* ── Upload hero (shown when no documents) ─────────────────────────── */
+.dashboard-upload-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+}
+
+.dashboard-upload-hero-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  max-width: 480px;
+}
+
+.dashboard-upload-hero-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--dash-accent), #a78bfa);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 2rem;
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+}
+
+.dashboard-upload-hero-inner h2 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--dash-text);
+}
+
+.dashboard-upload-hero-inner > p {
+  margin: 0;
+  color: var(--dash-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.dashboard-upload-hero-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--dash-accent);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 14px 28px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.dashboard-upload-hero-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.dashboard-upload-hero-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.dashboard-upload-hero-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--dash-muted);
+  font-size: 0.82rem;
+  margin: 0;
+}
+
+/* ── AI hero section (top of dashboard when docs exist) ────────────── */
+.dashboard-ai-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-ai-hero-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dash-accent);
+  padding: 0 4px;
+}
+
+/* ── Secondary grid: health + insights + recommendations ───────────── */
+.dashboard-secondary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--dash-gap);
+}
+
+@media (max-width: 900px) {
+  .dashboard-secondary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Error banners ─────────────────────────────────────────────────── */
+.dashboard-errors {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .dashboard-hero {
   display: flex;
   align-items: center;
