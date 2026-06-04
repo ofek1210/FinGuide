@@ -78,6 +78,7 @@ describe('document metadata utilities', () => {
       fileSize: 1234,
       mimeType: 'application/pdf',
       status: 'pending',
+      processingError: 'failed',
       uploadedAt: new Date('2026-03-15T10:00:00.000Z'),
       processedAt: null,
       analysisData: {
@@ -91,6 +92,8 @@ describe('document metadata utilities', () => {
         },
       },
       metadata: { category: 'invoice', source: 'manual_upload' },
+      source: 'manual',
+      emailMetadata: null,
       createdAt: new Date('2026-03-15T10:00:00.000Z'),
       updatedAt: new Date('2026-03-15T10:01:00.000Z'),
     });

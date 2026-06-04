@@ -4,7 +4,7 @@ const DocumentMetadataSchema = new mongoose.Schema(
   {
     category: {
       type: String,
-      enum: ['payslip', 'tax_report', 'pension_report', 'invoice', 'other'],
+      enum: ['payslip', 'tax_report', 'form_106', 'pension_report', 'invoice', 'other'],
       default: 'other',
     },
     periodMonth: {
@@ -83,7 +83,15 @@ const DocumentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['uploaded', 'pending', 'processing', 'completed', 'needs_review', 'failed'],
+      enum: [
+        'uploaded',
+        'pending',
+        'processing',
+        'completed',
+        'needs_review',
+        'needs_password',
+        'failed',
+      ],
       default: 'uploaded',
     },
     uploadedAt: {
