@@ -21,6 +21,7 @@ import {
   DOCUMENT_CATEGORY_LABELS,
   formatDocumentMetadataSummary,
 } from "../utils/documentMetadata";
+import { getDocumentImportSourceLabel } from "../utils/documentSource";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
@@ -39,6 +40,7 @@ interface DocumentItem {
   fileSize?: number;
   uploadedAt?: string;
   metadata: DocumentMetadata;
+  source?: ApiDocumentItem["source"];
 }
 
 type UploadFormState = {
@@ -74,6 +76,7 @@ const mapApiDocument = (document: ApiDocumentItem): DocumentItem => ({
   status: mapStatus(document.status),
   fileSize: document.fileSize,
   uploadedAt: document.uploadedAt,
+  source: document.source,
   metadata: document.metadata ?? {
     category: "other",
     source: "manual_upload",
@@ -263,6 +266,7 @@ function DocumentCard({
         <span className="document-name">{document.name}</span>
         <span className="document-meta">
           {[
+            getDocumentImportSourceLabel(document),
             formatDocumentMetadataSummary(document.metadata),
             document.uploadedAt
               ? new Date(document.uploadedAt).toLocaleDateString("he-IL")

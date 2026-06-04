@@ -18,6 +18,7 @@ export type DocumentStatus =
 export type DocumentCategory =
   | "payslip"
   | "tax_report"
+  | "form_106"
   | "pension_report"
   | "invoice"
   | "other";
@@ -27,8 +28,10 @@ export type DocumentMetadata = {
   periodMonth?: number;
   periodYear?: number;
   documentDate?: string;
-  source?: "manual_upload" | string;
+  source?: "manual_upload" | "gmail" | string;
 };
+
+export type DocumentImportSource = "manual" | "gmail";
 
 /** Matches backend payslipOcr buildPayslipSummary output (analysisData.summary). */
 export type PayslipSummaryFromBackend = {
@@ -62,6 +65,14 @@ export interface DocumentItem {
   processedAt?: string;
   mimeType?: string;
   metadata?: DocumentMetadata;
+  source?: DocumentImportSource;
+  emailMetadata?: {
+    subject?: string | null;
+    from?: string | null;
+    date?: string | null;
+    gmailMessageId?: string | null;
+    gmailAttachmentId?: string | null;
+  } | null;
   analysisData?: { summary?: PayslipSummaryFromBackend; [k: string]: unknown };
   createdAt?: string;
   updatedAt?: string;
