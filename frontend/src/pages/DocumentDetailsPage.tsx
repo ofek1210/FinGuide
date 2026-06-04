@@ -4,8 +4,10 @@ import PrivateTopbar from "../components/PrivateTopbar";
 import Loader from "../components/ui/Loader";
 import {
   getDocument,
+  getDocumentDigest,
   type DocumentItem,
   type PayslipSummaryFromBackend,
+  type DigestResponse,
 } from "../api/documents.api";
 import {
   formatCurrencyILS,
@@ -59,6 +61,7 @@ export default function DocumentDetailsPage() {
   const [document, setDocument] = useState<DocumentItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [digest, setDigest] = useState<DigestResponse | null>(null);
 
   const loadDocument = useCallback(async () => {
     if (!id) return;
@@ -76,6 +79,12 @@ export default function DocumentDetailsPage() {
     }
 
     setIsLoading(false);
+  }, [id]);
+
+  // Load AI digest separately (non-blocking)
+  useEffect(() => {
+    if (!id) return;
+    void getDocumentDigest(id).then(res => setDigest(res));
   }, [id]);
 
   useEffect(() => {
@@ -97,6 +106,19 @@ export default function DocumentDetailsPage() {
             פירוט הערכים שזוהו מהתלוש שהועלה.
           </p>
         </section>
+
+        {digest?.success && digest.data ? (
+          <section className="dashboard-card digest-card">
+            <div className="digest-header">
+              <span className="digest-ai-badge">✦ FinGuide AI</span>
+              <span className="digest-date">
+                {new Date(digest.data.generatedAt).toLocaleDateString("he-IL")}
+              </span>
+            </div>
+            <p className="digest-text">{digest.data.text}</p>
+          </section>
+        ) : null}
+
 
         {isLoading ? (
           <section className="dashboard-card">

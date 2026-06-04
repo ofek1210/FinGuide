@@ -4602,6 +4602,89 @@
   cursor: not-allowed;
 }
 
+/* Streaming cursor */
+.ai-cursor {
+  display: inline-block;
+  animation: blink 0.8s step-end infinite;
+  margin-inline-start: 2px;
+  color: var(--dash-accent);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Voice input button */
+.ai-voice-btn {  border: 1px solid var(--dash-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #f4f6fb;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.ai-voice-btn:hover:not(:disabled) {
+  background: #e8ecf7;
+}
+
+.ai-voice-btn.is-listening {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  animation: pulse-ring 1s ease-in-out infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+}
+
+.ai-voice-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── AI Digest card ─────────────────────────────────────────────────────────── */
+.digest-card {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border: 1px solid #c4b5fd;
+  border-radius: 16px;
+  padding: 20px 24px;
+}
+
+.digest-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.digest-ai-badge {
+  background: var(--dash-accent, #7c3aed);
+  color: #fff;
+  border-radius: 999px;
+  padding: 3px 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.digest-date {
+  color: #6b7280;
+  font-size: 0.8rem;
+}
+
+.digest-text {
+  color: #1e1b4b;
+  font-size: 0.95rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
 .ai-error {
   color: var(--dash-danger);
   font-size: 0.8rem;

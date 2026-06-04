@@ -4,7 +4,7 @@ const Insight = require('../models/Insight');
 const Recommendation = require('../models/Recommendation');
 const ChatMessage = require('../models/ChatMessage');
 const { askLLM } = require('../services/aiService');
-const { chat: claudeChat } = require('../services/claudeChatService');
+const { chat: claudeChat, streamChat: claudeStreamChat } = require('../services/claudeChatService');
 const { detectSalaryAnomalies } = require('../utils/detectSalaryAnomalies');
 const { simulateWhatIf } = require('../utils/simulateWhatIf');
 const mongoose = require('mongoose');
@@ -651,4 +651,116 @@ async function listConversations(req, res) {
   });
 }
 
-module.exports = { chatWithAI, getChatHistoryHandler, listConversations };
+// ── streaming handler ─────────────────────────────────────────────────────────
+
+async function chatWithAIStream(req, res) {
+  const { message, history, conversationId: clientConversationId } = req.body;
+
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ success: false, message: 'message is required (string)' });
+  }
+  if (message.length > 2000) {
+    return res.status(400).json({ success: false, message: 'message too long (max 2000 chars)' });
+  }
+
+  const conversationId = clientConversationId && mongoose.Types.ObjectId.isValid(clientConversationId)
+    ? new mongoose.Types.ObjectId(clientConversationId)
+    : new mongoose.Types.ObjectId();
+
+  const userContext = await buildUserContext(req.user._id);
+  const intent = detectIntent(message);
+
+  const dbHistory = await getChatHistory(req.user._id, conversationId);
+  const mergedHistory = dbHistory.length
+    ? dbHistory.map(m => ({ role: m.role, content: m.content }))
+    : (Array.isArray(history) ? history : []);
+
+  // Rule-based intents: resolve immediately without streaming
+  let ruleAnswer = null;
+  if (intent === 'whatif') {
+    const change = parseWhatIfChange(normalizeMessage(message));
+    if (!change || userContext.grossSalary == null || userContext.netSalary == null) {
+      ruleAnswer = 'אין לי מספיק נתונים לחשב סימולציה. יש לוודא שתלוש שכר נותח ולציין אחוז או סכום, למשל: "מה יקרה אם אקבל העלאה של 10%?"';
+    } else {
+      try {
+        const sim = simulateWhatIf({
+          gross: userContext.grossSalary,
+          net: userContext.netSalary,
+          change,
+          creditPoints: userContext.taxCreditPoints || undefined,
+        });
+        const label = change.type === 'gross_percent'
+          ? `העלאה של ${change.value * 100}%`
+          : `תוספת של ${formatAmount(change.value)}`;
+        ruleAnswer =
+          `לפי הסימולציה, ${label} תביא לברוטו של ${formatAmount(sim.scenario.gross)} ` +
+          `ולנטו משוער של ${formatAmount(sim.scenario.net)} ` +
+          `(עלייה של כ-${formatAmount(sim.delta.net)} בנטו).\n` +
+          `החישוב מבוסס על מדרגות מס 2024 וניכויי חובה. הסכום בפועל עשוי להשתנות מעט.`;
+      } catch {
+        ruleAnswer = 'לא הצלחתי לחשב את הסימולציה. בדוק שהנתונים בתלוש תקינים.';
+      }
+    }
+  } else if (intent !== 'fallback') {
+    ruleAnswer = buildRuleBasedAnswer(intent, userContext);
+  }
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  const sendEvent = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  // Send conversationId immediately so frontend can track it
+  sendEvent({ type: 'meta', conversationId: conversationId.toString(), intent });
+
+  await saveChatMessage(req.user._id, conversationId, 'user', message, { intent });
+
+  if (ruleAnswer !== null) {
+    // Rule-based: send as a single token then done
+    const finalAnswer = `${RLM}${ruleAnswer}`;
+    sendEvent({ type: 'token', token: finalAnswer });
+    sendEvent({ type: 'done', source: 'rule' });
+    await saveChatMessage(req.user._id, conversationId, 'assistant', finalAnswer, {
+      intent, contextUsed: [], model: null, tokensUsed: null,
+    });
+    res.end();
+    return;
+  }
+
+  // LLM streaming
+  let fullAnswer = '';
+  try {
+    await claudeStreamChat(
+      message,
+      {
+        userContext,
+        profile: userContext.profile,
+        insights: userContext.insights,
+        recommendations: userContext.recommendations,
+        history: mergedHistory,
+      },
+      (token) => {
+        fullAnswer += token;
+        sendEvent({ type: 'token', token });
+      },
+      async (full, tokensUsed) => {
+        sendEvent({ type: 'done', source: 'claude', tokensUsed });
+        await saveChatMessage(req.user._id, conversationId, 'assistant', `${RLM}${full}`, {
+          intent, contextUsed: [], model: process.env.CHAT_MODEL || 'claude-sonnet-4-20250514', tokensUsed,
+        });
+        res.end();
+      },
+    );
+  } catch {
+    sendEvent({ type: 'error', message: 'שגיאה בעיבוד התשובה.' });
+    res.end();
+  }
+}
+
+module.exports = { chatWithAI, chatWithAIStream, getChatHistoryHandler, listConversations };

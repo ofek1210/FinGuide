@@ -389,3 +389,22 @@ export const getPayslipHistoryIntelligence = async (year?: number) => {
     result.data || ({ success: false, message: "תגובה לא תקינה." } as PayslipHistoryIntelligenceResponse)
   );
 };
+
+export type DigestResponse = {
+  success: boolean;
+  message?: string;
+  data?: {
+    text: string;
+    generatedAt: string;
+    model: string;
+  };
+};
+
+export async function getDocumentDigest(id: string): Promise<DigestResponse> {
+  const result = await apiJson<DigestResponse>(`/api/documents/${id}/digest`, {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לטעון את הסיכום.",
+  });
+  if (!result.ok) return { success: false, message: result.error.message };
+  return result.data ?? { success: false };
+}

@@ -26,11 +26,15 @@ const runPostUploadSideEffects = (userId, document) => {
     const notificationService = require('./notificationService');
     const { runFullAnalysis } = require('./insightsEngine');
     const { run: runRecommendations } = require('./insuranceRecommender');
+    const { generateAndSaveDigest } = require('./digestService');
 
     notificationService.notifyDocumentProcessed(userId, document).catch(() => {});
     runFullAnalysis(userId)
       .then(() => runRecommendations(userId))
       .catch(err => console.error('[documents] post-upload analysis failed', err));
+
+    // Generate AI digest non-blocking — fails silently if no API key
+    generateAndSaveDigest(userId, document).catch(() => {});
   });
 };
 

@@ -102,4 +102,67 @@ async function chat(userMessage, { userContext, profile, insights, recommendatio
   return { answer: ollamaAnswer, source: 'ollama', model: process.env.OLLAMA_MODEL || 'llama3.1:8b', tokensUsed: null };
 }
 
-module.exports = { chat, buildEnhancedSystemPrompt, askClaude };
+/**
+ * Streaming version — calls Claude's streaming API and invokes callbacks for
+ * each text token and when the stream is done.
+ * Falls back to non-streaming if Claude is unavailable.
+ *
+ * @param {string} userMessage
+ * @param {{ userContext, profile, insights, recommendations, history }} opts
+ * @param {(token: string) => void} onToken  - called for every text chunk
+ * @param {(full: string, tokensUsed: number|null) => void} onDone - called once at end
+ */
+async function streamChat(userMessage, { userContext, profile, insights, recommendations, history }, onToken, onDone) {
+  const systemPrompt = buildEnhancedSystemPrompt(userContext, profile, insights, recommendations);
+  const client = getAnthropicClient();
+
+  if (!client || CHAT_PROVIDER === 'ollama') {
+    // Fallback: get full answer then deliver in one shot
+    const result = await chat(userMessage, { userContext, profile, insights, recommendations, history });
+    onToken(result.answer || '');
+    onDone(result.answer || '', null);
+    return;
+  }
+
+  const historyMessages = (history || [])
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .slice(-10)
+    .map(m => ({ role: m.role, content: String(m.content || '').slice(0, 2000) }));
+
+  let fullText = '';
+  try {
+    const stream = await client.messages.stream({
+      model: CHAT_MODEL,
+      max_tokens: 400,
+      temperature: 0.2,
+      system: systemPrompt,
+      messages: [...historyMessages, { role: 'user', content: userMessage }],
+    });
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+        const token = event.delta.text || '';
+        fullText += token;
+        onToken(token);
+      }
+    }
+
+    const finalMessage = await stream.finalMessage();
+    const tokensUsed = finalMessage?.usage
+      ? (finalMessage.usage.input_tokens || 0) + (finalMessage.usage.output_tokens || 0)
+      : null;
+
+    onDone(fullText, tokensUsed);
+  } catch {
+    // If streaming fails mid-way, deliver what we have or fallback
+    if (fullText) {
+      onDone(fullText, null);
+    } else {
+      const result = await chat(userMessage, { userContext, profile, insights, recommendations, history });
+      onToken(result.answer || '');
+      onDone(result.answer || '', null);
+    }
+  }
+}
+
+module.exports = { chat, streamChat, buildEnhancedSystemPrompt, askClaude };
