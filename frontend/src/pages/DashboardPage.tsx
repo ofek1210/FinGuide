@@ -1,5 +1,5 @@
 import { FileText, Sparkles, Upload } from "lucide-react";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AppFooter from "../components/AppFooter";
 import type { DocumentItem } from "../api/documents.api";
@@ -17,6 +17,7 @@ import { APP_ROUTES } from "../types/navigation";
 export default function DashboardPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const user = useDashboardUser();
   const documents = useDashboardDocuments();
@@ -35,6 +36,24 @@ export default function DashboardPage() {
     [documents.actions],
   );
 
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      setIsDragOver(false);
+      const file = event.dataTransfer.files?.[0] ?? null;
+      if (!file || file.type !== "application/pdf") return;
+      void documents.actions.uploadFile(file);
+    },
+    [documents.actions],
+  );
+
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => setIsDragOver(false), []);
+
   const handleDelete = useCallback(
     (doc: DocumentItem) => {
       if (!window.confirm(`למחוק את המסמך "${doc.originalName}"?`)) return;
@@ -51,6 +70,7 @@ export default function DashboardPage() {
   );
 
   const hasDocuments = documents.stats.total > 0;
+  const isProcessing = documents.stats.processing > 0 || documents.isUploading;
 
   return (
     <div className="dashboard-page" dir="rtl">
@@ -77,15 +97,32 @@ export default function DashboardPage() {
           </div>
         ) : null}
 
+        {/* Upload progress banner */}
+        {isProcessing ? (
+          <div className="dashboard-processing-banner">
+            <span className="dashboard-processing-spinner" aria-hidden="true" />
+            מעלה ומנתח את התלוש באמצעות AI...
+          </div>
+        ) : null}
+
         {/* Upload prompt — shown when no documents yet */}
         {!hasDocuments && !documents.isLoading ? (
-          <section className="dashboard-upload-hero">
+          <section
+            className={`dashboard-upload-hero${isDragOver ? " is-dragover" : ""}`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+          >
             <div className="dashboard-upload-hero-inner">
               <div className="dashboard-upload-hero-icon">
                 <Sparkles aria-hidden="true" />
               </div>
               <h2>ברוכים הבאים ל-FinGuide</h2>
-              <p>העלו את תלוש השכר הראשון שלכם — הבינה המלאכותית תנתח אותו ותספק תובנות מיידיות</p>
+              <p>
+                {isDragOver
+                  ? "שחררו את הקובץ כדי להעלות"
+                  : "גררו תלוש שכר לכאן, או לחצו להעלאה"}
+              </p>
               <button
                 type="button"
                 className="dashboard-upload-hero-btn"
@@ -93,11 +130,11 @@ export default function DashboardPage() {
                 disabled={documents.isUploading}
               >
                 <Upload aria-hidden="true" />
-                {documents.isUploading ? "מעלה..." : "העלאת תלוש שכר"}
+                {documents.isUploading ? "מעלה ומנתח..." : "בחרו קובץ PDF"}
               </button>
               <p className="dashboard-upload-hero-hint">
                 <FileText aria-hidden="true" />
-                קבצי PDF · מוצפן ומאובטח
+                קבצי PDF בלבד · מוצפן ומאובטח
               </p>
             </div>
           </section>

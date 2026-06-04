@@ -3425,6 +3425,43 @@
   cursor: not-allowed;
 }
 
+.dashboard-upload-hero.is-dragover {
+  outline: 3px dashed var(--dash-accent);
+  outline-offset: -8px;
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.dashboard-upload-hero.is-dragover .dashboard-upload-hero-inner {
+  pointer-events: none;
+}
+
+/* Processing banner */
+.dashboard-processing-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--dash-accent);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: var(--dash-radius);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.dashboard-processing-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .dashboard-upload-hero-hint {
   display: flex;
   align-items: center;

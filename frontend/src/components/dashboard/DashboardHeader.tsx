@@ -128,7 +128,7 @@ export default function DashboardHeader({
           disabled={isUploading}
         >
           <Upload aria-hidden="true" />
-          {isUploading ? "מעלה..." : "העלאת מסמך"}
+          {isUploading ? "מעלה..." : "העלאת תלוש"}
         </button>
         <div className="dashboard-user-menu" ref={dropdownRef}>
           <button
