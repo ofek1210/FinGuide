@@ -15,6 +15,7 @@ import DashboardInsightsCard from "../components/dashboard/DashboardInsightsCard
 import DashboardRecommendationsCard from "../components/dashboard/DashboardRecommendationsCard";
 import DashboardRecentDocuments from "../components/dashboard/DashboardRecentDocuments";
 import DashboardSummaryCard from "../components/dashboard/DashboardSummaryCard";
+import DashboardFinancialHealthCard from "../components/dashboard/DashboardFinancialHealthCard";
 import { useDashboardDocuments } from "../hooks/useDashboardDocuments";
 import { useDashboardPayslipsPreview } from "../hooks/useDashboardPayslipsPreview";
 import { useDashboardUser } from "../hooks/useDashboardUser";
@@ -160,6 +161,8 @@ export default function DashboardPage() {
               failedDocuments={documents.stats.failed}
               onViewDocuments={() => navigate(APP_ROUTES.documents)}
             />
+
+            <DashboardFinancialHealthCard />
 
             <DashboardChatPanel />
 

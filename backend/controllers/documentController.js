@@ -2,13 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const { promisify } = require('util');
 const Document = require('../models/Document');
-const { FileUploadError, NotFoundError } = require('../utils/appErrors');
+const { FileUploadError, NotFoundError, ValidationError } = require('../utils/appErrors');
 const { serializeDocument } = require('../serializers/documentSerializer');
-const { extractPayslipFile } = require('../services/payslipOcr');
-const { validatePayslipAnalysis, buildFieldsMeta } = require('../schemas/payslipAnalysis.schema');
 const { buildPayslipHistoryIntelligence } = require('../services/payslipHistoryAggregationService');
 const {
   computeFileChecksum,
+  applyExtractionToDocument,
   processFinancialDocument,
 } = require('../services/financialDocumentService');
 
@@ -80,52 +79,13 @@ exports.getPayslipHistory = async (req, res, next) => {
 // POST /api/documents/:id/reprocess - run extraction again on the existing PDF.
 exports.reprocessDocument = async (req, res, next) => {
   try {
-    const document = await Document.findOne({
-      _id: req.params.id,
-      user: req.user.id,
-    });
-
-    if (!document) {
-      return next(new NotFoundError('מסמך לא נמצא'));
-    }
-    if (!document.filePath) {
-      return next(new NotFoundError('הקובץ המקורי לא קיים יותר — לא ניתן להריץ חילוץ מחדש'));
-    }
-
-    const uploadsDir = path.resolve(process.cwd(), 'uploads');
-    const resolvedPath = path.resolve(document.filePath);
-    if (!resolvedPath.startsWith(uploadsDir)) {
-      return next(new NotFoundError('מסמך לא נמצא'));
-    }
+    const document = await findOwnedDocumentWithFile(req);
 
     document.status = 'processing';
     document.processingError = null;
     await document.save();
 
-    try {
-      const { data } = await extractPayslipFile(document.filePath);
-
-      const fieldsMeta = buildFieldsMeta(data);
-      if (fieldsMeta) data.fields_meta = fieldsMeta;
-
-      const validation = validatePayslipAnalysis(data);
-      document.analysisData = data;
-      document.processedAt = new Date();
-      if (validation.ok) {
-        document.status = 'completed';
-        document.processingError = null;
-      } else {
-        document.status = 'needs_review';
-        document.processingError = validation.message;
-      }
-      await document.save();
-    } catch (extractionError) {
-      console.error('❌ Reprocess failed for document', document._id, extractionError);
-      document.status = 'failed';
-      document.processingError = extractionError?.message || 'Reprocess failed';
-      document.processedAt = new Date();
-      await document.save().catch(() => {});
-    }
+    await applyExtractionToDocument(document, { userId: req.user.id });
 
     res.status(200).json({
       success: true,
@@ -134,6 +94,79 @@ exports.reprocessDocument = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+};
+
+// POST /api/documents/:id/unlock - supply PDF password and continue extraction.
+exports.unlockDocument = async (req, res, next) => {
+  try {
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if (!password.trim()) {
+      return next(
+        new ValidationError('שגיאות בולידציה', [
+          { field: 'password', message: 'נא להזין סיסמת PDF', value: req.body?.password },
+        ])
+      );
+    }
+
+    const document = await findOwnedDocumentWithFile(req);
+    if (document.status !== 'needs_password') {
+      return next(
+        new ValidationError('שגיאות בולידציה', [
+          {
+            field: 'status',
+            message: 'המסמך אינו ממתין לסיסמה',
+            value: document.status,
+          },
+        ])
+      );
+    }
+
+    document.status = 'processing';
+    document.processingError = null;
+    await document.save();
+
+    const result = await applyExtractionToDocument(document, {
+      password: password.trim(),
+      userId: req.user.id,
+    });
+
+    if (result.passwordRequired) {
+      return res.status(400).json({
+        success: false,
+        message: 'הסיסמה שגויה או לא פותחת את הקובץ. נסו שוב.',
+        data: serializeDocument(result.document),
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: serializeDocument(result.document),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const findOwnedDocumentWithFile = async req => {
+  const document = await Document.findOne({
+    _id: req.params.id,
+    user: req.user.id,
+  });
+
+  if (!document) {
+    throw new NotFoundError('מסמך לא נמצא');
+  }
+  if (!document.filePath) {
+    throw new NotFoundError('הקובץ המקורי לא קיים יותר — לא ניתן להריץ חילוץ מחדש');
+  }
+
+  const uploadsDir = path.resolve(process.cwd(), 'uploads');
+  const resolvedPath = path.resolve(document.filePath);
+  if (!resolvedPath.startsWith(uploadsDir)) {
+    throw new NotFoundError('מסמך לא נמצא');
+  }
+
+  return document;
 };
 
 exports.getDocument = async (req, res, next) => {

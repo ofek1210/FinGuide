@@ -7,6 +7,7 @@ const Document = require('../models/Document');
 const { extractPayslipFile } = require('./payslipOcr');
 const { validatePayslipAnalysis, buildFieldsMeta } = require('../schemas/payslipAnalysis.schema');
 const { normalizeDocumentMetadataInput } = require('../utils/documentMetadata');
+const { PdfPasswordRequiredError, isPdfPasswordError } = require('../utils/pdfPassword');
 
 const unlink = promisify(fs.unlink);
 
@@ -49,6 +50,56 @@ const resolveDocumentMetadata = (source, metadata) => {
   };
 };
 
+const applyExtractionToDocument = async (document, { password, userId } = {}) => {
+  try {
+    const { data } = await extractPayslipFile(document.filePath, { password });
+
+    const fieldsMeta = buildFieldsMeta(data);
+    if (fieldsMeta) {
+      data.fields_meta = fieldsMeta;
+    }
+
+    const validation = validatePayslipAnalysis(data);
+    document.analysisData = data;
+    document.processedAt = new Date();
+    if (validation.ok) {
+      document.status = 'completed';
+      document.processingError = null;
+    } else {
+      document.status = 'needs_review';
+      document.processingError = validation.message;
+    }
+    await document.save();
+
+    if (userId && document.status === 'completed') {
+      runPostUploadSideEffects(userId, document);
+    }
+
+    return { document, validation };
+  } catch (extractionError) {
+    if (
+      extractionError instanceof PdfPasswordRequiredError ||
+      extractionError?.code === 'PDF_PASSWORD_REQUIRED' ||
+      isPdfPasswordError(extractionError)
+    ) {
+      document.status = 'needs_password';
+      document.processingError = password
+        ? 'הסיסמה שגויה או לא פותחת את הקובץ'
+        : extractionError.message || 'נדרשת סיסמה לפתיחת קובץ ה-PDF';
+      document.processedAt = new Date();
+      await document.save();
+      return { document, passwordRequired: true };
+    }
+
+    console.error('❌ Document extraction failed for document', document._id, extractionError);
+    document.status = 'failed';
+    document.processingError = extractionError.message;
+    document.processedAt = new Date();
+    await document.save().catch(() => {});
+    return { document, failed: true };
+  }
+};
+
 /**
  * Shared pipeline for manual upload and Gmail import.
  */
@@ -80,43 +131,20 @@ const processFinancialDocument = async ({
     ...(emailMetadata && { emailMetadata }),
   });
 
-  try {
-    const { data } = await extractPayslipFile(filePath);
+  document.status = 'processing';
+  await document.save();
 
-    const fieldsMeta = buildFieldsMeta(data);
-    if (fieldsMeta) {
-      data.fields_meta = fieldsMeta;
-    }
+  const result = await applyExtractionToDocument(document, { userId });
 
-    const validation = validatePayslipAnalysis(data);
-    document.analysisData = data;
-    document.processedAt = new Date();
-    if (validation.ok) {
-      document.status = 'completed';
-      document.processingError = null;
-    } else {
-      document.status = 'needs_review';
-      document.processingError = validation.message;
-    }
-    await document.save();
+  // eslint-disable-next-line no-console
+  console.log('[documents] processFinancialDocument extraction result', {
+    documentId: document._id,
+    source,
+    status: result.document.status,
+    ...(result.validation?.ok === false ? { validation_reason: result.validation.reason } : {}),
+  });
 
-    // eslint-disable-next-line no-console
-    console.log('[documents] processFinancialDocument extraction result', {
-      documentId: document._id,
-      source,
-      status: document.status,
-      ...(validation.ok ? {} : { validation_reason: validation.reason }),
-    });
-
-    runPostUploadSideEffects(userId, document);
-  } catch (ocrError) {
-    console.error('❌ Document extraction failed for document', document._id, ocrError);
-    document.status = 'failed';
-    document.processingError = ocrError.message;
-    await document.save().catch(() => {});
-  }
-
-  return document;
+  return result.document;
 };
 
 const saveIncomingPdfToUploads = async (buffer, originalName) => {
@@ -135,6 +163,7 @@ const removeFileQuietly = async filePath => {
 
 module.exports = {
   computeFileChecksum,
+  applyExtractionToDocument,
   processFinancialDocument,
   saveIncomingPdfToUploads,
   removeFileQuietly,

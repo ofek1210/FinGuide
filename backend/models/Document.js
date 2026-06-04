@@ -83,7 +83,15 @@ const DocumentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['uploaded', 'pending', 'processing', 'completed', 'needs_review', 'failed'],
+      enum: [
+        'uploaded',
+        'pending',
+        'processing',
+        'completed',
+        'needs_review',
+        'needs_password',
+        'failed',
+      ],
       default: 'uploaded',
     },
     uploadedAt: {

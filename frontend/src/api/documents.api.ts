@@ -13,6 +13,7 @@ export type DocumentStatus =
   | "processing"
   | "completed"
   | "needs_review"
+  | "needs_password"
   | "failed";
 
 export type DocumentCategory =
@@ -286,6 +287,31 @@ export const getDocument = async (id: string) => {
  * existing uploaded PDF without re-upload. Returns the freshly-resolved
  * analysis values (and a new status, e.g. `needs_review`).
  */
+export const unlockDocument = async (id: string, password: string) => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as DocumentResponse;
+  }
+
+  const result = await apiJson<DocumentResponse>(`/api/documents/${id}/unlock`, {
+    method: "POST",
+    auth: true,
+    body: { password },
+    fallbackErrorMessage: "פתיחת הקובץ נכשלה.",
+  });
+
+  if (!result.ok) {
+    const payload = result.error.payload as DocumentResponse | undefined;
+    return {
+      success: false,
+      message: result.error.message,
+      ...(payload?.data ? { data: payload.data } : {}),
+    } as DocumentResponse;
+  }
+
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
+};
+
 export const reprocessDocument = async (id: string) => {
   const token = getToken();
   if (!token) {

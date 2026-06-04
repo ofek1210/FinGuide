@@ -9,6 +9,7 @@ const {
   deleteDocument,
   downloadDocument,
   reprocessDocument,
+  unlockDocument,
 } = require('../controllers/documentController');
 const { protect } = require('../middleware/auth');
 const { upload, handleUploadError } = require('../middleware/upload');
@@ -35,6 +36,9 @@ router.get('/:id/download', downloadDocument);
 
 // POST /api/documents/:id/reprocess - הרצה מחדש של חילוץ על הקובץ הקיים
 router.post('/:id/reprocess', reprocessDocument);
+
+// POST /api/documents/:id/unlock - פתיחת PDF מוגן בסיסמה והמשך עיבוד
+router.post('/:id/unlock', unlockDocument);
 
 // GET /api/documents/:id - קבלת מסמך בודד
 router.get('/:id', getDocument);
