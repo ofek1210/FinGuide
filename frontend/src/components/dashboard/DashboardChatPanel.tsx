@@ -158,4 +158,3 @@ export default function DashboardChatPanel() {
 }
 
 
-type ChatMessage = {
