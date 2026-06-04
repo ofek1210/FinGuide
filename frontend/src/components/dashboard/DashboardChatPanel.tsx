@@ -159,14 +159,3 @@ export default function DashboardChatPanel() {
 
 
 type ChatMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  source?: string;
-};
-
-const promptSuggestions = [
-  "כמה מסמכים הועלו החודש?",
-  "תסכם לי את מצב המסמכים שלי",
-  "איזו פעולה הכי חשובה כרגע?",
-];
