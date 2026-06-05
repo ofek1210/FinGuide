@@ -142,17 +142,30 @@ export default function AssistantPage() {
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
 
-    setIsListening(true);
-
     recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = event.results[0]?.[0]?.transcript ?? "";
       if (transcript) setInput(transcript);
     };
 
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+      setIsListening(false);
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setError("גישה למיקרופון נדחתה. אפשרו גישה בדפדפן ונסו שוב.");
+      } else if (event.error === "no-speech") {
+        setError("לא זוהה דיבור. נסו שוב.");
+      } else {
+        setError("שגיאה בקלט הקולי. נסו שוב.");
+      }
+    };
+
     recognition.onend = () => setIsListening(false);
 
-    recognition.start();
+    try {
+      recognition.start();
+      setIsListening(true);
+    } catch {
+      setError("לא ניתן להפעיל את המיקרופון.");
+    }
   }, [isListening, isSending]);
 
   // Streaming send
