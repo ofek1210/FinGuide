@@ -24,9 +24,15 @@ export function RequireAuth({ children }: GuardProps) {
     return <Navigate to={APP_ROUTES.login} replace />;
   }
 
+  const welcomeShown = auth.user?.welcomeShown;
+  const isWelcomeRoute = location.pathname === APP_ROUTES.welcome;
+  if (welcomeShown === false && !isWelcomeRoute) {
+    return <Navigate to={APP_ROUTES.welcome} replace />;
+  }
+
   const onboardingCompleted = auth.user?.onboardingCompleted;
   const isOnboardingRoute = location.pathname === APP_ROUTES.onboarding;
-  if (onboardingCompleted === false && !isOnboardingRoute) {
+  if (onboardingCompleted === false && !isOnboardingRoute && !isWelcomeRoute) {
     return <Navigate to={APP_ROUTES.onboarding} replace />;
   }
 

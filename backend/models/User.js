@@ -47,6 +47,15 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    welcomeShown: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    welcomeShownAt: {
+      type: Date,
+      default: null,
+    },
     onboarding: {
       completed: {
         type: Boolean,
