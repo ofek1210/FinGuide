@@ -7,13 +7,62 @@ const {
 
 const monthSet = new Set(Array.from({ length: 12 }, (_, i) => i + 1));
 
+/**
+ * Returns true if gross passes a sanity check: it must be >= every individual
+ * salary component (a component cannot exceed the total it belongs to).
+ */
+function isGrossPlausible(gross, salary) {
+  if (!Number.isFinite(gross) || gross <= 0) return false;
+  const components = salary?.components;
+  if (!Array.isArray(components) || !components.length) return true;
+  const maxComponent = components.reduce((max, c) => {
+    const amount = toFiniteNumber(c.amount) ?? 0;
+    return Math.max(max, amount);
+  }, 0);
+  return gross >= maxComponent;
+}
+
 function enrichSummary(document) {
   const summary = document?.analysisData?.summary || {};
   const salary = document?.analysisData?.salary || {};
   const deductions = document?.analysisData?.deductions?.mandatory || {};
+  const contributions = document?.analysisData?.contributions || {};
+  const tax = document?.analysisData?.tax || {};
+
+  // Validate extracted gross — if it's smaller than a single component, it's wrong.
+  // Fallback priority:
+  //   1. summary.grossSalary (pre-calculated, most trusted)
+  //   2. salary.gross_total (if plausible)
+  //   3. contributions.pension.base_salary_for_pension (often equals displayed gross on payslip)
+  //   4. tax.gross_for_income_tax (taxable gross)
+  const rawGross = toFiniteNumber(summary.grossSalary) ?? toFiniteNumber(salary.gross_total);
+  const grossSalary = isGrossPlausible(rawGross, salary)
+    ? rawGross
+    : (toFiniteNumber(contributions?.pension?.base_salary_for_pension)
+        ?? toFiniteNumber(tax.gross_for_income_tax)
+        ?? rawGross);
+
+  // Validate net plausibility: net must be at least 30% of gross.
+  // If it isn't, the OCR likely picked a daily/hourly rate instead of the bank transfer.
+  // Fallback: gross - all stored deductions (mandatory + pension employee).
+  const rawNet = toFiniteNumber(summary.netSalary) ?? toFiniteNumber(salary.net_payable);
+  const grossForNetCheck = grossSalary || toFiniteNumber(tax.gross_for_income_tax);
+  const netIsPlausible = Number.isFinite(rawNet) && Number.isFinite(grossForNetCheck)
+    && grossForNetCheck > 0
+    && (rawNet / grossForNetCheck) >= 0.3;
+  const derivedNet = (() => {
+    if (!Number.isFinite(grossForNetCheck)) return null;
+    const mandatoryTotal = toFiniteNumber(deductions.total);
+    const pensionEmployee =
+      toFiniteNumber(document?.analysisData?.contributions?.pension?.employee_amount) ?? 0;
+    if (!Number.isFinite(mandatoryTotal)) return null;
+    return Math.round((grossForNetCheck - mandatoryTotal - pensionEmployee) * 100) / 100;
+  })();
+  const netSalary = netIsPlausible ? rawNet : (derivedNet ?? rawNet);
+
   return {
-    grossSalary: toFiniteNumber(summary.grossSalary) ?? toFiniteNumber(salary.gross_total),
-    netSalary: toFiniteNumber(summary.netSalary) ?? toFiniteNumber(salary.net_payable),
+    grossSalary,
+    netSalary,
     tax: toFiniteNumber(summary.tax) ?? toFiniteNumber(deductions.income_tax),
     nationalInsurance:
       toFiniteNumber(summary.nationalInsurance) ?? toFiniteNumber(deductions.national_insurance),
@@ -172,11 +221,11 @@ function buildPayslipHistoryIntelligence(documents, { year } = {}) {
 
   const dataQualityWarnings = [];
   if (incompletePeriods.length) {
-    dataQualityWarnings.push(`Found ${incompletePeriods.length} payslips with unresolved period.`);
+    dataQualityWarnings.push(`נמצאו ${incompletePeriods.length} תלושים ללא תקופה מזוהה.`);
   }
   if (selectedYearStats.missingMonths.length) {
     dataQualityWarnings.push(
-      `Year ${selectedYear} is missing ${selectedYearStats.missingMonths.length} month(s).`,
+      `בשנת ${selectedYear} חסרים ${selectedYearStats.missingMonths.length} תלושים.`,
     );
   }
 

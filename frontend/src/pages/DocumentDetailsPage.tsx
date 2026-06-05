@@ -94,6 +94,22 @@ export default function DocumentDetailsPage() {
 
   const summary = getSummary(document);
   const parties = getParties(document);
+  const docSource = (document?.analysisData as { source?: string } | null)?.source;
+  const isForm106 = docSource === "form_106";
+  const isHarHaBituach = docSource === "har_habitua";
+  const form106Annual = isForm106
+    ? (document?.analysisData as { annual?: Record<string, unknown> } | null)?.annual
+    : null;
+  const form106Period = isForm106
+    ? (document?.analysisData as { period?: { year?: number } } | null)?.period
+    : null;
+  const hbData = isHarHaBituach
+    ? (document?.analysisData as {
+        exportDate?: string;
+        policies?: Array<{ policyNumber?: string; companyName?: string; branchName?: string; policyType?: string; monthlyPremium?: number; coverageAmount?: number }>;
+        summary?: { totalPolicies?: number; estimatedMonthlyPremium?: number; companies?: string[] };
+      } | null)
+    : null;
 
   return (
     <div className="feature-page dashboard-page" dir="rtl">
@@ -101,9 +117,15 @@ export default function DocumentDetailsPage() {
         <PrivateTopbar />
 
         <section className="dashboard-card">
-          <h1 className="feature-page-title">פרטי תלוש</h1>
+          <h1 className="feature-page-title">
+            {isForm106 ? "טופס 106 — תעודת שכר שנתית" : isHarHaBituach ? "הר הביטוח — פוליסות ביטוח" : "פרטי תלוש"}
+          </h1>
           <p className="feature-page-subtitle">
-            פירוט הערכים שזוהו מהתלוש שהועלה.
+            {isForm106
+              ? "סיכום שנתי של הכנסות, ניכויים ותשלומים לפי טופס 106."
+              : isHarHaBituach
+              ? "רשימת הפוליסות שיובאו מפלטפורמת הר הביטוח."
+              : "פירוט הערכים שזוהו מהתלוש שהועלה."}
           </p>
         </section>
 
@@ -135,10 +157,164 @@ export default function DocumentDetailsPage() {
           <section className="dashboard-card">
             <p>לא נמצאו פרטי מסמך.</p>
           </section>
+        ) : isForm106 ? (
+          <>
+            <section className="dashboard-card">
+              <h2 className="feature-section-title">פרטים</h2>
+              <div className="insights-grid">
+                <div className="insight-row">
+                  <span className="insight-label">שם עובד</span>
+                  <span className="insight-value">{formatValue(parties?.employee_name)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">ת.ז.</span>
+                  <span className="insight-value">{formatValue(parties?.employee_id)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">מעסיק</span>
+                  <span className="insight-value">{formatValue(parties?.employer_name)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">שנת מס</span>
+                  <span className="insight-value">{formatValue(form106Period?.year)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">חודשי עבודה</span>
+                  <span className="insight-value">{formatNumberValue(form106Annual?.work_months)}</span>
+                </div>
+              </div>
+            </section>
+
+            <section className="dashboard-card">
+              <h2 className="feature-section-title">הכנסות (שנתי)</h2>
+              <div className="insights-grid">
+                <div className="insight-row">
+                  <span className="insight-label">משכורת ברוטו</span>
+                  <span className="insight-value">{formatMoney(form106Annual?.gross)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">שכר מבוטח לקופ"ג</span>
+                  <span className="insight-value">{formatMoney(form106Annual?.pension_base)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">שכר לקרן השתלמות</span>
+                  <span className="insight-value">{formatMoney(form106Annual?.study_fund_base)}</span>
+                </div>
+              </div>
+            </section>
+
+            <section className="dashboard-card">
+              <h2 className="feature-section-title">ניכויים (שנתי)</h2>
+              <div className="insights-grid">
+                <div className="insight-row">
+                  <span className="insight-label">מס הכנסה</span>
+                  <span className="insight-value">{formatMoney(form106Annual?.income_tax)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">ביטוח לאומי</span>
+                  <span className="insight-value">{formatMoney(form106Annual?.national_insurance)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">ביטוח בריאות</span>
+                  <span className="insight-value">{formatMoney(form106Annual?.health_insurance)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">ניכוי לקופות גמל (עובד)</span>
+                  <span className="insight-value">{formatMoney(form106Annual?.pension_employee_deduction)}</span>
+                </div>
+              </div>
+            </section>
+
+            <section className="dashboard-card">
+              <h2 className="feature-section-title">הפרשות מעסיק (שנתי)</h2>
+              <div className="insights-grid">
+                <div className="insight-row">
+                  <span className="insight-label">הפרשות לקופ"ג</span>
+                  <span className="insight-value">{formatMoney(form106Annual?.pension_employer)}</span>
+                </div>
+                {(form106Annual?.tax_credit_points ?? null) !== null && (
+                  <div className="insight-row">
+                    <span className="insight-label">נקודות זיכוי</span>
+                    <span className="insight-value">{formatNumberValue(form106Annual?.tax_credit_points)}</span>
+                  </div>
+                )}
+                {(form106Annual?.tax_credit_value ?? null) !== null && (
+                  <div className="insight-row">
+                    <span className="insight-label">ערך נקודות זיכוי</span>
+                    <span className="insight-value">{formatMoney(form106Annual?.tax_credit_value)}</span>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section className="dashboard-card feature-page-actions">
+              <button className="dashboard-hero-action" type="button" onClick={() => navigate("/documents")}>
+                חזרה למסמכים
+              </button>
+              <button className="dashboard-hero-action" type="button" onClick={() => navigate("/dashboard")}>
+                חזרה ללוח הבקרה
+              </button>
+            </section>
+          </>
+        ) : isHarHaBituach ? (
+          <>
+            <section className="dashboard-card">
+              <h2 className="feature-section-title">פרטי ייצוא</h2>
+              <div className="insights-grid">
+                <div className="insight-row">
+                  <span className="insight-label">תאריך ייצוא</span>
+                  <span className="insight-value">{formatValue(hbData?.exportDate)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">סה"כ פוליסות</span>
+                  <span className="insight-value">{formatNumberValue(hbData?.summary?.totalPolicies)}</span>
+                </div>
+                <div className="insight-row">
+                  <span className="insight-label">פרמיה חודשית משוערת</span>
+                  <span className="insight-value">{formatMoney(hbData?.summary?.estimatedMonthlyPremium)}</span>
+                </div>
+                {hbData?.summary?.companies && hbData.summary.companies.length > 0 && (
+                  <div className="insight-row">
+                    <span className="insight-label">חברות ביטוח</span>
+                    <span className="insight-value">{hbData.summary.companies.join(", ")}</span>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            {hbData?.policies && hbData.policies.length > 0 ? (
+              <section className="dashboard-card">
+                <h2 className="feature-section-title">פוליסות</h2>
+                {hbData.policies.map((p, i) => (
+                  <div key={i} className="insights-grid" style={{ marginBottom: "0.75rem" }}>
+                    {p.companyName && <div className="insight-row"><span className="insight-label">חברה</span><span className="insight-value">{p.companyName}</span></div>}
+                    {p.branchName && <div className="insight-row"><span className="insight-label">ענף</span><span className="insight-value">{p.branchName}</span></div>}
+                    {p.policyNumber && <div className="insight-row"><span className="insight-label">מספר פוליסה</span><span className="insight-value">{p.policyNumber}</span></div>}
+                    {p.monthlyPremium != null && <div className="insight-row"><span className="insight-label">פרמיה חודשית</span><span className="insight-value">{formatMoney(p.monthlyPremium)}</span></div>}
+                  </div>
+                ))}
+              </section>
+            ) : (
+              <section className="dashboard-card">
+                <p style={{ color: "var(--color-text-secondary)", fontSize: "0.95rem" }}>
+                  קובץ ה-xlsx יובא בהצלחה, אך לא נמצאו פוליסות פעילות בנתונים. אם ייצאת מהר הביטוח ולא קיבלת פוליסות — ייתכן שאין לך פוליסות רשומות במאגר.
+                </p>
+              </section>
+            )}
+
+            <section className="dashboard-card feature-page-actions">
+              <button className="dashboard-hero-action" type="button" onClick={() => navigate("/documents")}>
+                חזרה למסמכים
+              </button>
+              <button className="dashboard-hero-action" type="button" onClick={() => navigate("/dashboard")}>
+                חזרה ללוח הבקרה
+              </button>
+            </section>
+          </>
         ) : (
           <>
             <section className="dashboard-card">
-              <h2 className="feature-section-title">פרטים בסיסיים</h2>
+              <h2 className="feature-section-title">פרטי תלוש</h2>
               <div className="insights-grid">
                 <div className="insight-row">
                   <span className="insight-label">שם עובד</span>

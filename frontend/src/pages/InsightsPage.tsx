@@ -7,6 +7,7 @@ import Loader from "../components/ui/Loader";
 import { useInsights } from "../hooks/useInsights";
 import { dismissInsight, runInsightsAnalysis, type InsightSeverity } from "../api/insights.api";
 import { APP_ROUTES } from "../types/navigation";
+import AnalysisTabBar from "../components/tabs/AnalysisTabBar";
 
 const severityLabels: Record<InsightSeverity, string> = {
   critical: "קריטי",
@@ -38,16 +39,24 @@ export default function InsightsPage() {
     <div className="dashboard-page" dir="rtl">
       <div className="dashboard-shell">
         <PrivateTopbar />
+        <AnalysisTabBar />
 
-        <header className="feature-page-header">
-          <div>
-            <Sparkles size={28} aria-hidden />
-            <h1>תובנות AI</h1>
-            <p>ניתוח אוטומטי של תלושי השכר, מגמות וחריגות.</p>
+        <header className="ai-page-header">
+          <div className="ai-page-header-main">
+            <div className="ai-page-icon-wrap">
+              <Sparkles size={32} />
+            </div>
+            <div>
+              <div className="ai-page-badge">
+                <Sparkles size={12} />
+                <span>AI Insights</span>
+              </div>
+              <h1>תובנות חכמות</h1>
+              <p className="ai-page-subtitle">מנוע ה-AI מנתח את תלושי השכר שלך ומזהה מגמות, חריגות ופערים פיננסיים.</p>
+            </div>
           </div>
-          <button type="button" className="auth-button" disabled={running} onClick={() => void handleRun()}>
-            <RefreshCw size={16} />
-            {running ? "מריץ ניתוח..." : "הרץ ניתוח מחדש"}
+          <button type="button" className="ai-run-btn" disabled={running} onClick={() => void handleRun()}>
+            {running ? <><span className="ai-run-spinner" /> מריץ ניתוח AI...</> : <><Sparkles size={14} /> הרץ ניתוח AI</>}
           </button>
         </header>
 

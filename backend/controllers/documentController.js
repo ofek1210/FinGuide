@@ -8,6 +8,7 @@ const { buildPayslipHistoryIntelligence } = require('../services/payslipHistoryA
 const {
   computeFileChecksum,
   applyExtractionToDocument,
+  smartReprocessDocument,
   processFinancialDocument,
 } = require('../services/financialDocumentService');
 
@@ -85,7 +86,7 @@ exports.reprocessDocument = async (req, res, next) => {
     document.processingError = null;
     await document.save();
 
-    await applyExtractionToDocument(document, { userId: req.user.id });
+    await smartReprocessDocument(document, { userId: req.user.id });
 
     res.status(200).json({
       success: true,

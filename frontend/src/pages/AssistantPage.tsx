@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PlanTabBar from "../components/tabs/PlanTabBar";
 import {
   streamChatWithAI,
   getChatHistory,
@@ -66,6 +67,7 @@ export default function AssistantPage() {
   const [isSending, setIsSending] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const streamAbortRef = useRef<(() => void) | null>(null);
   const streamingIdRef = useRef<string | null>(null);
 
@@ -102,7 +104,9 @@ export default function AssistantPage() {
   }, [messages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages, isSending]);
 
   // Cleanup stream on unmount
@@ -195,7 +199,9 @@ export default function AssistantPage() {
             m.id === assistantId ? { ...m, content: m.content + token } : m,
           ),
         );
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
       },
       (source, convId) => {
         // Mark streaming done
@@ -223,6 +229,7 @@ export default function AssistantPage() {
     <div className="feature-page dashboard-page" dir="rtl">
       <div className="dashboard-shell">
         <PrivateTopbar />
+        <PlanTabBar />
 
         <section className="dashboard-card ai-card">
           <div className="ai-card-header">
@@ -250,6 +257,7 @@ export default function AssistantPage() {
 
           {conversations.length > 1 ? (
             <div className="ai-conversation-list">
+              <span className="ai-conversation-list-label">שיחות קודמות</span>
               {conversations.slice(0, 5).map(c => (
                 <button
                   key={c.conversationId}
@@ -264,7 +272,7 @@ export default function AssistantPage() {
           ) : null}
 
           <div className="ai-chat">
-            <div className="ai-chat-messages">
+            <div className="ai-chat-messages" ref={messagesContainerRef}>
               {hasMessages ? (
                 messages.map((message) => (
                   <div key={message.id} className={`ai-message ${message.role}`}>

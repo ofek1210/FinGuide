@@ -12,17 +12,13 @@ interface PrivateTopbarProps {
 }
 
 const navItems = [
-  { label: "לוח בקרה", route: APP_ROUTES.dashboard },
+  { label: "בית", route: APP_ROUTES.dashboard },
   { label: "מסמכים", route: APP_ROUTES.documents },
-  { label: "היסטוריית תלושים", route: APP_ROUTES.payslipHistory },
-  { label: "תובנות", route: APP_ROUTES.insights },
-  { label: "ביטוחים", route: APP_ROUTES.insurance },
-  { label: "ממצאים", route: APP_ROUTES.findings },
-  { label: "עוזר מס", route: APP_ROUTES.taxAssistant },
-  { label: "ציון פיננסי", route: APP_ROUTES.financialHealth },
-  { label: "עוזר AI", route: APP_ROUTES.assistant },
-  { label: "הגדרות", route: APP_ROUTES.settings },
-  { label: "עזרה", route: APP_ROUTES.help },
+  { label: "✦ תובנות", route: APP_ROUTES.insights },
+  { label: "✦ AI Shield", route: APP_ROUTES.insurance },
+  { label: "✦ Tax AI", route: APP_ROUTES.taxAssistant },
+  { label: "✦ ציון AI", route: APP_ROUTES.financialHealth },
+  { label: "✦ תכנון", route: APP_ROUTES.copilot },
 ];
 
 function getInitial(name: string | undefined): string {
@@ -71,11 +67,12 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
             item.route === APP_ROUTES.dashboard
               ? location.pathname === APP_ROUTES.dashboard
               : item.route === APP_ROUTES.documents
-                ? location.pathname === APP_ROUTES.documents ||
-                  location.pathname.startsWith("/documents/scan")
-                : item.route === APP_ROUTES.payslipHistory
-                  ? location.pathname.startsWith(APP_ROUTES.payslipHistory)
-                  : location.pathname === item.route;
+                ? location.pathname.startsWith("/documents")
+                : item.route === APP_ROUTES.insights
+                  ? location.pathname.startsWith("/insights") || location.pathname.startsWith("/findings")
+                  : item.route === APP_ROUTES.copilot
+                    ? location.pathname.startsWith("/copilot") || location.pathname.startsWith("/assistant")
+                    : location.pathname === item.route;
           return (
             <button
               key={item.route}

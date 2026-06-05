@@ -1,7 +1,7 @@
 import { FileText, Sparkles, Upload } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AppFooter from "../components/AppFooter";
+
 import type { DocumentItem } from "../api/documents.api";
 import DashboardChatPanel from "../components/dashboard/DashboardChatPanel";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
@@ -18,6 +18,11 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+
+  // Scroll to top whenever this page mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const user = useDashboardUser();
   const documents = useDashboardDocuments();
@@ -82,8 +87,6 @@ export default function DashboardPage() {
           onFileSelected={handleFileSelected}
           onNavigateDashboard={() => navigate(APP_ROUTES.dashboard)}
           onNavigateDocuments={() => navigate(APP_ROUTES.documents)}
-          onNavigatePayslipHistory={() => navigate(APP_ROUTES.payslipHistory)}
-          onNavigateFindings={() => navigate(APP_ROUTES.findings)}
         />
 
         {/* Error banners */}
@@ -173,7 +176,9 @@ export default function DashboardPage() {
           </>
         )}
 
-        <AppFooter variant="private" />
+        <footer className="dashboard-mini-footer" dir="rtl">
+          <span>© 2026 FinGuide</span>
+        </footer>
       </div>
     </div>
   );

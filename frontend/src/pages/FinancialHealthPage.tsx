@@ -56,11 +56,19 @@ export default function FinancialHealthPage() {
       <div className="dashboard-shell">
         <PrivateTopbar />
 
-        <header className="feature-page-header financial-health-page-header">
-          <div>
-            <Gauge size={28} aria-hidden="true" />
-            <h1>ציון פיננסי</h1>
-            <p>סיכום מצב פיננסי על בסיס תלושים, מס, פנסיה וביטוחים שכבר במערכת.</p>
+        <header className="ai-page-header financial-health-page-header">
+          <div className="ai-page-header-main">
+            <div className="ai-page-icon-wrap">
+              <Gauge size={32} />
+            </div>
+            <div>
+              <div className="ai-page-badge">
+                <Gauge size={12} />
+                <span>AI Score</span>
+              </div>
+              <h1>ציון פיננסי AI</h1>
+              <p className="ai-page-subtitle">ניתוח 360° של המצב הפיננסי שלך — שכר, מס, פנסיה וביטוחים — בציון אחד מאוחד.</p>
+            </div>
           </div>
           <label className="financial-health-year-select">
             <span>שנה</span>

@@ -33,6 +33,7 @@ import AppFooter from "../components/AppFooter";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
 import Loader from "../components/ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
+import AnalysisTabBar from "../components/tabs/AnalysisTabBar";
 import { formatCurrencyILS, formatNumber } from "../utils/formatters";
 
 const findingSeverityLabels: Record<FindingSeverity, string> = {
@@ -263,6 +264,7 @@ export default function FindingsPage() {
             </button>
           )}
         />
+        <AnalysisTabBar />
 
         <header className="pension-insights-hero">
           <h1 className="pension-insights-title">תחזית חיסכון לינארית</h1>

@@ -19,6 +19,7 @@ import {
   type UploadDocumentPayload,
 } from "../api/documents.api";
 import { APP_ROUTES } from "../types/navigation";
+import DocsTabBar from "../components/tabs/DocsTabBar";
 import {
   DOCUMENT_CATEGORY_LABELS,
   formatDocumentMetadataSummary,
@@ -138,7 +139,7 @@ function UploadArea({
           ref={inputRef}
           className="upload-input"
           type="file"
-          accept="application/pdf"
+          accept="application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           onChange={(event) => onPickFile(event.target.files?.[0] ?? null)}
         />
         <div className="upload-icon" aria-hidden="true">
@@ -154,7 +155,7 @@ function UploadArea({
         >
           {isUploading ? <Loader /> : "העלה קובץ"}
         </button>
-        <span className="upload-hint">פי-די-אף בלבד • עד 10 מ"ב</span>
+        <span className="upload-hint">PDF או XLSX (הר הביטוח) • עד 10 מ"ב</span>
       </div>
       <div className="upload-meta">
         <div className="upload-form-grid">
@@ -222,6 +223,16 @@ function UploadArea({
             {message}
           </div>
         ) : null}
+        {fileName && (
+          <button
+            className="upload-submit-btn"
+            type="button"
+            onClick={onUpload}
+            disabled={isUploading}
+          >
+            {isUploading ? "מעלה..." : "⬆ שמור והעלה"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -421,10 +432,18 @@ export default function DocumentsPage() {
   };
 
   const handleMetadataChange = (field: keyof UploadFormState, value: string) => {
-    setUploadForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setUploadForm((prev) => {
+      const next = { ...prev, [field]: value };
+      // Auto-derive periodMonth / periodYear from documentDate
+      if (field === "documentDate" && value) {
+        const d = new Date(value);
+        if (!Number.isNaN(d.getTime())) {
+          if (!next.periodMonth) next.periodMonth = String(d.getMonth() + 1);
+          if (!next.periodYear)  next.periodYear  = String(d.getFullYear());
+        }
+      }
+      return next;
+    });
   };
 
   const buildUploadPayload = (): UploadDocumentPayload | null => {
@@ -434,8 +453,18 @@ export default function DocumentsPage() {
       return null;
     }
 
-    const hasPeriodMonth = uploadForm.periodMonth.trim().length > 0;
-    const hasPeriodYear = uploadForm.periodYear.trim().length > 0;
+    // Derive missing month/year from documentDate before validation
+    let { periodMonth, periodYear, documentDate, category } = uploadForm;
+    if (documentDate && (!periodYear || !periodMonth)) {
+      const d = new Date(documentDate);
+      if (!Number.isNaN(d.getTime())) {
+        if (!periodMonth) periodMonth = String(d.getMonth() + 1);
+        if (!periodYear)  periodYear  = String(d.getFullYear());
+      }
+    }
+
+    const hasPeriodMonth = periodMonth.trim().length > 0;
+    const hasPeriodYear = periodYear.trim().length > 0;
 
     if (hasPeriodMonth !== hasPeriodYear) {
       setUploadState("error");
@@ -443,23 +472,23 @@ export default function DocumentsPage() {
       return null;
     }
 
-    const periodMonth = hasPeriodMonth ? Number(uploadForm.periodMonth) : undefined;
-    const periodYear = hasPeriodYear ? Number(uploadForm.periodYear) : undefined;
+    const parsedMonth = hasPeriodMonth ? Number(periodMonth) : undefined;
+    const parsedYear = hasPeriodYear ? Number(periodYear) : undefined;
 
-    if (periodMonth !== undefined && (!Number.isInteger(periodMonth) || periodMonth < 1 || periodMonth > 12)) {
+    if (parsedMonth !== undefined && (!Number.isInteger(parsedMonth) || parsedMonth < 1 || parsedMonth > 12)) {
       setUploadState("error");
       setUploadMessage("חודש חייב להיות מספר בין 1 ל-12.");
       return null;
     }
 
-    if (periodYear !== undefined && (!Number.isInteger(periodYear) || periodYear < 2000 || periodYear > 2100)) {
+    if (parsedYear !== undefined && (!Number.isInteger(parsedYear) || parsedYear < 2000 || parsedYear > 2100)) {
       setUploadState("error");
       setUploadMessage("שנה חייבת להיות מספר בין 2000 ל-2100.");
       return null;
     }
 
-    if (uploadForm.documentDate) {
-      const parsedDate = new Date(uploadForm.documentDate);
+    if (documentDate) {
+      const parsedDate = new Date(documentDate);
       if (Number.isNaN(parsedDate.getTime())) {
         setUploadState("error");
         setUploadMessage("תאריך המסמך אינו תקין.");
@@ -468,10 +497,10 @@ export default function DocumentsPage() {
     }
 
     return {
-      category: uploadForm.category,
-      ...(periodMonth !== undefined && { periodMonth }),
-      ...(periodYear !== undefined && { periodYear }),
-      ...(uploadForm.documentDate && { documentDate: uploadForm.documentDate }),
+      category,
+      ...(parsedMonth !== undefined && { periodMonth: parsedMonth }),
+      ...(parsedYear  !== undefined && { periodYear:  parsedYear }),
+      ...(documentDate && { documentDate }),
     };
   };
 
@@ -487,12 +516,15 @@ export default function DocumentsPage() {
 
     const isPdf =
       file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isXlsx =
+      file.name.toLowerCase().endsWith(".xlsx") || file.name.toLowerCase().endsWith(".xls") ||
+      file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     const maxSize = 10 * 1024 * 1024;
 
-    if (!isPdf) {
+    if (!isPdf && !isXlsx) {
       setSelectedFile(null);
       setUploadState("error");
-      setUploadMessage("ניתן להעלות רק קובצי PDF.");
+      setUploadMessage("ניתן להעלות קובצי PDF או XLSX (הר הביטוח).");
       return;
     }
 
@@ -505,6 +537,40 @@ export default function DocumentsPage() {
 
     setSelectedFile(file);
     setUploadState("idle");
+
+    // Auto-set category for known file types
+    setUploadForm((prev) => {
+      if (prev.category) return prev;
+      if (isXlsx) return { ...prev, category: "other" as DocumentCategory };
+      return prev;
+    });
+
+    // Auto-fill year/month from filename (e.g. PaySlip2026-05.pdf or 2026_05_payslip.pdf)
+    setUploadForm((prev) => {
+      if (prev.periodYear && prev.periodMonth) return prev; // already filled
+      const name = file.name;
+      // Match patterns like 2026-05, 2026_05, 202605, 05-2026, 05_2026
+      const patterns = [
+        /(?:^|[\D])(20\d{2})[\-_\.](\d{1,2})(?:[\D]|$)/, // 2026-05
+        /(?:^|[\D])(\d{1,2})[\-_\.](20\d{2})(?:[\D]|$)/, // 05-2026
+        /(20\d{2})(\d{2})(?:[\D]|$)/,                     // 202605
+      ];
+      for (const pat of patterns) {
+        const m = pat.exec(name);
+        if (m) {
+          const a = parseInt(m[1]), b = parseInt(m[2]);
+          const [year, month] = a > 100 ? [a, b] : [b, a];
+          if (year >= 2000 && year <= 2100 && month >= 1 && month <= 12) {
+            return {
+              ...prev,
+              periodYear:  prev.periodYear  || String(year),
+              periodMonth: prev.periodMonth || String(month),
+            };
+          }
+        }
+      }
+      return prev;
+    });
   };
 
   const handleUpload = async () => {
@@ -674,10 +740,11 @@ export default function DocumentsPage() {
   return (
     <div className="documents-page" dir="rtl">
       <PrivateTopbar />
+      <DocsTabBar />
 
       <main className="documents-main landing-container">
         <section className="documents-header">
-          <h1>מסמכים</h1>
+          <h1>העלאת מסמכים</h1>
           <p>
             העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
             הקובץ נשמר מיד, והעיבוד ממשיך ברקע.

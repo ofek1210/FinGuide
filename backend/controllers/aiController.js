@@ -85,16 +85,20 @@ function detectIntent(message) {
     return 'anomaly_check';
   }
 
-  if (msg.includes('המלצ') || msg.includes('ביטוח') && msg.includes('צריך')) {
+  if (msg.includes('יש לי ביטוח') || msg.includes('האם יש לי')) {
+    return 'profile_insurance';
+  }
+
+  // Recommendations: only when asking about *my* specific recommendations, not general insurance questions
+  if (
+    (msg.includes('המלצ') && (msg.includes('שלי') || msg.includes('לי') || msg.includes('אישי'))) ||
+    (msg.includes('ביטוח') && msg.includes('צריך') && !msg.includes('ממוצע') && !msg.includes('כמה עולה') && !msg.includes('כמה משלמים'))
+  ) {
     return 'my_recommendations';
   }
 
   if (msg.includes('התרא') || msg.includes('notification')) {
     return 'my_notifications';
-  }
-
-  if (msg.includes('יש לי ביטוח') || msg.includes('האם יש לי')) {
-    return 'profile_insurance';
   }
 
   if (msg.includes('מה השתנה') || msg.includes('what changed')) {
@@ -109,7 +113,14 @@ function detectIntent(message) {
     return 'salary_why_down';
   }
 
-  if (msg.includes('פנסיה')) {
+  if (
+    msg.includes('פנסיה') &&
+    !msg.includes('ממוצע') &&
+    !msg.includes('בארץ') &&
+    !msg.includes('בישראל') &&
+    !msg.includes('מה זה') &&
+    !msg.includes('שיעור')
+  ) {
     if (msg.includes('מעסיק')) return 'pension_employer';
     return 'pension_employee';
   }
@@ -126,7 +137,10 @@ function detectIntent(message) {
     return 'gross_salary';
   }
 
-  if (msg.includes('מס הכנסה') || msg.includes('מס שולי')) {
+  if (
+    (msg.includes('מס הכנסה') || msg.includes('מס שולי')) &&
+    (msg.includes('שלי') || msg.includes('שילמתי') || msg.includes('ניכו') || msg.includes('בתלוש') || msg.includes('כמה'))
+  ) {
     return 'tax_info';
   }
 
@@ -225,10 +239,11 @@ async function buildUserContext(userId) {
   ]);
 
   // Get last 3 completed payslips for trend analysis
+  // Also match docs with category 'other' that have payslip analysisData (uploaded before auto-upgrade)
   const completedPayslips = documents.filter(
     d =>
       d.status === 'completed' &&
-      d.metadata?.category === 'payslip' &&
+      (d.metadata?.category === 'payslip' || (d.analysisData?.summary?.grossSalary != null)) &&
       d.analysisData?.summary,
   ).slice(0, 3);
 

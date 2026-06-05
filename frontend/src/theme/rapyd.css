@@ -10117,3 +10117,70 @@ body {
 [data-theme="light"] .job-bottom-cta-card {
   box-shadow: 10px 10px 0 var(--rapyd-black);
 }
+
+/* =================================================================
+ * Dashboard topbar theme toggle — inline, not fixed
+ * ================================================================= */
+
+/* When dashboard topbar is present, hide the global fixed toggle */
+body:has(.dashboard-topbar) .theme-toggle:not(.dashboard-topbar .theme-toggle) {
+  display: none !important;
+}
+
+/* Prevent the topbar from wrapping to 2 rows */
+.dashboard-topbar {
+  flex-wrap: nowrap !important;
+  overflow: hidden;
+}
+
+/* The embedded toggle in the topbar renders as inline-flex, not fixed */
+.dashboard-topbar .theme-toggle {
+  position: static !important;
+  box-shadow: 3px 3px 0 var(--rapyd-yellow) !important;
+  width: 80px !important;
+  height: 36px !important;
+  font-size: 0.72rem;
+  flex-shrink: 0;
+}
+
+.dashboard-topbar .theme-toggle .theme-toggle-thumb {
+  width: 26px !important;
+  height: 26px !important;
+  top: 3px !important;
+}
+
+.dashboard-topbar .theme-toggle.is-light .theme-toggle-thumb {
+  left: 46px !important;
+}
+
+.dashboard-topbar .theme-toggle .theme-toggle-label {
+  margin-left: 36px !important;
+  font-size: 0.68rem !important;
+}
+
+.dashboard-topbar .theme-toggle.is-light .theme-toggle-label {
+  margin-left: 0 !important;
+  margin-right: 36px !important;
+}
+
+/* Nav items shrink to fit single row */
+.dashboard-topbar .dashboard-nav {
+  flex: 1;
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  flex-wrap: nowrap;
+  gap: 0 !important;
+}
+
+.dashboard-topbar .dashboard-nav-link {
+  padding: 10px 10px !important;
+  font-size: 0.75rem !important;
+  white-space: nowrap;
+}
+
+/* Dashboard mini footer */
+.dashboard-page .dashboard-mini-footer {
+  border-top-color: var(--rapyd-border) !important;
+  color: var(--rapyd-text-dim) !important;
+}
