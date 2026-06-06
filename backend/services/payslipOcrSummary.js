@@ -96,12 +96,19 @@ function buildPayslipSummary(data, rawText) {
     ) ?? null;
   if (workingDays != null && (workingDays < 1 || workingDays > 31)) workingDays = null;
 
-  const workingHours =
+  let workingHours =
     extractNumberByRegexes(
       full,
       [/(?:שעות\s*עבודה|סה["״']?כ\s*שעות)[^\d]*(\d[\d,.\s]+)/i],
       parseNumber,
     ) ?? null;
+
+  // If the extracted "hours" value is ≤ 31, it's almost certainly a day count
+  // that appeared next to a שעות עבודה label — move it to workingDays instead.
+  if (workingHours != null && workingHours <= 31) {
+    if (workingDays == null) workingDays = workingHours;
+    workingHours = null;
+  }
 
   return {
     employeeName,

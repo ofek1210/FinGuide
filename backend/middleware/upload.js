@@ -27,17 +27,20 @@ const storage = multer.diskStorage({
   },
 });
 
-// בדיקת סוג קובץ
-const fileFilter = (req, file, cb) => {
-  const isPdfMime = file.mimetype === 'application/pdf';
-  const ext = path.extname(file.originalname || '').toLowerCase();
-  const isPdfExt = ext === '.pdf';
+// בדיקת סוג קובץ — PDF ו-XLSX (הר הביטוח)
+const ALLOWED_MIMES = new Set([
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+]);
+const ALLOWED_EXTS = new Set(['.pdf', '.xlsx', '.xls']);
 
-  if (isPdfMime && isPdfExt) {
+const fileFilter = (req, file, cb) => {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  if (ALLOWED_MIMES.has(file.mimetype) || ALLOWED_EXTS.has(ext)) {
     return cb(null, true);
   }
-
-  return cb(new FileUploadError('רק קבצי PDF מורשים'), false);
+  return cb(new FileUploadError('רק קבצי PDF ו-XLSX מורשים'), false);
 };
 
 // הגדרות multer

@@ -8,6 +8,7 @@ const { buildPayslipHistoryIntelligence } = require('../services/payslipHistoryA
 const {
   computeFileChecksum,
   applyExtractionToDocument,
+  smartReprocessDocument,
   processFinancialDocument,
 } = require('../services/financialDocumentService');
 
@@ -85,7 +86,7 @@ exports.reprocessDocument = async (req, res, next) => {
     document.processingError = null;
     await document.save();
 
-    await applyExtractionToDocument(document, { userId: req.user.id });
+    await smartReprocessDocument(document, { userId: req.user.id });
 
     res.status(200).json({
       success: true,
@@ -234,6 +235,39 @@ exports.downloadDocument = async (req, res, next) => {
     }
 
     res.download(document.filePath, document.originalName);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// GET /api/documents/:id/digest — returns AI-generated digest for a payslip
+exports.getDocumentDigest = async (req, res, next) => {
+  try {
+    const document = await Document.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    }).select('status digest').lean();
+
+    if (!document) {
+      return next(new NotFoundError('מסמך לא נמצא'));
+    }
+
+    if (document.status !== 'completed') {
+      return res.status(202).json({ success: false, message: 'המסמך עדיין בעיבוד.' });
+    }
+
+    if (!document.digest?.text) {
+      return res.status(202).json({ success: false, message: 'הסיכום AI טרם נוצר.' });
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        text: document.digest.text,
+        generatedAt: document.digest.generatedAt,
+        model: document.digest.model,
+      },
+    });
   } catch (error) {
     next(error);
   }

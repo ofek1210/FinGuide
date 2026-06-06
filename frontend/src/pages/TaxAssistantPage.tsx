@@ -88,11 +88,19 @@ export default function TaxAssistantPage() {
       <div className="dashboard-shell">
         <PrivateTopbar />
 
-        <header className="feature-page-header tax-assistant-header">
-          <div>
-            <Scale size={28} aria-hidden="true" />
-            <h1>עוזר מס</h1>
-            <p>ניתוח ראשוני של תלושי השכר והמסמכים הקיימים שלך לפי שנת מס.</p>
+        <header className="ai-page-header tax-assistant-header">
+          <div className="ai-page-header-main">
+            <div className="ai-page-icon-wrap">
+              <Scale size={32} />
+            </div>
+            <div>
+              <div className="ai-page-badge">
+                <Scale size={12} />
+                <span>Tax AI</span>
+              </div>
+              <h1>ניתוח מס חכם</h1>
+              <p className="ai-page-subtitle">AI סורק את כל תלושי השכר וזיהוי חריגות מס, תלושים חסרים ונקודות לבדיקה.</p>
+            </div>
           </div>
           <label className="tax-assistant-year-select">
             <span>שנת מס</span>

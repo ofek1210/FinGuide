@@ -126,6 +126,19 @@ async function ocrWithTesseract(imagePath, { psm = '6' } = {}) {
 }
 
 async function extractPdfEmbeddedText(pdfPath, { password } = {}) {
+  // First try pdftotext (Poppler) — better Hebrew support than pdf-parse/pdf.js
+  try {
+    const passwordArgs = password ? ['-upw', password] : [];
+    const { stdout } = await execFileAsync('pdftotext', [...passwordArgs, '-layout', pdfPath, '-']);
+    const text = (stdout || '').trim();
+    if (text.length >= 50) {
+      return text;
+    }
+  } catch (_ignored) {
+    // pdftotext unavailable or failed — fall through to pdf-parse
+  }
+
+  // Fallback: pdf-parse
   try {
     if (!pdfParse) {
       // eslint-disable-next-line global-require
