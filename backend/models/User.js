@@ -47,14 +47,39 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    welcomeShown: {
-      type: Boolean,
-      default: false,
-      index: true,
-    },
-    welcomeShownAt: {
-      type: Date,
-      default: null,
+    gmailIntegration: {
+      connected: {
+        type: Boolean,
+        default: false,
+      },
+      connectedAt: {
+        type: Date,
+        default: null,
+      },
+      lastSyncAt: {
+        type: Date,
+        default: null,
+      },
+      gmailEmail: {
+        type: String,
+        default: null,
+        trim: true,
+        lowercase: true,
+      },
+      accessTokenEnc: {
+        type: String,
+        default: null,
+        select: false,
+      },
+      refreshTokenEnc: {
+        type: String,
+        default: null,
+        select: false,
+      },
+      tokenExpiry: {
+        type: Date,
+        default: null,
+      },
     },
     onboarding: {
       completed: {

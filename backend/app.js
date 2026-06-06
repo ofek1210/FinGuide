@@ -14,6 +14,9 @@ const profileRoutes = require('./routes/profile');
 const insightsRoutes = require('./routes/insights');
 const recommendationsRoutes = require('./routes/recommendations');
 const notificationsRoutes = require('./routes/notifications');
+const gmailIntegrationRoutes = require('./routes/gmailIntegration');
+const taxAssistantRoutes = require('./routes/taxAssistant');
+const financialHealthRoutes = require('./routes/financialHealth');
 
 const createApp = () => {
   const app = express();
@@ -82,6 +85,9 @@ const createApp = () => {
   app.use('/api/insights', insightsRoutes);
   app.use('/api/recommendations', recommendationsRoutes);
   app.use('/api/notifications', notificationsRoutes);
+  app.use('/api/integrations/gmail', gmailIntegrationRoutes);
+  app.use('/api/tax-assistant', taxAssistantRoutes);
+  app.use('/api/financial-health', financialHealthRoutes);
 
   // 404 handler
   app.use((req, res) => {

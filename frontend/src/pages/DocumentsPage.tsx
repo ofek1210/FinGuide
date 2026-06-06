@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useNavigate } from "react-router-dom";
+import { Mail } from "lucide-react";
 import Loader from "../components/ui/Loader";
 import Toast from "../components/ui/Toast";
 import ToastContainer from "../components/ui/ToastContainer";
@@ -9,6 +10,7 @@ import PrivateTopbar from "../components/PrivateTopbar";
 import {
   listDocuments,
   uploadDocument,
+  unlockDocument,
   downloadDocument,
   removeDocument,
   type DocumentItem as ApiDocumentItem,
@@ -21,6 +23,7 @@ import {
   DOCUMENT_CATEGORY_LABELS,
   formatDocumentMetadataSummary,
 } from "../utils/documentMetadata";
+import { getDocumentImportSourceLabel } from "../utils/documentSource";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
@@ -30,6 +33,7 @@ type DocumentStatus =
   | "pending"
   | "processing"
   | "completed"
+  | "needs_password"
   | "failed";
 
 interface DocumentItem {
@@ -39,6 +43,7 @@ interface DocumentItem {
   fileSize?: number;
   uploadedAt?: string;
   metadata: DocumentMetadata;
+  source?: ApiDocumentItem["source"];
 }
 
 type UploadFormState = {
@@ -63,6 +68,7 @@ const removeId = (ids: string[], id: string) => ids.filter((item) => item !== id
 const mapStatus = (status?: ApiDocumentItem["status"]): DocumentStatus => {
   if (status === "completed") return "completed";
   if (status === "processing") return "processing";
+  if (status === "needs_password") return "needs_password";
   if (status === "failed") return "failed";
   if (status === "uploaded") return "pending";
   return "pending";
@@ -74,6 +80,7 @@ const mapApiDocument = (document: ApiDocumentItem): DocumentItem => ({
   status: mapStatus(document.status),
   fileSize: document.fileSize,
   uploadedAt: document.uploadedAt,
+  source: document.source,
   metadata: document.metadata ?? {
     category: "other",
     source: "manual_upload",
@@ -85,8 +92,11 @@ const statusLabels: Record<DocumentStatus, string> = {
   pending: "ממתין לעיבוד",
   processing: "בעיבוד",
   completed: "הושלם",
+  needs_password: "נדרשת סיסמה",
   failed: "נכשל",
 };
+
+const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 
 interface UploadAreaProps {
   state: UploadState;
@@ -222,8 +232,10 @@ interface DocumentCardProps {
   onDownload: (document: DocumentItem) => void;
   onDelete: (document: DocumentItem) => void;
   onViewDetails: (document: DocumentItem) => void;
+  onUnlockPassword: (document: DocumentItem, password: string) => Promise<void>;
   isDeleting: boolean;
   isDownloading: boolean;
+  isUnlocking: boolean;
 }
 
 function DocumentCard({
@@ -231,9 +243,12 @@ function DocumentCard({
   onDownload,
   onDelete,
   onViewDetails,
+  onUnlockPassword,
   isDeleting,
   isDownloading,
+  isUnlocking,
 }: DocumentCardProps) {
+  const [pdfPassword, setPdfPassword] = useState("");
   const statusClass =
     document.status === "completed"
       ? "uploaded"
@@ -243,6 +258,7 @@ function DocumentCard({
   const isTemp = document.id.startsWith("temp-");
   const isUploading = document.status === "uploading";
   const isFailed = document.status === "failed";
+  const needsPassword = document.status === "needs_password";
   const disableDownload = isTemp || isUploading || isFailed || isDownloading;
   const disableDelete = isTemp || isUploading || isDeleting;
   const statusIcon =
@@ -263,6 +279,7 @@ function DocumentCard({
         <span className="document-name">{document.name}</span>
         <span className="document-meta">
           {[
+            getDocumentImportSourceLabel(document),
             formatDocumentMetadataSummary(document.metadata),
             document.uploadedAt
               ? new Date(document.uploadedAt).toLocaleDateString("he-IL")
@@ -273,6 +290,33 @@ function DocumentCard({
         </span>
       </div>
       <span className="document-status">{statusLabels[document.status]}</span>
+      {needsPassword ? (
+        <div className="document-password-panel">
+          <p>קובץ ה-PDF מוגן בסיסמה. הסיסמה משמשת רק לפתיחה ועיבוד — לא נשמרת במערכת.</p>
+          <label className="document-password-field">
+            <span>סיסמת PDF</span>
+            <input
+              type="password"
+              value={pdfPassword}
+              onChange={(event) => setPdfPassword(event.target.value)}
+              autoComplete="off"
+              disabled={isUnlocking}
+            />
+          </label>
+          <label className="document-password-remember">
+            <input type="checkbox" disabled />
+            <span>שמור סיסמה מוצפנת עבור תלושים עתידיים מאותו מעסיק (בקרוב)</span>
+          </label>
+          <button
+            type="button"
+            className="document-action"
+            disabled={isUnlocking || !pdfPassword.trim()}
+            onClick={() => void onUnlockPassword(document, pdfPassword.trim())}
+          >
+            {isUnlocking ? "פותח..." : "פתח והמשך עיבוד"}
+          </button>
+        </div>
+      ) : null}
       <div className="document-actions">
         <button
           className="document-action"
@@ -325,6 +369,7 @@ export default function DocumentsPage() {
   const [actionError, setActionError] = useState("");
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
+  const [unlockingIds, setUnlockingIds] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadForm, setUploadForm] = useState<UploadFormState>(DEFAULT_UPLOAD_FORM);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -566,6 +611,32 @@ export default function DocumentsPage() {
     navigate(`/documents/${doc.id}`);
   };
 
+  const handleUnlockPassword = async (doc: DocumentItem, password: string) => {
+    if (doc.id.startsWith("temp-")) return;
+
+    setActionError("");
+    setUnlockingIds((prev) => addUniqueId(prev, doc.id));
+
+    const response = await unlockDocument(doc.id, password);
+    if (response.data) {
+      setDocuments((prev) =>
+        prev.map((item) => (item.id === doc.id ? mapApiDocument(response.data!) : item)),
+      );
+    }
+    if (!response.success || !response.data) {
+      setActionError(response.message || "פתיחת הקובץ נכשלה.");
+      setUnlockingIds((prev) => removeId(prev, doc.id));
+      return;
+    }
+    setUnlockingIds((prev) => removeId(prev, doc.id));
+    setToastMessage(
+      response.data.status === "completed"
+        ? "המסמך נפתח ועובד בהצלחה."
+        : "המסמך נפתח — ייתכן שיידרשו השלמות נוספות.",
+    );
+    window.setTimeout(() => setToastMessage(null), 5000);
+  };
+
   const handleDownload = async (doc: DocumentItem) => {
     if (doc.id.startsWith("temp-")) return;
 
@@ -626,6 +697,31 @@ export default function DocumentsPage() {
           onUpload={handleUpload}
         />
 
+        <section className="documents-card documents-gmail-import">
+          <div className="documents-gmail-import-head">
+            <Mail size={22} aria-hidden="true" />
+            <div>
+              <h2>ייבוא תלושים מהמייל</h2>
+              <p>חברו Gmail וייבאו תלושי שכר מצורפי PDF — גישה לקריאה בלבד.</p>
+            </div>
+          </div>
+          <ul className="documents-gmail-permissions">
+            <li>גישת Gmail לקריאה בלבד ({GMAIL_READONLY_SCOPE})</li>
+            <li>חיפוש רק במיילים הקשורים לתלושי שכר</li>
+            <li>ייבוא מצורפי PDF בלבד</li>
+            <li>לא נשלח, לא נמחק ולא ישתנה שום דבר בתיבת המייל</li>
+          </ul>
+          <button
+            type="button"
+            className="landing-primary documents-gmail-import-btn"
+            onClick={() =>
+              navigate(`${APP_ROUTES.integrationsEmail}?from=documents`)
+            }
+          >
+            ייבוא תלושים מהמייל
+          </button>
+        </section>
+
         <section className="documents-list">
           <div className="documents-list-header">
             <h2>המסמכים שלכם</h2>
@@ -666,8 +762,10 @@ export default function DocumentsPage() {
                   onDelete={handleDelete}
                   onDownload={handleDownload}
                   onViewDetails={handleViewDetails}
+                  onUnlockPassword={handleUnlockPassword}
                   isDeleting={deletingIds.includes(doc.id)}
                   isDownloading={downloadingIds.includes(doc.id)}
+                  isUnlocking={unlockingIds.includes(doc.id)}
                 />
               ))}
             </div>

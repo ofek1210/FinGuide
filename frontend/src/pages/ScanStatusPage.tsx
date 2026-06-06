@@ -64,6 +64,12 @@ export default function ScanStatusPage() {
       return;
     }
 
+    if (nextStatus === "needs_password") {
+      setStatus("failed");
+      setError("הקובץ מוגן בסיסמה. הזינו את הסיסמה בעמוד המסמכים כדי להמשיך.");
+      return;
+    }
+
     setStatus(nextStatus);
     setError("");
   }, [documentId]);
