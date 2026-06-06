@@ -30,6 +30,7 @@ const buildCurrentUserResponse = user => ({
       email: user.email,
       avatarUrl: user.avatarUrl || null,
       onboardingCompleted: Boolean(user.onboarding?.completed),
+      welcomeShown: Boolean(user.welcomeShown),
       createdAt: user.createdAt,
     },
   },
@@ -103,6 +104,7 @@ const buildAuthResponse = user => ({
       email: user.email,
       avatarUrl: user.avatarUrl || null,
       onboardingCompleted: Boolean(user.onboarding?.completed),
+      welcomeShown: Boolean(user.welcomeShown),
     },
   },
   message: 'התחברות בוצעה בהצלחה',
@@ -144,6 +146,7 @@ const register = async (req, res, next) => {
           name: user.name,
           email: user.email,
           onboardingCompleted: Boolean(user.onboarding?.completed),
+          welcomeShown: Boolean(user.welcomeShown),
         },
         token,
       },
@@ -524,6 +527,34 @@ const updateProfileImage = async (req, res, next) => {
   }
 };
 
+/**
+ * @route   POST /api/auth/welcome/complete
+ * @desc    Mark the one-time welcome screen as shown for the authenticated user
+ * @access  Private
+ */
+const markWelcomeShown = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'משתמש לא נמצא',
+      });
+    }
+
+    if (!user.welcomeShown) {
+      user.welcomeShown = true;
+      user.welcomeShownAt = new Date();
+      await user.save();
+    }
+
+    return res.json(buildCurrentUserResponse(user));
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -534,4 +565,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   updateProfileImage,
+  markWelcomeShown,
 };
