@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { markWelcomeShown } from "../api/auth.api";
 import { APP_ROUTES } from "../types/navigation";
 import Loader from "../components/ui/Loader";
+import { clearWelcomeBackPending } from "../utils/welcomeBackSession";
 
 type AnimalFact = {
   name: string;
@@ -203,6 +204,9 @@ export default function WelcomePage() {
     } catch {
       // even if persistence fails we still let the user move on
     }
+    // New-user welcome has its own greeting; suppress the returning-user
+    // welcome-back screen for this session so the user doesn't see both.
+    clearWelcomeBackPending();
     await auth.refresh();
     const next = auth.user?.onboardingCompleted === false ? APP_ROUTES.onboarding : APP_ROUTES.dashboard;
     navigate(next, { replace: true });

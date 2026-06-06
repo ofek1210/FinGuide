@@ -11,6 +11,7 @@ import ToastContainer from "./ui/ToastContainer";
 import Loader from "./ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
 import { emitAuthChanged } from "../auth/authEvents";
+import { markWelcomeBackPending } from "../utils/welcomeBackSession";
 
 interface AuthScreenProps {
   mode: "login" | "register";
@@ -245,10 +246,20 @@ export default function AuthScreen({
   }, [isForgotModalOpen]);
 
   const persistSession = useCallback(
-    (token: string, user?: { id: string; name: string; email: string }) => {
+    (
+      token: string,
+      user?: { id: string; name: string; email: string },
+      options?: { isLogin?: boolean },
+    ) => {
       localStorage.setItem("token", token);
       if (user) {
         localStorage.setItem("auth_user", JSON.stringify(user));
+      }
+      // Returning-user welcome runs once per login session. New-user
+      // /welcome flow ([WelcomePage]) consumes/clears this flag, so a
+      // freshly-registered user never sees both screens.
+      if (options?.isLogin) {
+        markWelcomeBackPending();
       }
       // Fires synchronously → AuthProvider's listener calls refresh() which queues
       // setStatus("checking"). By batching it with the navigate() below, RequireAuth
@@ -274,7 +285,7 @@ export default function AuthScreen({
           return;
         }
 
-        persistSession(token, response.data?.user);
+        persistSession(token, response.data?.user, { isLogin: true });
       } catch {
         setError("אירעה שגיאה בהתחברות עם Google, נסו שוב בהמשך.");
       } finally {
@@ -420,7 +431,7 @@ export default function AuthScreen({
         return;
       }
 
-      persistSession(token, response.data?.user);
+      persistSession(token, response.data?.user, { isLogin: true });
     } catch {
       setError(
         isRegister

@@ -6258,7 +6258,11 @@ body {
 [data-theme="light"] .team-founder-issues li,
 [data-theme="light"] .team-founder-pivot,
 [data-theme="light"] .team-founder-closing {
-  color: var(--rapyd-black) !important;
+  color: #000000 !important;
+}
+
+[data-theme="light"] .team-founder-issues li::before {
+  color: #FF00A8;
 }
 
 [data-theme="light"] .team-founder-signature {
@@ -10870,5 +10874,375 @@ body {
 
 [data-theme="light"] .welcome-animal-card {
   border-color: var(--rapyd-black);
+}
+
+/* ============================================================
+   WELCOME BACK PAGE — /welcome-back
+   Founder-letter experience for returning members. Mirrors the
+   CEO Message section ([.welcome-founder]) in language and
+   hierarchy: oversized headline, large tilted portrait, mint
+   eyebrow chip, pull-quote, signature, founder-style sticker
+   shadow. Intentionally short — no marquees, no features grid.
+   ============================================================ */
+
+.welcome-back-page {
+  min-height: 100vh;
+  background: var(--rapyd-black) !important;
+  color: var(--rapyd-white) !important;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.welcome-back-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(90, 38, 255, 0.35), transparent 38%),
+    radial-gradient(circle at 92% 0%, rgba(255, 0, 168, 0.30), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(0, 255, 208, 0.18), transparent 55%);
+  z-index: 0;
+}
+
+.welcome-back-main {
+  position: relative;
+  z-index: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: clamp(64px, 9vw, 120px) clamp(20px, 4vw, 32px);
+  display: flex;
+  justify-content: center;
+}
+
+/* Card — same DNA as .welcome-founder */
+.welcome-back-founder {
+  width: 100%;
+  border: 3px solid var(--rapyd-white);
+  background: var(--rapyd-bg-elev-1);
+  padding: clamp(36px, 5vw, 72px);
+  position: relative;
+  box-shadow: 14px 14px 0 var(--rapyd-purple);
+  animation: welcome-back-rise 640ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes welcome-back-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Two-column layout — content LEFT, portrait RIGHT on desktop;
+   portrait FIRST, content second on mobile per the spec. */
+.welcome-back-grid {
+  display: grid;
+  gap: clamp(32px, 4vw, 64px);
+  align-items: stretch;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "portrait"
+    "content";
+}
+
+@media (min-width: 881px) {
+  .welcome-back-grid {
+    grid-template-columns: 1fr minmax(360px, 520px);
+    grid-template-areas: "content portrait";
+    align-items: stretch;
+  }
+}
+
+.welcome-back-content {
+  grid-area: content;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Mint eyebrow chip — matches .welcome-founder-eyebrow */
+.welcome-back-eyebrow {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 18px;
+  background: var(--rapyd-mint);
+  color: var(--rapyd-black);
+  font-family: "Anton", "Bebas Neue", sans-serif;
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 var(--rapyd-black);
+}
+
+/* Headline — billboard scale, Anton, first-name in white as the
+   anchor. Mirrors .welcome-founder-greeting / .welcome-hero-title. */
+.welcome-back-headline {
+  margin: 0;
+  font-family: "Anton", "Bebas Neue", "Heebo", sans-serif;
+  font-size: clamp(40px, 6vw, 72px);
+  line-height: 0.98;
+  letter-spacing: -0.005em;
+  color: var(--rapyd-yellow);
+  text-transform: uppercase;
+}
+
+.welcome-back-headline strong {
+  color: var(--rapyd-white);
+  font-weight: inherit;
+}
+
+.welcome-back-sub {
+  margin: 0;
+  font-family: "Heebo", "Space Grotesk", sans-serif;
+  font-size: clamp(18px, 1.7vw, 24px);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--rapyd-white);
+}
+
+.welcome-back-body {
+  margin: 0;
+  font-family: "Heebo", "Space Grotesk", sans-serif;
+  font-size: clamp(16px, 1.4vw, 19px);
+  line-height: 1.65;
+  color: var(--rapyd-text-secondary);
+  max-width: 56ch;
+}
+
+/* Founder pull-quote — same energy as .welcome-founder-mission
+   (yellow block with sticker shadow) but framed as a real quote. */
+.welcome-back-quote {
+  margin: 8px 0 4px;
+  padding: clamp(20px, 2.4vw, 30px) clamp(22px, 2.6vw, 34px);
+  background: var(--rapyd-yellow);
+  color: var(--rapyd-black);
+  box-shadow: 8px 8px 0 var(--rapyd-black);
+  position: relative;
+}
+
+.welcome-back-quote::before {
+  content: "\201C";
+  position: absolute;
+  top: -28px;
+  left: 12px;
+  font-family: "Anton", "Bebas Neue", serif;
+  font-size: 96px;
+  line-height: 1;
+  color: var(--rapyd-pink);
+  text-shadow: 3px 3px 0 var(--rapyd-black);
+  pointer-events: none;
+}
+
+.welcome-back-quote p {
+  margin: 0;
+  font-family: "Space Grotesk", "Heebo", sans-serif;
+  font-size: clamp(17px, 1.6vw, 22px);
+  font-weight: 600;
+  font-style: italic;
+  line-height: 1.45;
+  color: var(--rapyd-black);
+}
+
+/* Signature — mirrors .welcome-founder-signature */
+.welcome-back-signature {
+  margin-top: 12px;
+  padding-top: 20px;
+  border-top: 2px solid var(--rapyd-border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.welcome-back-signature-name {
+  font-family: "Anton", "Bebas Neue", sans-serif;
+  font-size: clamp(20px, 2vw, 26px);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--rapyd-white);
+}
+
+.welcome-back-signature-role {
+  font-family: "Space Grotesk", "Heebo", sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--rapyd-text-muted);
+}
+
+/* Portrait — tilted yellow frame with pink sticker. Stretches to
+   match the full height of the content column on desktop so the
+   image becomes a true visual anchor for the founder letter. */
+.welcome-back-portrait {
+  grid-area: portrait;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  align-self: stretch;
+  min-height: 0;
+}
+
+.welcome-back-portrait-frame {
+  width: 100%;
+  height: 100%;
+  background: var(--rapyd-yellow);
+  border: 3px solid var(--rapyd-white);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 14px 14px 0 var(--rapyd-pink);
+  transform: rotate(1.5deg);
+  transition: transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.welcome-back-portrait-frame:hover {
+  transform: rotate(0deg) translateY(-4px);
+}
+
+.welcome-back-portrait-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+  filter: contrast(1.05);
+}
+
+/* Mobile only — bring back a sane aspect ratio so the image doesn't
+   collapse to a wafer-thin strip when stacked above the content. */
+@media (max-width: 880px) {
+  .welcome-back-portrait-frame {
+    aspect-ratio: 4 / 5;
+    height: auto;
+    max-width: 360px;
+  }
+}
+
+/* CTA — same family as .welcome-cta-button (founder-letter sized) */
+.welcome-back-cta {
+  margin-top: 14px;
+  align-self: flex-start;
+  appearance: none;
+  border: 3px solid var(--rapyd-black);
+  background: var(--rapyd-black);
+  color: var(--rapyd-yellow);
+  font-family: "Anton", "Bebas Neue", "Heebo", sans-serif;
+  font-size: clamp(18px, 1.9vw, 24px);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding: 16px 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  box-shadow: 8px 8px 0 var(--rapyd-pink);
+  transition:
+    transform 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    box-shadow 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    background-color 140ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    color 140ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.welcome-back-cta:hover:not(:disabled) {
+  transform: translate(-3px, -3px);
+  box-shadow: 12px 12px 0 var(--rapyd-pink);
+  background: var(--rapyd-pink);
+  color: var(--rapyd-white);
+  border-color: var(--rapyd-black);
+}
+
+.welcome-back-cta:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 4px 4px 0 var(--rapyd-pink);
+}
+
+.welcome-back-cta:focus-visible {
+  outline: 3px solid var(--rapyd-mint);
+  outline-offset: 4px;
+}
+
+.welcome-back-cta:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+/* Mobile tightening */
+@media (max-width: 880px) {
+  .welcome-back-portrait-frame {
+    transform: rotate(-1.5deg);
+    box-shadow: 10px 10px 0 var(--rapyd-pink);
+  }
+  .welcome-back-cta {
+    align-self: stretch;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .welcome-back-founder {
+    box-shadow: 8px 8px 0 var(--rapyd-purple);
+  }
+  .welcome-back-quote {
+    box-shadow: 6px 6px 0 var(--rapyd-black);
+  }
+  .welcome-back-quote::before {
+    font-size: 72px;
+    top: -22px;
+  }
+  .welcome-back-portrait-frame {
+    box-shadow: 8px 8px 0 var(--rapyd-pink);
+  }
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  .welcome-back-founder,
+  .welcome-back-portrait-frame {
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .welcome-back-cta {
+    transition: none !important;
+  }
+}
+
+/* ----- LIGHT THEME ----- */
+[data-theme="light"] .welcome-back-page {
+  background: var(--rapyd-cream) !important;
+  color: #000 !important;
+}
+
+[data-theme="light"] .welcome-back-page::before {
+  background:
+    radial-gradient(circle at 8% 12%, rgba(90, 38, 255, 0.10), transparent 38%),
+    radial-gradient(circle at 92% 0%, rgba(255, 0, 168, 0.10), transparent 40%),
+    radial-gradient(circle at 50% 100%, rgba(0, 200, 165, 0.08), transparent 55%);
+}
+
+[data-theme="light"] .welcome-back-founder {
+  background: #fff;
+  border-color: #000;
+  box-shadow: 14px 14px 0 var(--rapyd-purple);
+}
+
+[data-theme="light"] .welcome-back-headline { color: var(--rapyd-pink); }
+[data-theme="light"] .welcome-back-headline strong { color: #000; }
+[data-theme="light"] .welcome-back-sub { color: #000; }
+[data-theme="light"] .welcome-back-body { color: rgba(0, 0, 0, 0.72); }
+
+[data-theme="light"] .welcome-back-signature-name { color: #000; }
+[data-theme="light"] .welcome-back-signature-role { color: rgba(0, 0, 0, 0.6); }
+[data-theme="light"] .welcome-back-signature {
+  border-top-color: rgba(0, 0, 0, 0.15);
+}
+
+[data-theme="light"] .welcome-back-portrait-frame {
+  border-color: #000;
 }
 

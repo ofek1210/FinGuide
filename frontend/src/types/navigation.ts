@@ -4,6 +4,7 @@ export const APP_ROUTES = {
   register: "/register",
   resetPassword: "/reset-password",
   welcome: "/welcome",
+  welcomeBack: "/welcome-back",
   onboarding: "/onboarding",
   dashboard: "/dashboard",
   documents: "/documents",
@@ -34,6 +35,7 @@ export type AppRoute = (typeof APP_ROUTES)[keyof typeof APP_ROUTES];
 
 export const PRIVATE_ROUTES: AppRoute[] = [
   APP_ROUTES.welcome,
+  APP_ROUTES.welcomeBack,
   APP_ROUTES.onboarding,
   APP_ROUTES.dashboard,
   APP_ROUTES.documents,
