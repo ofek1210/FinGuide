@@ -9,7 +9,6 @@ const {
   changePassword,
   forgotPassword,
   resetPassword,
-  markWelcomeShown,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
@@ -150,6 +149,5 @@ router.post(
   handleProfileUploadError,
   updateProfileImage
 );
-router.post('/welcome/complete', protect, markWelcomeShown);
 
 module.exports = router;
