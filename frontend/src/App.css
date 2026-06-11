@@ -6167,6 +6167,30 @@
   padding: 1rem 0;
 }
 
+/* Deductions breakdown section */
+.deductions-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.2rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  font-size: 0.88rem;
+}
+
+.deductions-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.deductions-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .dashboard-card-header-row {
   display: flex;
   align-items: center;
@@ -6366,17 +6390,53 @@
 }
 
 .notification-dropdown-item {
-  display: block;
+  display: flex;
+  align-items: center;
   width: 100%;
+  text-align: right;
+  border: none;
+  background: none;
+}
+
+.notification-dropdown-item.is-unread {
+  background: rgba(124, 58, 237, 0.06);
+}
+
+.notification-dropdown-item-content {
+  flex: 1;
+  display: block;
   text-align: right;
   padding: 0.65rem 0.85rem;
   border: none;
   background: none;
   cursor: pointer;
+  min-width: 0;
 }
 
-.notification-dropdown-item.is-unread {
-  background: rgba(124, 58, 237, 0.06);
+.notification-dropdown-delete {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 0.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+  color: var(--color-muted, #888);
+  border-radius: 4px;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.notification-dropdown-item:hover .notification-dropdown-delete {
+  opacity: 1;
+}
+
+.notification-dropdown-delete:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
 }
 
 .notification-dropdown-footer {
@@ -6538,7 +6598,7 @@
   background: var(--dash-card, var(--figma-card-dark));
   border: 1px solid var(--dash-border);
   border-radius: 14px;
-  overflow: hidden;
+  overflow: visible;
 }
 .copilot-section-card-header {
   display: flex;
@@ -6547,6 +6607,7 @@
   padding: 14px 18px;
   border-bottom: 1px solid var(--dash-border);
   background: rgba(255,255,255,0.03);
+  border-radius: 14px 14px 0 0;
 }
 .copilot-section-icon { color: var(--rapyd-yellow, #FAFF00); display: flex; }
 .copilot-section-title { font-size: 0.95rem; font-weight: 600; margin: 0; }
@@ -6626,6 +6687,74 @@
 .copilot-bar-val { width: 120px; text-align: left; flex-shrink: 0; font-size: 0.75rem; }
 
 .copilot-budget-ideal { font-size: 0.75rem; color: var(--dash-muted); margin-top: 10px; }
+
+/* Expenses editor */
+.copilot-expenses-editor {
+  margin-top: 1.25rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 1rem;
+}
+
+.copilot-expenses-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 0.5rem 0.85rem;
+  font-size: 0.88rem;
+  cursor: pointer;
+  color: inherit;
+  gap: 0.5rem;
+}
+
+.copilot-expenses-toggle:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.copilot-expenses-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.copilot-expense-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--dash-muted, #aaa);
+}
+
+.copilot-expense-input-wrap {
+  display: flex;
+  align-items: center;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 0 0.75rem;
+}
+
+.copilot-expense-currency {
+  font-size: 0.9rem;
+  opacity: 0.6;
+  margin-left: 0.4rem;
+}
+
+.copilot-expense-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0.5rem 0;
+  font-size: 0.95rem;
+  color: inherit;
+  text-align: right;
+  direction: ltr;
+}
 .copilot-budget-recs { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-direction: column; gap: 8px; }
 .copilot-budget-rec {
   padding: 10px 12px;
