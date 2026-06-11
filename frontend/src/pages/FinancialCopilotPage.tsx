@@ -22,8 +22,8 @@ const RISK_OPTIONS: { value: RiskTolerance; label: string; desc: string }[] = [
 
 const GOAL_TYPES = [
   { value: "emergency_fund", label: "קרן חירום" },
-  { value: "pension", label: "פנסיה" },
-  { value: "housing", label: "רכישת דירה" },
+  { value: "retirement", label: "פנסיה / פרישה" },
+  { value: "home_purchase", label: "רכישת דירה" },
   { value: "car", label: "רכב" },
   { value: "education", label: "לימודים" },
   { value: "travel", label: "טיול גדול" },
@@ -74,9 +74,105 @@ function RiskSelector({ current, onSave }: { current: RiskTolerance | null; onSa
   );
 }
 
-function BudgetWidget({ analysis }: { analysis: CopilotAnalysis["budgetAnalysis"] }) {
+function ExpensesEditor({
+  monthlyExpenses,
+  monthlyDebts,
+  onSave,
+}: {
+  monthlyExpenses: number | null;
+  monthlyDebts: number | null;
+  onSave: (expenses: number, debts: number) => Promise<void>;
+}) {
+  const [expenses, setExpenses] = useState(monthlyExpenses ?? 0);
+  const [debts, setDebts] = useState(monthlyDebts ?? 0);
+  const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(!monthlyExpenses && !monthlyDebts);
+
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(expenses, debts);
+    setSaving(false);
+    setOpen(false);
+  };
+
+  return (
+    <div className="copilot-expenses-editor">
+      <button
+        type="button"
+        className="copilot-expenses-toggle"
+        onClick={() => setOpen(o => !o)}
+      >
+        <span>✏️ עדכן הוצאות חודשיות</span>
+        {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+      {open && (
+        <div className="copilot-expenses-form">
+          <label className="copilot-expense-label">
+            <span>הוצאות שוטפות (מזון, תחבורה, בידור...)</span>
+            <div className="copilot-expense-input-wrap">
+              <span className="copilot-expense-currency">₪</span>
+              <input
+                type="number"
+                min={0}
+                value={expenses || ""}
+                onChange={e => setExpenses(Number(e.target.value))}
+                placeholder="0"
+                className="copilot-expense-input"
+              />
+            </div>
+          </label>
+          <label className="copilot-expense-label">
+            <span>הלוואות / קבועים (משכנתא, אשראי...)</span>
+            <div className="copilot-expense-input-wrap">
+              <span className="copilot-expense-currency">₪</span>
+              <input
+                type="number"
+                min={0}
+                value={debts || ""}
+                onChange={e => setDebts(Number(e.target.value))}
+                placeholder="0"
+                className="copilot-expense-input"
+              />
+            </div>
+          </label>
+          <button
+            type="button"
+            className="copilot-save-btn"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? "שומר..." : "עדכן תקציב"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BudgetWidget({
+  analysis,
+  profile,
+  onSaveExpenses,
+}: {
+  analysis: CopilotAnalysis["budgetAnalysis"];
+  profile: CopilotAnalysis["profile"];
+  onSaveExpenses: (expenses: number, debts: number) => Promise<void>;
+}) {
+  const expensesEditor = (
+    <ExpensesEditor
+      monthlyExpenses={profile.monthlyExpenses}
+      monthlyDebts={profile.monthlyDebts}
+      onSave={onSaveExpenses}
+    />
+  );
+
   if (!analysis.available) {
-    return <p className="copilot-empty-note">{analysis.reason ?? "אין נתונים"}</p>;
+    return (
+      <>
+        <p className="copilot-empty-note">{analysis.reason ?? "אין נתונים"}</p>
+        {expensesEditor}
+      </>
+    );
   }
   const { breakdown, health, savingsRate, monthlyFreeFlow, recommendations, ideal } = analysis;
   return (
@@ -117,6 +213,8 @@ function BudgetWidget({ analysis }: { analysis: CopilotAnalysis["budgetAnalysis"
           ))}
         </ul>
       )}
+
+      {expensesEditor}
     </div>
   );
 }
@@ -412,7 +510,16 @@ export default function FinancialCopilotPage() {
             </SectionCard>
 
             <SectionCard icon={<TrendingUp size={20} />} title="ניתוח תקציב">
-              {data && <BudgetWidget analysis={data.budgetAnalysis} />}
+              {data && (
+                <BudgetWidget
+                  analysis={data.budgetAnalysis}
+                  profile={data.profile}
+                  onSaveExpenses={async (expenses, debts) => {
+                    await updateCopilotProfile({ monthlyExpenses: expenses, monthlyDebts: debts });
+                    await load();
+                  }}
+                />
+              )}
             </SectionCard>
 
             <SectionCard icon={<TrendingUp size={20} />} title="המלצות השקעה">

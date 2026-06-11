@@ -10,6 +10,7 @@ import {
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import Loader from "../components/ui/Loader";
+import { renderMarkdown } from "../utils/renderMarkdown";
 
 const AI_CHAT_STORAGE_KEY = "finguide_ai_chat";
 const MAX_HISTORY_TURNS = 6;
@@ -41,13 +42,20 @@ function buildHistory(messages: ChatMessage[]): ConversationMessage[] {
 const defaultWelcome: ChatMessage = {
   id: "welcome",
   role: "assistant",
-  content: "שלום, אני כאן כדי לעזור לכם להבין את המסמכים הפיננסיים שלכם.",
+  content: "שלום! אני העוזר הפיננסי החכם של FinGuide, מופעל על ידי Claude AI.\n\nאני יכול לענות על שאלות כמו:\n- **כמה שכר נטו קיבלת** החודש\n- **ניתוח הפרשות פנסיה** ביחס לחובה החוקית\n- **סימולציה**: מה יקרה אם תקבל העלאה של 10%?\n- **זיהוי חריגות** בתלוש השכר\n- **שאלות כלליות** על מס, ביטוח לאומי, קרן השתלמות\n\nשאל/י אותי כל שאלה פיננסית!",
 };
 
 const promptSuggestions = [
-  "תסכם לי את מצב המסמכים שלי",
-  "איזה פעולות מומלץ לבצע החודש?",
-  "מה נראה חריג במסמכים שהעליתי?",
+  "כמה שכר נטו קיבלתי החודש?",
+  "כמה פנסיה מנכים לי מהשכר?",
+  "מה השתנה בתלוש האחרון שלי?",
+  "יש חריגות בתלושים שלי?",
+  "מה יקרה אם אקבל העלאה של 10%?",
+  "כמה מנכים לי מס הכנסה?",
+  "מה יתרת ימי החופשה שלי?",
+  "תן לי סיכום פיננסי של המצב שלי.",
+  "אילו ביטוחים אני צריך?",
+  "כמה קרן השתלמות חסכתי?",
 ] as const;
 
 // Check if the browser supports Web Speech API
@@ -249,7 +257,7 @@ export default function AssistantPage() {
             <div>
               <h1 className="feature-page-title">עוזר AI פיננסי</h1>
               <p className="feature-page-subtitle">
-                אפשר לשאול על תלושים, סטטוסים של מסמכים והכוונה כללית.
+                שאל שאלות על שכר, פנסיה, מס, חריגות וסימולציות — מבוסס על הנתונים שלך.
               </p>
             </div>
             <div className="ai-card-actions">
@@ -289,12 +297,14 @@ export default function AssistantPage() {
               {hasMessages ? (
                 messages.map((message) => (
                   <div key={message.id} className={`ai-message ${message.role}`}>
-                    <span>
-                      {message.content}
-                      {message.isStreaming ? (
-                        <span className="ai-cursor" aria-hidden="true">▋</span>
-                      ) : null}
-                    </span>
+                    <span
+                      // Safe: content is from our own AI, not user-supplied HTML
+                      // eslint-disable-next-line react/no-danger
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+                    />
+                    {message.isStreaming ? (
+                      <span className="ai-cursor" aria-hidden="true">▋</span>
+                    ) : null}
                     {message.role === "assistant" && !message.isStreaming && (
                       <div className="ai-message-actions">
                         <button
@@ -306,7 +316,9 @@ export default function AssistantPage() {
                           העתק תשובה
                         </button>
                         {message.source ? (
-                          <em className="ai-model">{message.source}</em>
+                          <em className={`ai-model source-${message.source}`}>
+                            {message.source === "claude" ? "✦ Claude AI" : message.source === "rule" ? "⚡ מיידי" : message.source}
+                          </em>
                         ) : null}
                         {message.contextUsed?.length ? (
                           <div className="ai-context-pills">

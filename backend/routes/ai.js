@@ -2,7 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 
-const { chatWithAI, chatWithAIStream, getChatHistoryHandler, listConversations } = require('../controllers/aiController');
+const { chatWithAI, chatWithAIStream, getChatHistoryHandler, listConversations, getFinancialTips } = require('../controllers/aiController');
 const { protect } = require('../middleware/auth');
 
 // כל הroutes כאן מוגנים - דורשים authentication
@@ -23,6 +23,11 @@ router.get('/chat/history', (req, res, next) => {
 
 router.get('/chat/conversations', (req, res, next) => {
   Promise.resolve(listConversations(req, res)).catch(next);
+});
+
+// AI-generated personalized financial tips for dashboard
+router.get('/financial-tips', (req, res, next) => {
+  Promise.resolve(getFinancialTips(req, res)).catch(next);
 });
 
 module.exports = router;

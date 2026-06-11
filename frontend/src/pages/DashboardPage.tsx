@@ -10,6 +10,7 @@ import DashboardInsightsCard from "../components/dashboard/DashboardInsightsCard
 import DashboardRecommendationsCard from "../components/dashboard/DashboardRecommendationsCard";
 import DashboardRecentDocuments from "../components/dashboard/DashboardRecentDocuments";
 import DashboardFinancialHealthCard from "../components/dashboard/DashboardFinancialHealthCard";
+import DashboardAITipsCard from "../components/dashboard/DashboardAITipsCard";
 import { useDashboardDocuments } from "../hooks/useDashboardDocuments";
 import { useDashboardUser } from "../hooks/useDashboardUser";
 import { APP_ROUTES } from "../types/navigation";
@@ -158,6 +159,9 @@ export default function DashboardPage() {
               <DashboardInsightsCard />
               <DashboardRecommendationsCard />
             </div>
+
+            {/* AI-generated personalized tips */}
+            <DashboardAITipsCard />
 
             {/* Charts */}
             <DashboardCharts />

@@ -33,6 +33,31 @@ export type ConversationSummary = {
   updatedAt: string;
 };
 
+export type FinancialTip = {
+  tip: string;
+  category: "pension" | "tax" | "savings" | "insurance" | "documents";
+  priority: "high" | "medium" | "low";
+};
+
+export type FinancialTipsResponse = {
+  success: boolean;
+  data?: {
+    tips: FinancialTip[];
+    source: "claude" | "rule";
+    staticTips?: FinancialTip[];
+  };
+};
+
+export const getAIFinancialTips = async (): Promise<FinancialTipsResponse> => {
+  const result = await apiJson<FinancialTipsResponse>("/api/ai/financial-tips", {
+    method: "GET",
+    auth: true,
+    fallbackErrorMessage: "שגיאה בטעינת טיפים.",
+  });
+  if (!result.ok) return { success: false };
+  return result.data ?? { success: false };
+};
+
 export type StreamEvent =
   | { type: "meta"; conversationId: string; intent: string }
   | { type: "token"; token: string }

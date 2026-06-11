@@ -7,6 +7,7 @@ import { getAvatarDisplayUrl } from "../../api/profile.api";
 import { APP_ROUTES } from "../../types/navigation";
 import { logoutWithConfirm } from "../../utils/logout";
 import ThemeToggle from "../ThemeToggle";
+import NotificationBell from "../notifications/NotificationBell";
 
 interface DashboardHeaderProps {
   isUploading: boolean;
@@ -105,6 +106,7 @@ export default function DashboardHeader({
 
       <div className="dashboard-top-actions">
         <ThemeToggle />
+        <NotificationBell />
         <button
           className="dashboard-upload"
           type="button"
