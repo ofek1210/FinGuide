@@ -41,7 +41,6 @@ export type AuthUser = {
   createdAt?: string;
   avatarUrl?: string;
   onboardingCompleted?: boolean;
-  welcomeShown?: boolean;
 };
 
 export type ChangePasswordResponse = {
@@ -180,18 +179,6 @@ export const requestPasswordReset = async (email: string) => {
   }
 
   return result.data || ({ success: false, message: "תגובה לא תקינה." } as PasswordResetRequestResponse);
-};
-
-export const markWelcomeShown = async () => {
-  const result = await apiJson<MeResponse>("/api/auth/welcome/complete", {
-    method: "POST",
-    auth: true,
-    fallbackErrorMessage: "לא הצלחנו לעדכן את מסך הברוכים הבאים.",
-  });
-  if (!result.ok) {
-    return { success: false, message: result.error.message } as MeResponse;
-  }
-  return result.data || ({ success: false, message: "תגובה לא תקינה." } as MeResponse);
 };
 
 export const resetPassword = async (token: string, newPassword: string) => {

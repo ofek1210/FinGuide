@@ -38,9 +38,8 @@ const TEAM: TeamMember[] = [
   },
   {
     name: "Shahar Mayster",
-    role: "Co-Founder & Chief Marketing Officer (CMO)",
-    description:
-      "Leading marketing strategy, brand growth, customer acquisition, and community engagement.",
+    role: "Co-Founder & VP of R&D",
+    description: "Leading engineering teams and product development.",
     image: "/team/ShaharMayster.jpeg",
     tone: "purple",
   },
