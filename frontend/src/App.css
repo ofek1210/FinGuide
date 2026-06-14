@@ -2882,6 +2882,38 @@
   font-size: 1.4rem;
 }
 
+.upload-buttons-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.upload-bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px var(--figma-btn-padding-x);
+  border-radius: var(--figma-btn-radius);
+  min-height: var(--figma-btn-height);
+  border: 2px solid var(--rapyd-yellow, #5a56f6);
+  background: transparent;
+  color: var(--rapyd-yellow, #a5a3ff);
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  white-space: nowrap;
+}
+.upload-bulk-btn:hover:not(:disabled) {
+  background: var(--rapyd-yellow-soft, rgba(90, 86, 246, 0.12));
+}
+.upload-bulk-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .upload-hint {
   font-size: 0.85rem;
   color: var(--landing-muted);
