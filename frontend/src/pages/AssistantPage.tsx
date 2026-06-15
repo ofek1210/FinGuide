@@ -1,115 +1,35 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import PlanTabBar from "../components/tabs/PlanTabBar";
-import {
-  streamChatWithAI,
-  getChatHistory,
-  listConversations,
-  type ConversationMessage,
-  type ConversationSummary,
-} from "../api/ai.api";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import Loader from "../components/ui/Loader";
 import { renderMarkdown } from "../utils/renderMarkdown";
-
-const AI_CHAT_STORAGE_KEY = "finguide_ai_chat";
-const MAX_HISTORY_TURNS = 6;
-
-type ChatMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  source?: string;
-  contextUsed?: string[];
-  isStreaming?: boolean;
-};
-
-function saveMessages(messages: ChatMessage[]) {
-  try {
-    sessionStorage.setItem(AI_CHAT_STORAGE_KEY, JSON.stringify(messages));
-  } catch {
-    /* ignore */
-  }
-}
-
-function buildHistory(messages: ChatMessage[]): ConversationMessage[] {
-  return messages
-    .filter((m) => m.id !== "welcome")
-    .slice(-MAX_HISTORY_TURNS)
-    .map((m) => ({ role: m.role, content: m.content }));
-}
-
-const defaultWelcome: ChatMessage = {
-  id: "welcome",
-  role: "assistant",
-  content: "שלום! אני העוזר הפיננסי החכם של FinGuide, מופעל על ידי Claude AI.\n\nאני יכול לענות על שאלות כמו:\n- **כמה שכר נטו קיבלת** החודש\n- **ניתוח הפרשות פנסיה** ביחס לחובה החוקית\n- **סימולציה**: מה יקרה אם תקבל העלאה של 10%?\n- **זיהוי חריגות** בתלוש השכר\n- **שאלות כלליות** על מס, ביטוח לאומי, קרן השתלמות\n\nשאל/י אותי כל שאלה פיננסית!",
-};
-
-const promptSuggestions = [
-  "כמה שכר נטו קיבלתי החודש?",
-  "כמה פנסיה מנכים לי מהשכר?",
-  "מה השתנה בתלוש האחרון שלי?",
-  "יש חריגות בתלושים שלי?",
-  "מה יקרה אם אקבל העלאה של 10%?",
-  "כמה מנכים לי מס הכנסה?",
-  "מה יתרת ימי החופשה שלי?",
-  "תן לי סיכום פיננסי של המצב שלי.",
-  "אילו ביטוחים אני צריך?",
-  "כמה קרן השתלמות חסכתי?",
-] as const;
-
-// Check if the browser supports Web Speech API
-const SpeechRecognitionAPI =
-  typeof window !== "undefined"
-    ? (window.SpeechRecognition ?? (window as unknown as { webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition)
-    : undefined;
+import {
+  useAiChat,
+  AI_PROMPT_SUGGESTIONS,
+  isVoiceInputSupported,
+} from "../assistant/AiChatProvider";
+import { APP_ROUTES } from "../types/navigation";
 
 export default function AssistantPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([defaultWelcome]);
-  const [conversationId, setConversationId] = useState<string | null>(
-    () => sessionStorage.getItem("finguide_conversation_id"),
-  );
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const navigate = useNavigate();
+  const {
+    messages,
+    conversationId,
+    conversations,
+    isSending,
+    isListening,
+    error,
+    sendMessage,
+    clearChat,
+    selectConversation,
+    startVoiceInput,
+    openPanel,
+  } = useAiChat();
+
   const [input, setInput] = useState("");
-  const [error, setError] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const [isListening, setIsListening] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const streamAbortRef = useRef<(() => void) | null>(null);
-  const streamingIdRef = useRef<string | null>(null);
-
-  // Load server history when conversationId exists
-  useEffect(() => {
-    if (!conversationId) return;
-    void getChatHistory(conversationId).then(res => {
-      if (!res.success || !res.data?.length) return;
-      const loaded: ChatMessage[] = res.data
-        .filter(m => m.role === "user" || m.role === "assistant")
-        .map(m => ({
-          id: m._id,
-          role: m.role as "user" | "assistant",
-          content: m.content,
-          source: m.metadata?.model ?? m.metadata?.intent,
-          contextUsed: m.metadata?.contextUsed,
-        }));
-      if (loaded.length) setMessages(loaded);
-    });
-  }, [conversationId]);
-
-  useEffect(() => {
-    void listConversations().then(res => {
-      if (res.success && res.data) setConversations(res.data);
-    });
-  }, [messages.length]);
-
-  useEffect(() => {
-    if (conversationId) sessionStorage.setItem("finguide_conversation_id", conversationId);
-  }, [conversationId]);
-
-  useEffect(() => {
-    saveMessages(messages);
-  }, [messages]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (messagesContainerRef.current) {
@@ -117,134 +37,26 @@ export default function AssistantPage() {
     }
   }, [messages, isSending]);
 
-  // Cleanup stream on unmount
-  useEffect(() => {
-    return () => {
-      streamAbortRef.current?.();
-    };
-  }, []);
-
   const hasMessages = useMemo(() => messages.length > 0, [messages.length]);
 
   const copyToClipboard = useCallback((text: string) => {
     void navigator.clipboard.writeText(text);
   }, []);
 
-  const clearChat = useCallback(() => {
-    streamAbortRef.current?.();
-    setMessages([defaultWelcome]);
-    setConversationId(null);
-    sessionStorage.removeItem("finguide_conversation_id");
-    setError("");
-  }, []);
+  const handleSend = useCallback(
+    (forcedText?: string) => {
+      const text = (forcedText ?? input).trim();
+      if (!text) return;
+      setInput("");
+      sendMessage(text);
+    },
+    [input, sendMessage],
+  );
 
-  const startNewConversation = useCallback(() => {
-    clearChat();
-  }, [clearChat]);
-
-  // Voice input using Web Speech API (Hebrew)
-  const startVoiceInput = useCallback(() => {
-    if (!SpeechRecognitionAPI || isListening || isSending) return;
-    const recognition = new SpeechRecognitionAPI();
-    recognition.lang = "he-IL";
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0]?.[0]?.transcript ?? "";
-      if (transcript) setInput(transcript);
-    };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      setIsListening(false);
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        setError("גישה למיקרופון נדחתה. אפשרו גישה בדפדפן ונסו שוב.");
-      } else if (event.error === "no-speech") {
-        setError("לא זוהה דיבור. נסו שוב.");
-      } else {
-        setError("שגיאה בקלט הקולי. נסו שוב.");
-      }
-    };
-
-    recognition.onend = () => setIsListening(false);
-
-    try {
-      recognition.start();
-      setIsListening(true);
-    } catch {
-      setError("לא ניתן להפעיל את המיקרופון.");
-    }
-  }, [isListening, isSending]);
-
-  // Streaming send
-  const sendMessage = useCallback((forcedText?: string) => {
-    const trimmed = (forcedText ?? input).trim();
-    if (!trimmed || isSending) return;
-
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: trimmed,
-    };
-
-    // Capture current messages BEFORE state update for history building
-    const currentMessages = messages;
-
-    setMessages((prev) => {
-      const next = [...prev, userMessage];
-      saveMessages(next);
-      return next;
-    });
-    setInput("");
-    setError("");
-    setIsSending(true);
-
-    const history = buildHistory(currentMessages);
-    const assistantId = `assistant-${Date.now()}`;
-    streamingIdRef.current = assistantId;
-
-    // Insert an empty streaming placeholder immediately
-    setMessages((prev) => [
-      ...prev,
-      { id: assistantId, role: "assistant", content: "", isStreaming: true },
-    ]);
-
-    const abort = streamChatWithAI(
-      trimmed,
-      history,
-      conversationId,
-      (token) => {
-        // Append each token to the streaming message
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId ? { ...m, content: m.content + token } : m,
-          ),
-        );
-        if (messagesContainerRef.current) {
-          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
-        }
-      },
-      (source, convId) => {
-        // Mark streaming done
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId ? { ...m, isStreaming: false, source } : m,
-          ),
-        );
-        setConversationId(convId);
-        setIsSending(false);
-        streamingIdRef.current = null;
-      },
-      (errMsg) => {
-        setError(errMsg);
-        setMessages((prev) => prev.filter((m) => m.id !== assistantId));
-        setIsSending(false);
-        streamingIdRef.current = null;
-      },
-    );
-
-    streamAbortRef.current = abort;
-  }, [input, isSending, messages, conversationId]);
+  const popOutToFloating = useCallback(() => {
+    openPanel();
+    navigate(APP_ROUTES.dashboard);
+  }, [openPanel, navigate]);
 
   return (
     <div className="feature-page dashboard-page" dir="rtl">
@@ -261,8 +73,13 @@ export default function AssistantPage() {
               </p>
             </div>
             <div className="ai-card-actions">
-              <button type="button" className="ai-clear-btn" onClick={startNewConversation} disabled={isSending}>
-                שיחה חדשה
+              <button
+                type="button"
+                className="ai-clear-btn ai-popout-btn"
+                onClick={popOutToFloating}
+                title="פתח כצ'אט צף שמלווה אותך בכל האתר"
+              >
+                ⤢ צ'אט צף
               </button>
               <button
                 type="button"
@@ -271,7 +88,7 @@ export default function AssistantPage() {
                 title="נקה שיחה"
                 disabled={isSending}
               >
-                נקה שיחה
+                שיחה חדשה
               </button>
             </div>
           </div>
@@ -279,12 +96,12 @@ export default function AssistantPage() {
           {conversations.length > 1 ? (
             <div className="ai-conversation-list">
               <span className="ai-conversation-list-label">שיחות קודמות</span>
-              {conversations.slice(0, 5).map(c => (
+              {conversations.slice(0, 5).map((c) => (
                 <button
                   key={c.conversationId}
                   type="button"
                   className={`ai-conversation-chip ${c.conversationId === conversationId ? "is-active" : ""}`}
-                  onClick={() => setConversationId(c.conversationId)}
+                  onClick={() => selectConversation(c.conversationId)}
                 >
                   {c.preview.slice(0, 40)}
                 </button>
@@ -298,12 +115,13 @@ export default function AssistantPage() {
                 messages.map((message) => (
                   <div key={message.id} className={`ai-message ${message.role}`}>
                     <span
-                      // Safe: content is from our own AI, not user-supplied HTML
-                      // eslint-disable-next-line react/no-danger
+                      // Safe: content is from our own AI (markdown), not user-supplied HTML
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
                     />
                     {message.isStreaming ? (
-                      <span className="ai-cursor" aria-hidden="true">▋</span>
+                      <span className="ai-cursor" aria-hidden="true">
+                        ▋
+                      </span>
                     ) : null}
                     {message.role === "assistant" && !message.isStreaming && (
                       <div className="ai-message-actions">
@@ -317,13 +135,19 @@ export default function AssistantPage() {
                         </button>
                         {message.source ? (
                           <em className={`ai-model source-${message.source}`}>
-                            {message.source === "claude" ? "✦ Claude AI" : message.source === "rule" ? "⚡ מיידי" : message.source}
+                            {message.source === "claude"
+                              ? "✦ Claude AI"
+                              : message.source === "rule"
+                                ? "⚡ מיידי"
+                                : message.source}
                           </em>
                         ) : null}
                         {message.contextUsed?.length ? (
                           <div className="ai-context-pills">
-                            {message.contextUsed.map(pill => (
-                              <span key={pill} className="ai-context-pill">{pill}</span>
+                            {message.contextUsed.map((pill) => (
+                              <span key={pill} className="ai-context-pill">
+                                {pill}
+                              </span>
                             ))}
                           </div>
                         ) : null}
@@ -334,18 +158,17 @@ export default function AssistantPage() {
               ) : (
                 <div className="findings-placeholder">אין הודעות עדיין.</div>
               )}
-              {/* Scroll anchor */}
               <div ref={messagesEndRef} />
             </div>
 
             <div className="ai-suggestions">
-              {promptSuggestions.map((prompt) => (
+              {AI_PROMPT_SUGGESTIONS.map((prompt) => (
                 <button
                   key={prompt}
                   className="ai-suggestion"
                   type="button"
                   disabled={isSending}
-                  onClick={() => sendMessage(prompt)}
+                  onClick={() => handleSend(prompt)}
                 >
                   {prompt}
                 </button>
@@ -353,11 +176,11 @@ export default function AssistantPage() {
             </div>
 
             <div className="ai-input">
-              {SpeechRecognitionAPI ? (
+              {isVoiceInputSupported ? (
                 <button
                   type="button"
                   className={`ai-voice-btn${isListening ? " is-listening" : ""}`}
-                  onClick={startVoiceInput}
+                  onClick={() => startVoiceInput(setInput)}
                   disabled={isSending || isListening}
                   title={isListening ? "מאזין..." : "דבר בעברית"}
                   aria-label={isListening ? "מאזין לדיבור" : "הפעל קלט קולי"}
@@ -373,7 +196,7 @@ export default function AssistantPage() {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    sendMessage();
+                    handleSend();
                   }
                 }}
                 disabled={isSending}
@@ -381,7 +204,7 @@ export default function AssistantPage() {
               <button
                 className="ai-send"
                 type="button"
-                onClick={() => sendMessage()}
+                onClick={() => handleSend()}
                 disabled={isSending || !input.trim()}
               >
                 שליחה
@@ -397,4 +220,3 @@ export default function AssistantPage() {
     </div>
   );
 }
-

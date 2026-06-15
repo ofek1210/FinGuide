@@ -17,6 +17,14 @@ function normalizeMessage(message) {
   return String(message || '').trim().toLowerCase();
 }
 
+// Client-supplied hint about the screen the user is viewing. Used only to enrich
+// the LLM prompt — never for intent detection or as a trusted financial source.
+function sanitizePageContext(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().slice(0, 300);
+  return trimmed || null;
+}
+
 function isSameMonth(dateA, dateB) {
   return (
     dateA.getFullYear() === dateB.getFullYear() &&
@@ -579,6 +587,7 @@ async function getChatHistory(userId, conversationId, limit = 10) {
 
 async function chatWithAI(req, res) {
   const { message, history, conversationId: clientConversationId } = req.body;
+  const pageContext = sanitizePageContext(req.body.pageContext);
 
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ success: false, message: 'message is required (string)' });
@@ -647,6 +656,7 @@ async function chatWithAI(req, res) {
         insights: userContext.insights,
         recommendations: userContext.recommendations,
         history: mergedHistory,
+        pageContext,
       });
       finalAnswer = chatResult.answer || 'השירות אינו זמין כרגע. אנא נסה שנית בקרוב, או שאל שאלה ספציפית כמו "כמה נטו?", "כמה פנסיה?".';
       source = chatResult.source;
@@ -729,6 +739,7 @@ async function listConversations(req, res) {
 
 async function chatWithAIStream(req, res) {
   const { message, history, conversationId: clientConversationId } = req.body;
+  const pageContext = sanitizePageContext(req.body.pageContext);
 
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ success: false, message: 'message is required (string)' });
@@ -817,6 +828,7 @@ async function chatWithAIStream(req, res) {
         insights: userContext.insights,
         recommendations: userContext.recommendations,
         history: mergedHistory,
+        pageContext,
       },
       (token) => {
         fullAnswer += token;
