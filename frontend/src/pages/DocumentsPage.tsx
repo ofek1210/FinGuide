@@ -105,11 +105,15 @@ interface UploadAreaProps {
   message: string;
   isUploading: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
+  bulkInputRef: RefObject<HTMLInputElement | null>;
   metadata: UploadFormState;
   onBrowse: () => void;
+  onBulkBrowse: () => void;
+  onBulkFilesSelected: (files: FileList) => void;
   onPickFile: (file: File | null) => void;
   onMetadataChange: (field: keyof UploadFormState, value: string) => void;
   onUpload: () => void;
+  bulkUploadCount: number;
 }
 
 function UploadArea({
@@ -118,11 +122,15 @@ function UploadArea({
   message,
   isUploading,
   inputRef,
+  bulkInputRef,
   metadata,
   onBrowse,
+  onBulkBrowse,
+  onBulkFilesSelected,
   onPickFile,
   onMetadataChange,
   onUpload,
+  bulkUploadCount,
 }: UploadAreaProps) {
   return (
     <div className="documents-card upload-card">
@@ -142,19 +150,41 @@ function UploadArea({
           accept="application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           onChange={(event) => onPickFile(event.target.files?.[0] ?? null)}
         />
+        <input
+          ref={bulkInputRef}
+          className="upload-input"
+          type="file"
+          multiple
+          accept="application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={(event) => {
+            const files = event.target.files;
+            if (files && files.length > 0) onBulkFilesSelected(files);
+          }}
+        />
         <div className="upload-icon" aria-hidden="true">
           ↑
         </div>
         <h3>גררו ושחררו את הקובץ כאן</h3>
         <p>או בחרו קובץ מהמחשב שלכם</p>
-        <button
-          className="landing-primary"
-          type="button"
-          onClick={() => (fileName ? onUpload() : onBrowse())}
-          disabled={isUploading}
-        >
-          {isUploading ? <Loader /> : "העלה קובץ"}
-        </button>
+        <div className="upload-buttons-row">
+          <button
+            className="landing-primary"
+            type="button"
+            onClick={() => (fileName ? onUpload() : onBrowse())}
+            disabled={isUploading}
+          >
+            {isUploading ? <Loader /> : "העלה קובץ"}
+          </button>
+          <button
+            className="upload-bulk-btn"
+            type="button"
+            onClick={onBulkBrowse}
+            disabled={isUploading || bulkUploadCount > 0}
+            title="בחרו מספר קבצים להעלאה בו-זמנית"
+          >
+            {bulkUploadCount > 0 ? `מעלה ${bulkUploadCount} קבצים...` : "העלאת מסמכים מרובה"}
+          </button>
+        </div>
         <span className="upload-hint">PDF או XLSX (הר הביטוח) • עד 10 מ"ב</span>
       </div>
       <div className="upload-meta">
@@ -385,8 +415,10 @@ export default function DocumentsPage() {
   const [uploadForm, setUploadForm] = useState<UploadFormState>(DEFAULT_UPLOAD_FORM);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [bulkUploadCount, setBulkUploadCount] = useState(0);
   const timersRef = useRef<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const bulkFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadDocuments = useCallback(async () => {
     setIsLoadingList(true);
@@ -731,6 +763,124 @@ export default function DocumentsPage() {
     fileInputRef.current?.click();
   };
 
+  const handleBulkBrowse = () => {
+    bulkFileInputRef.current?.click();
+  };
+
+  const detectFileMetadata = (file: File): UploadDocumentPayload => {
+    const name = file.name;
+    let periodMonth: number | undefined;
+    let periodYear: number | undefined;
+
+    const patterns = [
+      /(?:^|[\D])(20\d{2})[\-_\.](\d{1,2})(?:[\D]|$)/,
+      /(?:^|[\D])(\d{1,2})[\-_\.](20\d{2})(?:[\D]|$)/,
+      /(20\d{2})(\d{2})(?:[\D]|$)/,
+    ];
+    for (const pat of patterns) {
+      const m = pat.exec(name);
+      if (m) {
+        const a = parseInt(m[1]), b = parseInt(m[2]);
+        const [year, month] = a > 100 ? [a, b] : [b, a];
+        if (year >= 2000 && year <= 2100 && month >= 1 && month <= 12) {
+          periodYear = year;
+          periodMonth = month;
+          break;
+        }
+      }
+    }
+
+    return {
+      category: "payslip",
+      ...(periodMonth !== undefined && { periodMonth }),
+      ...(periodYear !== undefined && { periodYear }),
+    };
+  };
+
+  const handleBulkUpload = async (files: FileList) => {
+    const validFiles: File[] = [];
+    const maxSize = 10 * 1024 * 1024;
+
+    for (const file of Array.from(files)) {
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      const isXlsx =
+        file.name.toLowerCase().endsWith(".xlsx") ||
+        file.name.toLowerCase().endsWith(".xls") ||
+        file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+      if ((!isPdf && !isXlsx) || file.size > maxSize) continue;
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) {
+      setToastMessage("לא נמצאו קבצים תקינים להעלאה.");
+      return;
+    }
+
+    setBulkUploadCount(validFiles.length);
+
+    const tempDocs: DocumentItem[] = validFiles.map((file) => {
+      const meta = detectFileMetadata(file);
+      return {
+        id: `temp-bulk-${Date.now()}-${Math.random()}`,
+        name: file.name,
+        status: "uploading" as DocumentStatus,
+        fileSize: file.size,
+        uploadedAt: new Date().toISOString(),
+        metadata: {
+          category: meta.category,
+          source: "manual_upload",
+          ...(meta.periodMonth !== undefined && { periodMonth: meta.periodMonth }),
+          ...(meta.periodYear !== undefined && { periodYear: meta.periodYear }),
+        },
+      };
+    });
+
+    setDocuments((prev) => [...tempDocs, ...prev]);
+
+    const results = await Promise.allSettled(
+      validFiles.map(async (file, idx) => {
+        const payload = detectFileMetadata(file);
+        const response = await uploadDocument(file, payload);
+        return { file, tempId: tempDocs[idx].id, response };
+      }),
+    );
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        const { tempId, response } = result.value;
+        if (response.success && response.data) {
+          successCount++;
+          setDocuments((prev) =>
+            prev.map((doc) => (doc.id === tempId ? mapApiDocument(response.data!) : doc)),
+          );
+        } else {
+          failCount++;
+          setDocuments((prev) =>
+            prev.map((doc) => (doc.id === tempId ? { ...doc, status: "failed" as DocumentStatus } : doc)),
+          );
+        }
+      } else {
+        failCount++;
+      }
+    }
+
+    setBulkUploadCount(0);
+    if (bulkFileInputRef.current) bulkFileInputRef.current.value = "";
+
+    const parts: string[] = [];
+    if (successCount > 0) parts.push(`${successCount} קבצים הועלו בהצלחה`);
+    if (failCount > 0) parts.push(`${failCount} נכשלו`);
+    setToastMessage(parts.join(" · "));
+    const t = window.setTimeout(() => setToastMessage(null), 6000);
+    timersRef.current.push(t);
+
+    void loadDocuments();
+  };
+
   const hasUploadedDocuments = documents.some((doc) => doc.status !== "failed");
   const latestProcessableDocument =
     documents.find(
@@ -757,11 +907,15 @@ export default function DocumentsPage() {
           message={uploadMessage}
           isUploading={uploadState === "uploading"}
           inputRef={fileInputRef}
+          bulkInputRef={bulkFileInputRef}
           metadata={uploadForm}
           onBrowse={handleBrowse}
+          onBulkBrowse={handleBulkBrowse}
+          onBulkFilesSelected={handleBulkUpload}
           onPickFile={handlePickFile}
           onMetadataChange={handleMetadataChange}
           onUpload={handleUpload}
+          bulkUploadCount={bulkUploadCount}
         />
 
         <section className="documents-card documents-gmail-import">

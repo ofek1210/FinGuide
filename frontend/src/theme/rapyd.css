@@ -4937,6 +4937,39 @@ body {
   color: var(--rapyd-purple) !important;
 }
 
+/* notification text — buttons don't inherit color by default */
+.notification-dropdown-item-content,
+.notification-dropdown-item-content strong,
+.notification-dropdown-item-content span {
+  color: var(--rapyd-white) !important;
+}
+
+[data-theme="light"] .notification-dropdown-item-content,
+[data-theme="light"] .notification-dropdown-item-content strong,
+[data-theme="light"] .notification-dropdown-item-content span {
+  color: var(--rapyd-black) !important;
+}
+
+.notification-item strong,
+.notification-item p,
+.notification-item span {
+  color: var(--rapyd-white) !important;
+}
+
+.notification-item .dashboard-link-btn {
+  color: var(--rapyd-yellow) !important;
+}
+
+[data-theme="light"] .notification-item strong,
+[data-theme="light"] .notification-item p,
+[data-theme="light"] .notification-item span {
+  color: var(--rapyd-black) !important;
+}
+
+[data-theme="light"] .notification-item .dashboard-link-btn {
+  color: var(--rapyd-purple) !important;
+}
+
 /* R2 P1 #3 — Toast variants beat the base .toast override */
 .toast.toast--error {
   background: var(--rapyd-black) !important;
