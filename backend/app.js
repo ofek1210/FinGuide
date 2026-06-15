@@ -18,6 +18,7 @@ const gmailIntegrationRoutes = require('./routes/gmailIntegration');
 const taxAssistantRoutes = require('./routes/taxAssistant');
 const financialHealthRoutes = require('./routes/financialHealth');
 const copilotRoutes = require('./routes/copilot');
+const scoreAgentRoutes = require('./routes/scoreAgent');
 
 const createApp = () => {
   const app = express();
@@ -90,6 +91,7 @@ const createApp = () => {
   app.use('/api/tax-assistant', taxAssistantRoutes);
   app.use('/api/financial-health', financialHealthRoutes);
   app.use('/api/copilot', copilotRoutes);
+  app.use('/api/score-agent', scoreAgentRoutes);
 
   // 404 handler
   app.use((req, res) => {
