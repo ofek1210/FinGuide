@@ -14,7 +14,7 @@ function getAnthropicClient() {
   return anthropicClient;
 }
 
-function buildEnhancedSystemPrompt(userContext, profile, insights, recommendations) {
+function buildEnhancedSystemPrompt(userContext, profile, insights, recommendations, pageContext) {
   const lines = [
     'אתה יועץ פיננסי חכם של FinGuide — עוזר לעובדים בישראל להבין תלושי שכר, פנסיה, מס וביטוחים.',
     'ענה בעברית בצורה ברורה, מפורטת ומועילה. השתמש ב-markdown כאשר זה משפר קריאות (כותרות, רשימות).',
@@ -104,6 +104,15 @@ function buildEnhancedSystemPrompt(userContext, profile, insights, recommendatio
     recommendations.slice(0, 4).forEach(r => lines.push(`- ${r.title} (${r.importance}): ${(r.reasoning || []).join(' ')}`));
   }
 
+  if (typeof pageContext === 'string' && pageContext.trim()) {
+    lines.push(
+      '',
+      '--- מה המשתמש צופה בו כעת ---',
+      `המשתמש נמצא כרגע ב: ${pageContext.trim().slice(0, 300)}.`,
+      'אם השאלה מנוסחת באופן כללי ("מה זה?", "תסביר לי את זה") — הנח שהיא מתייחסת למסך הזה.',
+    );
+  }
+
   return lines.join('\n');
 }
 
@@ -141,8 +150,8 @@ async function askClaude(userMessage, systemPrompt, history = []) {
   }
 }
 
-async function chat(userMessage, { userContext, profile, insights, recommendations, history }) {
-  const systemPrompt = buildEnhancedSystemPrompt(userContext, profile, insights, recommendations);
+async function chat(userMessage, { userContext, profile, insights, recommendations, history, pageContext }) {
+  const systemPrompt = buildEnhancedSystemPrompt(userContext, profile, insights, recommendations, pageContext);
   const provider = CHAT_PROVIDER === 'ollama' ? 'ollama' : 'claude';
 
   if (provider === 'claude') {
@@ -160,8 +169,8 @@ async function chat(userMessage, { userContext, profile, insights, recommendatio
  * Streaming variant — calls onToken for each text chunk, onDone(fullText, tokensUsed) when finished.
  * Falls back to non-streaming chat if Claude streaming is unavailable.
  */
-async function streamChat(userMessage, { userContext, profile, insights, recommendations, history }, onToken, onDone) {
-  const systemPrompt = buildEnhancedSystemPrompt(userContext, profile, insights, recommendations);
+async function streamChat(userMessage, { userContext, profile, insights, recommendations, history, pageContext }, onToken, onDone) {
+  const systemPrompt = buildEnhancedSystemPrompt(userContext, profile, insights, recommendations, pageContext);
   const client = getAnthropicClient();
 
   if (client && CHAT_PROVIDER !== 'ollama') {

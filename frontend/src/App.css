@@ -7355,6 +7355,24 @@
   cursor: default;
 }
 
+.floating-assistant-context {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--dash-text, #fff);
+  background: var(--dash-surface, #111);
+  border-bottom: 2px solid var(--rapyd-black, #000);
+}
+
+.floating-assistant-context > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .floating-assistant-messages {
   flex: 1;
   min-height: 0;

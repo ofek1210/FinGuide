@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import {
   streamChatWithAI,
   getChatHistory,
@@ -16,6 +17,7 @@ import {
   type ConversationSummary,
 } from "../api/ai.api";
 import { useAuth } from "../auth/AuthProvider";
+import { describePageContext } from "./pageContext";
 
 const AI_CHAT_STORAGE_KEY = "finguide_ai_chat";
 const AI_CONVERSATION_ID_KEY = "finguide_conversation_id";
@@ -68,6 +70,7 @@ type AiChatContextValue = {
   isListening: boolean;
   error: string;
   isPanelOpen: boolean;
+  pageContext: string | null;
   openPanel: () => void;
   closePanel: () => void;
   togglePanel: () => void;
@@ -75,6 +78,7 @@ type AiChatContextValue = {
   clearChat: () => void;
   selectConversation: (conversationId: string) => void;
   startVoiceInput: (onTranscript: (text: string) => void) => void;
+  setPageContextOverride: (label: string | null) => void;
 };
 
 const AiChatContext = createContext<AiChatContextValue | null>(null);
@@ -97,6 +101,17 @@ function buildHistory(messages: ChatMessage[]): ConversationMessage[] {
 export function AiChatProvider({ children }: { children: ReactNode }) {
   const { status } = useAuth();
   const isAuthenticated = status === "authenticated";
+  const location = useLocation();
+
+  // Page context: a per-page override (set by pages with richer detail) wins,
+  // otherwise fall back to a route-derived label so the AI knows what the user
+  // is looking at as the floating chat follows them across the site.
+  const [pageContextOverride, setPageContextOverride] = useState<string | null>(null);
+  const pageContext = pageContextOverride ?? describePageContext(location.pathname);
+  const pageContextRef = useRef<string | null>(pageContext);
+  useEffect(() => {
+    pageContextRef.current = pageContext;
+  }, [pageContext]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([AI_WELCOME_MESSAGE]);
   const [conversationId, setConversationId] = useState<string | null>(() =>
@@ -210,6 +225,7 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
           setMessages((prev) => prev.filter((m) => m.id !== assistantId));
           setIsSending(false);
         },
+        pageContextRef.current,
       );
 
       streamAbortRef.current = abort;
@@ -275,6 +291,7 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
       isListening,
       error,
       isPanelOpen,
+      pageContext,
       openPanel,
       closePanel,
       togglePanel,
@@ -282,6 +299,7 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
       clearChat,
       selectConversation,
       startVoiceInput,
+      setPageContextOverride,
     }),
     [
       messages,
@@ -291,6 +309,7 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
       isListening,
       error,
       isPanelOpen,
+      pageContext,
       openPanel,
       closePanel,
       togglePanel,
@@ -311,3 +330,13 @@ export const useAiChat = () => {
   }
   return ctx;
 };
+
+// Lets a page register a richer, more specific context label for the AI
+// (e.g. "צפייה בתלוש לחודש מאי 2026"). Clears the override on unmount.
+export function useRegisterPageContext(label: string | null) {
+  const { setPageContextOverride } = useAiChat();
+  useEffect(() => {
+    setPageContextOverride(label);
+    return () => setPageContextOverride(null);
+  }, [label, setPageContextOverride]);
+}

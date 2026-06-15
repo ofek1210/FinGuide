@@ -19,6 +19,7 @@ export default function FloatingAssistant() {
     isListening,
     error,
     isPanelOpen,
+    pageContext,
     closePanel,
     togglePanel,
     sendMessage,
@@ -119,6 +120,13 @@ export default function FloatingAssistant() {
               </button>
             </div>
           </header>
+
+          {pageContext ? (
+            <div className="floating-assistant-context" title="ההקשר שהעוזר מודע אליו">
+              <span aria-hidden="true">📍</span>
+              <span>{pageContext}</span>
+            </div>
+          ) : null}
 
           <div className="ai-chat-messages floating-assistant-messages" ref={messagesContainerRef}>
             {messages.map((message) => (

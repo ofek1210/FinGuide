@@ -95,6 +95,7 @@ export function streamChatWithAI(
   onToken: (token: string) => void,
   onDone: (source: string, convId: string) => void,
   onError: (msg: string) => void,
+  pageContext?: string | null,
 ): () => void {
   const controller = new AbortController();
   const token = localStorage.getItem("token");
@@ -107,7 +108,7 @@ export function streamChatWithAI(
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({ message, history, conversationId }),
+        body: JSON.stringify({ message, history, conversationId, pageContext }),
         signal: controller.signal,
       });
 
