@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Gauge } from "lucide-react";
+import { Gauge, Sparkles } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import Loader from "../components/ui/Loader";
+import ScoreAgentPanel from "../components/ScoreAgentPanel";
 import { useFinancialHealthScore } from "../hooks/useFinancialHealthScore";
 import type { HealthScoreCategory } from "../api/financialHealth.api";
 
@@ -46,6 +47,7 @@ export default function FinancialHealthPage() {
   const currentYear = new Date().getFullYear();
   const yearOptions = useMemo(() => buildYearOptions(currentYear), [currentYear]);
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [agentOpen, setAgentOpen] = useState(false);
   const { data, isLoading, error, reload } = useFinancialHealthScore(selectedYear);
 
   const circumference = 2 * Math.PI * 54;
@@ -122,13 +124,22 @@ export default function FinancialHealthPage() {
               <div>
                 <p className={`financial-health-level level-${data.level}`}>{data.label}</p>
                 <p className="dashboard-muted">מבוסס על נתוני {data.year}</p>
-                <button
-                  type="button"
-                  className="dashboard-hero-action"
-                  onClick={() => void reload()}
-                >
-                  חשב מחדש
-                </button>
+                <div className="financial-health-summary-actions">
+                  <button
+                    type="button"
+                    className="dashboard-hero-action score-agent-cta"
+                    onClick={() => setAgentOpen(true)}
+                  >
+                    <Sparkles size={16} /> עזרה עם הסוכן להעלאת הציון
+                  </button>
+                  <button
+                    type="button"
+                    className="dashboard-link-btn"
+                    onClick={() => void reload()}
+                  >
+                    חשב מחדש
+                  </button>
+                </div>
               </div>
             </section>
 
@@ -170,6 +181,16 @@ export default function FinancialHealthPage() {
 
         <AppFooter variant="private" />
       </div>
+
+      {agentOpen ? (
+        <ScoreAgentPanel
+          year={selectedYear}
+          onClose={() => {
+            setAgentOpen(false);
+            void reload();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
