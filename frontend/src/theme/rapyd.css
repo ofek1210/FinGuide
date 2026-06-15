@@ -1971,7 +1971,8 @@ hr,
 .scan-page,
 .scan-complete-page,
 .integrations-email-page,
-.auth-page {
+.auth-page,
+.floating-assistant {
   --dash-bg: var(--rapyd-black);
   --dash-card: var(--rapyd-black);
   --dash-border: var(--rapyd-white);
@@ -3608,7 +3609,8 @@ body {
 [data-theme="light"] .onboarding-page,
 [data-theme="light"] .scan-page,
 [data-theme="light"] .scan-complete-page,
-[data-theme="light"] .integrations-email-page {
+[data-theme="light"] .integrations-email-page,
+[data-theme="light"] .floating-assistant {
   --dash-bg:    var(--rapyd-cream);
   --dash-card:  var(--rapyd-cream);
   --dash-border: #000000;

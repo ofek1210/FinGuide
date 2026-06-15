@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import BackButton from "./components/BackButton";
 import ThemeToggle from "./components/ThemeToggle";
+import FloatingAssistant from "./components/FloatingAssistant";
 import DocumentsPage from "./pages/DocumentsPage";
 import ScanStatusPage from "./pages/ScanStatusPage";
 import ScanCompletePage from "./pages/ScanCompletePage";
@@ -244,6 +245,7 @@ export default function App() {
         <Route path="/500" element={<Error500 />} />
         <Route path="*" element={<Error404 />} />
       </Routes>
+      <FloatingAssistant />
     </>
   );
 }
