@@ -27,6 +27,7 @@ export type PersonalSection = {
   childrenCount: number | null;
   childrenAges: number[];
   spouseWorks: boolean | null;
+  isSmoker: boolean | null;
 };
 
 export type FinancialSection = {
@@ -55,9 +56,16 @@ export type RetirementSection = {
   hasStudyFund: boolean | null;
   hasInvestmentFunds: boolean | null;
   investmentTypes: InvestmentType[];
+  plannedRetirementAge: number | null;
+  currentPensionAccumulation: number | null;
+  pensionFundName: string | null;
+  pensionMgmtFee: number | null;
 };
 
+export type EmploymentType = "employee" | "self_employed" | "freelancer" | "business_owner";
+
 export type EmploymentSection = {
+  employmentType: EmploymentType | null;
   salaryType: SalaryType | null;
   expectedMonthlyGross: number | null;
   hourlyRate: number | null;
@@ -118,6 +126,7 @@ export const EMPTY_PROFILE: OnboardingProfile = {
     childrenCount: null,
     childrenAges: [],
     spouseWorks: null,
+    isSmoker: null,
   },
   financial: {
     salaryRange: null,
@@ -142,8 +151,13 @@ export const EMPTY_PROFILE: OnboardingProfile = {
     hasStudyFund: null,
     hasInvestmentFunds: null,
     investmentTypes: [],
+    plannedRetirementAge: null,
+    currentPensionAccumulation: null,
+    pensionFundName: null,
+    pensionMgmtFee: null,
   },
   employment: {
+    employmentType: null,
     salaryType: null,
     expectedMonthlyGross: null,
     hourlyRate: null,
