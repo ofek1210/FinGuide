@@ -1,36 +1,32 @@
-import { BarChart3, FileText, ShieldCheck, Sparkles } from "lucide-react";
-import { useCallback, useRef } from "react";
+import { FileText, Sparkles, Upload } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import AppFooter from "../components/AppFooter";
+
 import type { DocumentItem } from "../api/documents.api";
-import DashboardAlertCard from "../components/dashboard/DashboardAlertCard";
 import DashboardChatPanel from "../components/dashboard/DashboardChatPanel";
 import DashboardHeader from "../components/dashboard/DashboardHeader";
-import DashboardHero from "../components/dashboard/DashboardHero";
-import DashboardMetrics from "../components/dashboard/DashboardMetrics";
-import DashboardPayslipHistoryCard from "../components/dashboard/DashboardPayslipHistoryCard";
-import DashboardQuickActions from "../components/dashboard/DashboardQuickActions";
 import DashboardCharts from "../components/dashboard/DashboardCharts";
 import DashboardInsightsCard from "../components/dashboard/DashboardInsightsCard";
 import DashboardRecommendationsCard from "../components/dashboard/DashboardRecommendationsCard";
 import DashboardRecentDocuments from "../components/dashboard/DashboardRecentDocuments";
-import DashboardSummaryCard from "../components/dashboard/DashboardSummaryCard";
+import DashboardFinancialHealthCard from "../components/dashboard/DashboardFinancialHealthCard";
+import DashboardAITipsCard from "../components/dashboard/DashboardAITipsCard";
 import { useDashboardDocuments } from "../hooks/useDashboardDocuments";
-import { useDashboardPayslipsPreview } from "../hooks/useDashboardPayslipsPreview";
 import { useDashboardUser } from "../hooks/useDashboardUser";
 import { APP_ROUTES } from "../types/navigation";
-import { formatCurrencyILS, formatFileSize, formatLongDate, formatNumber } from "../utils/formatters";
-import type { DashboardMetric } from "../types/dashboard";
-
-const AI_INSIGHT_VALUE_PER_DOC = 850;
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Scroll to top whenever this page mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   const user = useDashboardUser();
   const documents = useDashboardDocuments();
-  const payslips = useDashboardPayslipsPreview();
 
   const handleUploadClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -45,6 +41,24 @@ export default function DashboardPage() {
     },
     [documents.actions],
   );
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      setIsDragOver(false);
+      const file = event.dataTransfer.files?.[0] ?? null;
+      if (!file || file.type !== "application/pdf") return;
+      void documents.actions.uploadFile(file);
+    },
+    [documents.actions],
+  );
+
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback(() => setIsDragOver(false), []);
 
   const handleDelete = useCallback(
     (doc: DocumentItem) => {
@@ -61,58 +75,8 @@ export default function DashboardPage() {
     [documents.actions],
   );
 
-  const greetingLine = user.isLoading
-    ? "טוענים את הנתונים..."
-    : `${user.name}, ברוך/ה הבא/ה`;
-  const heroUserName = user.isLoading ? undefined : user.name;
-
-  const metrics: DashboardMetric[] = [
-    {
-      label: "מסמכים",
-      value: formatNumber(documents.stats.total),
-      subtitle: documents.documentsThisMonth
-        ? `${documents.documentsThisMonth} הועלו החודש`
-        : "אין העלאות החודש",
-      icon: FileText,
-    },
-    {
-      label: "סטטוס עיבוד",
-      value: `${documents.stats.completed}/${documents.stats.total || 0}`,
-      subtitle: "מסמכים שהושלמו",
-      icon: BarChart3,
-      accentClass: "accent-green",
-    },
-    {
-      label: "נפח מסמכים",
-      value: formatFileSize(documents.stats.totalSize),
-      subtitle: 'סה"כ אחסון',
-      icon: ShieldCheck,
-      accentClass: "accent-blue",
-    },
-    {
-      label: "תובנות AI",
-      value: formatCurrencyILS(
-        Math.max(documents.stats.total * AI_INSIGHT_VALUE_PER_DOC, 0),
-      ),
-      subtitle: "דוגמה לתובנה פוטנציאלית",
-      icon: Sparkles,
-      accentClass: "accent-amber",
-    },
-  ];
-
-  const alertTitle =
-    documents.stats.failed > 0
-      ? "יש מסמכים שנכשלו"
-      : documents.stats.processing > 0
-        ? "מסמכים בעיבוד"
-        : "הכל נראה מעולה";
-
-  const alertMessage =
-    documents.stats.failed > 0
-      ? `נמצאו ${documents.stats.failed} מסמכים עם שגיאה. אפשר לחזור למסמכים ולנסות שוב.`
-      : documents.stats.processing > 0
-        ? `יש ${documents.stats.processing} מסמכים בתהליך עיבוד. נעדכן כשמוכנים.`
-        : "כל המסמכים מעודכנים ואין משימות דחופות.";
+  const hasDocuments = documents.stats.total > 0;
+  const isProcessing = documents.stats.processing > 0 || documents.isUploading;
 
   return (
     <div className="dashboard-page" dir="rtl">
@@ -124,70 +88,85 @@ export default function DashboardPage() {
           onFileSelected={handleFileSelected}
           onNavigateDashboard={() => navigate(APP_ROUTES.dashboard)}
           onNavigateDocuments={() => navigate(APP_ROUTES.documents)}
-          onNavigatePayslipHistory={() => navigate(APP_ROUTES.payslipHistory)}
-          onNavigateFindings={() => navigate(APP_ROUTES.findings)}
         />
 
-        <DashboardHero
-          greetingLine={greetingLine}
-          userName={heroUserName}
-          documentsThisMonth={documents.documentsThisMonth}
-          onViewDocuments={() => navigate(APP_ROUTES.documents)}
-        />
-
-        <DashboardMetrics metrics={metrics} />
-
-        <DashboardCharts />
-
-        {documents.uploadError ? (
-          <div className="dashboard-inline-error">{documents.uploadError}</div>
-        ) : null}
-        {documents.actionError ? (
-          <div className="dashboard-inline-error">{documents.actionError}</div>
-        ) : null}
-        {user.error ? <div className="dashboard-inline-error">{user.error}</div> : null}
-        {documents.error ? (
-          <div className="dashboard-inline-error">{documents.error}</div>
-        ) : null}
-
-        <section className="dashboard-grid">
-          <div className="dashboard-column">
-            <DashboardSummaryCard
-              lastUpdated={formatLongDate(documents.items[0]?.uploadedAt)}
-              totalDocuments={documents.stats.total}
-              completedDocuments={documents.stats.completed}
-              processingDocuments={documents.stats.processing}
-              failedDocuments={documents.stats.failed}
-              onViewDocuments={() => navigate(APP_ROUTES.documents)}
-            />
-
-            <DashboardChatPanel />
-
-            <DashboardQuickActions
-              onUploadClick={handleUploadClick}
-              onViewDocuments={() => navigate(APP_ROUTES.documents)}
-            />
+        {/* Error banners */}
+        {(documents.uploadError || documents.actionError || user.error || documents.error) ? (
+          <div className="dashboard-errors">
+            {[documents.uploadError, documents.actionError, user.error, documents.error]
+              .filter(Boolean)
+              .map((err, i) => (
+                <div key={i} className="dashboard-inline-error">{err}</div>
+              ))}
           </div>
+        ) : null}
 
-          <div className="dashboard-column">
-            <DashboardAlertCard
-              title={alertTitle}
-              message={alertMessage}
-              onViewDocuments={() => navigate(APP_ROUTES.documents)}
-            />
+        {/* Upload progress banner */}
+        {isProcessing ? (
+          <div className="dashboard-processing-banner">
+            <span className="dashboard-processing-spinner" aria-hidden="true" />
+            מעלה ומנתח את התלוש באמצעות AI...
+          </div>
+        ) : null}
 
-            <DashboardInsightsCard />
+        {/* Upload prompt — shown when no documents yet */}
+        {!hasDocuments && !documents.isLoading ? (
+          <section
+            className={`dashboard-upload-hero${isDragOver ? " is-dragover" : ""}`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+          >
+            <div className="dashboard-upload-hero-inner">
+              <div className="dashboard-upload-hero-icon">
+                <Sparkles aria-hidden="true" />
+              </div>
+              <h2>ברוכים הבאים ל-FinGuide</h2>
+              <p>
+                {isDragOver
+                  ? "שחררו את הקובץ כדי להעלות"
+                  : "גררו תלוש שכר לכאן, או לחצו להעלאה"}
+              </p>
+              <button
+                type="button"
+                className="dashboard-upload-hero-btn"
+                onClick={handleUploadClick}
+                disabled={documents.isUploading}
+              >
+                <Upload aria-hidden="true" />
+                {documents.isUploading ? "מעלה ומנתח..." : "בחרו קובץ PDF"}
+              </button>
+              <p className="dashboard-upload-hero-hint">
+                <FileText aria-hidden="true" />
+                קבצי PDF בלבד · מוצפן ומאובטח
+              </p>
+            </div>
+          </section>
+        ) : (
+          <>
+            {/* AI Chat — the main feature, top of page */}
+            <section className="dashboard-ai-hero">
+              <div className="dashboard-ai-hero-label">
+                <Sparkles aria-hidden="true" />
+                עוזר AI פיננסי
+              </div>
+              <DashboardChatPanel />
+            </section>
 
-            <DashboardRecommendationsCard />
+            {/* Secondary row: health score + insights */}
+            <div className="dashboard-secondary-grid">
+              <DashboardFinancialHealthCard />
+              <DashboardInsightsCard />
+              <DashboardRecommendationsCard />
+            </div>
 
-            <DashboardPayslipHistoryCard
-              items={payslips.items}
-              isLoading={payslips.isLoading}
-              error={payslips.error}
-              onRetry={payslips.reload}
-              onViewAll={() => navigate(APP_ROUTES.payslipHistory)}
-            />
+            {/* AI-generated personalized tips */}
+            <DashboardAITipsCard />
 
+            {/* Charts */}
+            <DashboardCharts />
+
+            {/* Recent documents */}
             <DashboardRecentDocuments
               documents={documents.recent}
               isLoading={documents.isLoading}
@@ -198,10 +177,12 @@ export default function DashboardPage() {
               onDelete={handleDelete}
               onViewAll={() => navigate(APP_ROUTES.documents)}
             />
-          </div>
-        </section>
+          </>
+        )}
 
-        <AppFooter variant="private" />
+        <footer className="dashboard-mini-footer" dir="rtl">
+          <span>© 2026 FinGuide</span>
+        </footer>
       </div>
     </div>
   );

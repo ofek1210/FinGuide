@@ -27,7 +27,8 @@ const HMO_MAP = {
 
 const MONTH_NAME_HEADER_REGEX =
   /^(דצמבר|ינואר|פברואר|מרץ|מרס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר)$/;
-const COMPANY_HINT_REGEX = /\b(?:בע["']?מ|Ltd|Inc|LLC|Corp|Company|Technologies|Solutions)\b/i;
+// Hebrew בע"מ variants (בע'מ, בע'ימ, בעיימ, בע''מ) — no \b because Hebrew chars are \W in JS regex
+const COMPANY_HINT_REGEX = /(?:בע["']{0,2}[י]{0,2}מ|Ltd|Inc|LLC|Corp|Company|Technologies|Solutions)/i;
 const EMPLOYER_CONTEXT_REGEX = /(?:שם\s+מעסיק|שם\s+מעביד|מעסיק|מעביד|Employer|Company|חברה)/i;
 
 function parseMoney(value) {
