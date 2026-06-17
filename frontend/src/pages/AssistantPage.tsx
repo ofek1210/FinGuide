@@ -135,11 +135,14 @@ export default function AssistantPage() {
                         </button>
                         {message.source ? (
                           <em className={`ai-model source-${message.source}`}>
-                            {message.source === "claude"
-                              ? "✦ Claude AI"
-                              : message.source === "rule"
-                                ? "⚡ מיידי"
-                                : message.source}
+                            {message.source === "rule"
+                              ? "⚡ מיידי"
+                              : message.source.startsWith("claude")
+                                ? "✦ Claude AI"
+                                : message.source === "ollama" ||
+                                    message.source.startsWith("llama")
+                                  ? "✦ AI מקומי"
+                                  : message.source}
                           </em>
                         ) : null}
                         {message.contextUsed?.length ? (

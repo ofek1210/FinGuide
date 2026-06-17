@@ -17,7 +17,7 @@ import {
   type ConversationSummary,
 } from "../api/ai.api";
 import { useAuth } from "../auth/AuthProvider";
-import { describePageContext } from "./pageContext";
+import { describePageContext, describePageGuide } from "./pageContext";
 
 const AI_CHAT_STORAGE_KEY = "finguide_ai_chat";
 const AI_CONVERSATION_ID_KEY = "finguide_conversation_id";
@@ -107,11 +107,16 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
   // otherwise fall back to a route-derived label so the AI knows what the user
   // is looking at as the floating chat follows them across the site.
   const [pageContextOverride, setPageContextOverride] = useState<string | null>(null);
+  // `pageContext` (short) drives the 📍 pill; `pageGuide` (rich how-to) is what
+  // actually gets sent to the assistant so it can explain and walk the user
+  // through the screen. A page override, when set, applies to both.
   const pageContext = pageContextOverride ?? describePageContext(location.pathname);
-  const pageContextRef = useRef<string | null>(pageContext);
+  const pageGuide =
+    pageContextOverride ?? describePageGuide(location.pathname) ?? pageContext;
+  const pageGuideRef = useRef<string | null>(pageGuide);
   useEffect(() => {
-    pageContextRef.current = pageContext;
-  }, [pageContext]);
+    pageGuideRef.current = pageGuide;
+  }, [pageGuide]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([AI_WELCOME_MESSAGE]);
   const [conversationId, setConversationId] = useState<string | null>(() =>
@@ -225,7 +230,7 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
           setMessages((prev) => prev.filter((m) => m.id !== assistantId));
           setIsSending(false);
         },
-        pageContextRef.current,
+        pageGuideRef.current,
       );
 
       streamAbortRef.current = abort;
