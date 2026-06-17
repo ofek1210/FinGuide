@@ -179,6 +179,8 @@ When starting on an unfamiliar area:
 | Findings logic | `backend/controllers/findingsController.js`, `backend/utils/detect*.js` |
 | Savings forecast | `backend/services/savingsForecastService.js`, `backend/utils/linearSavingsForecast.js` |
 | AI assistant | `backend/controllers/aiController.js`, `backend/services/aiService.js` |
+| AI multi-agent orchestrator | `backend/ai/` → see `docs/MODULES_AND_AGENTS.md` §2 |
+| New API domains + models | `docs/MODULES_AND_AGENTS.md` (pension, insurance, dashboard, insights, etc. + 8 new models) |
 | Payslip UI shape | `frontend/src/utils/documentToPayslip.ts` |
 | Auth wiring | `backend/middleware/auth.js`, `frontend/src/auth/AuthProvider.tsx`, `frontend/src/api/client.ts` |
-| Architecture reference | `docs/ARCHITECTURE_DEEP_DIVE.md` (kept current; `docs/FRONTEND-BACKEND-ROADMAP.md` is stale) |
+| Architecture reference | `docs/ARCHITECTURE_DEEP_DIVE.md` (5 original domains) + `docs/MODULES_AND_AGENTS.md` (new domains + AI agents); `docs/FRONTEND-BACKEND-ROADMAP.md` is stale |
