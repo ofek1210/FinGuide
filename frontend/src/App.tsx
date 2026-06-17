@@ -26,6 +26,7 @@ import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import PensionPage from "./pages/PensionPage";
 import TeamPage from "./pages/TeamPage";
 import ContactPage from "./pages/ContactPage";
 import FAQPage from "./pages/FAQPage";
@@ -149,6 +150,14 @@ export default function App() {
           element={
             <RequireAuth>
               <InsurancePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.pension}
+          element={
+            <RequireAuth>
+              <PensionPage />
             </RequireAuth>
           }
         />

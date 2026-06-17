@@ -15,6 +15,7 @@ const navItems = [
   { label: "בית", route: APP_ROUTES.dashboard },
   { label: "מסמכים", route: APP_ROUTES.documents },
   { label: "✦ תובנות", route: APP_ROUTES.insights },
+  { label: "✦ פנסיה", route: APP_ROUTES.pension },
   { label: "✦ AI Shield", route: APP_ROUTES.insurance },
   { label: "✦ Tax AI", route: APP_ROUTES.taxAssistant },
   { label: "✦ ציון AI", route: APP_ROUTES.financialHealth },
