@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { useNotifications } from "../../hooks/useNotifications";
-import { markNotificationRead } from "../../api/notifications.api";
+import { markNotificationRead, deleteNotification } from "../../api/notifications.api";
 import { APP_ROUTES } from "../../types/navigation";
 
 export default function NotificationBell() {
@@ -13,6 +13,12 @@ export default function NotificationBell() {
     await markNotificationRead(id);
     void refresh();
     if (link) navigate(link);
+  };
+
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    await deleteNotification(id);
+    void refresh();
   };
 
   return (
@@ -30,15 +36,24 @@ export default function NotificationBell() {
       {recent.length > 0 ? (
         <div className="notification-dropdown">
           {recent.map(n => (
-            <button
-              key={n._id}
-              type="button"
-              className={`notification-dropdown-item ${n.read ? "" : "is-unread"}`}
-              onClick={() => void handleOpen(n._id, n.link)}
-            >
-              <strong>{n.title}</strong>
-              {n.body ? <span>{n.body}</span> : null}
-            </button>
+            <div key={n._id} className={`notification-dropdown-item ${n.read ? "" : "is-unread"}`}>
+              <button
+                type="button"
+                className="notification-dropdown-item-content"
+                onClick={() => void handleOpen(n._id, n.link)}
+              >
+                <strong>{n.title}</strong>
+                {n.body ? <span>{n.body}</span> : null}
+              </button>
+              <button
+                type="button"
+                className="notification-dropdown-delete"
+                aria-label="מחק התראה"
+                onClick={(e) => void handleDelete(e, n._id)}
+              >
+                <X size={12} />
+              </button>
+            </div>
           ))}
           <button
             type="button"

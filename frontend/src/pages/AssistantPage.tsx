@@ -1,100 +1,40 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  chatWithAI,
-  getChatHistory,
-  listConversations,
-  type ConversationMessage,
-  type ConversationSummary,
-} from "../api/ai.api";
+import { useNavigate } from "react-router-dom";
+import PlanTabBar from "../components/tabs/PlanTabBar";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import Loader from "../components/ui/Loader";
-
-const AI_CHAT_STORAGE_KEY = "finguide_ai_chat";
-const MAX_HISTORY_TURNS = 6;
-
-type ChatMessage = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  source?: string;
-  contextUsed?: string[];
-};
-
-function saveMessages(messages: ChatMessage[]) {
-  try {
-    sessionStorage.setItem(AI_CHAT_STORAGE_KEY, JSON.stringify(messages));
-  } catch {
-    /* ignore */
-  }
-}
-
-function buildHistory(messages: ChatMessage[]): ConversationMessage[] {
-  return messages
-    .filter((m) => m.id !== "welcome")
-    .slice(-MAX_HISTORY_TURNS)
-    .map((m) => ({ role: m.role, content: m.content }));
-}
-
-const defaultWelcome: ChatMessage = {
-  id: "welcome",
-  role: "assistant",
-  content: "שלום, אני כאן כדי לעזור לכם להבין את המסמכים הפיננסיים שלכם.",
-};
-
-const promptSuggestions = [
-  "תסכם לי את מצב המסמכים שלי",
-  "איזה פעולות מומלץ לבצע החודש?",
-  "מה נראה חריג במסמכים שהעליתי?",
-] as const;
+import { renderMarkdown } from "../utils/renderMarkdown";
+import {
+  useAiChat,
+  AI_PROMPT_SUGGESTIONS,
+  isVoiceInputSupported,
+} from "../assistant/AiChatProvider";
+import { APP_ROUTES } from "../types/navigation";
 
 export default function AssistantPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([defaultWelcome]);
-  const [conversationId, setConversationId] = useState<string | null>(
-    () => sessionStorage.getItem("finguide_conversation_id"),
-  );
-  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const navigate = useNavigate();
+  const {
+    messages,
+    conversationId,
+    conversations,
+    isSending,
+    isListening,
+    error,
+    sendMessage,
+    clearChat,
+    selectConversation,
+    startVoiceInput,
+    openPanel,
+  } = useAiChat();
+
   const [input, setInput] = useState("");
-  const [error, setError] = useState("");
-  const [isSending, setIsSending] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Load server history when conversationId exists
   useEffect(() => {
-    if (!conversationId) return;
-    void getChatHistory(conversationId).then(res => {
-      if (!res.success || !res.data?.length) return;
-      const loaded: ChatMessage[] = res.data
-        .filter(m => m.role === "user" || m.role === "assistant")
-        .map(m => ({
-          id: m._id,
-          role: m.role as "user" | "assistant",
-          content: m.content,
-          source: m.metadata?.model ?? m.metadata?.intent,
-          contextUsed: m.metadata?.contextUsed,
-        }));
-      if (loaded.length) setMessages(loaded);
-    });
-  }, [conversationId]);
-
-  useEffect(() => {
-    void listConversations().then(res => {
-      if (res.success && res.data) setConversations(res.data);
-    });
-  }, [messages.length]);
-
-  useEffect(() => {
-    if (conversationId) sessionStorage.setItem("finguide_conversation_id", conversationId);
-  }, [conversationId]);
-
-  // Persist messages to sessionStorage (fallback)
-  useEffect(() => {
-    saveMessages(messages);
-  }, [messages]);
-
-  // Auto-scroll to bottom when messages update or while loading
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages, isSending]);
 
   const hasMessages = useMemo(() => messages.length > 0, [messages.length]);
@@ -103,78 +43,43 @@ export default function AssistantPage() {
     void navigator.clipboard.writeText(text);
   }, []);
 
-  const clearChat = useCallback(() => {
-    setMessages([defaultWelcome]);
-    setConversationId(null);
-    sessionStorage.removeItem("finguide_conversation_id");
-    setError("");
-  }, []);
+  const handleSend = useCallback(
+    (forcedText?: string) => {
+      const text = (forcedText ?? input).trim();
+      if (!text) return;
+      setInput("");
+      sendMessage(text);
+    },
+    [input, sendMessage],
+  );
 
-  const startNewConversation = useCallback(() => {
-    clearChat();
-  }, [clearChat]);
-
-  // Accepts optional text so suggestion chips can auto-send without waiting for state update
-  const sendMessage = async (forcedText?: string) => {
-    const trimmed = (forcedText ?? input).trim();
-    if (!trimmed || isSending) return;
-
-    const userMessage: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: trimmed,
-    };
-
-    setMessages((prev) => {
-      const next = [...prev, userMessage];
-      saveMessages(next);
-      return next;
-    });
-    setInput("");
-    setError("");
-    setIsSending(true);
-
-    // Build history from current messages (before appending the new user message)
-    const history = buildHistory(messages);
-
-    const response = await chatWithAI(trimmed, history, conversationId ?? undefined);
-    if (!response.success || !response.answer) {
-      setError(response.message || "לא הצלחנו לקבל תשובה מהעוזר.");
-      setIsSending(false);
-      return;
-    }
-
-    if (response.conversationId) {
-      setConversationId(response.conversationId);
-    }
-
-    const assistantMessage: ChatMessage = {
-      id: `assistant-${Date.now()}`,
-      role: "assistant",
-      content: response.answer,
-      source: response.source,
-      contextUsed: response.contextUsed,
-    };
-    setMessages((prev) => [...prev, assistantMessage]);
-    setIsSending(false);
-  };
+  const popOutToFloating = useCallback(() => {
+    openPanel();
+    navigate(APP_ROUTES.dashboard);
+  }, [openPanel, navigate]);
 
   return (
     <div className="feature-page dashboard-page" dir="rtl">
       <div className="dashboard-shell">
         <PrivateTopbar />
+        <PlanTabBar />
 
         <section className="dashboard-card ai-card">
           <div className="ai-card-header">
             <div>
               <h1 className="feature-page-title">עוזר AI פיננסי</h1>
               <p className="feature-page-subtitle">
-                אפשר לשאול על תלושים, סטטוסים של מסמכים והכוונה כללית.
+                שאל שאלות על שכר, פנסיה, מס, חריגות וסימולציות — מבוסס על הנתונים שלך.
               </p>
             </div>
             <div className="ai-card-actions">
-              <button type="button" className="ai-clear-btn" onClick={startNewConversation} disabled={isSending}>
-                שיחה חדשה
+              <button
+                type="button"
+                className="ai-clear-btn ai-popout-btn"
+                onClick={popOutToFloating}
+                title="פתח כצ'אט צף שמלווה אותך בכל האתר"
+              >
+                ⤢ צ'אט צף
               </button>
               <button
                 type="button"
@@ -183,19 +88,20 @@ export default function AssistantPage() {
                 title="נקה שיחה"
                 disabled={isSending}
               >
-                נקה שיחה
+                שיחה חדשה
               </button>
             </div>
           </div>
 
           {conversations.length > 1 ? (
             <div className="ai-conversation-list">
-              {conversations.slice(0, 5).map(c => (
+              <span className="ai-conversation-list-label">שיחות קודמות</span>
+              {conversations.slice(0, 5).map((c) => (
                 <button
                   key={c.conversationId}
                   type="button"
                   className={`ai-conversation-chip ${c.conversationId === conversationId ? "is-active" : ""}`}
-                  onClick={() => setConversationId(c.conversationId)}
+                  onClick={() => selectConversation(c.conversationId)}
                 >
                   {c.preview.slice(0, 40)}
                 </button>
@@ -204,12 +110,20 @@ export default function AssistantPage() {
           ) : null}
 
           <div className="ai-chat">
-            <div className="ai-chat-messages">
+            <div className="ai-chat-messages" ref={messagesContainerRef}>
               {hasMessages ? (
                 messages.map((message) => (
                   <div key={message.id} className={`ai-message ${message.role}`}>
-                    <span>{message.content}</span>
-                    {message.role === "assistant" && (
+                    <span
+                      // Safe: content is from our own AI (markdown), not user-supplied HTML
+                      dangerouslySetInnerHTML={{ __html: renderMarkdown(message.content) }}
+                    />
+                    {message.isStreaming ? (
+                      <span className="ai-cursor" aria-hidden="true">
+                        ▋
+                      </span>
+                    ) : null}
+                    {message.role === "assistant" && !message.isStreaming && (
                       <div className="ai-message-actions">
                         <button
                           type="button"
@@ -220,12 +134,20 @@ export default function AssistantPage() {
                           העתק תשובה
                         </button>
                         {message.source ? (
-                          <em className="ai-model">{message.source}</em>
+                          <em className={`ai-model source-${message.source}`}>
+                            {message.source === "claude"
+                              ? "✦ Claude AI"
+                              : message.source === "rule"
+                                ? "⚡ מיידי"
+                                : message.source}
+                          </em>
                         ) : null}
                         {message.contextUsed?.length ? (
                           <div className="ai-context-pills">
-                            {message.contextUsed.map(pill => (
-                              <span key={pill} className="ai-context-pill">{pill}</span>
+                            {message.contextUsed.map((pill) => (
+                              <span key={pill} className="ai-context-pill">
+                                {pill}
+                              </span>
                             ))}
                           </div>
                         ) : null}
@@ -236,23 +158,17 @@ export default function AssistantPage() {
               ) : (
                 <div className="findings-placeholder">אין הודעות עדיין.</div>
               )}
-              {isSending ? (
-                <div className="ai-message assistant is-loading">
-                  <Loader />
-                </div>
-              ) : null}
-              {/* Scroll anchor */}
               <div ref={messagesEndRef} />
             </div>
 
             <div className="ai-suggestions">
-              {promptSuggestions.map((prompt) => (
+              {AI_PROMPT_SUGGESTIONS.map((prompt) => (
                 <button
                   key={prompt}
                   className="ai-suggestion"
                   type="button"
                   disabled={isSending}
-                  onClick={() => void sendMessage(prompt)}
+                  onClick={() => handleSend(prompt)}
                 >
                   {prompt}
                 </button>
@@ -260,6 +176,18 @@ export default function AssistantPage() {
             </div>
 
             <div className="ai-input">
+              {isVoiceInputSupported ? (
+                <button
+                  type="button"
+                  className={`ai-voice-btn${isListening ? " is-listening" : ""}`}
+                  onClick={() => startVoiceInput(setInput)}
+                  disabled={isSending || isListening}
+                  title={isListening ? "מאזין..." : "דבר בעברית"}
+                  aria-label={isListening ? "מאזין לדיבור" : "הפעל קלט קולי"}
+                >
+                  {isListening ? "🔴" : "🎤"}
+                </button>
+              ) : null}
               <input
                 type="text"
                 placeholder="כתבו שאלה..."
@@ -268,7 +196,7 @@ export default function AssistantPage() {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
-                    void sendMessage();
+                    handleSend();
                   }
                 }}
                 disabled={isSending}
@@ -276,7 +204,7 @@ export default function AssistantPage() {
               <button
                 className="ai-send"
                 type="button"
-                onClick={() => void sendMessage()}
+                onClick={() => handleSend()}
                 disabled={isSending || !input.trim()}
               >
                 שליחה

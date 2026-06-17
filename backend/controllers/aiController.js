@@ -4,7 +4,7 @@ const Insight = require('../models/Insight');
 const Recommendation = require('../models/Recommendation');
 const ChatMessage = require('../models/ChatMessage');
 const { askLLM } = require('../services/aiService');
-const { chat: claudeChat } = require('../services/claudeChatService');
+const { chat: claudeChat, streamChat: claudeStreamChat, askClaude } = require('../services/claudeChatService');
 const { detectSalaryAnomalies } = require('../utils/detectSalaryAnomalies');
 const { simulateWhatIf } = require('../utils/simulateWhatIf');
 const mongoose = require('mongoose');
@@ -15,6 +15,14 @@ const RLM = '\u200F';
 
 function normalizeMessage(message) {
   return String(message || '').trim().toLowerCase();
+}
+
+// Client-supplied hint about the screen the user is viewing. Used only to enrich
+// the LLM prompt — never for intent detection or as a trusted financial source.
+function sanitizePageContext(value) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().slice(0, 300);
+  return trimmed || null;
 }
 
 function isSameMonth(dateA, dateB) {
@@ -60,7 +68,19 @@ function parseWhatIfChange(msg) {
 function detectIntent(message) {
   const msg = normalizeMessage(message);
 
-  if (msg.includes('שלום')) return 'hello';
+  if (msg.includes('שלום') || msg === 'hi' || msg === 'hello' || msg === 'hey') return 'hello';
+
+  // Financial summary / overview
+  if (
+    msg.includes('סיכום פיננסי') ||
+    msg.includes('תן לי סיכום') ||
+    msg.includes('מה המצב הפיננסי') ||
+    msg.includes('מצב כספי') ||
+    (msg.includes('סיכום') && msg.includes('מצב')) ||
+    msg === 'summary' || msg === 'summarize'
+  ) {
+    return 'financial_summary';
+  }
 
   if (msg.includes('כמה מסמכים') && msg.includes('הועלו')) {
     return 'documents_count_month';
@@ -76,16 +96,26 @@ function detectIntent(message) {
     msg.includes('איזה פעולות') ||
     msg.includes('איזו פעולות') ||
     msg.includes('מה הכי חשוב') ||
-    msg.includes('מומלץ לבצע')
+    msg.includes('מומלץ לבצע') ||
+    msg.includes('what should i do') ||
+    msg.includes('next steps')
   ) {
     return 'recommended_action';
   }
 
-  if (msg.includes('חריג')) {
+  if (msg.includes('חריג') || msg.includes('anomaly') || msg.includes('unusual')) {
     return 'anomaly_check';
   }
 
-  if (msg.includes('המלצ') || msg.includes('ביטוח') && msg.includes('צריך')) {
+  if (msg.includes('יש לי ביטוח') || msg.includes('האם יש לי')) {
+    return 'profile_insurance';
+  }
+
+  // Recommendations: only when asking about *my* specific recommendations, not general insurance questions
+  if (
+    (msg.includes('המלצ') && (msg.includes('שלי') || msg.includes('לי') || msg.includes('אישי'))) ||
+    (msg.includes('ביטוח') && msg.includes('צריך') && !msg.includes('ממוצע') && !msg.includes('כמה עולה') && !msg.includes('כמה משלמים'))
+  ) {
     return 'my_recommendations';
   }
 
@@ -93,11 +123,7 @@ function detectIntent(message) {
     return 'my_notifications';
   }
 
-  if (msg.includes('יש לי ביטוח') || msg.includes('האם יש לי')) {
-    return 'profile_insurance';
-  }
-
-  if (msg.includes('מה השתנה') || msg.includes('what changed')) {
+  if (msg.includes('מה השתנה') || msg.includes('what changed') || msg.includes('השינוי')) {
     return 'what_changed';
   }
 
@@ -109,36 +135,46 @@ function detectIntent(message) {
     return 'salary_why_down';
   }
 
-  if (msg.includes('פנסיה')) {
+  if (
+    msg.includes('פנסיה') &&
+    !msg.includes('ממוצע') &&
+    !msg.includes('בארץ') &&
+    !msg.includes('בישראל') &&
+    !msg.includes('מה זה') &&
+    !msg.includes('שיעור')
+  ) {
     if (msg.includes('מעסיק')) return 'pension_employer';
     return 'pension_employee';
   }
 
-  if (msg.includes('קרן השתלמות')) {
+  if (msg.includes('קרן השתלמות') || msg.includes('study fund') || msg.includes('השתלמות')) {
     return 'training_fund';
   }
 
-  if (msg.includes('נטו')) {
+  if (msg.includes('נטו') || msg.includes('net salary') || msg.includes('take home')) {
     return 'net_salary';
   }
 
-  if (msg.includes('ברוטו')) {
+  if (msg.includes('ברוטו') || msg.includes('gross salary') || msg.includes('gross pay')) {
     return 'gross_salary';
   }
 
-  if (msg.includes('מס הכנסה') || msg.includes('מס שולי')) {
+  if (
+    (msg.includes('מס הכנסה') || msg.includes('מס שולי') || msg.includes('income tax')) &&
+    (msg.includes('שלי') || msg.includes('שילמתי') || msg.includes('ניכו') || msg.includes('בתלוש') || msg.includes('כמה') || msg.includes('how much'))
+  ) {
     return 'tax_info';
   }
 
-  if (msg.includes('ביטוח לאומי') || msg.includes('ב.ל')) {
+  if (msg.includes('ביטוח לאומי') || msg.includes('ב.ל') || msg.includes('national insurance') || msg.includes('bituach leumi')) {
     return 'national_insurance';
   }
 
-  if (msg.includes('חופשה') || msg.includes('ימי חופש')) {
+  if (msg.includes('חופשה') || msg.includes('ימי חופש') || msg.includes('vacation') || msg.includes('days off')) {
     return 'vacation_days';
   }
 
-  if (msg.includes('מחלה') || msg.includes('ימי מחלה')) {
+  if (msg.includes('מחלה') || msg.includes('ימי מחלה') || msg.includes('sick days') || msg.includes('sick leave')) {
     return 'sick_days';
   }
 
@@ -146,7 +182,7 @@ function detectIntent(message) {
     return 'employer_info';
   }
 
-  if (msg.includes('ניכויי חובה') || msg.includes('כמה מנכים') || msg.includes('סך ניכויים')) {
+  if (msg.includes('ניכויי חובה') || msg.includes('כמה מנכים') || msg.includes('סך ניכויים') || msg.includes('deductions')) {
     return 'mandatory_deductions';
   }
 
@@ -154,7 +190,10 @@ function detectIntent(message) {
     msg.includes('מה יקרה אם') ||
     msg.includes('כמה אקבל אם') ||
     msg.includes('סימולציה') ||
-    (msg.includes('העלאה') && /\d/.test(msg))
+    msg.includes('simulation') ||
+    msg.includes('what if') ||
+    (msg.includes('העלאה') && /\d/.test(msg)) ||
+    (msg.includes('raise') && /\d/.test(msg))
   ) {
     return 'whatif';
   }
@@ -225,10 +264,11 @@ async function buildUserContext(userId) {
   ]);
 
   // Get last 3 completed payslips for trend analysis
+  // Also match docs with category 'other' that have payslip analysisData (uploaded before auto-upgrade)
   const completedPayslips = documents.filter(
     d =>
       d.status === 'completed' &&
-      d.metadata?.category === 'payslip' &&
+      (d.metadata?.category === 'payslip' || (d.analysisData?.summary?.grossSalary != null)) &&
       d.analysisData?.summary,
   ).slice(0, 3);
 
@@ -298,6 +338,42 @@ function buildRuleBasedAnswer(intent, ctx) {
   switch (intent) {
     case 'hello':
       return 'שלום! אני העוזר הפיננסי של FinGuide. אפשר לשאול אותי על תלוש השכר, הפנסיה, קרן ההשתלמות או מצב המסמכים שלך.';
+
+    case 'financial_summary': {
+      const parts = ['**סיכום מצב פיננסי:**'];
+      const gross = formatAmount(ctx.grossSalary);
+      const net = formatAmount(ctx.netSalary);
+      const tax = formatAmount(ctx.tax);
+      const pensionEmp = formatAmount(ctx.pensionEmployee);
+      const fundEmp = formatAmount(ctx.trainingFundEmployee);
+
+      if (gross) parts.push(`- שכר ברוטו: ${gross}`);
+      if (net) parts.push(`- שכר נטו: ${net}`);
+      if (tax) parts.push(`- מס הכנסה: ${tax}`);
+      if (ctx.marginalTaxRate != null) parts.push(`- שיעור מס שולי: ${ctx.marginalTaxRate}%`);
+      if (pensionEmp) parts.push(`- הפרשה לפנסיה (עובד): ${pensionEmp}`);
+      if (fundEmp) {
+        const pct = ctx.trainingFundEmployeePercent;
+        parts.push(`- קרן השתלמות: ${fundEmp}${pct != null ? ` (${pct}%)` : ''}`);
+      }
+      if (ctx.vacationDays != null) parts.push(`- יתרת ימי חופשה: ${ctx.vacationDays}`);
+
+      const docs = ctx.documents || [];
+      const completed = docs.filter(d => d.status === 'completed').length;
+      if (docs.length) parts.push(`- מסמכים: ${completed} נותחו מתוך ${docs.length}`);
+
+      const insights = ctx.insights || [];
+      if (insights.length) {
+        parts.push('', '**תובנות פעילות:**');
+        insights.slice(0, 3).forEach(i => parts.push(`- ${i.title}: ${i.description}`));
+      }
+
+      if (parts.length <= 2) {
+        return null; // Not enough data — use LLM for better context
+      }
+
+      return parts.join('\n');
+    }
 
     case 'documents_count_month': {
       const count = countDocumentsThisMonth(docs);
@@ -511,6 +587,7 @@ async function getChatHistory(userId, conversationId, limit = 10) {
 
 async function chatWithAI(req, res) {
   const { message, history, conversationId: clientConversationId } = req.body;
+  const pageContext = sanitizePageContext(req.body.pageContext);
 
   if (!message || typeof message !== 'string') {
     return res.status(400).json({ success: false, message: 'message is required (string)' });
@@ -561,7 +638,7 @@ async function chatWithAI(req, res) {
           `לפי הסימולציה, ${label} תביא לברוטו של ${formatAmount(sim.scenario.gross)} ` +
           `ולנטו משוער של ${formatAmount(sim.scenario.net)} ` +
           `(עלייה של כ-${formatAmount(sim.delta.net)} בנטו).\n` +
-          `החישוב מבוסס על מדרגות מס 2024 וניכויי חובה. הסכום בפועל עשוי להשתנות מעט.`;
+          `החישוב מבוסס על מדרגות מס 2026 וניכויי חובה. הסכום בפועל עשוי להשתנות מעט.`;
       } catch {
         finalAnswer = 'לא הצלחתי לחשב את הסימולציה. בדוק שהנתונים בתלוש תקינים.';
       }
@@ -579,8 +656,9 @@ async function chatWithAI(req, res) {
         insights: userContext.insights,
         recommendations: userContext.recommendations,
         history: mergedHistory,
+        pageContext,
       });
-      finalAnswer = chatResult.answer;
+      finalAnswer = chatResult.answer || 'השירות אינו זמין כרגע. אנא נסה שנית בקרוב, או שאל שאלה ספציפית כמו "כמה נטו?", "כמה פנסיה?".';
       source = chatResult.source;
       model = chatResult.model;
       tokensUsed = chatResult.tokensUsed;
@@ -588,6 +666,12 @@ async function chatWithAI(req, res) {
       finalAnswer = ruleAnswer;
       source = 'rule';
     }
+  }
+
+  // Safety net: should never reach here, but guard against undefined
+  if (!finalAnswer) {
+    finalAnswer = 'לא הצלחתי לענות כרגע. נסה שוב או שאל שאלה ספציפית.';
+    source = 'rule';
   }
 
   await saveChatMessage(req.user._id, conversationId, 'user', message, { intent });
@@ -651,4 +735,249 @@ async function listConversations(req, res) {
   });
 }
 
-module.exports = { chatWithAI, getChatHistoryHandler, listConversations };
+// ── streaming handler ─────────────────────────────────────────────────────────
+
+async function chatWithAIStream(req, res) {
+  const { message, history, conversationId: clientConversationId } = req.body;
+  const pageContext = sanitizePageContext(req.body.pageContext);
+
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ success: false, message: 'message is required (string)' });
+  }
+  if (message.length > 2000) {
+    return res.status(400).json({ success: false, message: 'message too long (max 2000 chars)' });
+  }
+
+  const conversationId = clientConversationId && mongoose.Types.ObjectId.isValid(clientConversationId)
+    ? new mongoose.Types.ObjectId(clientConversationId)
+    : new mongoose.Types.ObjectId();
+
+  const userContext = await buildUserContext(req.user._id);
+  const intent = detectIntent(message);
+
+  const dbHistory = await getChatHistory(req.user._id, conversationId);
+  const mergedHistory = dbHistory.length
+    ? dbHistory.map(m => ({ role: m.role, content: m.content }))
+    : (Array.isArray(history) ? history : []);
+
+  // Rule-based intents: resolve immediately without streaming
+  let ruleAnswer = null;
+  if (intent === 'whatif') {
+    const change = parseWhatIfChange(normalizeMessage(message));
+    if (!change || userContext.grossSalary == null || userContext.netSalary == null) {
+      ruleAnswer = 'אין לי מספיק נתונים לחשב סימולציה. יש לוודא שתלוש שכר נותח ולציין אחוז או סכום, למשל: "מה יקרה אם אקבל העלאה של 10%?"';
+    } else {
+      try {
+        const sim = simulateWhatIf({
+          gross: userContext.grossSalary,
+          net: userContext.netSalary,
+          change,
+          creditPoints: userContext.taxCreditPoints || undefined,
+        });
+        const label = change.type === 'gross_percent'
+          ? `העלאה של ${change.value * 100}%`
+          : `תוספת של ${formatAmount(change.value)}`;
+        ruleAnswer =
+          `לפי הסימולציה, ${label} תביא לברוטו של ${formatAmount(sim.scenario.gross)} ` +
+          `ולנטו משוער של ${formatAmount(sim.scenario.net)} ` +
+          `(עלייה של כ-${formatAmount(sim.delta.net)} בנטו).\n` +
+          `החישוב מבוסס על מדרגות מס 2026 וניכויי חובה. הסכום בפועל עשוי להשתנות מעט.`;
+      } catch {
+        ruleAnswer = 'לא הצלחתי לחשב את הסימולציה. בדוק שהנתונים בתלוש תקינים.';
+      }
+    }
+  } else if (intent !== 'fallback') {
+    ruleAnswer = buildRuleBasedAnswer(intent, userContext);
+  }
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  const sendEvent = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  // Send conversationId immediately so frontend can track it
+  sendEvent({ type: 'meta', conversationId: conversationId.toString(), intent });
+
+  await saveChatMessage(req.user._id, conversationId, 'user', message, { intent });
+
+  if (ruleAnswer !== null) {
+    // Rule-based: send as a single token then done
+    sendEvent({ type: 'token', token: `${RLM}${ruleAnswer}` });
+    sendEvent({ type: 'done', source: 'rule' });
+    await saveChatMessage(req.user._id, conversationId, 'assistant', ruleAnswer, {
+      intent, contextUsed: [], model: null, tokensUsed: null,
+    });
+    res.end();
+    return;
+  }
+
+  // LLM streaming
+  let fullAnswer = '';
+  try {
+    await claudeStreamChat(
+      message,
+      {
+        userContext,
+        profile: userContext.profile,
+        insights: userContext.insights,
+        recommendations: userContext.recommendations,
+        history: mergedHistory,
+        pageContext,
+      },
+      (token) => {
+        fullAnswer += token;
+        sendEvent({ type: 'token', token });
+      },
+      async (full, tokensUsed) => {
+        sendEvent({ type: 'done', source: 'claude', tokensUsed });
+        await saveChatMessage(req.user._id, conversationId, 'assistant', full, {
+          intent, contextUsed: [], model: process.env.CHAT_MODEL || 'claude-sonnet-4-20250514', tokensUsed,
+        });
+        res.end();
+      },
+    );
+  } catch {
+    sendEvent({ type: 'error', message: 'שגיאה בעיבוד התשובה.' });
+    res.end();
+  }
+}
+
+// ── AI financial tips for dashboard ──────────────────────────────────────────
+
+async function getFinancialTips(req, res) {
+  try {
+    const userContext = await buildUserContext(req.user._id);
+    const tips = buildPersonalizedTips(userContext);
+
+    // If Claude is available, enhance tips with LLM
+    if (process.env.ANTHROPIC_API_KEY) {
+      const systemPrompt = [
+        'אתה יועץ פיננסי של FinGuide. על בסיס נתוני המשתמש, תן 3 טיפים פיננסיים קצרים, ממוקדים ואקשנבל.',
+        'פורמט: JSON מערך של { tip: string, category: string, priority: "high"|"medium"|"low" }.',
+        'קטגוריות אפשריות: pension, tax, savings, insurance, documents.',
+        'ענה רק ב-JSON, ללא טקסט נוסף.',
+        '',
+        'נתוני משתמש:',
+        buildUserContextSummary(userContext),
+      ].join('\n');
+
+      try {
+        const result = await askClaude('תן לי 3 טיפים פיננסיים אישיים', systemPrompt, []);
+        if (result?.answer) {
+          const jsonMatch = result.answer.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const llmTips = JSON.parse(jsonMatch[0]);
+            if (Array.isArray(llmTips) && llmTips.length > 0) {
+              return res.json({ success: true, data: { tips: llmTips, source: 'claude', staticTips: tips } });
+            }
+          }
+        }
+      } catch {
+        // Fall through to rule-based tips
+      }
+    }
+
+    return res.json({ success: true, data: { tips, source: 'rule' } });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'שגיאה בטעינת טיפים', error: err.message });
+  }
+}
+
+function buildUserContextSummary(ctx) {
+  const lines = [];
+  if (ctx.grossSalary) lines.push(`ברוטו: ₪${ctx.grossSalary}`);
+  if (ctx.netSalary) lines.push(`נטו: ₪${ctx.netSalary}`);
+  if (ctx.pensionEmployee) lines.push(`פנסיה עובד: ₪${ctx.pensionEmployee}`);
+  if (ctx.trainingFundEmployee) lines.push(`קרן השתלמות: ₪${ctx.trainingFundEmployee}`);
+  if (ctx.tax) lines.push(`מס הכנסה: ₪${ctx.tax}`);
+  if (ctx.marginalTaxRate) lines.push(`שיעור מס שולי: ${ctx.marginalTaxRate}%`);
+  if (ctx.documents?.length) lines.push(`מסמכים: ${ctx.documents.length}`);
+  if (ctx.insights?.length) lines.push(`תובנות: ${ctx.insights.slice(0,3).map(i => i.title).join(', ')}`);
+  return lines.join('\n') || 'אין עדיין נתונים';
+}
+
+function buildPersonalizedTips(ctx) {
+  const tips = [];
+
+  // Check pension contribution rate
+  if (ctx.grossSalary && ctx.pensionEmployee) {
+    const rate = ctx.pensionEmployee / ctx.grossSalary;
+    if (rate < 0.06) {
+      tips.push({
+        tip: `שיעור הפרשת הפנסיה שלך (${Math.round(rate * 100)}%) נמוך מהמינימום המומלץ (6%). כדאי לבדוק עם המעסיק.`,
+        category: 'pension',
+        priority: 'high',
+      });
+    }
+  }
+
+  // Check training fund
+  if (ctx.grossSalary && !ctx.trainingFundEmployee) {
+    tips.push({
+      tip: 'לא זוהתה הפרשה לקרן השתלמות בתלוש. קרן השתלמות היא הטבת מס משמעותית — כדאי לבדוק.',
+      category: 'savings',
+      priority: 'high',
+    });
+  }
+
+  // Anomaly detection
+  if (ctx.grossSalary && ctx.netSalary) {
+    const { hasAnomalies } = detectSalaryAnomalies({
+      grossSalary: ctx.grossSalary,
+      netSalary: ctx.netSalary,
+    });
+    if (hasAnomalies) {
+      tips.push({
+        tip: 'זוהו חריגות אפשריות בתלוש השכר האחרון שלך. מומלץ לבדוק את פרטי הניכויים.',
+        category: 'documents',
+        priority: 'high',
+      });
+    }
+  }
+
+  // Tax rate tip
+  if (ctx.marginalTaxRate && ctx.marginalTaxRate >= 35) {
+    tips.push({
+      tip: `שיעור המס השולי שלך הוא ${ctx.marginalTaxRate}%. ייתכן שניתן לחסוך מס על ידי הגדלת ההפרשה לפנסיה או קרן השתלמות.`,
+      category: 'tax',
+      priority: 'medium',
+    });
+  }
+
+  // Vacation days
+  if (ctx.vacationDays != null && ctx.vacationDays > 20) {
+    tips.push({
+      tip: `יש לך ${ctx.vacationDays} ימי חופשה שצבורים. שים לב לא לאבד ימים בסוף שנה.`,
+      category: 'documents',
+      priority: 'medium',
+    });
+  }
+
+  // Documents tip
+  const failedDocs = (ctx.documents || []).filter(d => d.status === 'failed');
+  if (failedDocs.length) {
+    tips.push({
+      tip: `${failedDocs.length} מסמכים נכשלו בניתוח. העלה אותם מחדש לקבלת תובנות מלאות.`,
+      category: 'documents',
+      priority: 'high',
+    });
+  }
+
+  // Default tip if nothing specific
+  if (tips.length === 0) {
+    tips.push(
+      { tip: 'העלה תלושי שכר נוספים כדי לאפשר ניתוח מגמות ותובנות חכמות.', category: 'documents', priority: 'medium' },
+      { tip: 'השלם את פרופיל הביטוחים שלך לקבלת המלצות ביטוח מותאמות אישית.', category: 'insurance', priority: 'low' },
+    );
+  }
+
+  return tips.slice(0, 4);
+}
+
+module.exports = { chatWithAI, chatWithAIStream, getChatHistoryHandler, listConversations, getFinancialTips };

@@ -19,6 +19,7 @@ const STATUS_LABELS: Record<DocumentStatus, string> = {
   processing: "בעיבוד",
   completed: "מוכן",
   needs_review: "דורש סקירה",
+  needs_password: "נדרשת סיסמה",
   failed: "שגיאה",
 };
 

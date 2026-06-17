@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import AppFooter from "../AppFooter";
 import PrivateTopbar from "../PrivateTopbar";
 import PayslipHistoryHeader from "./PayslipHistoryHeader";
+import DocsTabBar from "../tabs/DocsTabBar";
 
 interface PayslipHistoryLayoutProps {
   children: ReactNode;
@@ -18,6 +19,7 @@ export default function PayslipHistoryLayout({
   return (
     <div className="payslip-page" dir="rtl">
       <PrivateTopbar />
+      <DocsTabBar />
       {onBackToDashboard ? (
         <PayslipHistoryHeader onBackToDashboard={onBackToDashboard} backLabel={backLabel} />
       ) : null}
