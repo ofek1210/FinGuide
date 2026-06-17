@@ -11,6 +11,8 @@ import DashboardRecommendationsCard from "../components/dashboard/DashboardRecom
 import DashboardRecentDocuments from "../components/dashboard/DashboardRecentDocuments";
 import DashboardFinancialHealthCard from "../components/dashboard/DashboardFinancialHealthCard";
 import DashboardAITipsCard from "../components/dashboard/DashboardAITipsCard";
+import DashboardFullAnalysisCard from "../components/dashboard/DashboardFullAnalysisCard";
+import DashboardScoresCard from "../components/dashboard/DashboardScoresCard";
 import { useDashboardDocuments } from "../hooks/useDashboardDocuments";
 import { useDashboardUser } from "../hooks/useDashboardUser";
 import { APP_ROUTES } from "../types/navigation";
@@ -153,12 +155,18 @@ export default function DashboardPage() {
               <DashboardChatPanel />
             </section>
 
+            {/* AI Scores row */}
+            <DashboardScoresCard />
+
             {/* Secondary row: health score + insights */}
             <div className="dashboard-secondary-grid">
               <DashboardFinancialHealthCard />
               <DashboardInsightsCard />
               <DashboardRecommendationsCard />
             </div>
+
+            {/* Multi-agent full analysis card */}
+            <DashboardFullAnalysisCard />
 
             {/* AI-generated personalized tips */}
             <DashboardAITipsCard />
