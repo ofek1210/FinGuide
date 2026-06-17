@@ -28,6 +28,7 @@ const STRING_ENUMS = {
   investmentType: ['stocks', 'bonds', 'real_estate', 'crypto', 'other'],
   riskTolerance: ['low', 'medium', 'high'],
   goalType: ['emergency_fund', 'home_purchase', 'retirement', 'education', 'travel', 'car', 'other'],
+  employmentType: ['employee', 'self_employed', 'freelancer', 'business_owner'],
 };
 
 const personalSchema = new mongoose.Schema(
@@ -48,6 +49,7 @@ const personalSchema = new mongoose.Schema(
     childrenCount: { type: Number, default: null, min: 0, max: 20 },
     childrenAges: { type: [Number], default: [] },
     spouseWorks: { type: Boolean, default: null },
+    isSmoker: { type: Boolean, default: null },
   },
   { _id: false }
 );
@@ -119,12 +121,21 @@ const retirementSchema = new mongoose.Schema(
         message: 'Invalid investment type',
       },
     },
+    plannedRetirementAge: { type: Number, default: null, min: 40, max: 80 },
+    currentPensionAccumulation: { type: Number, default: null, min: 0 },
+    pensionFundName: { type: String, default: null, trim: true, maxlength: 120 },
+    pensionMgmtFee: { type: Number, default: null, min: 0, max: 5 },
   },
   { _id: false }
 );
 
 const employmentSchema = new mongoose.Schema(
   {
+    employmentType: {
+      type: String,
+      enum: [...STRING_ENUMS.employmentType, null],
+      default: null,
+    },
     salaryType: {
       type: String,
       enum: [...STRING_ENUMS.salaryType, null],
