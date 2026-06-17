@@ -5,6 +5,7 @@ import DashboardPage from "./pages/DashboardPage";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import BackButton from "./components/BackButton";
 import ThemeToggle from "./components/ThemeToggle";
+import FloatingAssistant from "./components/FloatingAssistant";
 import DocumentsPage from "./pages/DocumentsPage";
 import ScanStatusPage from "./pages/ScanStatusPage";
 import ScanCompletePage from "./pages/ScanCompletePage";
@@ -16,12 +17,16 @@ import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AssistantPage from "./pages/AssistantPage";
 import FindingsPage from "./pages/FindingsPage";
+import TaxAssistantPage from "./pages/TaxAssistantPage";
+import FinancialHealthPage from "./pages/FinancialHealthPage";
+import FinancialCopilotPage from "./pages/FinancialCopilotPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
 import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import PensionPage from "./pages/PensionPage";
 import TeamPage from "./pages/TeamPage";
 import ContactPage from "./pages/ContactPage";
 import FAQPage from "./pages/FAQPage";
@@ -109,6 +114,30 @@ export default function App() {
           }
         />
         <Route
+          path={APP_ROUTES.taxAssistant}
+          element={
+            <RequireAuth>
+              <TaxAssistantPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.financialHealth}
+          element={
+            <RequireAuth>
+              <FinancialHealthPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.copilot}
+          element={
+            <RequireAuth>
+              <FinancialCopilotPage />
+            </RequireAuth>
+          }
+        />
+        <Route
           path={APP_ROUTES.insights}
           element={
             <RequireAuth>
@@ -121,6 +150,14 @@ export default function App() {
           element={
             <RequireAuth>
               <InsurancePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.pension}
+          element={
+            <RequireAuth>
+              <PensionPage />
             </RequireAuth>
           }
         />
@@ -217,6 +254,7 @@ export default function App() {
         <Route path="/500" element={<Error500 />} />
         <Route path="*" element={<Error404 />} />
       </Routes>
+      <FloatingAssistant />
     </>
   );
 }

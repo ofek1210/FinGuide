@@ -39,6 +39,7 @@ const {
 } = require('./payslipOcrShared');
 
 const execFileAsync = promisify(execFile);
+const { PdfPasswordRequiredError, isPdfPasswordError } = require('../utils/pdfPassword');
 let pdfParse;
 
 const OCR_PDF_PAGES_MODE = (process.env.OCR_PDF_PAGES_MODE || 'all').toLowerCase();
@@ -124,16 +125,33 @@ async function ocrWithTesseract(imagePath, { psm = '6' } = {}) {
   }
 }
 
-async function extractPdfEmbeddedText(pdfPath) {
+async function extractPdfEmbeddedText(pdfPath, { password } = {}) {
+  // First try pdftotext (Poppler) — better Hebrew support than pdf-parse/pdf.js
+  try {
+    const passwordArgs = password ? ['-upw', password] : [];
+    const { stdout } = await execFileAsync('pdftotext', [...passwordArgs, '-layout', pdfPath, '-']);
+    const text = (stdout || '').trim();
+    if (text.length >= 50) {
+      return text;
+    }
+  } catch (_ignored) {
+    // pdftotext unavailable or failed — fall through to pdf-parse
+  }
+
+  // Fallback: pdf-parse
   try {
     if (!pdfParse) {
       // eslint-disable-next-line global-require
       pdfParse = require('pdf-parse');
     }
     const buffer = await fs.readFile(pdfPath);
-    const result = await pdfParse(buffer);
+    const parseOptions = password ? { password } : undefined;
+    const result = await pdfParse(buffer, parseOptions);
     return (result.text || '').trim();
   } catch (error) {
+    if (isPdfPasswordError(error) && !password) {
+      throw new PdfPasswordRequiredError();
+    }
     const wrapped = new Error('Failed to extract embedded text from PDF via pdf-parse.');
     wrapped.cause = error;
     throw wrapped;
@@ -153,14 +171,18 @@ function isLikelyBrokenHebrew(text) {
   return hebrewCount < 5 && weirdLatinCount > 20;
 }
 
-async function pdfToPngs(pdfPath, outDir) {
+async function pdfToPngs(pdfPath, outDir, { password } = {}) {
   const prefix = path.join(outDir, 'page');
-  const pngArgs = ['-png', '-r', '300', pdfPath, prefix];
+  const passwordArgs = password ? ['-upw', password] : [];
+  const pngArgs = [...passwordArgs, '-png', '-r', '300', pdfPath, prefix];
   let pngSupported = true;
 
   try {
     await execFileAsync('pdftoppm', pngArgs);
   } catch (error) {
+    if (isPdfPasswordError(error) && !password) {
+      throw new PdfPasswordRequiredError();
+    }
     const stderr = error.stderr ? String(error.stderr) : '';
     const looksLikeUsageError = /Usage: pdftoppm/i.test(stderr);
 
@@ -179,8 +201,11 @@ async function pdfToPngs(pdfPath, outDir) {
       );
       pngSupported = false;
       try {
-        await execFileAsync('pdftoppm', ['-r', '300', pdfPath, prefix]);
+        await execFileAsync('pdftoppm', [...passwordArgs, '-r', '300', pdfPath, prefix]);
       } catch (fallbackError) {
+        if (isPdfPasswordError(fallbackError) && !password) {
+          throw new PdfPasswordRequiredError();
+        }
         const wrapped = new Error(
           'pdftoppm command failed while converting PDF to images (both with and without -png).',
         );
@@ -619,7 +644,8 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
   return result;
 }
 
-async function extractPayslipFile(inputPath) {
+async function extractPayslipFile(inputPath, options = {}) {
+  const { password } = options;
   const abs = path.resolve(inputPath);
   const ext = path.extname(abs).toLowerCase();
   let extractionMethod = 'ocr';
@@ -630,7 +656,7 @@ async function extractPayslipFile(inputPath) {
   let imagePaths = [];
   if (ext === '.pdf') {
     try {
-      const embeddedText = await extractPdfEmbeddedText(abs);
+      const embeddedText = await extractPdfEmbeddedText(abs, { password });
       const normalized = embeddedText.replace(/\s+/g, ' ').trim();
       const brokenHebrew = isLikelyBrokenHebrew(embeddedText);
 
@@ -655,6 +681,9 @@ async function extractPayslipFile(inputPath) {
         return { data };
       }
     } catch (error) {
+      if (error instanceof PdfPasswordRequiredError || error?.code === 'PDF_PASSWORD_REQUIRED') {
+        throw error;
+      }
       // eslint-disable-next-line no-console
       console.warn('PDF text extraction failed, falling back to OCR:', error.message);
     }
@@ -662,9 +691,12 @@ async function extractPayslipFile(inputPath) {
     const pdfOut = path.join(workDir, `pdf_${crypto.randomUUID()}`);
     await fs.mkdir(pdfOut, { recursive: true });
     try {
-      imagePaths = await pdfToPngs(abs, pdfOut);
+      imagePaths = await pdfToPngs(abs, pdfOut, { password });
     } catch (e) {
       await fs.rm(pdfOut, { recursive: true, force: true }).catch(() => {});
+      if (e instanceof PdfPasswordRequiredError || e?.code === 'PDF_PASSWORD_REQUIRED') {
+        throw e;
+      }
       throw e;
     }
   } else {

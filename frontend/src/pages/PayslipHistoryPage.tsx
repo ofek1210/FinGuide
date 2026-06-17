@@ -31,7 +31,7 @@ export default function PayslipHistoryPage() {
   const highlightedYear = useMemo(() => {
     const first = highlightedPeriods ? Array.from(highlightedPeriods)[0] : "";
     const parsed = Number(first?.split("-")[0]);
-    return Number.isFinite(parsed) ? parsed : undefined;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
   }, [highlightedPeriods]);
   const [selectedYear, setSelectedYear] = useState<number | undefined>(highlightedYear);
   const { data, isLoading, error, reload } = usePayslipHistory(selectedYear);
@@ -205,16 +205,19 @@ export default function PayslipHistoryPage() {
 
       {taxAdjustment ? (
         <section className="payslip-tax-card">
-          <h3>תיאום מס שנתי ({taxAdjustment.year})</h3>
+          <h3>תיאום מס שנתי ({taxAdjustment.year}) — הערכה</h3>
           <p>
-            {taxDirection}:{" "}
-            <strong>{formatCurrencyILS(Math.abs(taxAdjustment.estimatedRefundOrDue))}</strong>
+            {taxDirection} (משוער):{" "}
+            <strong>~{formatCurrencyILS(Math.abs(taxAdjustment.estimatedRefundOrDue))}</strong>
           </p>
           <p>
             מס צפוי שנתי: {formatCurrencyILS(taxAdjustment.expectedAnnualTax)} | מס ששולם בפועל:{" "}
             {formatCurrencyILS(taxAdjustment.actualTaxWithheld)}
           </p>
-          <small>רמת ביטחון משוערת: {Math.round((taxAdjustment.confidence || 0) * 100)}%</small>
+          <small>
+            הערכה מבוססת על {stats.totalPayslips} תלוש/ים ({Math.round((taxAdjustment.confidence || 0) * 100)}% ביטחון).
+            לחישוב מדויק יש להעלות את כל תלושי השנה.
+          </small>
         </section>
       ) : null}
 

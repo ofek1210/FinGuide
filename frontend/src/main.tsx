@@ -3,14 +3,18 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
+import { AiChatProvider } from "./assistant/AiChatProvider";
 import "./index.css";
 import "./theme/rapyd.css";
+import "./theme/finq.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <AiChatProvider>
+          <App />
+        </AiChatProvider>
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

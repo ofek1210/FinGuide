@@ -1,0 +1,51 @@
+'use strict';
+
+const express = require('express');
+const router = express.Router();
+const multer = require('multer');
+const path = require('path');
+const { protect } = require('../middleware/auth');
+const {
+  getInsuranceAnalysis,
+  uploadInsuranceExcel,
+  getInsurancePolicies,
+  deleteInsurancePolicy,
+} = require('../controllers/insuranceController');
+
+// Excel upload — memory storage (no file saved to disk)
+const excelUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (['.xlsx', '.xls'].includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('קובץ Excel בלבד (.xlsx/.xls)'));
+    }
+  },
+});
+
+router.use(protect);
+
+// GET /api/insurance/analysis — full AI analysis from profile + imported policies
+router.get('/analysis', (req, res, next) => {
+  Promise.resolve(getInsuranceAnalysis(req, res)).catch(next);
+});
+
+// GET /api/insurance/policies — list all imported policies for the user
+router.get('/policies', (req, res, next) => {
+  Promise.resolve(getInsurancePolicies(req, res)).catch(next);
+});
+
+// POST /api/insurance/upload-excel — parse Har HaBituach Excel
+router.post('/upload-excel', excelUpload.single('file'), (req, res, next) => {
+  Promise.resolve(uploadInsuranceExcel(req, res)).catch(next);
+});
+
+// DELETE /api/insurance/policies/:id
+router.delete('/policies/:id', (req, res, next) => {
+  Promise.resolve(deleteInsurancePolicy(req, res)).catch(next);
+});
+
+module.exports = router;
