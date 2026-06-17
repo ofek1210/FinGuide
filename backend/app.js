@@ -19,6 +19,9 @@ const taxAssistantRoutes = require('./routes/taxAssistant');
 const financialHealthRoutes = require('./routes/financialHealth');
 const copilotRoutes = require('./routes/copilot');
 const scoreAgentRoutes = require('./routes/scoreAgent');
+const pensionRoutes = require('./routes/pension');
+const insuranceRoutes = require('./routes/insurance');
+const dashboardRoutes = require('./routes/dashboard');
 
 const createApp = () => {
   const app = express();
@@ -92,6 +95,9 @@ const createApp = () => {
   app.use('/api/financial-health', financialHealthRoutes);
   app.use('/api/copilot', copilotRoutes);
   app.use('/api/score-agent', scoreAgentRoutes);
+  app.use('/api/pension', pensionRoutes);
+  app.use('/api/insurance', insuranceRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
 
   // 404 handler
   app.use((req, res) => {

@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 
 const { chatWithAI, chatWithAIStream, getChatHistoryHandler, listConversations, getFinancialTips } = require('../controllers/aiController');
+const { runFullAnalysisHandler } = require('../controllers/fullAnalysisController');
 const { protect } = require('../middleware/auth');
 
 // כל הroutes כאן מוגנים - דורשים authentication
@@ -28,6 +29,11 @@ router.get('/chat/conversations', (req, res, next) => {
 // AI-generated personalized financial tips for dashboard
 router.get('/financial-tips', (req, res, next) => {
   Promise.resolve(getFinancialTips(req, res)).catch(next);
+});
+
+// Multi-agent full analysis — runs all agents in parallel
+router.post('/full-analysis', (req, res, next) => {
+  Promise.resolve(runFullAnalysisHandler(req, res)).catch(next);
 });
 
 module.exports = router;
