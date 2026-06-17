@@ -6,6 +6,8 @@ import { useAuth } from "../../auth/AuthProvider";
 import { getAvatarDisplayUrl } from "../../api/profile.api";
 import { APP_ROUTES } from "../../types/navigation";
 import { logoutWithConfirm } from "../../utils/logout";
+import ThemeToggle from "../ThemeToggle";
+import NotificationBell from "../notifications/NotificationBell";
 
 interface DashboardHeaderProps {
   isUploading: boolean;
@@ -14,8 +16,6 @@ interface DashboardHeaderProps {
   onFileSelected: (event: ChangeEvent<HTMLInputElement>) => void;
   onNavigateDashboard: () => void;
   onNavigateDocuments: () => void;
-  onNavigatePayslipHistory: () => void;
-  onNavigateFindings: () => void;
 }
 
 function getInitial(name: string | undefined): string {
@@ -30,8 +30,6 @@ export default function DashboardHeader({
   onFileSelected,
   onNavigateDashboard,
   onNavigateDocuments,
-  onNavigatePayslipHistory,
-  onNavigateFindings,
 }: DashboardHeaderProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -74,7 +72,7 @@ export default function DashboardHeader({
           type="button"
           onClick={onNavigateDashboard}
         >
-          לוח בקרה
+          בית
         </button>
         <button
           className="dashboard-nav-link"
@@ -86,41 +84,29 @@ export default function DashboardHeader({
         <button
           className="dashboard-nav-link"
           type="button"
-          onClick={onNavigatePayslipHistory}
+          onClick={() => navigate(APP_ROUTES.insights)}
         >
-          היסטוריית תלושים
+          ✦ תובנות
         </button>
         <button
           className="dashboard-nav-link"
           type="button"
-          onClick={onNavigateFindings}
+          onClick={() => navigate(APP_ROUTES.insurance)}
         >
-          ממצאים
+          ✦ AI Shield
         </button>
         <button
           className="dashboard-nav-link"
           type="button"
-          onClick={() => navigate(APP_ROUTES.assistant)}
+          onClick={() => navigate(APP_ROUTES.copilot)}
         >
-          עוזר AI
-        </button>
-        <button
-          className="dashboard-nav-link"
-          type="button"
-          onClick={() => navigate(APP_ROUTES.settings)}
-        >
-          הגדרות
-        </button>
-        <button
-          className="dashboard-nav-link"
-          type="button"
-          onClick={() => navigate(APP_ROUTES.help)}
-        >
-          עזרה
+          ✦ תכנון
         </button>
       </nav>
 
       <div className="dashboard-top-actions">
+        <ThemeToggle />
+        <NotificationBell />
         <button
           className="dashboard-upload"
           type="button"
@@ -128,7 +114,7 @@ export default function DashboardHeader({
           disabled={isUploading}
         >
           <Upload aria-hidden="true" />
-          {isUploading ? "מעלה..." : "העלאת מסמך"}
+          {isUploading ? "מעלה..." : "העלאת תלוש"}
         </button>
         <div className="dashboard-user-menu" ref={dropdownRef}>
           <button
@@ -159,6 +145,13 @@ export default function DashboardHeader({
                 onClick={goToSettings}
               >
                 הגדרות פרופיל
+              </button>
+              <button
+                type="button"
+                className="dashboard-user-dropdown-item"
+                onClick={() => { setDropdownOpen(false); navigate(APP_ROUTES.help); }}
+              >
+                עזרה
               </button>
               <button
                 type="button"

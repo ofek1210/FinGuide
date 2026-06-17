@@ -39,6 +39,8 @@ const URGENCY_LABEL: Record<string, string> = {
 const fmt = (n: number | null | undefined) =>
   n != null ? `₪${Number(n).toLocaleString("he-IL")}` : "—";
 
+const AI_DISCLAIMER = "ניתוח זה נוצר על ידי מודל AI על בסיס הנתונים שהזנת. אינו מהווה ייעוץ פיננסי או ביטוחי מקצועי. לפני כל החלטה, פנה/י לסוכן ביטוח מורשה.";
+
 export default function InsurancePage() {
   const [data, setData] = useState<InsuranceAnalysisResponse["data"] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,6 +86,9 @@ export default function InsurancePage() {
   }, [loadAnalysis]);
 
   const analysis = data?.analysis;
+
+  const criticalCount = items.filter(r => r.importance === "critical").length;
+  const highCount = items.filter(r => r.importance === "high").length;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--rapyd-bg)", direction: "rtl" }}>
@@ -385,3 +390,4 @@ export default function InsurancePage() {
     </div>
   );
 }
+

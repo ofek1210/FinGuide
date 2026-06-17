@@ -75,6 +75,9 @@ const PAYSLIP_LABEL_MAP = {
     /סה["״]?כ\s*ניכו\w*/i,
     /Total\s*Deductions/i,
   ],
+  // Exclude rate/tariff lines from net_payable — daily/hourly rates look like net amounts
+  _net_payable_exclude: [/תעריף/i, /tariff/i, /rate/i, /מצטבר/i, /cumulative/i],
+
   _mandatory_total_exclude: [/מצטבר/i, /cumulative/i],
 
   income_tax: [

@@ -19,8 +19,19 @@ function normalizeEmployeeName(value) {
 }
 
 function normalizeEmployerName(value) {
-  return String(value).replace(/\s+/g, ' ').trim();
+  return String(value)
+    // Strip Unicode bidi control characters (common in Chilan/Check Point PDFs)
+    .replace(/[\u200e\u200f\u202a\u202b\u202c\u202d\u202e]/g, '')
+    .replace(/\s+/g, ' ')
+    // Normalise all OCR variants of בע"מ: בע'ימ, בעיימ, בע''מ, בעימ → בע"מ
+    .replace(/בע["']{0,2}[י]{0,2}מ/g, 'בע"מ')
+    // Strip trailing address (starts with comma)
+    .replace(/\s*,\s*.+$/, '')
+    .trim();
 }
+
+/** Bare Hebrew label words that should never be treated as employer names */
+const EMPLOYER_LABEL_ONLY_RE = /^(?:מעסיק|מעביד|חברה|employer|company)$/i;
 
 function isValidEmployeeName(value) {
   const normalized = normalizeEmployeeName(value);
@@ -35,10 +46,29 @@ function isValidEmployeeName(value) {
 
 function isValidEmployerName(value) {
   const normalized = normalizeEmployerName(value);
-  if (!normalized || normalized.length < 2 || normalized.length > 100) {
+  if (!normalized || normalized.length < 3 || normalized.length > 100) {
     return false;
   }
   if (/^\d+$/.test(normalized) || MONTH_NAME_HEADER_REGEX.test(normalized)) {
+    return false;
+  }
+  // Reject bare label words (e.g. מעסיק appearing as a column header)
+  if (EMPLOYER_LABEL_ONLY_RE.test(normalized)) {
+    return false;
+  }
+  // Reject seniority/tenure lines
+  if (/ותק\s*אצל/.test(normalized)) {
+    return false;
+  }
+  // Reject payslip-processor credit lines (Chilan)
+  if (/עיבוד\s*וביצוע/.test(normalized)) {
+    return false;
+  }
+  // Reject tax filing identifier lines (Chilan format)
+  if (/תיק\s+ניכויים/.test(normalized)) {
+    return false;
+  }
+  if (/חברה:\s*\d/.test(normalized)) {
     return false;
   }
   return true;
@@ -149,10 +179,12 @@ function collectPartyCandidates(context) {
     if (isEmployerContextLine(entry.raw)) {
       const companyLine = normalizeEmployerName(entry.raw);
       if (isValidEmployerName(companyLine)) {
+        // Prefer lines that actually contain a company suffix (בע"מ, Ltd) over generic label words
+        const hasCompanySuffix = COMPANY_HINT_REGEX.test(companyLine);
         pushCandidate(store, 'employer_name', companyLine, {
           source: 'company_suffix_fallback',
           lineIndex: entry.index,
-          score: 0.56,
+          score: hasCompanySuffix ? 0.72 : 0.56,
           reason: 'Fallback employer name based on a company suffix.',
           section: 'identity',
           evidenceCategory: 'fallback',
@@ -183,6 +215,21 @@ function collectPartyCandidates(context) {
         section: 'identity',
         evidenceCategory: 'heuristic',
       });
+    }
+
+    // Chilan/Check Point format: "בלנקי אמילי 23370" or "בלנקי אמילי23370" — name + 4-6 digit employee number
+    if (!sameLine) {
+      const chilanLine = entry.raw.match(/^([\u05D0-\u05FA]+\s+[\u05D0-\u05FA]+)\s*(\d{4,6})\s*$/);
+      if (chilanLine && isValidEmployeeName(chilanLine[1])) {
+        pushCandidate(store, 'employee_name', normalizeEmployeeName(chilanLine[1]), {
+          source: 'heuristic_chilan_name_empnum',
+          lineIndex: entry.index,
+          score: 0.40,
+          reason: 'Hebrew name followed by a short employee number (Chilan/Check Point format).',
+          section: 'identity',
+          evidenceCategory: 'heuristic',
+        });
+      }
     }
 
     const nextLine = context.lines[entry.index + 1]?.raw;

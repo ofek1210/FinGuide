@@ -1,13 +1,13 @@
 import { MessageSquare } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { chatWithAI } from "../../api/ai.api";
-import Loader from "../ui/Loader";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { streamChatWithAI } from "../../api/ai.api";
 
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   source?: string;
+  isStreaming?: boolean;
 };
 
 const promptSuggestions = [
@@ -18,6 +18,7 @@ const promptSuggestions = [
 
 export default function DashboardChatPanel() {
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const streamAbortRef = useRef<(() => void) | null>(null);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
@@ -31,10 +32,14 @@ export default function DashboardChatPanel() {
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [chatMessages, isChatting]);
+  }, [chatMessages]);
 
-  const handleSendChat = async () => {
-    const trimmed = chatInput.trim();
+  useEffect(() => {
+    return () => { streamAbortRef.current?.(); };
+  }, []);
+
+  const sendMessage = useCallback((forcedText?: string) => {
+    const trimmed = (forcedText ?? chatInput).trim();
     if (!trimmed || isChatting) return;
 
     const userMessage: ChatMessage = {
@@ -48,23 +53,36 @@ export default function DashboardChatPanel() {
     setChatError("");
     setIsChatting(true);
 
-    const response = await chatWithAI(trimmed);
-    if (!response.success || !response.answer) {
-      setChatError(response.message || "לא הצלחנו לקבל תשובה מהבוט.");
-      setIsChatting(false);
-      return;
-    }
+    const assistantId = `assistant-${Date.now()}`;
+    setChatMessages((prev) => [
+      ...prev,
+      { id: assistantId, role: "assistant", content: "", isStreaming: true },
+    ]);
 
-    const assistantMessage: ChatMessage = {
-      id: `assistant-${Date.now()}`,
-      role: "assistant",
-      content: response.answer,
-      source: response.source,
-    };
+    const abort = streamChatWithAI(
+      trimmed,
+      [],
+      null,
+      (token) => {
+        setChatMessages((prev) =>
+          prev.map((m) => m.id === assistantId ? { ...m, content: m.content + token } : m),
+        );
+      },
+      (source) => {
+        setChatMessages((prev) =>
+          prev.map((m) => m.id === assistantId ? { ...m, isStreaming: false, source } : m),
+        );
+        setIsChatting(false);
+      },
+      (errMsg) => {
+        setChatError(errMsg);
+        setChatMessages((prev) => prev.filter((m) => m.id !== assistantId));
+        setIsChatting(false);
+      },
+    );
 
-    setChatMessages((prev) => [...prev, assistantMessage]);
-    setIsChatting(false);
-  };
+    streamAbortRef.current = abort;
+  }, [chatInput, isChatting]);
 
   return (
     <article className="dashboard-card ai-card">
@@ -82,15 +100,17 @@ export default function DashboardChatPanel() {
         <div className="ai-chat-messages">
           {chatMessages.map((message) => (
             <div key={message.id} className={`ai-message ${message.role}`}>
-              <span>{message.content}</span>
-              {message.source ? <em className="ai-model">{message.source}</em> : null}
+              <span>
+                {message.content}
+                {message.isStreaming ? (
+                  <span className="ai-cursor" aria-hidden="true">▋</span>
+                ) : null}
+              </span>
+              {message.source && !message.isStreaming ? (
+                <em className="ai-model">{message.source}</em>
+              ) : null}
             </div>
           ))}
-          {isChatting ? (
-            <div className="ai-message assistant is-loading">
-              <Loader />
-            </div>
-          ) : null}
           <div ref={chatEndRef} />
         </div>
 
@@ -100,7 +120,8 @@ export default function DashboardChatPanel() {
               key={prompt}
               className="ai-suggestion"
               type="button"
-              onClick={() => setChatInput(prompt)}
+              disabled={isChatting}
+              onClick={() => sendMessage(prompt)}
             >
               {prompt}
             </button>
@@ -116,7 +137,7 @@ export default function DashboardChatPanel() {
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
-                void handleSendChat();
+                sendMessage();
               }
             }}
             disabled={isChatting}
@@ -124,7 +145,7 @@ export default function DashboardChatPanel() {
           <button
             className="ai-send"
             type="button"
-            onClick={handleSendChat}
+            onClick={() => sendMessage()}
             disabled={isChatting || !chatInput.trim()}
           >
             שליחה
@@ -135,3 +156,5 @@ export default function DashboardChatPanel() {
     </article>
   );
 }
+
+
