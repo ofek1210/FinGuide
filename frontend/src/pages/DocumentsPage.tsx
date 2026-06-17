@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useNavigate } from "react-router-dom";
+import { Mail } from "lucide-react";
 import Loader from "../components/ui/Loader";
 import Toast from "../components/ui/Toast";
 import ToastContainer from "../components/ui/ToastContainer";
@@ -9,6 +10,7 @@ import PrivateTopbar from "../components/PrivateTopbar";
 import {
   listDocuments,
   uploadDocument,
+  unlockDocument,
   downloadDocument,
   removeDocument,
   type DocumentItem as ApiDocumentItem,
@@ -17,10 +19,12 @@ import {
   type UploadDocumentPayload,
 } from "../api/documents.api";
 import { APP_ROUTES } from "../types/navigation";
+import DocsTabBar from "../components/tabs/DocsTabBar";
 import {
   DOCUMENT_CATEGORY_LABELS,
   formatDocumentMetadataSummary,
 } from "../utils/documentMetadata";
+import { getDocumentImportSourceLabel } from "../utils/documentSource";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
@@ -30,6 +34,7 @@ type DocumentStatus =
   | "pending"
   | "processing"
   | "completed"
+  | "needs_password"
   | "failed";
 
 interface DocumentItem {
@@ -39,6 +44,7 @@ interface DocumentItem {
   fileSize?: number;
   uploadedAt?: string;
   metadata: DocumentMetadata;
+  source?: ApiDocumentItem["source"];
 }
 
 type UploadFormState = {
@@ -63,6 +69,7 @@ const removeId = (ids: string[], id: string) => ids.filter((item) => item !== id
 const mapStatus = (status?: ApiDocumentItem["status"]): DocumentStatus => {
   if (status === "completed") return "completed";
   if (status === "processing") return "processing";
+  if (status === "needs_password") return "needs_password";
   if (status === "failed") return "failed";
   if (status === "uploaded") return "pending";
   return "pending";
@@ -74,6 +81,7 @@ const mapApiDocument = (document: ApiDocumentItem): DocumentItem => ({
   status: mapStatus(document.status),
   fileSize: document.fileSize,
   uploadedAt: document.uploadedAt,
+  source: document.source,
   metadata: document.metadata ?? {
     category: "other",
     source: "manual_upload",
@@ -85,8 +93,11 @@ const statusLabels: Record<DocumentStatus, string> = {
   pending: "ממתין לעיבוד",
   processing: "בעיבוד",
   completed: "הושלם",
+  needs_password: "נדרשת סיסמה",
   failed: "נכשל",
 };
+
+const GMAIL_READONLY_SCOPE = "https://www.googleapis.com/auth/gmail.readonly";
 
 interface UploadAreaProps {
   state: UploadState;
@@ -94,11 +105,15 @@ interface UploadAreaProps {
   message: string;
   isUploading: boolean;
   inputRef: RefObject<HTMLInputElement | null>;
+  bulkInputRef: RefObject<HTMLInputElement | null>;
   metadata: UploadFormState;
   onBrowse: () => void;
+  onBulkBrowse: () => void;
+  onBulkFilesSelected: (files: FileList) => void;
   onPickFile: (file: File | null) => void;
   onMetadataChange: (field: keyof UploadFormState, value: string) => void;
   onUpload: () => void;
+  bulkUploadCount: number;
 }
 
 function UploadArea({
@@ -107,11 +122,15 @@ function UploadArea({
   message,
   isUploading,
   inputRef,
+  bulkInputRef,
   metadata,
   onBrowse,
+  onBulkBrowse,
+  onBulkFilesSelected,
   onPickFile,
   onMetadataChange,
   onUpload,
+  bulkUploadCount,
 }: UploadAreaProps) {
   return (
     <div className="documents-card upload-card">
@@ -128,23 +147,45 @@ function UploadArea({
           ref={inputRef}
           className="upload-input"
           type="file"
-          accept="application/pdf"
+          accept="application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
           onChange={(event) => onPickFile(event.target.files?.[0] ?? null)}
+        />
+        <input
+          ref={bulkInputRef}
+          className="upload-input"
+          type="file"
+          multiple
+          accept="application/pdf,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          onChange={(event) => {
+            const files = event.target.files;
+            if (files && files.length > 0) onBulkFilesSelected(files);
+          }}
         />
         <div className="upload-icon" aria-hidden="true">
           ↑
         </div>
         <h3>גררו ושחררו את הקובץ כאן</h3>
         <p>או בחרו קובץ מהמחשב שלכם</p>
-        <button
-          className="landing-primary"
-          type="button"
-          onClick={() => (fileName ? onUpload() : onBrowse())}
-          disabled={isUploading}
-        >
-          {isUploading ? <Loader /> : "העלה קובץ"}
-        </button>
-        <span className="upload-hint">פי-די-אף בלבד • עד 10 מ"ב</span>
+        <div className="upload-buttons-row">
+          <button
+            className="landing-primary"
+            type="button"
+            onClick={() => (fileName ? onUpload() : onBrowse())}
+            disabled={isUploading}
+          >
+            {isUploading ? <Loader /> : "העלה קובץ"}
+          </button>
+          <button
+            className="upload-bulk-btn"
+            type="button"
+            onClick={onBulkBrowse}
+            disabled={isUploading || bulkUploadCount > 0}
+            title="בחרו מספר קבצים להעלאה בו-זמנית"
+          >
+            {bulkUploadCount > 0 ? `מעלה ${bulkUploadCount} קבצים...` : "העלאת מסמכים מרובה"}
+          </button>
+        </div>
+        <span className="upload-hint">PDF או XLSX (הר הביטוח) • עד 10 מ"ב</span>
       </div>
       <div className="upload-meta">
         <div className="upload-form-grid">
@@ -212,6 +253,16 @@ function UploadArea({
             {message}
           </div>
         ) : null}
+        {fileName && (
+          <button
+            className="upload-submit-btn"
+            type="button"
+            onClick={onUpload}
+            disabled={isUploading}
+          >
+            {isUploading ? "מעלה..." : "⬆ שמור והעלה"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -222,8 +273,10 @@ interface DocumentCardProps {
   onDownload: (document: DocumentItem) => void;
   onDelete: (document: DocumentItem) => void;
   onViewDetails: (document: DocumentItem) => void;
+  onUnlockPassword: (document: DocumentItem, password: string) => Promise<void>;
   isDeleting: boolean;
   isDownloading: boolean;
+  isUnlocking: boolean;
 }
 
 function DocumentCard({
@@ -231,9 +284,12 @@ function DocumentCard({
   onDownload,
   onDelete,
   onViewDetails,
+  onUnlockPassword,
   isDeleting,
   isDownloading,
+  isUnlocking,
 }: DocumentCardProps) {
+  const [pdfPassword, setPdfPassword] = useState("");
   const statusClass =
     document.status === "completed"
       ? "uploaded"
@@ -243,6 +299,7 @@ function DocumentCard({
   const isTemp = document.id.startsWith("temp-");
   const isUploading = document.status === "uploading";
   const isFailed = document.status === "failed";
+  const needsPassword = document.status === "needs_password";
   const disableDownload = isTemp || isUploading || isFailed || isDownloading;
   const disableDelete = isTemp || isUploading || isDeleting;
   const statusIcon =
@@ -263,6 +320,7 @@ function DocumentCard({
         <span className="document-name">{document.name}</span>
         <span className="document-meta">
           {[
+            getDocumentImportSourceLabel(document),
             formatDocumentMetadataSummary(document.metadata),
             document.uploadedAt
               ? new Date(document.uploadedAt).toLocaleDateString("he-IL")
@@ -273,6 +331,33 @@ function DocumentCard({
         </span>
       </div>
       <span className="document-status">{statusLabels[document.status]}</span>
+      {needsPassword ? (
+        <div className="document-password-panel">
+          <p>קובץ ה-PDF מוגן בסיסמה. הסיסמה משמשת רק לפתיחה ועיבוד — לא נשמרת במערכת.</p>
+          <label className="document-password-field">
+            <span>סיסמת PDF</span>
+            <input
+              type="password"
+              value={pdfPassword}
+              onChange={(event) => setPdfPassword(event.target.value)}
+              autoComplete="off"
+              disabled={isUnlocking}
+            />
+          </label>
+          <label className="document-password-remember">
+            <input type="checkbox" disabled />
+            <span>שמור סיסמה מוצפנת עבור תלושים עתידיים מאותו מעסיק (בקרוב)</span>
+          </label>
+          <button
+            type="button"
+            className="document-action"
+            disabled={isUnlocking || !pdfPassword.trim()}
+            onClick={() => void onUnlockPassword(document, pdfPassword.trim())}
+          >
+            {isUnlocking ? "פותח..." : "פתח והמשך עיבוד"}
+          </button>
+        </div>
+      ) : null}
       <div className="document-actions">
         <button
           className="document-action"
@@ -325,12 +410,15 @@ export default function DocumentsPage() {
   const [actionError, setActionError] = useState("");
   const [deletingIds, setDeletingIds] = useState<string[]>([]);
   const [downloadingIds, setDownloadingIds] = useState<string[]>([]);
+  const [unlockingIds, setUnlockingIds] = useState<string[]>([]);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadForm, setUploadForm] = useState<UploadFormState>(DEFAULT_UPLOAD_FORM);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [bulkUploadCount, setBulkUploadCount] = useState(0);
   const timersRef = useRef<number[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const bulkFileInputRef = useRef<HTMLInputElement | null>(null);
 
   const loadDocuments = useCallback(async () => {
     setIsLoadingList(true);
@@ -376,10 +464,18 @@ export default function DocumentsPage() {
   };
 
   const handleMetadataChange = (field: keyof UploadFormState, value: string) => {
-    setUploadForm((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setUploadForm((prev) => {
+      const next = { ...prev, [field]: value };
+      // Auto-derive periodMonth / periodYear from documentDate
+      if (field === "documentDate" && value) {
+        const d = new Date(value);
+        if (!Number.isNaN(d.getTime())) {
+          if (!next.periodMonth) next.periodMonth = String(d.getMonth() + 1);
+          if (!next.periodYear)  next.periodYear  = String(d.getFullYear());
+        }
+      }
+      return next;
+    });
   };
 
   const buildUploadPayload = (): UploadDocumentPayload | null => {
@@ -389,8 +485,18 @@ export default function DocumentsPage() {
       return null;
     }
 
-    const hasPeriodMonth = uploadForm.periodMonth.trim().length > 0;
-    const hasPeriodYear = uploadForm.periodYear.trim().length > 0;
+    // Derive missing month/year from documentDate before validation
+    let { periodMonth, periodYear, documentDate, category } = uploadForm;
+    if (documentDate && (!periodYear || !periodMonth)) {
+      const d = new Date(documentDate);
+      if (!Number.isNaN(d.getTime())) {
+        if (!periodMonth) periodMonth = String(d.getMonth() + 1);
+        if (!periodYear)  periodYear  = String(d.getFullYear());
+      }
+    }
+
+    const hasPeriodMonth = periodMonth.trim().length > 0;
+    const hasPeriodYear = periodYear.trim().length > 0;
 
     if (hasPeriodMonth !== hasPeriodYear) {
       setUploadState("error");
@@ -398,23 +504,23 @@ export default function DocumentsPage() {
       return null;
     }
 
-    const periodMonth = hasPeriodMonth ? Number(uploadForm.periodMonth) : undefined;
-    const periodYear = hasPeriodYear ? Number(uploadForm.periodYear) : undefined;
+    const parsedMonth = hasPeriodMonth ? Number(periodMonth) : undefined;
+    const parsedYear = hasPeriodYear ? Number(periodYear) : undefined;
 
-    if (periodMonth !== undefined && (!Number.isInteger(periodMonth) || periodMonth < 1 || periodMonth > 12)) {
+    if (parsedMonth !== undefined && (!Number.isInteger(parsedMonth) || parsedMonth < 1 || parsedMonth > 12)) {
       setUploadState("error");
       setUploadMessage("חודש חייב להיות מספר בין 1 ל-12.");
       return null;
     }
 
-    if (periodYear !== undefined && (!Number.isInteger(periodYear) || periodYear < 2000 || periodYear > 2100)) {
+    if (parsedYear !== undefined && (!Number.isInteger(parsedYear) || parsedYear < 2000 || parsedYear > 2100)) {
       setUploadState("error");
       setUploadMessage("שנה חייבת להיות מספר בין 2000 ל-2100.");
       return null;
     }
 
-    if (uploadForm.documentDate) {
-      const parsedDate = new Date(uploadForm.documentDate);
+    if (documentDate) {
+      const parsedDate = new Date(documentDate);
       if (Number.isNaN(parsedDate.getTime())) {
         setUploadState("error");
         setUploadMessage("תאריך המסמך אינו תקין.");
@@ -423,10 +529,10 @@ export default function DocumentsPage() {
     }
 
     return {
-      category: uploadForm.category,
-      ...(periodMonth !== undefined && { periodMonth }),
-      ...(periodYear !== undefined && { periodYear }),
-      ...(uploadForm.documentDate && { documentDate: uploadForm.documentDate }),
+      category,
+      ...(parsedMonth !== undefined && { periodMonth: parsedMonth }),
+      ...(parsedYear  !== undefined && { periodYear:  parsedYear }),
+      ...(documentDate && { documentDate }),
     };
   };
 
@@ -442,12 +548,15 @@ export default function DocumentsPage() {
 
     const isPdf =
       file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isXlsx =
+      file.name.toLowerCase().endsWith(".xlsx") || file.name.toLowerCase().endsWith(".xls") ||
+      file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
     const maxSize = 10 * 1024 * 1024;
 
-    if (!isPdf) {
+    if (!isPdf && !isXlsx) {
       setSelectedFile(null);
       setUploadState("error");
-      setUploadMessage("ניתן להעלות רק קובצי PDF.");
+      setUploadMessage("ניתן להעלות קובצי PDF או XLSX (הר הביטוח).");
       return;
     }
 
@@ -460,6 +569,40 @@ export default function DocumentsPage() {
 
     setSelectedFile(file);
     setUploadState("idle");
+
+    // Auto-set category for known file types
+    setUploadForm((prev) => {
+      if (prev.category) return prev;
+      if (isXlsx) return { ...prev, category: "other" as DocumentCategory };
+      return prev;
+    });
+
+    // Auto-fill year/month from filename (e.g. PaySlip2026-05.pdf or 2026_05_payslip.pdf)
+    setUploadForm((prev) => {
+      if (prev.periodYear && prev.periodMonth) return prev; // already filled
+      const name = file.name;
+      // Match patterns like 2026-05, 2026_05, 202605, 05-2026, 05_2026
+      const patterns = [
+        /(?:^|[\D])(20\d{2})[\-_\.](\d{1,2})(?:[\D]|$)/, // 2026-05
+        /(?:^|[\D])(\d{1,2})[\-_\.](20\d{2})(?:[\D]|$)/, // 05-2026
+        /(20\d{2})(\d{2})(?:[\D]|$)/,                     // 202605
+      ];
+      for (const pat of patterns) {
+        const m = pat.exec(name);
+        if (m) {
+          const a = parseInt(m[1]), b = parseInt(m[2]);
+          const [year, month] = a > 100 ? [a, b] : [b, a];
+          if (year >= 2000 && year <= 2100 && month >= 1 && month <= 12) {
+            return {
+              ...prev,
+              periodYear:  prev.periodYear  || String(year),
+              periodMonth: prev.periodMonth || String(month),
+            };
+          }
+        }
+      }
+      return prev;
+    });
   };
 
   const handleUpload = async () => {
@@ -566,6 +709,32 @@ export default function DocumentsPage() {
     navigate(`/documents/${doc.id}`);
   };
 
+  const handleUnlockPassword = async (doc: DocumentItem, password: string) => {
+    if (doc.id.startsWith("temp-")) return;
+
+    setActionError("");
+    setUnlockingIds((prev) => addUniqueId(prev, doc.id));
+
+    const response = await unlockDocument(doc.id, password);
+    if (response.data) {
+      setDocuments((prev) =>
+        prev.map((item) => (item.id === doc.id ? mapApiDocument(response.data!) : item)),
+      );
+    }
+    if (!response.success || !response.data) {
+      setActionError(response.message || "פתיחת הקובץ נכשלה.");
+      setUnlockingIds((prev) => removeId(prev, doc.id));
+      return;
+    }
+    setUnlockingIds((prev) => removeId(prev, doc.id));
+    setToastMessage(
+      response.data.status === "completed"
+        ? "המסמך נפתח ועובד בהצלחה."
+        : "המסמך נפתח — ייתכן שיידרשו השלמות נוספות.",
+    );
+    window.setTimeout(() => setToastMessage(null), 5000);
+  };
+
   const handleDownload = async (doc: DocumentItem) => {
     if (doc.id.startsWith("temp-")) return;
 
@@ -594,6 +763,124 @@ export default function DocumentsPage() {
     fileInputRef.current?.click();
   };
 
+  const handleBulkBrowse = () => {
+    bulkFileInputRef.current?.click();
+  };
+
+  const detectFileMetadata = (file: File): UploadDocumentPayload => {
+    const name = file.name;
+    let periodMonth: number | undefined;
+    let periodYear: number | undefined;
+
+    const patterns = [
+      /(?:^|[\D])(20\d{2})[\-_\.](\d{1,2})(?:[\D]|$)/,
+      /(?:^|[\D])(\d{1,2})[\-_\.](20\d{2})(?:[\D]|$)/,
+      /(20\d{2})(\d{2})(?:[\D]|$)/,
+    ];
+    for (const pat of patterns) {
+      const m = pat.exec(name);
+      if (m) {
+        const a = parseInt(m[1]), b = parseInt(m[2]);
+        const [year, month] = a > 100 ? [a, b] : [b, a];
+        if (year >= 2000 && year <= 2100 && month >= 1 && month <= 12) {
+          periodYear = year;
+          periodMonth = month;
+          break;
+        }
+      }
+    }
+
+    return {
+      category: "payslip",
+      ...(periodMonth !== undefined && { periodMonth }),
+      ...(periodYear !== undefined && { periodYear }),
+    };
+  };
+
+  const handleBulkUpload = async (files: FileList) => {
+    const validFiles: File[] = [];
+    const maxSize = 10 * 1024 * 1024;
+
+    for (const file of Array.from(files)) {
+      const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+      const isXlsx =
+        file.name.toLowerCase().endsWith(".xlsx") ||
+        file.name.toLowerCase().endsWith(".xls") ||
+        file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+      if ((!isPdf && !isXlsx) || file.size > maxSize) continue;
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) {
+      setToastMessage("לא נמצאו קבצים תקינים להעלאה.");
+      return;
+    }
+
+    setBulkUploadCount(validFiles.length);
+
+    const tempDocs: DocumentItem[] = validFiles.map((file) => {
+      const meta = detectFileMetadata(file);
+      return {
+        id: `temp-bulk-${Date.now()}-${Math.random()}`,
+        name: file.name,
+        status: "uploading" as DocumentStatus,
+        fileSize: file.size,
+        uploadedAt: new Date().toISOString(),
+        metadata: {
+          category: meta.category,
+          source: "manual_upload",
+          ...(meta.periodMonth !== undefined && { periodMonth: meta.periodMonth }),
+          ...(meta.periodYear !== undefined && { periodYear: meta.periodYear }),
+        },
+      };
+    });
+
+    setDocuments((prev) => [...tempDocs, ...prev]);
+
+    const results = await Promise.allSettled(
+      validFiles.map(async (file, idx) => {
+        const payload = detectFileMetadata(file);
+        const response = await uploadDocument(file, payload);
+        return { file, tempId: tempDocs[idx].id, response };
+      }),
+    );
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        const { tempId, response } = result.value;
+        if (response.success && response.data) {
+          successCount++;
+          setDocuments((prev) =>
+            prev.map((doc) => (doc.id === tempId ? mapApiDocument(response.data!) : doc)),
+          );
+        } else {
+          failCount++;
+          setDocuments((prev) =>
+            prev.map((doc) => (doc.id === tempId ? { ...doc, status: "failed" as DocumentStatus } : doc)),
+          );
+        }
+      } else {
+        failCount++;
+      }
+    }
+
+    setBulkUploadCount(0);
+    if (bulkFileInputRef.current) bulkFileInputRef.current.value = "";
+
+    const parts: string[] = [];
+    if (successCount > 0) parts.push(`${successCount} קבצים הועלו בהצלחה`);
+    if (failCount > 0) parts.push(`${failCount} נכשלו`);
+    setToastMessage(parts.join(" · "));
+    const t = window.setTimeout(() => setToastMessage(null), 6000);
+    timersRef.current.push(t);
+
+    void loadDocuments();
+  };
+
   const hasUploadedDocuments = documents.some((doc) => doc.status !== "failed");
   const latestProcessableDocument =
     documents.find(
@@ -603,10 +890,11 @@ export default function DocumentsPage() {
   return (
     <div className="documents-page" dir="rtl">
       <PrivateTopbar />
+      <DocsTabBar />
 
       <main className="documents-main landing-container">
         <section className="documents-header">
-          <h1>מסמכים</h1>
+          <h1>העלאת מסמכים</h1>
           <p>
             העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
             הקובץ נשמר מיד, והעיבוד ממשיך ברקע.
@@ -619,12 +907,41 @@ export default function DocumentsPage() {
           message={uploadMessage}
           isUploading={uploadState === "uploading"}
           inputRef={fileInputRef}
+          bulkInputRef={bulkFileInputRef}
           metadata={uploadForm}
           onBrowse={handleBrowse}
+          onBulkBrowse={handleBulkBrowse}
+          onBulkFilesSelected={handleBulkUpload}
           onPickFile={handlePickFile}
           onMetadataChange={handleMetadataChange}
           onUpload={handleUpload}
+          bulkUploadCount={bulkUploadCount}
         />
+
+        <section className="documents-card documents-gmail-import">
+          <div className="documents-gmail-import-head">
+            <Mail size={22} aria-hidden="true" />
+            <div>
+              <h2>ייבוא תלושים מהמייל</h2>
+              <p>חברו Gmail וייבאו תלושי שכר מצורפי PDF — גישה לקריאה בלבד.</p>
+            </div>
+          </div>
+          <ul className="documents-gmail-permissions">
+            <li>גישת Gmail לקריאה בלבד ({GMAIL_READONLY_SCOPE})</li>
+            <li>חיפוש רק במיילים הקשורים לתלושי שכר</li>
+            <li>ייבוא מצורפי PDF בלבד</li>
+            <li>לא נשלח, לא נמחק ולא ישתנה שום דבר בתיבת המייל</li>
+          </ul>
+          <button
+            type="button"
+            className="landing-primary documents-gmail-import-btn"
+            onClick={() =>
+              navigate(`${APP_ROUTES.integrationsEmail}?from=documents`)
+            }
+          >
+            ייבוא תלושים מהמייל
+          </button>
+        </section>
 
         <section className="documents-list">
           <div className="documents-list-header">
@@ -666,8 +983,10 @@ export default function DocumentsPage() {
                   onDelete={handleDelete}
                   onDownload={handleDownload}
                   onViewDetails={handleViewDetails}
+                  onUnlockPassword={handleUnlockPassword}
                   isDeleting={deletingIds.includes(doc.id)}
                   isDownloading={downloadingIds.includes(doc.id)}
+                  isUnlocking={unlockingIds.includes(doc.id)}
                 />
               ))}
             </div>

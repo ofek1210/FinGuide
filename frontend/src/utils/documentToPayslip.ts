@@ -175,12 +175,21 @@ function deductionLabel(key: string): string {
 
 function mapEarnings(analysis: DocumentPayslipAnalysis): PayslipLineItem[] {
   const components = analysis.salary?.components;
-  if (Array.isArray(components) && components.length > 0) {
-    return components
-      .filter((c) => Number.isFinite(c.amount))
-      .map((c) => ({ label: earningsLabel(c.type), amount: c.amount as number }));
-  }
   const gross = analysis.salary?.gross_total;
+
+  if (Array.isArray(components) && components.length > 0) {
+    const validComponents = components.filter((c) => Number.isFinite(c.amount));
+    const componentSum = validComponents.reduce((s, c) => s + (c.amount as number), 0);
+    // Only use components if their sum is plausible relative to gross (within 20%)
+    const plausible =
+      !Number.isFinite(gross) ||
+      (gross > 0 && componentSum >= gross * 0.8 && componentSum <= gross * 1.2);
+    if (plausible && validComponents.length > 0) {
+      return validComponents.map((c) => ({ label: earningsLabel(c.type), amount: c.amount as number }));
+    }
+  }
+
+  // Components missing or implausible — show gross as single line
   if (Number.isFinite(gross)) {
     return [{ label: "שכר ברוטו", amount: gross as number }];
   }
@@ -190,23 +199,39 @@ function mapEarnings(analysis: DocumentPayslipAnalysis): PayslipLineItem[] {
 function mapDeductions(analysis: DocumentPayslipAnalysis): PayslipLineItem[] {
   const items: PayslipLineItem[] = [];
   const mandatory = analysis.deductions?.mandatory;
+
+  // Track mandatory items separately to compute remainder
+  const mandatoryItems: PayslipLineItem[] = [];
   if (mandatory) {
     if (Number.isFinite(mandatory.income_tax)) {
-      items.push({ label: deductionLabel("income_tax"), amount: mandatory.income_tax as number });
+      mandatoryItems.push({ label: deductionLabel("income_tax"), amount: mandatory.income_tax as number });
     }
     if (Number.isFinite(mandatory.national_insurance)) {
-      items.push({
+      mandatoryItems.push({
         label: deductionLabel("national_insurance"),
         amount: mandatory.national_insurance as number,
       });
     }
     if (Number.isFinite(mandatory.health_insurance)) {
-      items.push({
+      mandatoryItems.push({
         label: deductionLabel("health_insurance"),
         amount: mandatory.health_insurance as number,
       });
     }
   }
+
+  // If mandatory total is known but itemised deductions fall far short,
+  // add a catch-all line for the unattributed remainder
+  const mandatoryTotal = mandatory?.total;
+  if (Number.isFinite(mandatoryTotal) && (mandatoryTotal as number) > 0) {
+    const itemisedSum = mandatoryItems.reduce((s, i) => s + Math.abs(i.amount), 0);
+    const remainder = (mandatoryTotal as number) - itemisedSum;
+    if (remainder > 50) {
+      mandatoryItems.push({ label: "ניכויי חובה נוספים", amount: remainder });
+    }
+  }
+  items.push(...mandatoryItems);
+
   const pension = analysis.contributions?.pension;
   if (Number.isFinite(pension?.employee)) {
     items.push({ label: deductionLabel("pension_employee"), amount: pension!.employee! });

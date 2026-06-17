@@ -14,6 +14,14 @@ const profileRoutes = require('./routes/profile');
 const insightsRoutes = require('./routes/insights');
 const recommendationsRoutes = require('./routes/recommendations');
 const notificationsRoutes = require('./routes/notifications');
+const gmailIntegrationRoutes = require('./routes/gmailIntegration');
+const taxAssistantRoutes = require('./routes/taxAssistant');
+const financialHealthRoutes = require('./routes/financialHealth');
+const copilotRoutes = require('./routes/copilot');
+const scoreAgentRoutes = require('./routes/scoreAgent');
+const pensionRoutes = require('./routes/pension');
+const insuranceRoutes = require('./routes/insurance');
+const dashboardRoutes = require('./routes/dashboard');
 
 const createApp = () => {
   const app = express();
@@ -82,6 +90,14 @@ const createApp = () => {
   app.use('/api/insights', insightsRoutes);
   app.use('/api/recommendations', recommendationsRoutes);
   app.use('/api/notifications', notificationsRoutes);
+  app.use('/api/integrations/gmail', gmailIntegrationRoutes);
+  app.use('/api/tax-assistant', taxAssistantRoutes);
+  app.use('/api/financial-health', financialHealthRoutes);
+  app.use('/api/copilot', copilotRoutes);
+  app.use('/api/score-agent', scoreAgentRoutes);
+  app.use('/api/pension', pensionRoutes);
+  app.use('/api/insurance', insuranceRoutes);
+  app.use('/api/dashboard', dashboardRoutes);
 
   // 404 handler
   app.use((req, res) => {

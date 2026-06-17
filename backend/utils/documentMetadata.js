@@ -3,6 +3,7 @@ const { ValidationError } = require('./appErrors');
 const DOCUMENT_CATEGORIES = Object.freeze([
   'payslip',
   'tax_report',
+  'form_106',
   'pension_report',
   'invoice',
   'other',
@@ -161,12 +162,23 @@ const normalizeDocumentMetadataInput = rawInput => {
 
 const getDocumentMetadata = rawDocument => {
   const metadata = rawDocument?.metadata || {};
+  let resolvedCategory =
+    typeof metadata.category === 'string' &&
+    DOCUMENT_CATEGORIES.includes(metadata.category)
+      ? metadata.category
+      : DEFAULT_DOCUMENT_METADATA.category;
+
+  // Auto-infer 'payslip' when OCR found salary data but category wasn't set by user
+  if (
+    resolvedCategory === 'other' &&
+    rawDocument?.status === 'completed' &&
+    rawDocument?.analysisData?.summary?.grossSalary != null
+  ) {
+    resolvedCategory = 'payslip';
+  }
+
   const normalized = {
-    category:
-      typeof metadata.category === 'string' &&
-      DOCUMENT_CATEGORIES.includes(metadata.category)
-        ? metadata.category
-        : DEFAULT_DOCUMENT_METADATA.category,
+    category: resolvedCategory,
     source:
       typeof metadata.source === 'string' ? metadata.source : DEFAULT_DOCUMENT_METADATA.source,
   };

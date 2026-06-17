@@ -13,11 +13,13 @@ export type DocumentStatus =
   | "processing"
   | "completed"
   | "needs_review"
+  | "needs_password"
   | "failed";
 
 export type DocumentCategory =
   | "payslip"
   | "tax_report"
+  | "form_106"
   | "pension_report"
   | "invoice"
   | "other";
@@ -27,8 +29,10 @@ export type DocumentMetadata = {
   periodMonth?: number;
   periodYear?: number;
   documentDate?: string;
-  source?: "manual_upload" | string;
+  source?: "manual_upload" | "gmail" | string;
 };
+
+export type DocumentImportSource = "manual" | "gmail";
 
 /** Matches backend payslipOcr buildPayslipSummary output (analysisData.summary). */
 export type PayslipSummaryFromBackend = {
@@ -62,6 +66,14 @@ export interface DocumentItem {
   processedAt?: string;
   mimeType?: string;
   metadata?: DocumentMetadata;
+  source?: DocumentImportSource;
+  emailMetadata?: {
+    subject?: string | null;
+    from?: string | null;
+    date?: string | null;
+    gmailMessageId?: string | null;
+    gmailAttachmentId?: string | null;
+  } | null;
   analysisData?: { summary?: PayslipSummaryFromBackend; [k: string]: unknown };
   createdAt?: string;
   updatedAt?: string;
@@ -275,6 +287,31 @@ export const getDocument = async (id: string) => {
  * existing uploaded PDF without re-upload. Returns the freshly-resolved
  * analysis values (and a new status, e.g. `needs_review`).
  */
+export const unlockDocument = async (id: string, password: string) => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as DocumentResponse;
+  }
+
+  const result = await apiJson<DocumentResponse>(`/api/documents/${id}/unlock`, {
+    method: "POST",
+    auth: true,
+    body: { password },
+    fallbackErrorMessage: "פתיחת הקובץ נכשלה.",
+  });
+
+  if (!result.ok) {
+    const payload = result.error.payload as DocumentResponse | undefined;
+    return {
+      success: false,
+      message: result.error.message,
+      ...(payload?.data ? { data: payload.data } : {}),
+    } as DocumentResponse;
+  }
+
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
+};
+
 export const reprocessDocument = async (id: string) => {
   const token = getToken();
   if (!token) {
@@ -352,3 +389,22 @@ export const getPayslipHistoryIntelligence = async (year?: number) => {
     result.data || ({ success: false, message: "תגובה לא תקינה." } as PayslipHistoryIntelligenceResponse)
   );
 };
+
+export type DigestResponse = {
+  success: boolean;
+  message?: string;
+  data?: {
+    text: string;
+    generatedAt: string;
+    model: string;
+  };
+};
+
+export async function getDocumentDigest(id: string): Promise<DigestResponse> {
+  const result = await apiJson<DigestResponse>(`/api/documents/${id}/digest`, {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לטעון את הסיכום.",
+  });
+  if (!result.ok) return { success: false, message: result.error.message };
+  return result.data ?? { success: false };
+}

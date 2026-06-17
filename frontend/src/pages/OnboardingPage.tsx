@@ -8,6 +8,7 @@ import {
   completeOnboarding,
   getOnboarding,
   updateOnboarding,
+  type EmploymentType,
   type Gender,
   type InvestmentType,
   type MaritalStatus,
@@ -15,6 +16,13 @@ import {
   type OnboardingProfile,
   type SalaryType,
 } from "../api/onboarding.api";
+
+const EMPLOYMENT_TYPE_OPTIONS: Array<{ id: EmploymentType; label: string }> = [
+  { id: "employee",       label: "שכיר" },
+  { id: "self_employed",  label: "עצמאי" },
+  { id: "freelancer",     label: "פרילנסר" },
+  { id: "business_owner", label: "בעל עסק" },
+];
 
 const TOTAL_STEPS = 5;
 type StepNumber = 1 | 2 | 3 | 4 | 5;
@@ -345,6 +353,21 @@ export default function OnboardingPage() {
                 {err("personal.childrenCount")}
               </div>
 
+              <div className="ob2-field">
+                <label className="ob2-label">
+                  מעשן/ת? <span className="ob2-label-hint">(משפיע על ניתוח הביטוח)</span>
+                </label>
+                <div className="ob2-choice-row">
+                  <button type="button" disabled={dis}
+                    className={`ob2-choice${profile.personal.isSmoker === true ? " is-selected" : ""}`}
+                    onClick={() => updP({ isSmoker: true })}>כן</button>
+                  <button type="button" disabled={dis}
+                    className={`ob2-choice${profile.personal.isSmoker === false ? " is-selected" : ""}`}
+                    onClick={() => updP({ isSmoker: false })}>לא</button>
+                </div>
+                {err("personal.isSmoker")}
+              </div>
+
               {(profile.personal.childrenCount ?? 0) > 0 && (
                 <div className="ob2-field">
                   <label className="ob2-label">
@@ -370,6 +393,19 @@ export default function OnboardingPage() {
 
             {/* Step 2 — Employment */}
             {step === 2 && <>
+              <div className="ob2-field">
+                <label className="ob2-label">סוג העסקה</label>
+                <div className="ob2-choice-grid-2">
+                  {EMPLOYMENT_TYPE_OPTIONS.map((o) => (
+                    <button key={o.id} type="button" disabled={dis}
+                      className={`ob2-choice${profile.employment.employmentType === o.id ? " is-selected" : ""}`}
+                      onClick={() => updE({ employmentType: o.id })}
+                    >{o.label}</button>
+                  ))}
+                </div>
+                {err("employment.employmentType")}
+              </div>
+
               <div className="ob2-field">
                 <label className="ob2-label">סוג שכר</label>
                 <div className="ob2-choice-row">
@@ -472,6 +508,18 @@ export default function OnboardingPage() {
 
             {/* Step 3 — Pension & Savings */}
             {step === 3 && <>
+              <div className="ob2-field">
+                <label className="ob2-label">
+                  גיל פרישה מתוכנן <span className="ob2-label-hint">(ברירת מחדל: 67)</span>
+                </label>
+                <input type="number" inputMode="numeric" className="ob2-input"
+                  value={profile.retirement.plannedRetirementAge ?? ""} min={50} max={75}
+                  placeholder="67"
+                  onChange={(e) => updR({ plannedRetirementAge: toNum(e.target.value) })}
+                />
+                {err("retirement.plannedRetirementAge")}
+              </div>
+
               <div className="ob2-field">
                 <label className="ob2-label">יש לי פנסיה פעילה?</label>
                 <div className="ob2-choice-row">

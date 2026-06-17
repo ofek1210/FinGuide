@@ -9,6 +9,8 @@ const {
   deleteDocument,
   downloadDocument,
   reprocessDocument,
+  unlockDocument,
+  getDocumentDigest,
 } = require('../controllers/documentController');
 const { protect } = require('../middleware/auth');
 const { upload, handleUploadError } = require('../middleware/upload');
@@ -33,8 +35,13 @@ router.get('/payslip-history', getPayslipHistory);
 // GET /api/documents/:id/download - הורדת מסמך (לפני /:id כדי שלא יתפוס "id/download")
 router.get('/:id/download', downloadDocument);
 
+router.get('/:id/digest', getDocumentDigest);
+
 // POST /api/documents/:id/reprocess - הרצה מחדש של חילוץ על הקובץ הקיים
 router.post('/:id/reprocess', reprocessDocument);
+
+// POST /api/documents/:id/unlock - פתיחת PDF מוגן בסיסמה והמשך עיבוד
+router.post('/:id/unlock', unlockDocument);
 
 // GET /api/documents/:id - קבלת מסמך בודד
 router.get('/:id', getDocument);

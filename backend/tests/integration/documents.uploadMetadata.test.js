@@ -13,6 +13,7 @@ jest.mock('../../services/payslipOcr', () => ({
     data: {
       period: { month: '2026-03' },
       salary: { gross_total: 10000, net_payable: 7500 },
+      deductions: { mandatory: { total: 1200 } },
       summary: {},
       quality: { warnings: [] },
     },
