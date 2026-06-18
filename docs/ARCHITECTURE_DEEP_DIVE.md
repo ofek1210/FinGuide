@@ -2,6 +2,8 @@
 
 מסמך ארכיטקטורה ברמת Staff/Principal. נוצר מניתוח סטטי של הקוד ב-repo. עדכון אחרון: מאי 2026.
 
+> **מסמך משלים:** מסמך זה מכסה לעומק את 5 הדומיינים המקוריים (auth, payslips/OCR, profile core, chat, file storage). תחומי ה-API החדשים (pension, insurance, dashboard, insights, recommendations, notifications, integrations/gmail, tax-assistant, financial-health, copilot, score-agent), מערכת ה-**AI multi-agent orchestrator** (`backend/ai/`), ו-8 המודלים החדשים מתועדים ב-[`MODULES_AND_AGENTS.md`](MODULES_AND_AGENTS.md).
+
 ---
 
 ## 1. Executive Summary
@@ -27,7 +29,7 @@
 |------|--------|
 | [`backend/`](../backend/) | API, OCR, חילוץ, מודלים, בדיקות |
 | [`frontend/`](../frontend/) | SPA עברית RTL |
-| [`docs/`](../docs/) | Roadmap + מסמך זה |
+| [`docs/`](../docs/) | Roadmap, מסמך זה, ו-[`MODULES_AND_AGENTS.md`](MODULES_AND_AGENTS.md) (דומיינים חדשים + AI agents) |
 | [`docker-compose.yml`](../docker-compose.yml) | Mongo 7 + backend |
 | [`package.json`](../package.json) | `install:all`, `dev`, `dev:docker`, `test` |
 | [`LLM_SERVICE_INTEGRATION_GUIDE.md`](../LLM_SERVICE_INTEGRATION_GUIDE.md) | תיעוד Ollama חיצוני (קורס) — לא מחווט לאפליקציה |
@@ -40,7 +42,7 @@
 | Frontend | React 19, React Router 7, Vite 7, TypeScript |
 | DB | MongoDB 7 (local / Atlas / Docker) |
 | OCR | Tesseract CLI (`heb+eng`), Poppler `pdftoppm`, sharp, pdf-parse |
-| AI | Ollama HTTP API (`OLLAMA_URL`, `OLLAMA_MODEL`) |
+| AI | Claude (Anthropic SDK, ברירת מחדל) עם Ollama כ-fallback; ראו [`MODULES_AND_AGENTS.md`](MODULES_AND_AGENTS.md) §2.4 |
 | Auth | JWT, Google ID token, Nodemailer (SMTP reset) |
 | Dev orchestration | concurrently (root), nodemon (backend) |
 
@@ -122,6 +124,8 @@ sequenceDiagram
 7. `errorHandler`
 
 ### 3.2 טבלת Routes מלאה
+
+> טבלה זו מכסה את 5 הדומיינים המקוריים בלבד (auth, documents, ai/chat, findings, onboarding). מיפוי הדומיינים החדשים (pension, insurance, dashboard, insights, recommendations, notifications, integrations, tax-assistant, financial-health, copilot, score-agent, profile) נמצא ב-[`MODULES_AND_AGENTS.md`](MODULES_AND_AGENTS.md) §1.
 
 | Method | Path | Handler | Auth |
 |--------|------|---------|------|
