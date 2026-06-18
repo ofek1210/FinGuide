@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { PiggyBank, TrendingUp, AlertCircle, ChevronRight, Loader2, Sparkles } from "lucide-react";
+import { PiggyBank, TrendingUp, AlertCircle, Loader2, Sparkles } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import {
@@ -33,7 +33,7 @@ export default function PensionPage() {
   useEffect(() => {
     void getPensionAnalysis().then((res) => {
       setLoading(false);
-      if (res.success && res.data) setData(res.data);
+      if (res.ok && res.data?.data) setData(res.data.data);
       else setError("לא הצלחנו לטעון נתוני פנסיה");
     });
   }, []);
@@ -47,7 +47,7 @@ export default function PensionPage() {
       targetMgmtFee: simFee ? Number(simFee) / 100 : undefined,
     });
     setSimLoading(false);
-    if (res.success && res.data) setSimResult(res.data);
+    if (res.ok && res.data?.data) setSimResult(res.data.data);
   }, [simAge, simExtra, simFee]);
 
   return (

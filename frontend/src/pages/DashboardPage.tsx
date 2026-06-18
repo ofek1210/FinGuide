@@ -9,8 +9,6 @@ import DashboardCharts from "../components/dashboard/DashboardCharts";
 import DashboardInsightsCard from "../components/dashboard/DashboardInsightsCard";
 import DashboardRecommendationsCard from "../components/dashboard/DashboardRecommendationsCard";
 import DashboardRecentDocuments from "../components/dashboard/DashboardRecentDocuments";
-import DashboardFinancialHealthCard from "../components/dashboard/DashboardFinancialHealthCard";
-import DashboardAITipsCard from "../components/dashboard/DashboardAITipsCard";
 import DashboardFullAnalysisCard from "../components/dashboard/DashboardFullAnalysisCard";
 import DashboardScoresCard from "../components/dashboard/DashboardScoresCard";
 import { useDashboardDocuments } from "../hooks/useDashboardDocuments";
@@ -90,6 +88,8 @@ export default function DashboardPage() {
           onFileSelected={handleFileSelected}
           onNavigateDashboard={() => navigate(APP_ROUTES.dashboard)}
           onNavigateDocuments={() => navigate(APP_ROUTES.documents)}
+          onNavigatePayslipHistory={() => navigate(APP_ROUTES.payslipHistory)}
+          onNavigateFindings={() => navigate(APP_ROUTES.findings)}
         />
 
         {/* Error banners */}
@@ -158,18 +158,14 @@ export default function DashboardPage() {
             {/* AI Scores row */}
             <DashboardScoresCard />
 
-            {/* Secondary row: health score + insights */}
+            {/* Secondary row: insights */}
             <div className="dashboard-secondary-grid">
-              <DashboardFinancialHealthCard />
               <DashboardInsightsCard />
               <DashboardRecommendationsCard />
             </div>
 
             {/* Multi-agent full analysis card */}
             <DashboardFullAnalysisCard />
-
-            {/* AI-generated personalized tips */}
-            <DashboardAITipsCard />
 
             {/* Charts */}
             <DashboardCharts />

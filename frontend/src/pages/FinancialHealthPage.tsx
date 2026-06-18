@@ -1,0 +1,13 @@
+import PrivateTopbar from "../components/PrivateTopbar";
+
+export default function FinancialHealthPage() {
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--rapyd-bg)", direction: "rtl" }}>
+      <PrivateTopbar />
+      <main style={{ maxWidth: 800, margin: "0 auto", padding: "60px 24px", textAlign: "center" }}>
+        <h1 style={{ color: "var(--rapyd-text)", marginBottom: 12 }}>בריאות פיננסית</h1>
+        <p style={{ color: "var(--rapyd-text-muted)" }}>בקרוב — ציון בריאות פיננסי מפורט</p>
+      </main>
+    </div>
+  );
+}

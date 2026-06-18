@@ -16,22 +16,22 @@ export default function DashboardFullAnalysisCard() {
   const [result, setResult] = useState<{
     summary?: string;
     recommendations?: FullAnalysisRecommendation[];
-    meta?: { durationMs: number; successCount: number; agentCount: number };
+    meta?: { durationMs: number; successCount: number; agentCount: number; isDemo?: boolean };
   } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
 
-  const handleRun = useCallback(async () => {
+  const handleRun = useCallback(async (demo = false) => {
     setLoading(true);
     setError(null);
     setResult(null);
-    const res = await runFullAnalysis({ skipLLM: false });
+    const res = await runFullAnalysis({ skipLLM: false, demo });
     setLoading(false);
-    if (res.success) {
+    if (res.ok && res.data) {
       setResult({
-        summary: res.summary,
-        recommendations: res.recommendations,
-        meta: res.meta,
+        summary: res.data.summary,
+        recommendations: res.data.recommendations,
+        meta: res.data.meta,
       });
       setExpanded(true);
     } else {
@@ -59,22 +59,37 @@ export default function DashboardFullAnalysisCard() {
             </div>
           </div>
         </div>
-        <button
-          onClick={handleRun}
-          disabled={loading}
-          style={{
-            background: loading ? "rgba(129,140,248,0.2)" : "#5B4FF5",
-            color: "#fff", border: "none", borderRadius: 8,
-            padding: "8px 20px", fontSize: 14, fontWeight: 700,
-            cursor: loading ? "not-allowed" : "pointer",
-            fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6,
-            transition: "background 0.2s",
-          }}
-        >
-          {loading
-            ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> מנתח...</>
-            : <><Sparkles size={15} /> הרץ ניתוח</>}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => handleRun(true)}
+            disabled={loading}
+            style={{
+              background: "rgba(129,140,248,0.12)",
+              color: "#818CF8", border: "1px solid rgba(129,140,248,0.3)", borderRadius: 8,
+              padding: "8px 14px", fontSize: 13, fontWeight: 600,
+              cursor: loading ? "not-allowed" : "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            הדגמה
+          </button>
+          <button
+            onClick={() => handleRun(false)}
+            disabled={loading}
+            style={{
+              background: loading ? "rgba(129,140,248,0.2)" : "#5B4FF5",
+              color: "#fff", border: "none", borderRadius: 8,
+              padding: "8px 20px", fontSize: 14, fontWeight: 700,
+              cursor: loading ? "not-allowed" : "pointer",
+              fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6,
+              transition: "background 0.2s",
+            }}
+          >
+            {loading
+              ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> מנתח...</>
+              : <><Sparkles size={15} /> הרץ ניתוח</>}
+          </button>
+        </div>
       </div>
 
       {/* Error state */}
@@ -96,9 +111,17 @@ export default function DashboardFullAnalysisCard() {
             display: "flex", alignItems: "center", justifyContent: "space-between",
             marginBottom: expanded ? 16 : 0,
           }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#34D399" }}>
-              <CheckCircle size={15} />
-              <span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+              {result.meta?.isDemo ? (
+                <span style={{
+                  background: "rgba(251,191,36,0.15)", color: "#FCD34D",
+                  borderRadius: 6, padding: "2px 8px", fontWeight: 700, fontSize: 12,
+                }}>
+                  מצב הדגמה
+                </span>
+              ) : null}
+              <span style={{ color: "#34D399", display: "flex", alignItems: "center", gap: 6 }}>
+                <CheckCircle size={15} />
                 הניתוח הושלם
                 {result.meta && ` · ${result.meta.successCount}/${result.meta.agentCount} סוכנים · ${(result.meta.durationMs / 1000).toFixed(1)}s`}
               </span>

@@ -1,5 +1,6 @@
 'use strict';
 
+const { MOCK_DASHBOARD_SUMMARY } = require('../ai/mock/mockData');
 const Document = require('../models/Document');
 const UserProfile = require('../models/UserProfile');
 const InsurancePolicy = require('../models/InsurancePolicy');
@@ -10,6 +11,10 @@ const Recommendation = require('../models/Recommendation');
  * Lightweight summary for the dashboard header — no LLM, pure DB aggregation.
  */
 async function getDashboardSummary(req, res) {
+  if (req.query.demo === 'true') {
+    return res.json({ success: true, data: MOCK_DASHBOARD_SUMMARY });
+  }
+
   const userId = req.user._id;
 
   const [docs, profile, policies, recommendations] = await Promise.all([

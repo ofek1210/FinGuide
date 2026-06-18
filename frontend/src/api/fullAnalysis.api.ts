@@ -25,7 +25,7 @@ export type FullAnalysisResponse = {
   success: boolean;
   runId?: string;
   summary?: string;
-  summarySource?: "claude" | "rule" | "fallback";
+  summarySource?: "claude" | "rule" | "fallback" | "demo";
   recommendations?: FullAnalysisRecommendation[];
   agents?: {
     payslip: AgentResult;
@@ -37,12 +37,14 @@ export type FullAnalysisResponse = {
     durationMs: number;
     agentCount: number;
     successCount: number;
+    isDemo?: boolean;
   };
 };
 
 export const runFullAnalysis = (params?: {
   focus?: "all" | "payslip" | "insurance" | "pension";
   skipLLM?: boolean;
+  demo?: boolean;
 }) =>
   apiJson<FullAnalysisResponse>("/api/ai/full-analysis", {
     method: "POST",
