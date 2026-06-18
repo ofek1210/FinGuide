@@ -48,4 +48,13 @@ router.delete('/policies/:id', (req, res, next) => {
   Promise.resolve(deleteInsurancePolicy(req, res)).catch(next);
 });
 
+// DELETE /api/insurance/data — delete ALL insurance policies for the user
+router.delete('/data', async (req, res, next) => {
+  try {
+    const InsurancePolicy = require('../models/InsurancePolicy');
+    await InsurancePolicy.deleteMany({ user: req.user._id });
+    return res.json({ success: true, message: 'כל נתוני הביטוח נמחקו' });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

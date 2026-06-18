@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { PiggyBank, TrendingUp, AlertCircle, Loader2, Sparkles } from "lucide-react";
+import { PiggyBank, TrendingUp, AlertCircle, Loader2, Sparkles, Plus, Trash2 } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import {
   getPensionAnalysis,
   simulatePensionScenario,
+  getPensionFunds,
+  uploadPensionFund,
+  deletePensionFund,
   type PensionAnalysisResponse,
   type SimulationResponse,
+  type PensionFundDTO,
+  type UploadPensionBody,
 } from "../api/pension.api";
 
 const urgencyColor = (u: string) =>
@@ -17,6 +22,21 @@ const urgencyLabel = (u: string) =>
 
 const fmt = (n: number | null | undefined) =>
   n != null ? `₪${Number(n).toLocaleString("he-IL")}` : "—";
+
+const FUND_TYPE_LABELS: Record<string, string> = {
+  pension_comprehensive: 'פנסיה מקיפה',
+  pension_old: 'פנסיה ותיקה',
+  managers_insurance: 'ביטוח מנהלים',
+  provident_fund: 'קופת גמל',
+  study_fund: 'קרן השתלמות',
+  other: 'אחר',
+};
+
+const EMPTY_FORM: UploadPensionBody = {
+  fundName: '', fundType: 'pension_comprehensive', provider: '',
+  currentBalance: 0, monthlyEmployeeDeposit: 0, monthlyEmployerDeposit: 0,
+  managementFeeAccumulation: 0.003, managementFeeDeposit: 0.001,
+};
 
 export default function PensionPage() {
   const [data, setData] = useState<PensionAnalysisResponse["data"] | null>(null);
@@ -30,13 +50,51 @@ export default function PensionPage() {
   const [simResult, setSimResult] = useState<SimulationResponse["data"] | null>(null);
   const [simLoading, setSimLoading] = useState(false);
 
+  // Manual fund entry state
+  const [funds, setFunds] = useState<PensionFundDTO[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [form, setForm] = useState<UploadPensionBody>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const loadFunds = useCallback(async () => {
+    const res = await getPensionFunds();
+    if (res.ok && res.data?.data) setFunds(res.data.data);
+  }, []);
+
   useEffect(() => {
     void getPensionAnalysis().then((res) => {
       setLoading(false);
       if (res.ok && res.data?.success && res.data.data) setData(res.data.data);
       else setError("לא הצלחנו לטעון נתוני פנסיה");
     });
-  }, []);
+    void loadFunds();
+  }, [loadFunds]);
+
+  const handleSaveFund = useCallback(async () => {
+    if (!form.fundName?.trim()) return;
+    setSaving(true);
+    setSaveMsg(null);
+    const res = await uploadPensionFund(form);
+    setSaving(false);
+    if (res.ok) {
+      setSaveMsg("הקרן נשמרה בהצלחה");
+      setForm(EMPTY_FORM);
+      setShowAddForm(false);
+      void loadFunds();
+    } else {
+      setSaveMsg("שגיאה בשמירה, נסה שוב");
+    }
+  }, [form, loadFunds]);
+
+  const handleDeleteFund = useCallback(async (id: string) => {
+    if (!window.confirm("למחוק קרן זו?")) return;
+    setDeletingId(id);
+    const res = await deletePensionFund(id);
+    setDeletingId(null);
+    if (res.ok) void loadFunds();
+  }, [loadFunds]);
 
   const handleSimulate = useCallback(async () => {
     setSimLoading(true);
@@ -380,6 +438,120 @@ export default function PensionPage() {
 
           </div>
         )}
+
+        {/* ── Manual Fund Entry ── */}
+        <div style={{ marginTop: 32, background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: "24px 28px", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--rapyd-text)", display: "flex", alignItems: "center", gap: 8 }}>
+                <PiggyBank size={18} style={{ color: "#818CF8" }} />
+                קרנות פנסיה ידניות
+              </div>
+              <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>
+                הזן נתוני קרן ידנית כדי לשפר את התחזית
+              </div>
+            </div>
+            <button
+              onClick={() => setShowAddForm(v => !v)}
+              style={{
+                background: "#5B4FF5", color: "#fff", border: "none", borderRadius: 8,
+                padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              <Plus size={14} /> הוסף קרן
+            </button>
+          </div>
+
+          {/* Existing funds list */}
+          {funds.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: showAddForm ? 20 : 0 }}>
+              {funds.map(f => (
+                <div key={f.id} style={{
+                  background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "14px 18px",
+                  border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between",
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "var(--rapyd-text)", fontSize: 14 }}>{f.fundName}</div>
+                    <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>
+                      {FUND_TYPE_LABELS[f.fundType] ?? f.fundType}
+                      {f.provider ? ` · ${f.provider}` : ""}
+                      {" · "} צבירה: {fmt(f.currentBalance)}
+                      {" · "} הפקדה: {fmt((f.monthlyEmployeeDeposit ?? 0) + (f.monthlyEmployerDeposit ?? 0))}/חודש
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteFund(f.id)}
+                    disabled={deletingId === f.id}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#F87171", padding: 6 }}
+                    title="מחק קרן"
+                  >
+                    {deletingId === f.id ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Trash2 size={14} />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add form */}
+          {showAddForm && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 }}>
+              {[
+                { label: "שם הקרן *", field: "fundName" as const, type: "text" },
+                { label: "ספק / חברה מנהלת", field: "provider" as const, type: "text" },
+                { label: "צבירה נוכחית (₪)", field: "currentBalance" as const, type: "number" },
+                { label: "הפקדת עובד/חודש (₪)", field: "monthlyEmployeeDeposit" as const, type: "number" },
+                { label: "הפקדת מעסיק/חודש (₪)", field: "monthlyEmployerDeposit" as const, type: "number" },
+                { label: "דמי ניהול מצבירה (%)", field: "managementFeeAccumulation" as const, type: "number", scale: 100 },
+              ].map(({ label, field, type, scale = 1 }) => (
+                <div key={field}>
+                  <label style={{ fontSize: 12, color: "var(--rapyd-text-muted)", display: "block", marginBottom: 4 }}>{label}</label>
+                  <input
+                    type={type}
+                    value={type === "number" ? ((form[field] as number ?? 0) * scale).toString() : (form[field] as string ?? "")}
+                    onChange={e => setForm(prev => ({
+                      ...prev,
+                      [field]: type === "number" ? (parseFloat(e.target.value) || 0) / scale : e.target.value,
+                    }))}
+                    style={{
+                      width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 14,
+                      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+                      color: "var(--rapyd-text)", fontFamily: "inherit", boxSizing: "border-box" as const,
+                    }}
+                  />
+                </div>
+              ))}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={{ fontSize: 12, color: "var(--rapyd-text-muted)", display: "block", marginBottom: 4 }}>סוג קרן</label>
+                <select
+                  value={form.fundType}
+                  onChange={e => setForm(prev => ({ ...prev, fundType: e.target.value }))}
+                  style={{
+                    width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 14,
+                    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+                    color: "var(--rapyd-text)", fontFamily: "inherit",
+                  }}
+                >
+                  {Object.entries(FUND_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+              </div>
+              <div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+                {saveMsg && <span style={{ fontSize: 13, color: saveMsg.includes("שגיאה") ? "#F87171" : "#34D399", alignSelf: "center" }}>{saveMsg}</span>}
+                <button onClick={() => { setShowAddForm(false); setSaveMsg(null); }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, color: "var(--rapyd-text-muted)", padding: "8px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>ביטול</button>
+                <button onClick={handleSaveFund} disabled={saving || !form.fundName?.trim()} style={{ background: "#5B4FF5", color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+                  {saving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : null}
+                  שמור
+                </button>
+              </div>
+            </div>
+          )}
+
+          {funds.length === 0 && !showAddForm && (
+            <p style={{ fontSize: 13, color: "var(--rapyd-text-muted)", margin: 0 }}>
+              אין קרנות שהוזנו ידנית. לחץ "הוסף קרן" כדי להזין נתוני פנסיה ידנית.
+            </p>
+          )}
+        </div>
 
         <p style={{ fontSize: 12, color: "var(--rapyd-text-muted)", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
           ⚠️ התחזיות מבוססות על הנתונים שהעלית ועל הנחות ממוצעות (תשואה, אינפלציה). אינן מהווות ייעוץ פנסיוני מקצועי. לפני כל שינוי בפנסיה, התייעצ/י עם יועץ פנסיוני מורשה.

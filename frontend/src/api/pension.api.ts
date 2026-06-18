@@ -72,8 +72,48 @@ export type SimulationResponse = {
   };
 };
 
+export type PensionFundDTO = {
+  id: string;
+  fundName: string;
+  fundType: string;
+  provider: string | null;
+  currentBalance: number;
+  monthlyEmployeeDeposit: number;
+  monthlyEmployerDeposit: number;
+  managementFeeAccumulation: number;
+  managementFeeDeposit: number;
+  source?: string;
+};
+
+export type UploadPensionBody = {
+  fundName: string;
+  fundType?: string;
+  provider?: string;
+  currentBalance?: number;
+  monthlyEmployeeDeposit?: number;
+  monthlyEmployerDeposit?: number;
+  managementFeeAccumulation?: number;
+  managementFeeDeposit?: number;
+};
+
 export const getPensionAnalysis = () =>
   apiJson<PensionAnalysisResponse>("/api/pension/analysis", { auth: true });
+
+export const getPensionFunds = () =>
+  apiJson<{ success: boolean; data: PensionFundDTO[] }>("/api/pension/funds", { auth: true });
+
+export const uploadPensionFund = (body: UploadPensionBody) =>
+  apiJson<{ success: boolean; message: string; data: PensionFundDTO }>("/api/pension/upload", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+
+export const deletePensionFund = (id: string) =>
+  apiJson<{ success: boolean; message: string }>(`/api/pension/funds/${id}`, {
+    method: "DELETE",
+    auth: true,
+  });
 
 export const simulatePensionScenario = (params: {
   retirementAge?: number;
