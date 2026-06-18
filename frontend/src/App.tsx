@@ -1,4 +1,4 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import AuthScreen from "./components/AuthScreen";
 import DashboardPage from "./pages/DashboardPage";
@@ -15,7 +15,7 @@ import PayslipMissingFieldsPage from "./pages/PayslipMissingFieldsPage";
 import InsightsPage from "./pages/InsightsPage";
 import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
-import AssistantPage from "./pages/AssistantPage";
+import AIAgentsPage from "./pages/AIAgentsPage";
 import FindingsPage from "./pages/FindingsPage";
 import TaxAssistantPage from "./pages/TaxAssistantPage";
 import FinancialHealthPage from "./pages/FinancialHealthPage";
@@ -173,7 +173,15 @@ export default function App() {
           path={APP_ROUTES.assistant}
           element={
             <RequireAuth>
-              <AssistantPage />
+              <Navigate to={APP_ROUTES.aiAgents} replace />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.aiAgents}
+          element={
+            <RequireAuth>
+              <AIAgentsPage />
             </RequireAuth>
           }
         />

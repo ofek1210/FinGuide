@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Shield, ShieldAlert, ShieldCheck, Upload, Trash2, AlertCircle,
-  CheckCircle, Loader2, ChevronRight, FileSpreadsheet,
+  CheckCircle, Loader2, ChevronRight, FileSpreadsheet, Lightbulb, BarChart3, ExternalLink,
 } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
@@ -40,6 +40,29 @@ const fmt = (n: number | null | undefined) =>
   n != null ? `₪${Number(n).toLocaleString("he-IL")}` : "—";
 
 const AI_DISCLAIMER = "ניתוח זה נוצר על ידי מודל AI על בסיס הנתונים שהזנת. אינו מהווה ייעוץ פיננסי או ביטוחי מקצועי. לפני כל החלטה, פנה/י לסוכן ביטוח מורשה.";
+
+/* ── Market data from mygemel.net ── */
+const INSURANCE_MARKET_DATA = [
+  { label: 'אכ"ע (אובדן כושר)', min: 80, max: 450, avg: 200, color: "#818CF8" },
+  { label: "חיים (ריסק)", min: 40, max: 350, avg: 150, color: "#34D399" },
+  { label: "בריאות פרטי", min: 150, max: 600, avg: 320, color: "#F472B6" },
+  { label: 'שב"ן (משלים)', min: 30, max: 80, avg: 55, color: "#FBBF24" },
+  { label: "דירה (מבנה+תכולה)", min: 35, max: 200, avg: 100, color: "#60A5FA" },
+];
+
+const PENSION_FEE_DATA = [
+  { label: "דמי ניהול מהפקדה", market: 1.5, recommended: 0, unit: "%" },
+  { label: "דמי ניהול מצבירה", market: 0.2, recommended: 0.1, unit: "%" },
+  { label: "דמי ניהול קה\"ש מצבירה", market: 0.67, recommended: 0.3, unit: "%" },
+];
+
+const MARKET_TIPS = [
+  { icon: "💡", text: "ביטוח אכ\"ע בקרן הפנסיה מכסה בד\"כ 75% מהשכר המבוטח — בדוק אם זה מספיק לך" },
+  { icon: "🔍", text: "ביטוח חיים מומלץ: הכנסה שנתית × 10 או לפחות גובה המשכנתא" },
+  { icon: "💰", text: "משא ומתן על דמי ניהול יכול לחסוך עשרות אלפי ₪ לאורך השנים" },
+  { icon: "⚠️", text: "בדוק תקופת המתנה, חריגות מצבים קיימים, והאם הפרמיה עולה עם הגיל" },
+  { icon: "📊", text: "השווה פוליסות באתר mygemel.net לפני חידוש או רכישת ביטוח חדש" },
+];
 
 export default function InsurancePage() {
   const [data, setData] = useState<InsuranceAnalysisResponse["data"] | null>(null);
@@ -87,8 +110,9 @@ export default function InsurancePage() {
 
   const analysis = data?.analysis;
 
-  const criticalCount = items.filter(r => r.importance === "critical").length;
-  const highCount = items.filter(r => r.importance === "high").length;
+  const recommendations = data?.recommendations ?? [];
+  const criticalCount = recommendations.filter(r => r.importance === "critical").length;
+  const highCount = recommendations.filter(r => r.importance === "high").length;
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--rapyd-bg)", direction: "rtl" }}>
@@ -108,7 +132,7 @@ export default function InsurancePage() {
             </span>
             <div>
               <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, color: "var(--rapyd-text)" }}>
-                AI Insurance Shield
+                ניתוח ביטוחי חכם
               </h1>
               <p style={{ color: "var(--rapyd-text-muted)", margin: "4px 0 0", fontSize: 14 }}>
                 זיהוי כיסוי חסר, ביטוח כפול וחיסכון פוטנציאלי
@@ -381,6 +405,141 @@ export default function InsurancePage() {
                 </div>
               </div>
             )}
+
+          </div>
+        )}
+
+        {/* ── Market Data Section (always visible) ── */}
+        {!loading && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: data ? 24 : 0 }}>
+
+            {/* ── Insurance Cost Ranges Chart ── */}
+            <div className="dashboard-card" style={{ padding: "24px 28px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                <BarChart3 size={20} style={{ color: "#818CF8" }} />
+                <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: "var(--rapyd-text)" }}>
+                  עלויות ביטוח בשוק — 2026
+                </h2>
+                <span style={{ fontSize: 11, color: "var(--rapyd-text-muted)", marginRight: "auto" }}>
+                  מקור: mygemel.net
+                </span>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {INSURANCE_MARKET_DATA.map(item => {
+                  const maxVal = 600;
+                  return (
+                    <div key={item.label}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--rapyd-text)" }}>{item.label}</span>
+                        <span style={{ fontSize: 13, color: "var(--rapyd-text-muted)" }}>
+                          ₪{item.min}–₪{item.max}/חודש
+                        </span>
+                      </div>
+                      <div style={{ position: "relative", height: 28, borderRadius: 8, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                        {/* Range bar */}
+                        <div style={{
+                          position: "absolute",
+                          right: `${(1 - item.max / maxVal) * 100}%`,
+                          width: `${((item.max - item.min) / maxVal) * 100}%`,
+                          height: "100%",
+                          background: `${item.color}22`,
+                          borderRadius: 8,
+                          border: `1px solid ${item.color}44`,
+                        }} />
+                        {/* Average marker */}
+                        <div style={{
+                          position: "absolute",
+                          right: `${(1 - item.avg / maxVal) * 100}%`,
+                          top: 2, bottom: 2,
+                          width: 3,
+                          background: item.color,
+                          borderRadius: 2,
+                        }} />
+                        {/* Average label */}
+                        <span style={{
+                          position: "absolute",
+                          right: `${(1 - item.avg / maxVal) * 100 + 1}%`,
+                          top: "50%", transform: "translateY(-50%)",
+                          fontSize: 11, fontWeight: 700, color: item.color,
+                        }}>
+                          ממוצע ₪{item.avg}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Management Fees Comparison ── */}
+            <div className="dashboard-card" style={{ padding: "24px 28px" }}>
+              <h2 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 18px", color: "var(--rapyd-text)" }}>
+                דמי ניהול — ממוצע שוק vs. מומלץ
+              </h2>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+                {PENSION_FEE_DATA.map(fee => (
+                  <div key={fee.label} style={{
+                    background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "16px 20px",
+                    border: "1px solid rgba(255,255,255,0.07)", textAlign: "center",
+                  }}>
+                    <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginBottom: 10, fontWeight: 600 }}>
+                      {fee.label}
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "center", gap: 24, alignItems: "baseline" }}>
+                      <div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#F87171" }}>{fee.market}{fee.unit}</div>
+                        <div style={{ fontSize: 11, color: "var(--rapyd-text-muted)" }}>ממוצע שוק</div>
+                      </div>
+                      <ChevronRight size={16} style={{ color: "var(--rapyd-text-muted)", transform: "scaleX(-1)" }} />
+                      <div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: "#34D399" }}>{fee.recommended}{fee.unit}</div>
+                        <div style={{ fontSize: 11, color: "var(--rapyd-text-muted)" }}>מומלץ</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Tips from mygemel.net ── */}
+            <div className="dashboard-card" style={{ padding: "24px 28px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+                <Lightbulb size={20} style={{ color: "#FBBF24" }} />
+                <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: "var(--rapyd-text)" }}>
+                  טיפים לחיסכון בביטוח
+                </h2>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {MARKET_TIPS.map((tip, i) => (
+                  <div key={i} style={{
+                    display: "flex", alignItems: "flex-start", gap: 12,
+                    background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "14px 18px",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                  }}>
+                    <span style={{ fontSize: 18, flexShrink: 0 }}>{tip.icon}</span>
+                    <span style={{ fontSize: 14, color: "var(--rapyd-text)", lineHeight: 1.6 }}>{tip.text}</span>
+                  </div>
+                ))}
+              </div>
+              <a
+                href="https://www.mygemel.net"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: 6,
+                  marginTop: 16, fontSize: 13, color: "#818CF8",
+                  textDecoration: "none", fontWeight: 600,
+                }}
+              >
+                <ExternalLink size={14} />
+                השוואת פוליסות מלאה באתר mygemel.net
+              </a>
+            </div>
+
+            {/* ── Disclaimer ── */}
+            <p style={{ fontSize: 12, color: "var(--rapyd-text-muted)", textAlign: "center", margin: "8px 0 0", lineHeight: 1.6 }}>
+              {AI_DISCLAIMER}
+            </p>
 
           </div>
         )}

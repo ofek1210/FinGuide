@@ -27,7 +27,7 @@ async function getPensionSummary(userId) {
       status: 'completed',
       $or: [
         { 'metadata.category': 'payslip' },
-        { 'analysisData.summary.pensionEmployee': { $exists: true, $ne: null } },
+        { 'analysisData.summary.grossSalary': { $exists: true, $ne: null } },
       ],
     })
       .sort({ uploadedAt: -1 })
@@ -43,13 +43,24 @@ async function getPensionSummary(userId) {
   const pensionEmployer = s.pensionEmployer ?? null;
   const totalMonthlyContribution = (pensionEmployee || 0) + (pensionEmployer || 0);
 
+  // If we have gross salary but no pension data, calculate expected minimums
+  const expectedMinEmployee = grossSalary ? Math.round(grossSalary * 0.06) : null;
+  const expectedMinEmployer = grossSalary ? Math.round(grossSalary * 0.065) : null;
+  const expectedSeverance = grossSalary ? Math.round(grossSalary * 0.06) : null;
+  const hasMissingPension = grossSalary && !pensionEmployee && !pensionEmployer;
+
   return {
     hasData: Boolean(grossSalary),
     grossSalary,
     pensionEmployee,
     pensionEmployer,
     pensionSeverance: s.pensionSeverance ?? null,
-    totalMonthlyContribution,
+    totalMonthlyContribution: totalMonthlyContribution || ((expectedMinEmployee || 0) + (expectedMinEmployer || 0)),
+    // Expected values (by law)
+    expectedMinEmployee,
+    expectedMinEmployer,
+    expectedSeverance,
+    hasMissingPension: Boolean(hasMissingPension),
     // Profile-based
     currentAge: personal.age ?? null,
     retirementAge: ret.plannedRetirementAge ?? 67,
@@ -122,6 +133,18 @@ function projectRetirementIncome(pensionSummary) {
  */
 function generatePensionRecommendations(summary, projection) {
   const recs = [];
+
+  // Missing pension contributions in payslip
+  if (summary.hasMissingPension) {
+    recs.push({
+      type: 'missing_pension_contributions',
+      title: 'לא זוהו הפרשות פנסיה בתלוש',
+      reason: `בתלוש השכר לא זוהו הפרשות פנסיה. לפי חוק, על המעסיק להפריש לפחות 6.5% ועל העובד 6% מהשכר (₪${summary.expectedMinEmployee}/חודש עובד + ₪${summary.expectedMinEmployer}/חודש מעסיק).`,
+      urgency: 'high',
+      financialImpact: `הפרשה חסרה של ₪${(summary.expectedMinEmployee || 0) + (summary.expectedMinEmployer || 0)}/חודש`,
+      confidenceScore: 95,
+    });
+  }
 
   if (projection.contributionRules?.belowMinimum) {
     recs.push({

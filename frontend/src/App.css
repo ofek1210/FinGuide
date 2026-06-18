@@ -3329,7 +3329,7 @@
 .dashboard-nav {
   display: inline-flex;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
   flex-wrap: wrap;
   direction: rtl;
 }
@@ -3339,9 +3339,10 @@
   background: transparent;
   color: var(--dash-muted);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   cursor: pointer;
   padding: 6px 2px;
+  white-space: nowrap;
 }
 
 .dashboard-nav-link.is-active {
@@ -4317,7 +4318,8 @@
   padding: 14px;
   border-radius: 12px;
   border: 1px solid var(--dash-border);
-  background: #fafbfc;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--dash-text);
 }
 
 .financial-health-category.status-good {
@@ -4343,6 +4345,7 @@
 .financial-health-category-head h3 {
   margin: 0;
   font-size: 1rem;
+  color: var(--dash-text);
 }
 
 .financial-health-category-head span {

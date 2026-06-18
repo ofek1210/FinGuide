@@ -66,10 +66,10 @@ export default function FinancialHealthPage() {
             <div>
               <div className="ai-page-badge">
                 <Gauge size={12} />
-                <span>AI Score</span>
+                <span>ציון AI</span>
               </div>
               <h1>ציון פיננסי AI</h1>
-              <p className="ai-page-subtitle">ניתוח 360° של המצב הפיננסי שלך — שכר, מס, פנסיה וביטוחים — בציון אחד מאוחד.</p>
+              <p className="ai-page-subtitle">הציון מסכם את כל המצב הפיננסי שלך למספר אחד (0-100). ככל שהציון גבוה יותר — ככה המצב שלך טוב יותר. הוא מורכב מ: שלמות מסמכים, יציבות שכר, מוכנות מס, הפרשות פנסיה ומודעות ביטוחית.</p>
             </div>
           </div>
           <label className="financial-health-year-select">

@@ -18,6 +18,7 @@ export const APP_ROUTES = {
   pension: "/pension",
   notifications: "/notifications",
   assistant: "/assistant",
+  aiAgents: "/ai-agents",
   settings: "/settings",
   integrationsEmail: "/integrations/email",
   help: "/help",

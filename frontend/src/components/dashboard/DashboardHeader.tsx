@@ -72,35 +72,63 @@ export default function DashboardHeader({
           type="button"
           onClick={onNavigateDashboard}
         >
-          בית
+          דשבורד
         </button>
         <button
           className="dashboard-nav-link"
           type="button"
           onClick={onNavigateDocuments}
         >
-          מסמכים
+          תלושים ומסמכים
+        </button>
+        <button
+          className="dashboard-nav-link"
+          type="button"
+          onClick={() => navigate(APP_ROUTES.aiAgents)}
+        >
+          ✦ יועץ AI
         </button>
         <button
           className="dashboard-nav-link"
           type="button"
           onClick={() => navigate(APP_ROUTES.insights)}
         >
-          ✦ תובנות
+          ✦ תובנות חכמות
+        </button>
+        <button
+          className="dashboard-nav-link"
+          type="button"
+          onClick={() => navigate(APP_ROUTES.pension)}
+        >
+          ✦ פנסיה וחיסכון
         </button>
         <button
           className="dashboard-nav-link"
           type="button"
           onClick={() => navigate(APP_ROUTES.insurance)}
         >
-          ✦ AI Shield
+          ✦ ביטוח ופוליסות
+        </button>
+        <button
+          className="dashboard-nav-link"
+          type="button"
+          onClick={() => navigate(APP_ROUTES.taxAssistant)}
+        >
+          ✦ מיסים והחזרים
+        </button>
+        <button
+          className="dashboard-nav-link"
+          type="button"
+          onClick={() => navigate(APP_ROUTES.financialHealth)}
+        >
+          ✦ בריאות פיננסית
         </button>
         <button
           className="dashboard-nav-link"
           type="button"
           onClick={() => navigate(APP_ROUTES.copilot)}
         >
-          ✦ תכנון
+          ✦ תכנון ותקציב
         </button>
       </nav>
 

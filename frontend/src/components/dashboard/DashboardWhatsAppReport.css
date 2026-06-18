@@ -1,0 +1,272 @@
+/* ── Dashboard WhatsApp Report Card ─────────────────────────────── */
+.dash-wa-report {
+  background: linear-gradient(135deg, rgba(37, 211, 102, 0.10) 0%, rgba(129, 140, 248, 0.07) 100%);
+  border: 1.5px solid rgba(37, 211, 102, 0.25);
+  border-radius: var(--dash-radius, 16px);
+  padding: 28px 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dash-wa-report::before {
+  content: "";
+  position: absolute;
+  top: -40px;
+  left: -40px;
+  width: 120px;
+  height: 120px;
+  background: radial-gradient(circle, rgba(37, 211, 102, 0.12), transparent 70%);
+  pointer-events: none;
+}
+
+.dash-wa-report-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.dash-wa-report-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+}
+
+.dash-wa-report-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-wa-report-text h3 {
+  margin: 0 0 6px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--dash-text);
+}
+
+.dash-wa-report-text p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--dash-muted);
+  line-height: 1.55;
+}
+
+.dash-wa-report-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: rgba(129, 140, 248, 0.15);
+  color: #818CF8;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.dash-wa-generate-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.25);
+}
+
+.dash-wa-generate-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.35);
+}
+
+.dash-wa-generate-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.dash-wa-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dash-wa-send-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.25);
+  flex: 1;
+  justify-content: center;
+}
+
+.dash-wa-send-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(37, 211, 102, 0.35);
+}
+
+.dash-wa-pdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  border-radius: 10px;
+  background: rgba(129, 140, 248, 0.1);
+  color: #818CF8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dash-wa-pdf-btn:hover {
+  background: rgba(129, 140, 248, 0.18);
+}
+
+.dash-wa-refresh-btn {
+  padding: 12px 14px;
+  border: 1px solid var(--dash-border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--dash-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.dash-wa-refresh-btn:hover:not(:disabled) {
+  color: var(--dash-text);
+}
+
+.dash-wa-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.dash-wa-success {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(37, 211, 102, 0.1);
+  color: #25D366;
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: fadeInUp 0.3s ease;
+}
+
+.dash-wa-error {
+  margin: 8px 0 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  font-size: 0.82rem;
+}
+
+.dash-wa-preview {
+  margin-top: 14px;
+  border-top: 1px solid var(--dash-border);
+  padding-top: 12px;
+}
+
+.dash-wa-preview summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--dash-muted);
+  font-weight: 600;
+}
+
+.dash-wa-preview-content {
+  margin-top: 10px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--dash-border);
+  font-size: 0.84rem;
+  line-height: 1.7;
+  color: var(--dash-text, #e2e8f0);
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.dash-wa-preview-content h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--dash-text);
+  margin: 18px 0 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.dash-wa-preview-content h3:first-child {
+  margin-top: 0;
+}
+
+.dash-wa-preview-content h4 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--dash-text);
+  margin: 12px 0 6px;
+}
+
+.dash-wa-preview-content p {
+  margin: 4px 0;
+}
+
+.dash-wa-preview-content strong {
+  color: var(--dash-text);
+}
+
+.dash-wa-preview-content ul {
+  margin: 6px 0;
+  padding-right: 18px;
+}
+
+.dash-wa-preview-content li {
+  margin-bottom: 4px;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Light mode */
+[data-theme="light"] .dash-wa-report {
+  background: linear-gradient(135deg, rgba(37, 211, 102, 0.05) 0%, rgba(129, 140, 248, 0.04) 100%);
+}
+[data-theme="light"] .dash-wa-preview-content {
+  background: rgba(0, 0, 0, 0.02);
+}

@@ -33,7 +33,7 @@ export default function PensionPage() {
   useEffect(() => {
     void getPensionAnalysis().then((res) => {
       setLoading(false);
-      if (res.success && res.data) setData(res.data);
+      if (res.ok && res.data?.success && res.data.data) setData(res.data.data);
       else setError("לא הצלחנו לטעון נתוני פנסיה");
     });
   }, []);
@@ -47,7 +47,7 @@ export default function PensionPage() {
       targetMgmtFee: simFee ? Number(simFee) / 100 : undefined,
     });
     setSimLoading(false);
-    if (res.success && res.data) setSimResult(res.data);
+    if (res.ok && res.data?.success && res.data.data) setSimResult(res.data.data);
   }, [simAge, simExtra, simFee]);
 
   return (
@@ -73,6 +73,19 @@ export default function PensionPage() {
           <p style={{ color: "var(--rapyd-text-muted)", margin: 0, fontSize: 15 }}>
             תחזיות פרישה, ניתוח דמי ניהול וסימולציות — מבוסס על נתוני התלושים שלך
           </p>
+          <div style={{
+            marginTop: 14, padding: "12px 16px", borderRadius: 10,
+            background: "rgba(129,140,248,0.06)", borderRight: "3px solid #818CF8",
+            fontSize: 13, color: "var(--rapyd-text-muted)", lineHeight: 1.7,
+          }}>
+            <strong style={{ color: "var(--rapyd-text)" }}>💡 מילון מונחים:</strong><br/>
+            <strong>פנסיה</strong> — חיסכון חודשי מהשכר שנצבר לטובת קצבה בגיל פרישה (67).<br/>
+            <strong>הפרשת עובד</strong> — 6% מהברוטו שמנוכים מהשכר שלך.<br/>
+            <strong>הפרשת מעסיק</strong> — 6.5% נוספים שהמעסיק מוסיף מעבר לשכר.<br/>
+            <strong>דמי ניהול</strong> — עמלה שחברת הפנסיה גובה מהכסף שלך. ככל שנמוך יותר — חוסכים יותר.<br/>
+            <strong>צבירה</strong> — סך הכסף שיהיה בקרן בגיל פרישה.<br/>
+            <strong>קצבה חודשית</strong> — הסכום שתקבל/י מדי חודש אחרי פרישה.
+          </div>
         </div>
 
         {loading && (
@@ -109,23 +122,38 @@ export default function PensionPage() {
 
             {/* Summary cards */}
             {data.summary.hasData && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-                {[
-                  { label: "הפרשה חודשית (עובד)", value: fmt(data.summary.pensionEmployee) },
-                  { label: "הפרשה חודשית (מעסיק)", value: fmt(data.summary.pensionEmployer) },
-                  { label: "סה\"כ חודשי", value: fmt(data.summary.totalMonthlyContribution) },
-                  { label: "גיל פרישה מתוכנן", value: data.summary.retirementAge ? `${data.summary.retirementAge}` : "67" },
-                ].map((card) => (
-                  <div key={card.label} className="dashboard-card" style={{ padding: "20px 24px" }}>
-                    <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                      {card.label}
-                    </div>
-                    <div style={{ fontSize: 26, fontWeight: 800, color: "var(--rapyd-text)" }}>
-                      {card.value}
-                    </div>
+              <>
+                {data.summary.hasMissingPension && (
+                  <div style={{
+                    background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.3)",
+                    borderRadius: 12, padding: "14px 20px", color: "#FDE047",
+                    display: "flex", alignItems: "center", gap: 10, fontSize: 14,
+                  }}>
+                    <AlertCircle size={18} />
+                    <span>לא זוהו הפרשות פנסיה בתלוש. הנתונים מבוססים על הפרשה מינימלית חוקית (6% עובד + 6.5% מעסיק מברוטו ₪{data.summary.grossSalary?.toLocaleString("he-IL")}).</span>
                   </div>
-                ))}
-              </div>
+                )}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+                  {[
+                    { label: "הפרשה חודשית (עובד)", value: fmt(data.summary.pensionEmployee ?? data.summary.expectedMinEmployee), sub: !data.summary.pensionEmployee ? "מינימום חוקי" : undefined },
+                    { label: "הפרשה חודשית (מעסיק)", value: fmt(data.summary.pensionEmployer ?? data.summary.expectedMinEmployer), sub: !data.summary.pensionEmployer ? "מינימום חוקי" : undefined },
+                    { label: "סה\"כ חודשי", value: fmt(data.summary.totalMonthlyContribution) },
+                    { label: "גיל פרישה מתוכנן", value: data.summary.retirementAge ? `${data.summary.retirementAge}` : "67" },
+                  ].map((card) => (
+                    <div key={card.label} className="dashboard-card" style={{ padding: "20px 24px" }}>
+                      <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        {card.label}
+                      </div>
+                      <div style={{ fontSize: 26, fontWeight: 800, color: "var(--rapyd-text)" }}>
+                        {card.value}
+                      </div>
+                      {card.sub && (
+                        <div style={{ fontSize: 11, color: "#FDE047", marginTop: 4 }}>⚠️ {card.sub}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
 
             {/* Projection */}
@@ -352,6 +380,10 @@ export default function PensionPage() {
 
           </div>
         )}
+
+        <p style={{ fontSize: 12, color: "var(--rapyd-text-muted)", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
+          ⚠️ התחזיות מבוססות על הנתונים שהעלית ועל הנחות ממוצעות (תשואה, אינפלציה). אינן מהווות ייעוץ פנסיוני מקצועי. לפני כל שינוי בפנסיה, התייעצ/י עם יועץ פנסיוני מורשה.
+        </p>
       </main>
 
       <AppFooter variant="private" />

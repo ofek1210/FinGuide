@@ -12,6 +12,9 @@ yarn.lock
 backend/uploads/*
 !backend/uploads/.gitkeep
 
+# Vector store data (regenerated from knowledge base)
+backend/data/vector_store.json
+
 # Logs
 *.log
 npm-debug.log*

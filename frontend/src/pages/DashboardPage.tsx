@@ -13,6 +13,7 @@ import DashboardFinancialHealthCard from "../components/dashboard/DashboardFinan
 import DashboardAITipsCard from "../components/dashboard/DashboardAITipsCard";
 import DashboardFullAnalysisCard from "../components/dashboard/DashboardFullAnalysisCard";
 import DashboardScoresCard from "../components/dashboard/DashboardScoresCard";
+import DashboardWhatsAppReport from "../components/dashboard/DashboardWhatsAppReport";
 import { useDashboardDocuments } from "../hooks/useDashboardDocuments";
 import { useDashboardUser } from "../hooks/useDashboardUser";
 import { APP_ROUTES } from "../types/navigation";
@@ -154,6 +155,9 @@ export default function DashboardPage() {
               </div>
               <DashboardChatPanel />
             </section>
+
+            {/* WhatsApp monthly report – prominent placement */}
+            <DashboardWhatsAppReport />
 
             {/* AI Scores row */}
             <DashboardScoresCard />
