@@ -21,7 +21,7 @@ function normalizeMessage(message) {
 // the LLM prompt — never for intent detection or as a trusted financial source.
 function sanitizePageContext(value) {
   if (typeof value !== 'string') return null;
-  const trimmed = value.trim().slice(0, 300);
+  const trimmed = value.trim().slice(0, 900);
   return trimmed || null;
 }
 
@@ -834,10 +834,12 @@ async function chatWithAIStream(req, res) {
         fullAnswer += token;
         sendEvent({ type: 'token', token });
       },
-      async (full, tokensUsed) => {
-        sendEvent({ type: 'done', source: 'claude', tokensUsed });
+      async (full, tokensUsed, meta = {}) => {
+        const source = meta.source || 'claude';
+        const model = meta.model || null;
+        sendEvent({ type: 'done', source, tokensUsed });
         await saveChatMessage(req.user._id, conversationId, 'assistant', full, {
-          intent, contextUsed: [], model: process.env.CHAT_MODEL || 'claude-sonnet-4-20250514', tokensUsed,
+          intent, contextUsed: [], model, tokensUsed,
         });
         res.end();
       },

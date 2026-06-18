@@ -168,8 +168,21 @@ async function polishHebrewAnswer(baseText) {
   return result || baseText;
 }
 
-async function askLLM(userMessage, userContext, history = []) {
-  const systemPrompt = buildFinancialSystemPrompt(userContext);
+async function askLLM(userMessage, userContext, history = [], options = {}) {
+  let systemPrompt = buildFinancialSystemPrompt(userContext);
+
+  const pageContext = typeof options.pageContext === 'string'
+    ? options.pageContext.trim().slice(0, 900)
+    : '';
+  if (pageContext) {
+    systemPrompt +=
+      `\n\n--- המסך שהמשתמש צופה בו כעת ---\n` +
+      `המשתמש נמצא כעת במסך: ${pageContext}.\n` +
+      `אם השאלה כללית (למשל "מה זה?", "מה עושה הדף הזה?", "תסביר לי את זה") — ` +
+      `התייחס למסך הנוכחי הזה ולא לנתוני התלוש. ` +
+      `אל תתאר תלוש שכר ספציפי או שם עובד/מעסיק אלא אם המשתמש ביקש זאת במפורש.`;
+  }
+
   const fallback =
     'לא הצלחתי לענות על זה כרגע. אפשר לשאול שאלה ספציפית כמו: "כמה נטו?", "כמה פנסיה?" או "תסכם מסמכים".';
 
@@ -187,7 +200,7 @@ async function askLLM(userMessage, userContext, history = []) {
       ...historyMessages,
       { role: 'user', content: userMessage },
     ],
-    { temperature: 0.2, maxTokens: 250, timeoutMs: 30000 },
+    { temperature: 0.2, maxTokens: 500, timeoutMs: 45000 },
   );
 
   return result || fallback;

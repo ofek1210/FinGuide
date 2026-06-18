@@ -108,7 +108,7 @@ function buildEnhancedSystemPrompt(userContext, profile, insights, recommendatio
     lines.push(
       '',
       '--- מה המשתמש צופה בו כעת ---',
-      `המשתמש נמצא כרגע ב: ${pageContext.trim().slice(0, 300)}.`,
+      `המשתמש נמצא כרגע ב: ${pageContext.trim().slice(0, 900)}.`,
       'אם השאלה מנוסחת באופן כללי ("מה זה?", "תסביר לי את זה") — הנח שהיא מתייחסת למסך הזה.',
     );
   }
@@ -161,7 +161,7 @@ async function chat(userMessage, { userContext, profile, insights, recommendatio
     }
   }
 
-  const ollamaAnswer = await askOllama(userMessage, userContext, history);
+  const ollamaAnswer = await askOllama(userMessage, userContext, history, { pageContext });
   return { answer: ollamaAnswer, source: 'ollama', model: process.env.OLLAMA_MODEL || 'llama3.1:8b', tokensUsed: null };
 }
 
@@ -202,15 +202,15 @@ async function streamChat(userMessage, { userContext, profile, insights, recomme
       }
     }
 
-    await onDone(fullText, inputTokens + outputTokens);
+    await onDone(fullText, inputTokens + outputTokens, { source: 'claude', model: CHAT_MODEL });
     return;
   }
 
   // Fallback: non-streaming (collect full answer, emit as single token)
-  const ollamaAnswer = await askOllama(userMessage, userContext, history);
+  const ollamaAnswer = await askOllama(userMessage, userContext, history, { pageContext });
   const text = ollamaAnswer || 'אין תשובה זמינה.';
   onToken(text);
-  await onDone(text, null);
+  await onDone(text, null, { source: 'ollama', model: process.env.OLLAMA_MODEL || 'llama3.1:8b' });
 }
 
 module.exports = { chat, streamChat, buildEnhancedSystemPrompt, askClaude };
