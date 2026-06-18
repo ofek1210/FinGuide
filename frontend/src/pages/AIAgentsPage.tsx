@@ -200,7 +200,7 @@ export default function AIAgentsPage() {
           ⚠️ המידע ניתן לצורכי לימוד בלבד ואינו מהווה ייעוץ פיננסי מקצועי.
         </p>
       </main>
-      <AppFooter />
+      <AppFooter variant="private" />
     </div>
   );
 }

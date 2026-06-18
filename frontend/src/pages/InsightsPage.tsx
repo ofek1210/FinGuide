@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AlertTriangle, RefreshCw, Sparkles } from "lucide-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import Loader from "../components/ui/Loader";

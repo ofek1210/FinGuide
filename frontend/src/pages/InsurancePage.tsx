@@ -110,10 +110,6 @@ export default function InsurancePage() {
 
   const analysis = data?.analysis;
 
-  const recommendations = data?.recommendations ?? [];
-  const criticalCount = recommendations.filter(r => r.importance === "critical").length;
-  const highCount = recommendations.filter(r => r.importance === "high").length;
-
   return (
     <div style={{ minHeight: "100vh", background: "var(--rapyd-bg)", direction: "rtl" }}>
       <PrivateTopbar />

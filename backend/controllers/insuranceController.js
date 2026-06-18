@@ -1,5 +1,6 @@
 'use strict';
 
+const { MOCK_INSURANCE_ANALYSIS } = require('../ai/mock/mockData');
 const XLSX = require('xlsx');
 const InsurancePolicy = require('../models/InsurancePolicy');
 const { getInsuranceProfile, analyzeInsuranceCoverage, generateInsuranceRecommendations } = require('../ai/tools/insuranceTools');
@@ -99,6 +100,9 @@ function parseInsuranceExcel(buffer, originalName) {
  * GET /api/insurance/analysis
  */
 async function getInsuranceAnalysis(req, res) {
+  if (req.query.demo === 'true') {
+    return res.json({ success: true, data: MOCK_INSURANCE_ANALYSIS });
+  }
   const userId = req.user._id;
 
   const profileDTO = await getInsuranceProfile(userId);

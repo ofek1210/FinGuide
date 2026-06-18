@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { PiggyBank, TrendingUp, AlertCircle, ChevronRight, Loader2, Sparkles } from "lucide-react";
+import { PiggyBank, TrendingUp, AlertCircle, Loader2, Sparkles } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import {

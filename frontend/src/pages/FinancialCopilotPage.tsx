@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  LayoutDashboard, Target, TrendingUp, Wallet, FileText,
+  Target, TrendingUp, Wallet, FileText,
   ChevronDown, ChevronUp, Plus, Trash2, Shield, PiggyBank,
-  ArrowUpRight, ArrowDownRight, AlertTriangle, CheckCircle2,
+  AlertTriangle, CheckCircle2,
   Banknote, BarChart3, CircleDollarSign, Landmark,
-  Share2, Download, MessageCircle,
+  Download, MessageCircle,
 } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 
@@ -295,18 +295,6 @@ function BudgetWidget({
       )}
 
       {expensesEditor}
-    </div>
-  );
-}
-
-function BudgetBar({ label, pct, amount, color }: { label: string; pct: number; amount: number; color: string }) {
-  return (
-    <div className="copilot-bar-row">
-      <span className="copilot-bar-label">{label}</span>
-      <div className="copilot-bar-track">
-        <div className="copilot-bar-fill" style={{ width: `${Math.min(pct, 100)}%`, background: color }} />
-      </div>
-      <span className="copilot-bar-val">{pct}% · ₪{amount.toLocaleString("he-IL")}</span>
     </div>
   );
 }
@@ -660,7 +648,7 @@ export default function FinancialCopilotPage() {
   };
 
   const handleAddGoal = async (g: Omit<CopilotGoal, "id" | "progressPct">) => {
-    await upsertGoal(g);
+    await upsertGoal({ ...g, targetAmount: g.targetAmount ?? undefined });
     await load();
   };
 
