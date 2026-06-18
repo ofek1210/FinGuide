@@ -182,8 +182,8 @@ function mapEarnings(analysis: DocumentPayslipAnalysis): PayslipLineItem[] {
     const componentSum = validComponents.reduce((s, c) => s + (c.amount as number), 0);
     // Only use components if their sum is plausible relative to gross (within 20%)
     const plausible =
-      !Number.isFinite(gross) ||
-      (gross > 0 && componentSum >= gross * 0.8 && componentSum <= gross * 1.2);
+      gross == null || !Number.isFinite(gross) ||
+      ((gross as number) > 0 && componentSum >= (gross as number) * 0.8 && componentSum <= (gross as number) * 1.2);
     if (plausible && validComponents.length > 0) {
       return validComponents.map((c) => ({ label: earningsLabel(c.type), amount: c.amount as number }));
     }

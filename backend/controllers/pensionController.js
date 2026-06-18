@@ -1,5 +1,6 @@
 'use strict';
 
+const { MOCK_PENSION_ANALYSIS } = require('../ai/mock/mockData');
 const { getPensionSummary, projectRetirementIncome, generatePensionRecommendations } = require('../ai/tools/pensionTools');
 const { projectPensionIncome } = require('../ai/engines/calculationEngine');
 
@@ -7,6 +8,9 @@ const { projectPensionIncome } = require('../ai/engines/calculationEngine');
  * GET /api/pension/analysis
  */
 async function getPensionAnalysis(req, res) {
+  if (req.query.demo === 'true') {
+    return res.json({ success: true, data: MOCK_PENSION_ANALYSIS });
+  }
   const userId = req.user._id;
 
   const summary = await getPensionSummary(userId);
