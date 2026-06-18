@@ -610,7 +610,7 @@ export default function DocumentsPage() {
 
     if (!selectedFile) {
       setUploadState("error");
-      setUploadMessage("נא לבחור קובץ פי-די-אף לפני ההעלאה.");
+      setUploadMessage("נא לבחור קובץ PDF לפני ההעלאה.");
       return;
     }
 
@@ -896,7 +896,7 @@ export default function DocumentsPage() {
         <section className="documents-header">
           <h1>העלאת מסמכים</h1>
           <p>
-            העלו מסמכי פי-די-אף כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
+            העלו מסמכי PDF כדי לעקוב אחר תלושי שכר, דוחות מס ותיעוד פיננסי.
             הקובץ נשמר מיד, והעיבוד ממשיך ברקע.
           </p>
         </section>
@@ -1009,7 +1009,7 @@ export default function DocumentsPage() {
             מעבר לעיבוד וניתוח המסמכים
           </button>
           <span className="documents-note">
-            עיבוד המסמכים פועל ברקע. מסך הסריקה עצמו נשאר דמו בלבד.
+            עיבוד המסמכים פועל ברקע. מסך הסריקה הוא להדגמה בלבד.
           </span>
         </section>
       </main>

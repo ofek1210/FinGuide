@@ -6,6 +6,9 @@ export type PensionSummaryDTO = {
   pensionEmployee: number | null;
   pensionEmployer: number | null;
   totalMonthlyContribution: number;
+  expectedMinEmployee: number | null;
+  expectedMinEmployer: number | null;
+  hasMissingPension: boolean;
   currentAge: number | null;
   retirementAge: number;
   currentAccumulation: number;

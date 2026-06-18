@@ -6,12 +6,14 @@ const {
   upsertGoal,
   deleteGoal,
   generateReport,
+  getFinancialProblems,
 } = require('../controllers/copilotController');
 
 const router = express.Router();
 router.use(protect);
 
 router.get('/analysis', getCopilotAnalysis);
+router.get('/problems', getFinancialProblems);
 router.put('/profile', updateCopilotProfile);
 router.post('/goals', upsertGoal);
 router.put('/goals', upsertGoal);

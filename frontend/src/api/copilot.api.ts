@@ -124,3 +124,27 @@ export const generateMonthlyReport = () =>
     "/api/copilot/monthly-report",
     { method: "POST", auth: true },
   );
+
+// ── Financial Problems & AI Fix Plans ─────────────────────────────────────────
+
+export interface FinancialProblem {
+  id: string;
+  severity: "critical" | "warning" | "info";
+  title: string;
+  description: string;
+  impact: string;
+  category: string;
+}
+
+export interface AIFixPlan {
+  problemId: string;
+  steps: string[];
+  timeframe: string;
+  expectedResult: string;
+}
+
+export const getFinancialProblems = () =>
+  apiJson<{ success: boolean; data: { problems: FinancialProblem[]; aiFixPlans: AIFixPlan[] | null } }>(
+    "/api/copilot/problems",
+    { auth: true },
+  );

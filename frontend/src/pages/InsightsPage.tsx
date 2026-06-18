@@ -49,10 +49,10 @@ export default function InsightsPage() {
             <div>
               <div className="ai-page-badge">
                 <Sparkles size={12} />
-                <span>AI Insights</span>
+                <span>ניתוח חכם</span>
               </div>
               <h1>תובנות חכמות</h1>
-              <p className="ai-page-subtitle">מנוע ה-AI מנתח את תלושי השכר שלך ומזהה מגמות, חריגות ופערים פיננסיים.</p>
+              <p className="ai-page-subtitle">המערכת סורקת את תלושי השכר שלך ומחפשת דברים חשובים — למשל: האם ניכו לך יותר מדי מס? האם חסרה הפרשה לפנסיה? האם יש שינוי חריג בשכר?</p>
             </div>
           </div>
           <button type="button" className="ai-run-btn" disabled={running} onClick={() => void handleRun()}>
@@ -102,6 +102,10 @@ export default function InsightsPage() {
             </article>
           ))}
         </div>
+
+        <p style={{ fontSize: 12, color: "var(--rapyd-text-muted)", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
+          ⚠️ התובנות נוצרות אוטומטית על ידי AI על בסיס הנתונים שהעלית. אינן מהוות ייעוץ פיננסי מקצועי.
+        </p>
 
         <AppFooter variant="private" />
       </div>

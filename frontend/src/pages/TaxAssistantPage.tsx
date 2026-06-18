@@ -96,7 +96,7 @@ export default function TaxAssistantPage() {
             <div>
               <div className="ai-page-badge">
                 <Scale size={12} />
-                <span>Tax AI</span>
+                <span>עוזר מס AI</span>
               </div>
               <h1>ניתוח מס חכם</h1>
               <p className="ai-page-subtitle">AI סורק את כל תלושי השכר וזיהוי חריגות מס, תלושים חסרים ונקודות לבדיקה.</p>
@@ -139,11 +139,11 @@ export default function TaxAssistantPage() {
                 <strong>{summary.totalSalaryDocuments}</strong>
               </article>
               <article className="dashboard-card tax-assistant-stat-card">
-                <span className="tax-assistant-stat-label">הכנסה ברוטו</span>
+                <span className="tax-assistant-stat-label">הכנסה ברוטו (לפני ניכויים)</span>
                 <strong>{formatCurrency(summary.totalGrossIncome)}</strong>
               </article>
               <article className="dashboard-card tax-assistant-stat-card">
-                <span className="tax-assistant-stat-label">הכנסה נטו</span>
+                <span className="tax-assistant-stat-label">הכנסה נטו (לחשבון הבנק)</span>
                 <strong>{formatCurrency(summary.totalNetIncome)}</strong>
               </article>
               <article className="dashboard-card tax-assistant-stat-card">

@@ -12,14 +12,15 @@ interface PrivateTopbarProps {
 }
 
 const navItems = [
-  { label: "בית", route: APP_ROUTES.dashboard },
-  { label: "מסמכים", route: APP_ROUTES.documents },
-  { label: "✦ תובנות", route: APP_ROUTES.insights },
-  { label: "✦ פנסיה", route: APP_ROUTES.pension },
-  { label: "✦ AI Shield", route: APP_ROUTES.insurance },
-  { label: "✦ Tax AI", route: APP_ROUTES.taxAssistant },
-  { label: "✦ ציון AI", route: APP_ROUTES.financialHealth },
-  { label: "✦ תכנון", route: APP_ROUTES.copilot },
+  { label: "דשבורד", route: APP_ROUTES.dashboard },
+  { label: "תלושים ומסמכים", route: APP_ROUTES.documents },
+  { label: "✦ יועץ AI", route: APP_ROUTES.aiAgents },
+  { label: "✦ תובנות חכמות", route: APP_ROUTES.insights },
+  { label: "✦ פנסיה וחיסכון", route: APP_ROUTES.pension },
+  { label: "✦ ביטוח ופוליסות", route: APP_ROUTES.insurance },
+  { label: "✦ מיסים והחזרים", route: APP_ROUTES.taxAssistant },
+  { label: "✦ בריאות פיננסית", route: APP_ROUTES.financialHealth },
+  { label: "✦ תכנון ותקציב", route: APP_ROUTES.copilot },
 ];
 
 function getInitial(name: string | undefined): string {
@@ -72,8 +73,10 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                 : item.route === APP_ROUTES.insights
                   ? location.pathname.startsWith("/insights") || location.pathname.startsWith("/findings")
                   : item.route === APP_ROUTES.copilot
-                    ? location.pathname.startsWith("/copilot") || location.pathname.startsWith("/assistant")
-                    : location.pathname === item.route;
+                    ? location.pathname.startsWith("/copilot")
+                    : item.route === APP_ROUTES.aiAgents
+                      ? location.pathname.startsWith("/ai-agents")
+                      : location.pathname === item.route;
           return (
             <button
               key={item.route}
