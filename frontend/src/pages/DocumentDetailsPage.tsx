@@ -251,7 +251,7 @@ export default function DocumentDetailsPage() {
               <button className="dashboard-hero-action" type="button" onClick={() => navigate("/documents")}>
                 חזרה למסמכים
               </button>
-              <button className="dashboard-hero-action" type="button" onClick={() => navigate("/dashboard")}>
+              <button className="dashboard-hero-action" type="button" onClick={() => navigate(APP_ROUTES.documents)}>
                 חזרה ללוח הבקרה
               </button>
             </section>
@@ -306,7 +306,7 @@ export default function DocumentDetailsPage() {
               <button className="dashboard-hero-action" type="button" onClick={() => navigate("/documents")}>
                 חזרה למסמכים
               </button>
-              <button className="dashboard-hero-action" type="button" onClick={() => navigate("/dashboard")}>
+              <button className="dashboard-hero-action" type="button" onClick={() => navigate(APP_ROUTES.documents)}>
                 חזרה ללוח הבקרה
               </button>
             </section>
@@ -462,7 +462,7 @@ export default function DocumentDetailsPage() {
               <button
                 className="dashboard-hero-action"
                 type="button"
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate(APP_ROUTES.documents)}
               >
                 חזרה ללוח הבקרה
               </button>

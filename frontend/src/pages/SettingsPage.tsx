@@ -535,7 +535,7 @@ export default function SettingsPage() {
           <button
             className="dashboard-hero-action"
             type="button"
-            onClick={() => navigate(APP_ROUTES.dashboard)}
+            onClick={() => navigate(APP_ROUTES.documents)}
           >
             חזרה ללוח הבקרה
           </button>

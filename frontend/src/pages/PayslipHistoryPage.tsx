@@ -61,7 +61,7 @@ export default function PayslipHistoryPage() {
   }, [data?.items, highlightedPeriods]);
 
   const handleBackToDashboard = useCallback(() => {
-    navigate(APP_ROUTES.dashboard);
+    navigate(APP_ROUTES.documents);
   }, [navigate]);
 
   const handleUploadNew = useCallback(() => {

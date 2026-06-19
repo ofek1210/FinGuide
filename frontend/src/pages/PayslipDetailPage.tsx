@@ -122,7 +122,7 @@ export default function PayslipDetailPage() {
 
   if (!id) {
     return (
-      <PayslipHistoryLayout onBackToDashboard={() => navigate(APP_ROUTES.dashboard)}>
+      <PayslipHistoryLayout onBackToDashboard={() => navigate(APP_ROUTES.documents)}>
         <div className="payslip-detail-state payslip-detail-state-error">
           <p>מזהה תלוש חסר.</p>
           <button type="button" onClick={handleBackToHistory}>

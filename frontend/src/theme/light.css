@@ -1,0 +1,404 @@
+/* ═══════════════════════════════════════════════════════════════
+ * FinGuide — Light Purple Design System
+ * Overrides dark tokens from App.css / rapyd.css globally.
+ * Imported last in App.tsx to win specificity.
+ * ═══════════════════════════════════════════════════════════════ */
+
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,400&display=swap");
+
+/* ── Global reset + font ─────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+  background: #FAF7FF;
+  color: #1F1F1F;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Design tokens ───────────────────────────────────────────── */
+:root {
+  /* Palette */
+  --lg-bg:          #FAF7FF;
+  --lg-bg-deep:     #F3EEFF;
+  --lg-card:        rgba(255, 255, 255, 0.82);
+  --lg-card-solid:  #FFFFFF;
+  --lg-border:      rgba(184, 157, 255, 0.22);
+  --lg-border-mid:  rgba(184, 157, 255, 0.40);
+
+  --lg-primary:     #9B7FE8;
+  --lg-primary-h:   #8B6FD8;
+  --lg-primary-s:   #B89DFF;
+  --lg-secondary:   #D8C8FF;
+  --lg-accent:      #E9DFFF;
+  --lg-accent-deep: #C4B0FF;
+
+  --lg-text:        #1F1F1F;
+  --lg-text-soft:   #3D3553;
+  --lg-muted:       #7C6FA0;
+  --lg-muted-light: #A89CC8;
+
+  --lg-success:     #059669;
+  --lg-success-bg:  #ECFDF5;
+  --lg-warning:     #D97706;
+  --lg-warning-bg:  #FFFBEB;
+  --lg-danger:      #DC2626;
+  --lg-danger-bg:   #FEF2F2;
+  --lg-info:        #7C6FA0;
+  --lg-info-bg:     #F3EEFF;
+
+  /* Shadows */
+  --lg-shadow-xs:   0 1px 3px rgba(107, 89, 156, 0.06);
+  --lg-shadow-sm:   0 2px 12px rgba(155, 127, 232, 0.10);
+  --lg-shadow-md:   0 4px 24px rgba(155, 127, 232, 0.14), 0 1px 4px rgba(0,0,0,0.04);
+  --lg-shadow-lg:   0 8px 40px rgba(155, 127, 232, 0.18), 0 2px 8px rgba(0,0,0,0.05);
+  --lg-shadow-xl:   0 16px 64px rgba(155, 127, 232, 0.22), 0 4px 16px rgba(0,0,0,0.06);
+  --lg-glow:        0 0 0 3px rgba(155, 127, 232, 0.22);
+
+  /* Radius */
+  --lg-r-sm:   10px;
+  --lg-r-md:   16px;
+  --lg-r-lg:   24px;
+  --lg-r-xl:   32px;
+
+  /* Typography */
+  --lg-font-display: "Fraunces", Georgia, serif;
+  --lg-font-body:    "Plus Jakarta Sans", system-ui, sans-serif;
+
+  /* Blur */
+  --lg-blur: blur(16px) saturate(180%);
+
+  /* ── Override existing dark tokens ── */
+
+  /* Dashboard shell */
+  --dash-bg:          var(--lg-bg);
+  --dash-card:        var(--lg-card);
+  --dash-border:      var(--lg-border);
+  --dash-text:        var(--lg-text);
+  --dash-muted:       var(--lg-muted);
+  --dash-accent:      var(--lg-primary);
+  --dash-accent-soft: var(--lg-accent);
+  --dash-cyan:        var(--lg-primary-s);
+  --dash-success:     var(--lg-success);
+  --dash-warning:     var(--lg-warning);
+  --dash-danger:      var(--lg-danger);
+  --dash-shadow:      var(--lg-shadow-md);
+  --dash-radius:      var(--lg-r-lg);
+
+  /* Rapyd overrides */
+  --rapyd-bg:         var(--lg-bg);
+  --rapyd-card:       var(--lg-card-solid);
+  --rapyd-border:     var(--lg-border);
+  --rapyd-text:       var(--lg-text);
+  --rapyd-text-muted: var(--lg-muted);
+  --rapyd-accent:     var(--lg-primary);
+  --rapyd-success:    var(--lg-success);
+  --rapyd-warning:    var(--lg-warning);
+  --rapyd-error:      var(--lg-danger);
+
+  /* Figma tokens override */
+  --figma-bg-dark:    var(--lg-bg);
+  --figma-card-dark:  var(--lg-card-solid);
+  --figma-text-dark:  var(--lg-text);
+  --figma-muted-dark: var(--lg-muted);
+  --figma-border-dark: var(--lg-border);
+  --figma-gradient-start: var(--lg-primary);
+  --figma-gradient-end:   var(--lg-primary-h);
+  --figma-gradient: linear-gradient(135deg, var(--lg-primary) 0%, var(--lg-primary-h) 100%);
+  --figma-success:    var(--lg-success);
+  --figma-error:      var(--lg-danger);
+  --figma-warning:    var(--lg-warning);
+
+  /* Landing tokens */
+  --landing-bg:        var(--lg-bg);
+  --landing-bg-soft:   var(--lg-bg-deep);
+  --landing-surface:   rgba(255,255,255,0.6);
+  --landing-surface-strong: rgba(255,255,255,0.85);
+  --landing-border:    var(--lg-border);
+  --landing-text:      var(--lg-text);
+  --landing-muted:     var(--lg-muted);
+  --landing-accent:    var(--lg-primary);
+  --landing-accent-2:  var(--lg-primary-s);
+  --landing-pill:      rgba(155, 127, 232, 0.12);
+  --landing-shadow:    var(--lg-shadow-lg);
+}
+
+/* ── Page shells ─────────────────────────────────────────────── */
+.dashboard-page {
+  background: var(--lg-bg) !important;
+  color: var(--lg-text) !important;
+  min-height: 100vh;
+}
+
+/* ── Topbar ──────────────────────────────────────────────────── */
+.dashboard-topbar {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border-bottom: 1px solid var(--lg-border) !important;
+  box-shadow: 0 1px 16px rgba(155, 127, 232, 0.08) !important;
+}
+
+.dashboard-brand span {
+  background: linear-gradient(135deg, var(--lg-primary) 0%, #7B5EA7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-family: var(--lg-font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.dashboard-nav-link {
+  color: var(--lg-text-soft) !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  border-radius: 10px !important;
+  padding: 7px 14px !important;
+  transition: all 0.18s ease !important;
+  border: 1px solid transparent !important;
+}
+
+.dashboard-nav-link:hover {
+  background: var(--lg-accent) !important;
+  color: var(--lg-primary) !important;
+  border-color: var(--lg-border-mid) !important;
+}
+
+.dashboard-nav-link.is-active {
+  background: linear-gradient(135deg, var(--lg-primary), var(--lg-primary-h)) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: var(--lg-shadow-sm) !important;
+}
+
+/* Avatar */
+.dashboard-avatar-initials {
+  background: linear-gradient(135deg, var(--lg-primary), var(--lg-primary-h)) !important;
+  color: #fff !important;
+}
+
+.dashboard-user-dropdown {
+  background: var(--lg-card-solid) !important;
+  border: 1px solid var(--lg-border-mid) !important;
+  box-shadow: var(--lg-shadow-lg) !important;
+  border-radius: var(--lg-r-md) !important;
+}
+
+.dashboard-user-dropdown-item {
+  color: var(--lg-text-soft) !important;
+}
+
+.dashboard-user-dropdown-item:hover {
+  background: var(--lg-accent) !important;
+  color: var(--lg-primary) !important;
+}
+
+.dashboard-user-dropdown-item-danger:hover {
+  background: var(--lg-danger-bg) !important;
+  color: var(--lg-danger) !important;
+}
+
+/* ── Metric / KPI cards ──────────────────────────────────────── */
+.dashboard-metric-card,
+[class*="metric-card"],
+[class*="kpi-card"] {
+  background: var(--lg-card) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border: 1px solid var(--lg-border) !important;
+  border-radius: var(--lg-r-lg) !important;
+  box-shadow: var(--lg-shadow-sm) !important;
+  color: var(--lg-text) !important;
+}
+
+/* ── Upload hero ─────────────────────────────────────────────── */
+.dashboard-upload-hero {
+  background: linear-gradient(135deg, var(--lg-accent) 0%, var(--lg-secondary) 100%) !important;
+  border: 2px dashed var(--lg-border-mid) !important;
+  border-radius: var(--lg-r-xl) !important;
+  color: var(--lg-text) !important;
+}
+
+.dashboard-upload-hero-icon {
+  color: var(--lg-primary) !important;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.dashboard-hero-action,
+.dashboard-action-btn,
+button.dashboard-nav-upload {
+  background: linear-gradient(135deg, var(--lg-primary), var(--lg-primary-h)) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: var(--lg-r-md) !important;
+  box-shadow: var(--lg-shadow-sm) !important;
+  font-family: var(--lg-font-body) !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+.dashboard-hero-action:hover,
+.dashboard-action-btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: var(--lg-shadow-md) !important;
+}
+
+/* Logout / danger */
+.dashboard-logout-action {
+  background: transparent !important;
+  color: var(--lg-danger) !important;
+  border: 1px solid rgba(220, 38, 38, 0.3) !important;
+  border-radius: var(--lg-r-md) !important;
+}
+
+/* ── Auth / Onboarding ───────────────────────────────────────── */
+.auth-wrapper,
+.onboarding-wrapper {
+  background: var(--lg-bg) !important;
+}
+
+/* ── App footer ──────────────────────────────────────────────── */
+.app-footer {
+  background: var(--lg-card) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border-top: 1px solid var(--lg-border) !important;
+  color: var(--lg-muted) !important;
+}
+
+/* ── Notification bell ───────────────────────────────────────── */
+.notification-bell-btn {
+  color: var(--lg-text-soft) !important;
+}
+
+.notification-dropdown {
+  background: var(--lg-card-solid) !important;
+  border: 1px solid var(--lg-border-mid) !important;
+  box-shadow: var(--lg-shadow-lg) !important;
+  border-radius: var(--lg-r-md) !important;
+}
+
+.notification-dropdown-item {
+  border-bottom: 1px solid var(--lg-border) !important;
+}
+
+.notification-dropdown-item.is-unread {
+  background: var(--lg-accent) !important;
+}
+
+/* ── Insights / findings ─────────────────────────────────────── */
+.insights-page,
+.findings-page,
+.pension-insights-page {
+  background: var(--lg-bg) !important;
+  color: var(--lg-text) !important;
+}
+
+.insights-summary-card,
+.findings-card,
+.pension-kpi-card {
+  background: var(--lg-card) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border: 1px solid var(--lg-border) !important;
+  border-radius: var(--lg-r-lg) !important;
+  box-shadow: var(--lg-shadow-sm) !important;
+  color: var(--lg-text) !important;
+}
+
+/* ── Settings ────────────────────────────────────────────────── */
+.settings-form,
+.settings-section {
+  background: var(--lg-card) !important;
+  border: 1px solid var(--lg-border) !important;
+  border-radius: var(--lg-r-lg) !important;
+}
+
+/* ── Inputs ──────────────────────────────────────────────────── */
+input, select, textarea {
+  background: rgba(255,255,255,0.9) !important;
+  border-color: var(--lg-border-mid) !important;
+  color: var(--lg-text) !important;
+  border-radius: var(--lg-r-sm) !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none !important;
+  border-color: var(--lg-primary) !important;
+  box-shadow: var(--lg-glow) !important;
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--lg-secondary); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--lg-primary-s); }
+
+/* ── Selection ───────────────────────────────────────────────── */
+::selection { background: var(--lg-secondary); color: var(--lg-text); }
+
+/* ── Payslip history ─────────────────────────────────────────── */
+.payslip-row {
+  background: var(--lg-card) !important;
+  border: 1px solid var(--lg-border) !important;
+  border-radius: var(--lg-r-md) !important;
+  color: var(--lg-text) !important;
+}
+
+.payslip-row:hover {
+  background: var(--lg-accent) !important;
+  border-color: var(--lg-border-mid) !important;
+}
+
+/* ── AI chat ─────────────────────────────────────────────────── */
+.ai-chat {
+  background: transparent !important;
+}
+
+.ai-message.user .ai-message-bubble {
+  background: linear-gradient(135deg, var(--lg-primary), var(--lg-primary-h)) !important;
+  color: #fff !important;
+  border-radius: 18px 18px 4px 18px !important;
+}
+
+.ai-message.assistant .ai-message-bubble,
+.ai-message:not(.user) .ai-message-bubble {
+  background: var(--lg-card) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border: 1px solid var(--lg-border) !important;
+  color: var(--lg-text) !important;
+  border-radius: 18px 18px 18px 4px !important;
+}
+
+/* ── Floating assistant ──────────────────────────────────────── */
+.floating-assistant-launcher {
+  background: linear-gradient(135deg, var(--lg-primary), var(--lg-primary-h)) !important;
+  box-shadow: var(--lg-shadow-lg) !important;
+}
+
+.floating-assistant-panel {
+  background: var(--lg-card) !important;
+  backdrop-filter: var(--lg-blur) !important;
+  border: 1px solid var(--lg-border-mid) !important;
+  border-radius: var(--lg-r-xl) !important;
+  box-shadow: var(--lg-shadow-xl) !important;
+}
+
+/* ── Tax assistant ───────────────────────────────────────────── */
+.tax-assistant-page,
+.financial-health-page,
+.financial-copilot-page {
+  background: var(--lg-bg) !important;
+  color: var(--lg-text) !important;
+}
+
+/* ── Score agent ─────────────────────────────────────────────── */
+.score-agent-panel {
+  background: var(--lg-card-solid) !important;
+  border: 1px solid var(--lg-border-mid) !important;
+  border-radius: var(--lg-r-xl) !important;
+  box-shadow: var(--lg-shadow-xl) !important;
+}
+
+/* ── Document cards ──────────────────────────────────────────── */
+.documents-page {
+  background: var(--lg-bg) !important;
+  color: var(--lg-text) !important;
+}

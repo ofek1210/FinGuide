@@ -21,7 +21,7 @@ export default function AppFooter({ variant }: AppFooterProps) {
           <ul>
             {variant === "private" && (
               <>
-                <li><Link to={APP_ROUTES.dashboard}>לוח בקרה</Link></li>
+                <li><Link to={APP_ROUTES.documents}>תלושים ומסמכים</Link></li>
                 <li><Link to={APP_ROUTES.payslipHistory}>היסטוריית תלושים</Link></li>
                 <li><Link to={APP_ROUTES.assistant}>עוזר AI</Link></li>
                 <li><Link to={APP_ROUTES.findings}>ממצאים</Link></li>

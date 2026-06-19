@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { PiggyBank, TrendingUp, AlertCircle, Loader2, Sparkles, Plus, Trash2 } from "lucide-react";
+import { PiggyBank, Sparkles, Plus, Trash2, TrendingUp, AlertCircle, Loader2, SlidersHorizontal } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
+import AgentHero from "../components/agent/AgentHero";
+import GlassCard from "../components/ui/GlassCard";
+import StatCard from "../components/ui/StatCard";
+import SectionHeader from "../components/ui/SectionHeader";
+import Badge from "../components/ui/Badge";
 import {
   getPensionAnalysis,
   simulatePensionScenario,
@@ -13,50 +19,43 @@ import {
   type PensionFundDTO,
   type UploadPensionBody,
 } from "../api/pension.api";
-
-const urgencyColor = (u: string) =>
-  u === "high" ? "var(--figma-error)" : u === "medium" ? "var(--figma-warning)" : "var(--figma-success)";
-
-const urgencyLabel = (u: string) =>
-  u === "high" ? "דחוף" : u === "medium" ? "מומלץ" : "לידיעה";
+import { APP_ROUTES } from "../types/navigation";
 
 const fmt = (n: number | null | undefined) =>
   n != null ? `₪${Number(n).toLocaleString("he-IL")}` : "—";
 
 const FUND_TYPE_LABELS: Record<string, string> = {
-  pension_comprehensive: 'פנסיה מקיפה',
-  pension_old: 'פנסיה ותיקה',
-  managers_insurance: 'ביטוח מנהלים',
-  provident_fund: 'קופת גמל',
-  study_fund: 'קרן השתלמות',
-  other: 'אחר',
+  pension_comprehensive: "פנסיה מקיפה", pension_old: "פנסיה ותיקה",
+  managers_insurance: "ביטוח מנהלים", provident_fund: "קופת גמל",
+  study_fund: "קרן השתלמות", other: "אחר",
 };
 
 const EMPTY_FORM: UploadPensionBody = {
-  fundName: '', fundType: 'pension_comprehensive', provider: '',
+  fundName: "", fundType: "pension_comprehensive", provider: "",
   currentBalance: 0, monthlyEmployeeDeposit: 0, monthlyEmployerDeposit: 0,
   managementFeeAccumulation: 0.003, managementFeeDeposit: 0.001,
 };
 
 export default function PensionPage() {
+  const navigate = useNavigate();
   const [data, setData] = useState<PensionAnalysisResponse["data"] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Simulation state
-  const [simAge, setSimAge] = useState<string>("");
-  const [simExtra, setSimExtra] = useState<string>("");
-  const [simFee, setSimFee] = useState<string>("");
-  const [simResult, setSimResult] = useState<SimulationResponse["data"] | null>(null);
-  const [simLoading, setSimLoading] = useState(false);
-
-  // Manual fund entry state
+  // Funds
   const [funds, setFunds] = useState<PensionFundDTO[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState<UploadPensionBody>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Simulation
+  const [showSim, setShowSim] = useState(false);
+  const [simAge, setSimAge] = useState("");
+  const [simExtra, setSimExtra] = useState("");
+  const [simFee, setSimFee] = useState("");
+  const [simResult, setSimResult] = useState<SimulationResponse["data"] | null>(null);
+  const [simLoading, setSimLoading] = useState(false);
 
   const loadFunds = useCallback(async () => {
     const res = await getPensionFunds();
@@ -64,39 +63,38 @@ export default function PensionPage() {
   }, []);
 
   useEffect(() => {
-    void getPensionAnalysis().then((res) => {
+    void getPensionAnalysis().then(res => {
       setLoading(false);
       if (res.ok && res.data?.success && res.data.data) setData(res.data.data);
-      else setError("לא הצלחנו לטעון נתוני פנסיה");
     });
     void loadFunds();
   }, [loadFunds]);
 
-  const handleSaveFund = useCallback(async () => {
+  const handleSaveFund = async () => {
     if (!form.fundName?.trim()) return;
     setSaving(true);
     setSaveMsg(null);
     const res = await uploadPensionFund(form);
     setSaving(false);
     if (res.ok) {
-      setSaveMsg("הקרן נשמרה בהצלחה");
+      setSaveMsg({ type: "success", text: "הקרן נשמרה בהצלחה" });
       setForm(EMPTY_FORM);
       setShowAddForm(false);
       void loadFunds();
     } else {
-      setSaveMsg("שגיאה בשמירה, נסה שוב");
+      setSaveMsg({ type: "error", text: "שגיאה בשמירה" });
     }
-  }, [form, loadFunds]);
+  };
 
-  const handleDeleteFund = useCallback(async (id: string) => {
+  const handleDeleteFund = async (id: string) => {
     if (!window.confirm("למחוק קרן זו?")) return;
     setDeletingId(id);
-    const res = await deletePensionFund(id);
+    await deletePensionFund(id);
     setDeletingId(null);
-    if (res.ok) void loadFunds();
-  }, [loadFunds]);
+    void loadFunds();
+  };
 
-  const handleSimulate = useCallback(async () => {
+  const handleSimulate = async () => {
     setSimLoading(true);
     setSimResult(null);
     const res = await simulatePensionScenario({
@@ -106,458 +104,294 @@ export default function PensionPage() {
     });
     setSimLoading(false);
     if (res.ok && res.data?.success && res.data.data) setSimResult(res.data.data);
-  }, [simAge, simExtra, simFee]);
+  };
+
+  const summary = data?.summary;
+  const projection = data?.projection;
+  const recs = data?.recommendations ?? [];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--rapyd-bg)", direction: "rtl" }}>
+    <div style={{ minHeight: "100vh", background: "var(--lg-bg, #FAF7FF)", color: "var(--lg-text, #1F1F1F)", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
       <PrivateTopbar />
 
-      <main style={{ maxWidth: 960, margin: "0 auto", padding: "40px 24px 80px" }}>
+      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 64px", direction: "rtl" }}>
 
-        {/* Header */}
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
-            <span style={{
-              width: 44, height: 44, background: "rgba(91,79,245,0.15)",
-              borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#818CF8",
-            }}>
-              <PiggyBank size={22} />
-            </span>
-            <h1 style={{ fontSize: 28, fontWeight: 800, margin: 0, color: "var(--rapyd-text)" }}>
-              ניהול פנסיה AI
-            </h1>
+        <AgentHero
+          icon="📈"
+          title="הסוכן האישי שלי לפנסיה וחיסכון"
+          subtitle="מנתח קרנות פנסיה, מחשב תחזית פרישה, ומגלה דמי ניהול יקרים."
+          accentColor="#6B4FA0"
+        >
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={() => navigate(APP_ROUTES.copilot)}
+              style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 20px", borderRadius: 12, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, boxShadow: "0 4px 16px rgba(107,79,160,0.35)" }}
+            >
+              <Sparkles size={15} /> שוחח עם יועץ הפנסיה
+            </button>
+            <button
+              onClick={() => setShowAddForm(true)}
+              style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: 12, background: "rgba(255,255,255,0.8)", color: "#3D3553", border: "1px solid rgba(184,157,255,0.35)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 14 }}
+            >
+              <Plus size={14} /> הוסף קרן פנסיה
+            </button>
           </div>
-          <p style={{ color: "var(--rapyd-text-muted)", margin: 0, fontSize: 15 }}>
-            תחזיות פרישה, ניתוח דמי ניהול וסימולציות — מבוסס על נתוני התלושים שלך
-          </p>
-          <div style={{
-            marginTop: 14, padding: "12px 16px", borderRadius: 10,
-            background: "rgba(129,140,248,0.06)", borderRight: "3px solid #818CF8",
-            fontSize: 13, color: "var(--rapyd-text-muted)", lineHeight: 1.7,
-          }}>
-            <strong style={{ color: "var(--rapyd-text)" }}>💡 מילון מונחים:</strong><br/>
-            <strong>פנסיה</strong> — חיסכון חודשי מהשכר שנצבר לטובת קצבה בגיל פרישה (67).<br/>
-            <strong>הפרשת עובד</strong> — 6% מהברוטו שמנוכים מהשכר שלך.<br/>
-            <strong>הפרשת מעסיק</strong> — 6.5% נוספים שהמעסיק מוסיף מעבר לשכר.<br/>
-            <strong>דמי ניהול</strong> — עמלה שחברת הפנסיה גובה מהכסף שלך. ככל שנמוך יותר — חוסכים יותר.<br/>
-            <strong>צבירה</strong> — סך הכסף שיהיה בקרן בגיל פרישה.<br/>
-            <strong>קצבה חודשית</strong> — הסכום שתקבל/י מדי חודש אחרי פרישה.
+        </AgentHero>
+
+        {/* Projection KPIs */}
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "40px 0" }}>
+            <Loader2 size={28} color="#9B7FE8" style={{ animation: "spin 0.8s linear infinite" }} />
           </div>
-        </div>
-
-        {loading && (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--rapyd-text-muted)", padding: "40px 0" }}>
-            <Loader2 size={20} className="spin" />
-            <span>טוען נתוני פנסיה...</span>
-          </div>
-        )}
-
-        {error && (
-          <div style={{
-            background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)",
-            borderRadius: 12, padding: "16px 20px", color: "#FCA5A5",
-            display: "flex", alignItems: "center", gap: 10,
-          }}>
-            <AlertCircle size={18} />
-            {error}
-          </div>
-        )}
-
-        {data && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-
-            {/* No data state */}
-            {!data.summary.hasData && (
-              <div className="dashboard-card" style={{ textAlign: "center", padding: "48px 24px" }}>
-                <PiggyBank size={40} style={{ color: "var(--rapyd-text-muted)", marginBottom: 16 }} />
-                <h3 style={{ color: "var(--rapyd-text)", marginBottom: 8 }}>אין עדיין נתוני פנסיה</h3>
-                <p style={{ color: "var(--rapyd-text-muted)", fontSize: 14 }}>
-                  העלה תלוש שכר עם נתוני הפרשות פנסיה כדי לקבל תחזית אישית
-                </p>
-              </div>
-            )}
-
-            {/* Summary cards */}
-            {data.summary.hasData && (
-              <>
-                {data.summary.hasMissingPension && (
-                  <div style={{
-                    background: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.3)",
-                    borderRadius: 12, padding: "14px 20px", color: "#FDE047",
-                    display: "flex", alignItems: "center", gap: 10, fontSize: 14,
-                  }}>
-                    <AlertCircle size={18} />
-                    <span>לא זוהו הפרשות פנסיה בתלוש. הנתונים מבוססים על הפרשה מינימלית חוקית (6% עובד + 6.5% מעסיק מברוטו ₪{data.summary.grossSalary?.toLocaleString("he-IL")}).</span>
-                  </div>
-                )}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-                  {[
-                    { label: "הפרשה חודשית (עובד)", value: fmt(data.summary.pensionEmployee ?? data.summary.expectedMinEmployee), sub: !data.summary.pensionEmployee ? "מינימום חוקי" : undefined },
-                    { label: "הפרשה חודשית (מעסיק)", value: fmt(data.summary.pensionEmployer ?? data.summary.expectedMinEmployer), sub: !data.summary.pensionEmployer ? "מינימום חוקי" : undefined },
-                    { label: "סה\"כ חודשי", value: fmt(data.summary.totalMonthlyContribution) },
-                    { label: "גיל פרישה מתוכנן", value: data.summary.retirementAge ? `${data.summary.retirementAge}` : "67" },
-                  ].map((card) => (
-                    <div key={card.label} className="dashboard-card" style={{ padding: "20px 24px" }}>
-                      <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginBottom: 8, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                        {card.label}
-                      </div>
-                      <div style={{ fontSize: 26, fontWeight: 800, color: "var(--rapyd-text)" }}>
-                        {card.value}
-                      </div>
-                      {card.sub && (
-                        <div style={{ fontSize: 11, color: "#FDE047", marginTop: 4 }}>⚠️ {card.sub}</div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Projection */}
-            {data.projection?.available && (
-              <div className="dashboard-card" style={{ padding: "28px 32px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-                  <TrendingUp size={18} style={{ color: "#818CF8" }} />
-                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "var(--rapyd-text)" }}>
-                    תחזית לפרישה
-                  </h2>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginBottom: 24 }}>
-                  <div>
-                    <div style={{ fontSize: 13, color: "var(--rapyd-text-muted)", marginBottom: 6 }}>צבירה צפויה</div>
-                    <div style={{ fontSize: 32, fontWeight: 900, color: "#818CF8" }}>
-                      {fmt(data.projection.projectedAccumulation)}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 13, color: "var(--rapyd-text-muted)", marginBottom: 6 }}>קצבה חודשית צפויה</div>
-                    <div style={{ fontSize: 32, fontWeight: 900, color: "var(--rapyd-text)" }}>
-                      {fmt(data.projection.monthlyPensionEstimate)}
-                    </div>
-                    {data.projection.replacementRatio != null && (
-                      <div style={{ fontSize: 13, color: "var(--rapyd-text-muted)", marginTop: 4 }}>
-                        {data.projection.replacementRatio}% מהשכר הנוכחי
-                      </div>
-                    )}
-                  </div>
+        ) : (
+          <>
+            {projection?.available ? (
+              <section style={{ marginBottom: 40 }}>
+                <SectionHeader title="תחזית הפנסיה שלך" subtitle={`${projection.monthsToRetirement} חודשים עד פרישה`} />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 16 }}>
+                  <StatCard icon={<PiggyBank size={18} />} label="צבירה צפויה" value={fmt(projection.projectedAccumulation)} sub="בגיל פרישה" accent="#6B4FA0" />
+                  <StatCard icon={<TrendingUp size={18} />} label="קצבה חודשית" value={fmt(projection.monthlyPensionEstimate)} sub="אחרי פרישה" accent="#059669" />
+                  {summary?.currentAccumulation ? <StatCard icon="💼" label="צבירה נוכחית" value={fmt(summary.currentAccumulation)} accent="#9B7FE8" /> : null}
+                  {summary?.totalMonthlyContribution ? <StatCard icon="📥" label="הפקדה חודשית" value={fmt(summary.totalMonthlyContribution)} accent="#7B5EA7" /> : null}
+                  {projection.replacementRatio != null && (
+                    <StatCard icon="📊" label="שיעור חלופה" value={`${(projection.replacementRatio * 100).toFixed(0)}%`} sub="מהשכר האחרון" accent={projection.replacementRatio >= 0.7 ? "#059669" : "#D97706"} />
+                  )}
                 </div>
 
                 {/* Scenarios */}
-                {data.projection.scenarios && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    {Object.values(data.projection.scenarios).map((s) => (
-                      <div key={s.label} style={{
-                        background: "rgba(255,255,255,0.04)", borderRadius: 10,
-                        padding: "16px", border: "1px solid rgba(255,255,255,0.08)",
-                      }}>
-                        <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginBottom: 8 }}>{s.label}</div>
-                        <div style={{ fontSize: 20, fontWeight: 800, color: "var(--rapyd-text)" }}>
-                          {fmt(s.monthlyPension)}<span style={{ fontSize: 13, fontWeight: 400 }}>/חודש</span>
+                {projection.scenarios && (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
+                    {[
+                      { label: "תרחיש בסיס", s: projection.scenarios.base, color: "#9B7FE8" },
+                      { label: "תרחיש אופטימי", s: projection.scenarios.optimistic, color: "#059669" },
+                    ].map(({ label, s, color }) => (
+                      <GlassCard key={label} padding="md" style={{ borderTop: `3px solid ${color}` }}>
+                        <div style={{ fontSize: 12.5, color: "#7C6FA0", marginBottom: 6, fontWeight: 600 }}>{label}</div>
+                        <div style={{ display: "flex", gap: 24 }}>
+                          <div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color, fontFamily: "'Fraunces', Georgia, serif", letterSpacing: "-0.02em" }}>{fmt(s.accumulation)}</div>
+                            <div style={{ fontSize: 11.5, color: "#7C6FA0" }}>צבירה</div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 22, fontWeight: 800, color, fontFamily: "'Fraunces', Georgia, serif", letterSpacing: "-0.02em" }}>{fmt(s.monthlyPension)}</div>
+                            <div style={{ fontSize: 11.5, color: "#7C6FA0" }}>קצבה / חודש</div>
+                          </div>
                         </div>
-                        <div style={{ fontSize: 13, color: "var(--rapyd-text-muted)", marginTop: 4 }}>
-                          צבירה: {fmt(s.accumulation)}
-                        </div>
-                      </div>
+                      </GlassCard>
                     ))}
                   </div>
                 )}
+              </section>
+            ) : !summary?.hasData ? (
+              <GlassCard padding="lg" style={{ textAlign: "center", marginBottom: 40 }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
+                <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px" }}>אין עדיין נתוני פנסיה</h3>
+                <p style={{ fontSize: 14.5, color: "#7C6FA0", margin: "0 0 20px" }}>הוסף קרן פנסיה ידנית כדי לקבל תחזית מלאה</p>
+                <button onClick={() => setShowAddForm(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 24px", borderRadius: 12, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
+                  <Plus size={15} /> הוסף קרן ראשונה
+                </button>
+              </GlassCard>
+            ) : null}
 
-                {/* Mgmt fee savings */}
-                {data.projection.mgmtFeeSavings && data.projection.mgmtFeeSavings.additionalMonthlyPension > 0 && (
-                  <div style={{
-                    marginTop: 20, background: "rgba(5,150,105,0.1)", border: "1px solid rgba(5,150,105,0.25)",
-                    borderRadius: 10, padding: "14px 18px", display: "flex", alignItems: "center", gap: 12,
-                  }}>
-                    <span style={{ fontSize: 20 }}>💡</span>
+            {/* Recommendations */}
+            {recs.length > 0 && (
+              <section style={{ marginBottom: 40 }}>
+                <SectionHeader title="המלצות" subtitle="מה כדאי לעשות עכשיו" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {recs.map((rec, i) => (
+                    <GlassCard key={i} padding="md" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                      <Badge variant={rec.urgency === "high" ? "high" : rec.urgency === "medium" ? "medium" : "low"}>
+                        {rec.urgency === "high" ? "דחוף" : rec.urgency === "medium" ? "מומלץ" : "לידיעה"}
+                      </Badge>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14.5, color: "#1F1F1F", marginBottom: 4 }}>{rec.title}</div>
+                        <div style={{ fontSize: 13, color: "#7C6FA0", lineHeight: 1.55 }}>{rec.reason}</div>
+                        {rec.financialImpact && (
+                          <div style={{ fontSize: 12.5, color: "#059669", fontWeight: 700, marginTop: 6 }}>{rec.financialImpact}</div>
+                        )}
+                      </div>
+                    </GlassCard>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
+        )}
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 40 }}>
+          {/* Fund list */}
+          <GlassCard padding="lg" elevated>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F", display: "flex", alignItems: "center", gap: 8 }}>
+                  <PiggyBank size={17} color="#6B4FA0" /> קרנות פנסיה
+                </div>
+                <div style={{ fontSize: 12.5, color: "#7C6FA0", marginTop: 2 }}>נתונים ידניים</div>
+              </div>
+              <button onClick={() => setShowAddForm(v => !v)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 13px", borderRadius: 10, background: "rgba(107,79,160,0.10)", color: "#6B4FA0", border: "1px solid rgba(107,79,160,0.20)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>
+                <Plus size={13} /> הוסף
+              </button>
+            </div>
+
+            {funds.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "20px 0", color: "#7C6FA0", fontSize: 14 }}>אין קרנות. הוסף קרן ראשונה.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {funds.map(f => (
+                  <div key={f.id} style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(250,247,255,0.8)", border: "1px solid rgba(184,157,255,0.18)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#34D399", marginBottom: 2 }}>
-                        הזדמנות: הפחתת דמי ניהול
+                      <div style={{ fontWeight: 700, fontSize: 13.5, color: "#1F1F1F" }}>{f.fundName}</div>
+                      <div style={{ fontSize: 12, color: "#7C6FA0", marginTop: 2 }}>
+                        {FUND_TYPE_LABELS[f.fundType] ?? f.fundType}{f.provider ? ` · ${f.provider}` : ""}
                       </div>
-                      <div style={{ fontSize: 13, color: "rgba(255,255,255,0.65)" }}>
-                        מעבר לקרן עם דמי ניהול נמוכים יכול להוסיף{" "}
-                        <strong style={{ color: "#34D399" }}>
-                          {fmt(data.projection.mgmtFeeSavings.additionalMonthlyPension)}/חודש
-                        </strong>{" "}
-                        לקצבה
-                      </div>
+                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#6B4FA0", marginTop: 3 }}>{fmt(f.currentBalance)} צבירה</div>
                     </div>
+                    <button onClick={() => void handleDeleteFund(f.id)} disabled={deletingId === f.id} style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", padding: 6, display: "flex" }}>
+                      {deletingId === f.id ? <Loader2 size={14} style={{ animation: "spin 0.8s linear infinite" }} /> : <Trash2 size={14} />}
+                    </button>
                   </div>
-                )}
+                ))}
               </div>
             )}
 
-            {/* Simulation */}
-            {data.summary.hasData && (
-              <div className="dashboard-card" style={{ padding: "28px 32px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-                  <Sparkles size={18} style={{ color: "#818CF8" }} />
-                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "var(--rapyd-text)" }}>
-                    סימולציה — מה יקרה אם...
-                  </h2>
+            {/* Add form */}
+            {showAddForm && (
+              <div style={{ marginTop: 16, borderTop: "1px solid rgba(184,157,255,0.2)", paddingTop: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {[
+                    { label: "שם הקרן *", field: "fundName" as const, type: "text" },
+                    { label: "ספק / חברה", field: "provider" as const, type: "text" },
+                    { label: "צבירה (₪)", field: "currentBalance" as const, type: "number" },
+                    { label: "הפקדת עובד (₪/חודש)", field: "monthlyEmployeeDeposit" as const, type: "number" },
+                    { label: "הפקדת מעסיק (₪/חודש)", field: "monthlyEmployerDeposit" as const, type: "number" },
+                    { label: "דמי ניהול מצבירה (%)", field: "managementFeeAccumulation" as const, type: "number", scale: 100 },
+                  ].map(({ label, field, type, scale = 1 }) => (
+                    <div key={field}>
+                      <label style={{ fontSize: 11.5, color: "#7C6FA0", display: "block", marginBottom: 4 }}>{label}</label>
+                      <input
+                        type={type}
+                        value={type === "number" ? ((form[field] as number ?? 0) * scale).toString() : (form[field] as string ?? "")}
+                        onChange={e => setForm(prev => ({ ...prev, [field]: type === "number" ? (parseFloat(e.target.value) || 0) / scale : e.target.value }))}
+                        style={{ width: "100%", padding: "8px 10px", borderRadius: 8, fontSize: 13, background: "rgba(250,247,255,0.9)", border: "1px solid rgba(184,157,255,0.35)", color: "#1F1F1F", fontFamily: "inherit", boxSizing: "border-box" }}
+                      />
+                    </div>
+                  ))}
                 </div>
+                <select value={form.fundType} onChange={e => setForm(prev => ({ ...prev, fundType: e.target.value }))} style={{ width: "100%", marginTop: 10, padding: "8px 10px", borderRadius: 8, fontSize: 13, background: "rgba(250,247,255,0.9)", border: "1px solid rgba(184,157,255,0.35)", color: "#1F1F1F", fontFamily: "inherit" }}>
+                  {Object.entries(FUND_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                </select>
+                {saveMsg && <div style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, marginTop: 10, fontWeight: 600, background: saveMsg.type === "error" ? "#FEF2F2" : "#ECFDF5", color: saveMsg.type === "error" ? "#DC2626" : "#059669" }}>{saveMsg.text}</div>}
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button onClick={() => { setShowAddForm(false); setSaveMsg(null); }} style={{ flex: 1, padding: "9px", borderRadius: 10, background: "none", border: "1px solid rgba(184,157,255,0.3)", color: "#7C6FA0", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>ביטול</button>
+                  <button onClick={handleSaveFund} disabled={saving || !form.fundName?.trim()} style={{ flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", borderRadius: 10, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
+                    {saving ? <Loader2 size={13} style={{ animation: "spin 0.8s linear infinite" }} /> : <Plus size={13} />} שמור
+                  </button>
+                </div>
+              </div>
+            )}
+          </GlassCard>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 20 }}>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <span style={{ fontSize: 13, color: "var(--rapyd-text-muted)", fontWeight: 600 }}>גיל פרישה</span>
-                    <input
-                      type="number" min={50} max={75}
-                      placeholder={`${data.summary.retirementAge || 67}`}
-                      value={simAge}
-                      onChange={(e) => setSimAge(e.target.value)}
-                      style={{
-                        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: 8, padding: "10px 14px", color: "var(--rapyd-text)",
-                        fontSize: 15, fontFamily: "inherit", outline: "none",
-                      }}
-                    />
-                  </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <span style={{ fontSize: 13, color: "var(--rapyd-text-muted)", fontWeight: 600 }}>הפרשה נוספת (₪/חודש)</span>
-                    <input
-                      type="number" min={0}
-                      placeholder="0"
-                      value={simExtra}
-                      onChange={(e) => setSimExtra(e.target.value)}
-                      style={{
-                        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: 8, padding: "10px 14px", color: "var(--rapyd-text)",
-                        fontSize: 15, fontFamily: "inherit", outline: "none",
-                      }}
-                    />
-                  </label>
-                  <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <span style={{ fontSize: 13, color: "var(--rapyd-text-muted)", fontWeight: 600 }}>דמי ניהול יעד (%)</span>
-                    <input
-                      type="number" min={0} max={2} step={0.1}
-                      placeholder="0.3"
-                      value={simFee}
-                      onChange={(e) => setSimFee(e.target.value)}
-                      style={{
-                        background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: 8, padding: "10px 14px", color: "var(--rapyd-text)",
-                        fontSize: 15, fontFamily: "inherit", outline: "none",
-                      }}
-                    />
-                  </label>
+          {/* Simulation panel */}
+          <GlassCard padding="lg" elevated>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+              <SlidersHorizontal size={17} color="#9B7FE8" />
+              <div style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F" }}>סימולציית תרחישים</div>
+            </div>
+
+            {!summary?.hasData ? (
+              <div style={{ fontSize: 14, color: "#7C6FA0", textAlign: "center", padding: "20px 0" }}>
+                הוסף קרן פנסיה כדי להפעיל את הסימולציה
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+                  {[
+                    { label: "גיל פרישה", field: "simAge", val: simAge, setter: setSimAge, placeholder: summary?.retirementAge?.toString() ?? "67" },
+                    { label: "הפקדה נוספת (₪/חודש)", field: "simExtra", val: simExtra, setter: setSimExtra, placeholder: "0" },
+                    { label: "דמי ניהול יעד (%)", field: "simFee", val: simFee, setter: setSimFee, placeholder: ((summary?.currentMgmtFee ?? 0.003) * 100).toFixed(2) },
+                  ].map(item => (
+                    <div key={item.field}>
+                      <label style={{ fontSize: 12, color: "#7C6FA0", display: "block", marginBottom: 4 }}>{item.label}</label>
+                      <input
+                        type="number"
+                        value={item.val}
+                        onChange={e => item.setter(e.target.value)}
+                        placeholder={item.placeholder}
+                        style={{ width: "100%", padding: "9px 12px", borderRadius: 10, fontSize: 14, background: "rgba(250,247,255,0.9)", border: "1px solid rgba(184,157,255,0.35)", color: "#1F1F1F", fontFamily: "inherit", boxSizing: "border-box" }}
+                      />
+                    </div>
+                  ))}
                 </div>
 
                 <button
                   onClick={handleSimulate}
                   disabled={simLoading}
-                  style={{
-                    background: "#5B4FF5", color: "#fff", border: "none", borderRadius: 10,
-                    padding: "12px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer",
-                    fontFamily: "inherit", display: "flex", alignItems: "center", gap: 8,
-                    opacity: simLoading ? 0.7 : 1,
-                  }}
+                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px", borderRadius: 12, background: "linear-gradient(135deg, #9B7FE8, #7B5EA7)", color: "#fff", border: "none", cursor: simLoading ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, boxShadow: "0 4px 16px rgba(155,127,232,0.30)", marginBottom: 16 }}
                 >
-                  {simLoading ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
-                  הרץ סימולציה
+                  {simLoading ? <Loader2 size={14} style={{ animation: "spin 0.8s linear infinite" }} /> : <TrendingUp size={14} />}
+                  {simLoading ? "מחשב..." : "הרץ סימולציה"}
                 </button>
 
                 {simResult && (
-                  <div style={{ marginTop: 20, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                    <div style={{
-                      background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-                      borderRadius: 10, padding: "16px 20px",
-                    }}>
-                      <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginBottom: 8, fontWeight: 600 }}>
-                        📊 תרחיש נוכחי
+                  <div style={{ padding: "16px", borderRadius: 14, background: "rgba(155,127,232,0.06)", border: "1px solid rgba(184,157,255,0.25)" }}>
+                    <div style={{ fontSize: 12.5, color: "#7C6FA0", fontWeight: 600, marginBottom: 10 }}>תוצאת הסימולציה</div>
+                    {[
+                      { label: "צבירה בגיל פרישה", val: fmt(simResult.simulation.projectedAccumulation), base: fmt(simResult.baseline.projectedAccumulation), diff: simResult.delta.accumulationDiff },
+                      { label: "קצבה חודשית", val: fmt(simResult.simulation.monthlyPensionEstimate), base: fmt(simResult.baseline.monthlyPensionEstimate), diff: simResult.delta.monthlyPensionDiff },
+                    ].map(row => (
+                      <div key={row.label} style={{ marginBottom: 10 }}>
+                        <div style={{ fontSize: 12, color: "#7C6FA0" }}>{row.label}</div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 3 }}>
+                          <span style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: "#6B4FA0" }}>{row.val}</span>
+                          <span style={{ fontSize: 11.5, color: "#7C6FA0" }}>לעומת {row.base} בבסיס</span>
+                          {row.diff !== 0 && (
+                            <Badge variant={row.diff > 0 ? "success" : "high"}>
+                              {row.diff > 0 ? "+" : ""}{fmt(row.diff)}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: "var(--rapyd-text)" }}>
-                        {fmt(simResult.baseline.monthlyPensionEstimate)}/חודש
-                      </div>
-                      <div style={{ fontSize: 13, color: "var(--rapyd-text-muted)", marginTop: 4 }}>
-                        גיל {simResult.baseline.retirementAge}
-                      </div>
-                    </div>
-                    <div style={{
-                      background: "rgba(91,79,245,0.12)", border: "1px solid rgba(91,79,245,0.3)",
-                      borderRadius: 10, padding: "16px 20px",
-                    }}>
-                      <div style={{ fontSize: 12, color: "#A5B4FC", marginBottom: 8, fontWeight: 600 }}>
-                        ✦ תרחיש חדש
-                      </div>
-                      <div style={{ fontSize: 22, fontWeight: 800, color: "#A5B4FC" }}>
-                        {fmt(simResult.simulation.monthlyPensionEstimate)}/חודש
-                      </div>
-                      <div style={{ fontSize: 13, color: "rgba(165,180,252,0.7)", marginTop: 4 }}>
-                        {simResult.delta.monthlyPensionDiff > 0
-                          ? `+${fmt(simResult.delta.monthlyPensionDiff)} לחודש`
-                          : fmt(simResult.delta.monthlyPensionDiff)}
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 )}
-              </div>
+              </>
             )}
-
-            {/* Recommendations */}
-            {data.recommendations.length > 0 && (
-              <div className="dashboard-card" style={{ padding: "28px 32px" }}>
-                <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 20px", color: "var(--rapyd-text)" }}>
-                  המלצות
-                </h2>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {data.recommendations.map((rec) => (
-                    <div key={rec.type} style={{
-                      background: "rgba(255,255,255,0.04)", borderRadius: 10,
-                      padding: "16px 20px", border: "1px solid rgba(255,255,255,0.07)",
-                      display: "flex", gap: 16, alignItems: "flex-start",
-                    }}>
-                      <span style={{
-                        background: `${urgencyColor(rec.urgency)}22`,
-                        color: urgencyColor(rec.urgency),
-                        borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700,
-                        whiteSpace: "nowrap", marginTop: 2,
-                      }}>
-                        {urgencyLabel(rec.urgency)}
-                      </span>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, color: "var(--rapyd-text)", marginBottom: 4 }}>
-                          {rec.title}
-                        </div>
-                        <div style={{ fontSize: 14, color: "var(--rapyd-text-muted)" }}>
-                          {rec.reason}
-                        </div>
-                        {rec.financialImpact && (
-                          <div style={{ fontSize: 13, color: "#34D399", marginTop: 6, fontWeight: 600 }}>
-                            💰 {rec.financialImpact}
-                          </div>
-                        )}
-                      </div>
-                      <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", whiteSpace: "nowrap" }}>
-                        ביטחון {rec.confidenceScore}%
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </div>
-        )}
-
-        {/* ── Manual Fund Entry ── */}
-        <div style={{ marginTop: 32, background: "rgba(255,255,255,0.04)", borderRadius: 14, padding: "24px 28px", border: "1px solid rgba(255,255,255,0.08)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "var(--rapyd-text)", display: "flex", alignItems: "center", gap: 8 }}>
-                <PiggyBank size={18} style={{ color: "#818CF8" }} />
-                קרנות פנסיה ידניות
-              </div>
-              <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>
-                הזן נתוני קרן ידנית כדי לשפר את התחזית
-              </div>
-            </div>
-            <button
-              onClick={() => setShowAddForm(v => !v)}
-              style={{
-                background: "#5B4FF5", color: "#fff", border: "none", borderRadius: 8,
-                padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: "pointer",
-                fontFamily: "inherit", display: "flex", alignItems: "center", gap: 6,
-              }}
-            >
-              <Plus size={14} /> הוסף קרן
-            </button>
-          </div>
-
-          {/* Existing funds list */}
-          {funds.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: showAddForm ? 20 : 0 }}>
-              {funds.map(f => (
-                <div key={f.id} style={{
-                  background: "rgba(255,255,255,0.04)", borderRadius: 10, padding: "14px 18px",
-                  border: "1px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "space-between",
-                }}>
-                  <div>
-                    <div style={{ fontWeight: 700, color: "var(--rapyd-text)", fontSize: 14 }}>{f.fundName}</div>
-                    <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>
-                      {FUND_TYPE_LABELS[f.fundType] ?? f.fundType}
-                      {f.provider ? ` · ${f.provider}` : ""}
-                      {" · "} צבירה: {fmt(f.currentBalance)}
-                      {" · "} הפקדה: {fmt((f.monthlyEmployeeDeposit ?? 0) + (f.monthlyEmployerDeposit ?? 0))}/חודש
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteFund(f.id)}
-                    disabled={deletingId === f.id}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#F87171", padding: 6 }}
-                    title="מחק קרן"
-                  >
-                    {deletingId === f.id ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : <Trash2 size={14} />}
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Add form */}
-          {showAddForm && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 }}>
-              {[
-                { label: "שם הקרן *", field: "fundName" as const, type: "text" },
-                { label: "ספק / חברה מנהלת", field: "provider" as const, type: "text" },
-                { label: "צבירה נוכחית (₪)", field: "currentBalance" as const, type: "number" },
-                { label: "הפקדת עובד/חודש (₪)", field: "monthlyEmployeeDeposit" as const, type: "number" },
-                { label: "הפקדת מעסיק/חודש (₪)", field: "monthlyEmployerDeposit" as const, type: "number" },
-                { label: "דמי ניהול מצבירה (%)", field: "managementFeeAccumulation" as const, type: "number", scale: 100 },
-              ].map(({ label, field, type, scale = 1 }) => (
-                <div key={field}>
-                  <label style={{ fontSize: 12, color: "var(--rapyd-text-muted)", display: "block", marginBottom: 4 }}>{label}</label>
-                  <input
-                    type={type}
-                    value={type === "number" ? ((form[field] as number ?? 0) * scale).toString() : (form[field] as string ?? "")}
-                    onChange={e => setForm(prev => ({
-                      ...prev,
-                      [field]: type === "number" ? (parseFloat(e.target.value) || 0) / scale : e.target.value,
-                    }))}
-                    style={{
-                      width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 14,
-                      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-                      color: "var(--rapyd-text)", fontFamily: "inherit", boxSizing: "border-box" as const,
-                    }}
-                  />
-                </div>
-              ))}
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ fontSize: 12, color: "var(--rapyd-text-muted)", display: "block", marginBottom: 4 }}>סוג קרן</label>
-                <select
-                  value={form.fundType}
-                  onChange={e => setForm(prev => ({ ...prev, fundType: e.target.value }))}
-                  style={{
-                    width: "100%", padding: "8px 12px", borderRadius: 8, fontSize: 14,
-                    background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
-                    color: "var(--rapyd-text)", fontFamily: "inherit",
-                  }}
-                >
-                  {Object.entries(FUND_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-              </div>
-              <div style={{ gridColumn: "1 / -1", display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-                {saveMsg && <span style={{ fontSize: 13, color: saveMsg.includes("שגיאה") ? "#F87171" : "#34D399", alignSelf: "center" }}>{saveMsg}</span>}
-                <button onClick={() => { setShowAddForm(false); setSaveMsg(null); }} style={{ background: "none", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, color: "var(--rapyd-text-muted)", padding: "8px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>ביטול</button>
-                <button onClick={handleSaveFund} disabled={saving || !form.fundName?.trim()} style={{ background: "#5B4FF5", color: "#fff", border: "none", borderRadius: 8, padding: "8px 20px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
-                  {saving ? <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} /> : null}
-                  שמור
-                </button>
-              </div>
-            </div>
-          )}
-
-          {funds.length === 0 && !showAddForm && (
-            <p style={{ fontSize: 13, color: "var(--rapyd-text-muted)", margin: 0 }}>
-              אין קרנות שהוזנו ידנית. לחץ "הוסף קרן" כדי להזין נתוני פנסיה ידנית.
-            </p>
-          )}
+          </GlassCard>
         </div>
 
-        <p style={{ fontSize: 12, color: "var(--rapyd-text-muted)", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
-          ⚠️ התחזיות מבוססות על הנתונים שהעלית ועל הנחות ממוצעות (תשואה, אינפלציה). אינן מהווות ייעוץ פנסיוני מקצועי. לפני כל שינוי בפנסיה, התייעצ/י עם יועץ פנסיוני מורשה.
+        {/* Mgmt fee warning */}
+        {projection?.mgmtFeeSavings && projection.mgmtFeeSavings.savingsByRetirement > 10000 && (
+          <GlassCard padding="md" style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 32, borderRight: "4px solid #D97706", background: "rgba(255,251,235,0.85)" }}>
+            <AlertCircle size={22} color="#D97706" style={{ flexShrink: 0 }} />
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: "#92400E", marginBottom: 3 }}>דמי ניהול גבוהים זוהו</div>
+              <div style={{ fontSize: 13.5, color: "#78350F" }}>
+                הורדת דמי הניהול עשויה לחסוך {fmt(projection.mgmtFeeSavings.savingsByRetirement)} עד הפרישה
+                {" "} ולהוסיף {fmt(projection.mgmtFeeSavings.additionalMonthlyPension)} לקצבה החודשית.
+              </div>
+            </div>
+          </GlassCard>
+        )}
+
+        {/* CTA */}
+        <GlassCard padding="lg" style={{ background: "linear-gradient(135deg, rgba(107,79,160,0.08), rgba(155,127,232,0.14))", border: "1px solid rgba(184,157,255,0.35)", textAlign: "center" }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>🤖</div>
+          <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 22, fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px", letterSpacing: "-0.02em" }}>שאל את יועץ הפנסיה</h3>
+          <p style={{ fontSize: 14.5, color: "#7C6FA0", margin: "0 0 22px", lineHeight: 1.65 }}>
+            "מתי כדאי לי לפרוש?", "האם כדאי להגדיל הפקדות?", "איזו קרן מומלצת לי?" — הסוכן יענה.
+          </p>
+          <button
+            onClick={() => navigate(APP_ROUTES.copilot)}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", borderRadius: 14, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 15, boxShadow: "0 4px 20px rgba(107,79,160,0.35)" }}
+          >
+            <Sparkles size={16} /> פתח שיחה עם יועץ הפנסיה
+          </button>
+        </GlassCard>
+
+        <p style={{ fontSize: 11.5, color: "#A89CC8", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
+          ⚠️ התחזיות מבוססות על הנחות ממוצעות. אינן מהוות ייעוץ פנסיוני מקצועי.
         </p>
       </main>
-
       <AppFooter variant="private" />
     </div>
   );
