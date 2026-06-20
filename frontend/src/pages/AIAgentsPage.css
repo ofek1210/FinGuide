@@ -1,85 +1,112 @@
+/* ── AI Agents Page — Light Design System ─────────────────────── */
+
+.private-layout {
+  background: var(--lg-bg, #FAF7FF);
+  min-height: 100vh;
+}
+
 .ai-agents-page {
-  max-width: 800px;
+  max-width: 840px;
   margin: 0 auto;
-  padding: 1.5rem 1rem;
-  color: var(--figma-text-dark, #f8fafc);
+  padding: 2rem 1.5rem;
+  color: var(--lg-text, #1F1F1F);
+  direction: rtl;
 }
 
 .ai-agents-title {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-  color: var(--figma-text-dark, #f8fafc);
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+  color: var(--lg-text, #1F1F1F);
+  font-family: var(--lg-font-display, "Fraunces", Georgia, serif);
 }
 
 .ai-agents-subtitle {
-  color: var(--figma-muted-dark, #94a3b8);
-  margin-bottom: 1rem;
+  color: var(--lg-muted, #7C6FA0);
+  margin-bottom: 1.5rem;
   font-size: 0.9rem;
+  line-height: 1.6;
 }
 
 .ai-agents-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
 }
 
 .ai-agents-card {
-  padding: 0.75rem;
-  border-radius: 10px;
-  background: var(--figma-card-dark, #1e293b);
+  padding: 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
   text-align: center;
-  font-size: 0.8rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: var(--figma-text-dark, #f8fafc);
+  font-size: 0.82rem;
+  border: 1px solid rgba(184, 157, 255, 0.22);
+  color: var(--lg-text, #1F1F1F);
+  box-shadow: 0 2px 12px rgba(155, 127, 232, 0.08);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  cursor: default;
+}
+
+.ai-agents-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(155, 127, 232, 0.14);
 }
 
 .ai-agents-card-icon {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
+  margin-bottom: 6px;
 }
 
 .ai-agents-card-label {
   margin-top: 4px;
+  font-weight: 500;
+  color: var(--lg-text-soft, #3D3553);
 }
 
 .ai-agents-prompts {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .ai-agents-prompt-btn {
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 1rem;
   border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: var(--figma-card-dark, #1e293b);
-  color: var(--figma-text-dark, #f8fafc);
+  border: 1px solid rgba(184, 157, 255, 0.30);
+  background: rgba(184, 157, 255, 0.10);
+  color: #7B5EA7;
   cursor: pointer;
-  font-size: 0.85rem;
-  transition: background 0.2s, border-color 0.2s;
+  font-size: 0.84rem;
+  font-family: inherit;
+  transition: background 0.18s, border-color 0.18s, transform 0.12s;
 }
 
 .ai-agents-prompt-btn:hover {
-  background: rgba(90, 86, 246, 0.15);
-  border-color: var(--figma-gradient-start, #5a56f6);
+  background: rgba(155, 127, 232, 0.18);
+  border-color: rgba(155, 127, 232, 0.45);
+  transform: translateY(-1px);
 }
 
 .ai-agents-chat {
   min-height: 300px;
   max-height: 60vh;
   overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  padding: 1rem;
+  border: 1px solid rgba(184, 157, 255, 0.22);
+  border-radius: 20px;
+  padding: 1.25rem;
   margin-bottom: 1rem;
-  background: var(--figma-card-dark, #1e293b);
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 2px 16px rgba(155, 127, 232, 0.08);
 }
 
 .ai-agents-empty {
   text-align: center;
-  color: var(--figma-muted-dark, #94a3b8);
+  color: var(--lg-muted, #7C6FA0);
   padding: 3rem 0;
+  font-size: 0.9rem;
 }
 
 .ai-agents-msg {
@@ -89,36 +116,39 @@
 }
 
 .ai-agents-msg--user {
-  align-items: flex-end;
+  align-items: flex-start;
 }
 
 .ai-agents-msg--assistant {
-  align-items: flex-start;
+  align-items: flex-end;
 }
 
 .ai-agents-msg-bubble {
   max-width: 85%;
   padding: 0.75rem 1rem;
-  border-radius: 12px;
+  border-radius: 16px;
   white-space: pre-wrap;
   line-height: 1.6;
+  font-size: 0.9rem;
 }
 
 .ai-agents-msg--user .ai-agents-msg-bubble {
-  background: var(--figma-gradient-start, #5a56f6);
+  background: linear-gradient(135deg, #9B7FE8, #7B5EA7);
   color: #fff;
+  border-radius: 16px 4px 16px 16px;
 }
 
 .ai-agents-msg--assistant .ai-agents-msg-bubble {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--figma-text-dark, #f8fafc);
-  border: 1px solid var(--figma-border-dark, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--lg-text, #1F1F1F);
+  border: 1px solid rgba(184, 157, 255, 0.22);
+  border-radius: 4px 16px 16px 16px;
 }
 
 .ai-agents-badge {
   margin-top: 4px;
-  font-size: 0.75rem;
-  color: var(--figma-muted-dark, #94a3b8);
+  font-size: 0.72rem;
+  color: var(--lg-muted, #7C6FA0);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -127,7 +157,7 @@
 .ai-agents-sources {
   margin-top: 4px;
   font-size: 0.7rem;
-  color: var(--figma-muted-dark, #94a3b8);
+  color: var(--lg-muted, #7C6FA0);
 }
 
 .ai-agents-sources summary {
@@ -141,8 +171,9 @@
 
 .ai-agents-thinking {
   text-align: center;
-  color: var(--figma-muted-dark, #94a3b8);
+  color: var(--lg-muted, #7C6FA0);
   padding: 0.5rem;
+  font-size: 0.85rem;
 }
 
 .ai-agents-form {
@@ -152,108 +183,55 @@
 
 .ai-agents-input {
   flex: 1;
-  padding: 0.75rem 1rem;
-  border-radius: 25px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 1rem;
+  padding: 0.8rem 1.2rem;
+  border-radius: 20px;
+  border: 1.5px solid rgba(184, 157, 255, 0.35);
+  font-size: 0.95rem;
+  font-family: inherit;
   direction: rtl;
-  background: var(--figma-card-dark, #1e293b);
-  color: var(--figma-text-dark, #f8fafc);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--lg-text, #1F1F1F);
   outline: none;
-  transition: border-color 0.2s;
+  transition: border-color 0.18s, box-shadow 0.18s;
 }
 
 .ai-agents-input:focus {
-  border-color: var(--figma-gradient-start, #5a56f6);
+  border-color: #9B7FE8;
+  box-shadow: 0 0 0 3px rgba(155, 127, 232, 0.12);
 }
 
 .ai-agents-input::placeholder {
-  color: var(--figma-muted-dark, #94a3b8);
+  color: var(--lg-muted, #A89CC8);
 }
 
 .ai-agents-send-btn {
-  padding: 0.75rem 1.5rem;
-  border-radius: 25px;
-  background: var(--figma-gradient-start, #5a56f6);
+  padding: 0.8rem 1.4rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #9B7FE8, #7B5EA7);
   color: #fff;
   border: none;
   cursor: pointer;
-  font-size: 1rem;
-  transition: opacity 0.2s;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: opacity 0.18s, transform 0.12s;
+  box-shadow: 0 4px 16px rgba(155, 127, 232, 0.30);
 }
 
 .ai-agents-send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .ai-agents-send-btn:not(:disabled):hover {
   opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .ai-agents-disclaimer {
-  font-size: 0.7rem;
-  color: var(--figma-muted-dark, #94a3b8);
-  margin-top: 1rem;
+  font-size: 0.72rem;
+  color: var(--lg-muted, #A89CC8);
+  margin-top: 0.75rem;
   text-align: center;
-}
-
-/* Light theme overrides */
-[data-theme="light"] .ai-agents-page {
-  color: var(--figma-text-light, #0f172a);
-}
-
-[data-theme="light"] .ai-agents-title {
-  color: var(--figma-text-light, #0f172a);
-}
-
-[data-theme="light"] .ai-agents-subtitle {
-  color: var(--figma-muted-light, #64748b);
-}
-
-[data-theme="light"] .ai-agents-card {
-  background: #fff;
-  border-color: var(--figma-border-light, #e2e8f0);
-  color: var(--figma-text-light, #0f172a);
-}
-
-[data-theme="light"] .ai-agents-prompt-btn {
-  background: #fff;
-  border-color: var(--figma-border-light, #e2e8f0);
-  color: var(--figma-text-light, #0f172a);
-}
-
-[data-theme="light"] .ai-agents-chat {
-  background: #fff;
-  border-color: var(--figma-border-light, #e2e8f0);
-}
-
-[data-theme="light"] .ai-agents-empty {
-  color: var(--figma-muted-light, #64748b);
-}
-
-[data-theme="light"] .ai-agents-msg--assistant .ai-agents-msg-bubble {
-  background: #f8fafc;
-  color: var(--figma-text-light, #0f172a);
-  border-color: var(--figma-border-light, #e2e8f0);
-}
-
-[data-theme="light"] .ai-agents-badge,
-[data-theme="light"] .ai-agents-sources,
-[data-theme="light"] .ai-agents-thinking {
-  color: var(--figma-muted-light, #64748b);
-}
-
-[data-theme="light"] .ai-agents-input {
-  background: #fff;
-  color: var(--figma-text-light, #0f172a);
-  border-color: var(--figma-border-light, #e2e8f0);
-}
-
-[data-theme="light"] .ai-agents-input::placeholder {
-  color: var(--figma-muted-light, #64748b);
-}
-
-[data-theme="light"] .ai-agents-disclaimer {
-  color: var(--figma-muted-light, #64748b);
 }

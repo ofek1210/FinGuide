@@ -107,7 +107,7 @@ export default function OnboardingPage() {
     setLoading(false);
     if (!res.success) { setError(res.message ?? "לא הצלחנו לטעון."); return; }
     if (res.data?.data) setProfile((prev) => deepMerge(prev, res.data!.data));
-    if (res.data?.completed) { await refresh(); navigate(APP_ROUTES.documents, { replace: true }); }
+    if (res.data?.completed) { await refresh(); navigate(APP_ROUTES.hub, { replace: true }); }
   }, [navigate, refresh]);
 
   useEffect(() => {
@@ -177,7 +177,7 @@ export default function OnboardingPage() {
       return;
     }
     await refresh();
-    navigate(APP_ROUTES.documents, { replace: true });
+    navigate(APP_ROUTES.hub, { replace: true });
   }, [finishing, navigate, refresh, saveStep, saving, step]);
 
   const updP = (p: Partial<OnboardingProfile["personal"]>)   => setProfile((x) => ({ ...x, personal:   { ...x.personal,   ...p } }));

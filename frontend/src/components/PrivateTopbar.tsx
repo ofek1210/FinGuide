@@ -96,7 +96,7 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
     >
       {/* Logo */}
       <div
-        onClick={() => navigate(APP_ROUTES.documents)}
+        onClick={() => navigate(APP_ROUTES.hub)}
         style={{
           fontFamily: "'Fraunces', Georgia, serif",
           fontSize: 22, fontWeight: 700, letterSpacing: "-0.03em",

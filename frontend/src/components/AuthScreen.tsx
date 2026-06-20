@@ -255,7 +255,7 @@ export default function AuthScreen({
       // on /dashboard renders the loader (correct place), instead of RequireGuest
       // unmounting AuthScreen mid-flight on /login.
       emitAuthChanged();
-      navigate(APP_ROUTES.documents);
+      navigate(APP_ROUTES.hub);
     },
     [navigate],
   );

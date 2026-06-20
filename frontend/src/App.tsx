@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
+import HubPage from "./pages/HubPage";
 import AuthScreen from "./components/AuthScreen";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import BackButton from "./components/BackButton";
@@ -72,8 +73,16 @@ export default function App() {
         />
         <Route path={APP_ROUTES.resetPassword} element={<ResetPasswordPage />} />
         <Route
+          path={APP_ROUTES.hub}
+          element={
+            <RequireAuth>
+              <HubPage />
+            </RequireAuth>
+          }
+        />
+        <Route
           path={APP_ROUTES.dashboard}
-          element={<Navigate to={APP_ROUTES.documents} replace />}
+          element={<Navigate to={APP_ROUTES.hub} replace />}
         />
         <Route
           path={APP_ROUTES.onboarding}
