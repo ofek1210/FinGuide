@@ -32,6 +32,15 @@ router.get('/', getDocuments);
 // GET /api/documents/payslip-history - תובנות תלושים לפי שנה/חודש
 router.get('/payslip-history', getPayslipHistory);
 
+// GET /api/documents/ai-insights — AI insights based on profile + recent payslips
+router.get('/ai-insights', async (req, res, next) => {
+  try {
+    const { getPayslipInsights } = require('../services/payslipInsightsService');
+    const result = await getPayslipInsights(req.user._id);
+    return res.json({ success: true, data: result });
+  } catch (err) { next(err); }
+});
+
 // GET /api/documents/:id/download - הורדת מסמך (לפני /:id כדי שלא יתפוס "id/download")
 router.get('/:id/download', downloadDocument);
 

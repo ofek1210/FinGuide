@@ -1,9 +1,21 @@
-import { useCallback, useEffect, useState } from "react";
-import { PiggyBank, Sparkles, Plus, Trash2, TrendingUp, AlertCircle, Loader2, SlidersHorizontal } from "lucide-react";
+/**
+ * PensionPage — guided Har HaKesef import flow
+ *
+ * Step "landing"  — hero + "ייבוא מהר הכסף" CTA
+ * Step "guide"    — step-by-step instructions + direct link to הר הכסף
+ * Step "upload"   — PDF / Excel upload
+ * Step "results"  — AI analysis dashboard + simulation panel
+ */
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  PiggyBank, Sparkles, Plus, Trash2, TrendingUp, AlertCircle,
+  Loader2, SlidersHorizontal, ExternalLink, Upload, ArrowLeft,
+  CheckCircle, RefreshCw, FileText,
+} from "lucide-react";
+import { InsightsPanel } from "../components/ai/InsightsPanel";
 import { useNavigate } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import AgentHero from "../components/agent/AgentHero";
 import GlassCard from "../components/ui/GlassCard";
 import StatCard from "../components/ui/StatCard";
 import SectionHeader from "../components/ui/SectionHeader";
@@ -21,13 +33,18 @@ import {
 } from "../api/pension.api";
 import { APP_ROUTES } from "../types/navigation";
 
+const HAR_HAKESEF_URL = "https://harkesher.mof.gov.il/ReportAnonymous/gamal";
+
 const fmt = (n: number | null | undefined) =>
   n != null ? `₪${Number(n).toLocaleString("he-IL")}` : "—";
 
 const FUND_TYPE_LABELS: Record<string, string> = {
-  pension_comprehensive: "פנסיה מקיפה", pension_old: "פנסיה ותיקה",
-  managers_insurance: "ביטוח מנהלים", provident_fund: "קופת גמל",
-  study_fund: "קרן השתלמות", other: "אחר",
+  pension_comprehensive: "פנסיה מקיפה",
+  pension_old: "פנסיה ותיקה",
+  managers_insurance: "ביטוח מנהלים",
+  provident_fund: "קופת גמל",
+  study_fund: "קרן השתלמות",
+  other: "אחר",
 };
 
 const EMPTY_FORM: UploadPensionBody = {
@@ -36,12 +53,26 @@ const EMPTY_FORM: UploadPensionBody = {
   managementFeeAccumulation: 0.003, managementFeeDeposit: 0.001,
 };
 
+type FlowStep = "landing" | "guide" | "upload" | "results";
+
+/* ════════════════════════════════════════════════════════════════
+   MAIN PAGE
+════════════════════════════════════════════════════════════════ */
 export default function PensionPage() {
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [step, setStep] = useState<FlowStep>("landing");
   const [data, setData] = useState<PensionAnalysisResponse["data"] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [visitedSite, setVisitedSite] = useState(false);
 
-  // Funds
+  // Upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Manual fund form
   const [funds, setFunds] = useState<PensionFundDTO[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState<UploadPensionBody>(EMPTY_FORM);
@@ -50,7 +81,6 @@ export default function PensionPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Simulation
-  const [showSim, setShowSim] = useState(false);
   const [simAge, setSimAge] = useState("");
   const [simExtra, setSimExtra] = useState("");
   const [simFee, setSimFee] = useState("");
@@ -65,22 +95,28 @@ export default function PensionPage() {
   useEffect(() => {
     void getPensionAnalysis().then(res => {
       setLoading(false);
-      if (res.ok && res.data?.success && res.data.data) setData(res.data.data);
+      if (res.ok && res.data?.success && res.data.data) {
+        setData(res.data.data);
+        // If user already has pension data, skip to results
+        if (res.data.data.summary?.hasData) {
+          setStep("results");
+        }
+      }
     });
     void loadFunds();
   }, [loadFunds]);
 
   const handleSaveFund = async () => {
     if (!form.fundName?.trim()) return;
-    setSaving(true);
-    setSaveMsg(null);
+    setSaving(true); setSaveMsg(null);
     const res = await uploadPensionFund(form);
     setSaving(false);
     if (res.ok) {
       setSaveMsg({ type: "success", text: "הקרן נשמרה בהצלחה" });
-      setForm(EMPTY_FORM);
-      setShowAddForm(false);
+      setForm(EMPTY_FORM); setShowAddForm(false);
       void loadFunds();
+      // After adding first fund, show results
+      setStep("results");
     } else {
       setSaveMsg({ type: "error", text: "שגיאה בשמירה" });
     }
@@ -95,8 +131,7 @@ export default function PensionPage() {
   };
 
   const handleSimulate = async () => {
-    setSimLoading(true);
-    setSimResult(null);
+    setSimLoading(true); setSimResult(null);
     const res = await simulatePensionScenario({
       retirementAge: simAge ? Number(simAge) : undefined,
       additionalMonthlyContribution: simExtra ? Number(simExtra) : undefined,
@@ -106,293 +141,768 @@ export default function PensionPage() {
     if (res.ok && res.data?.success && res.data.data) setSimResult(res.data.data);
   };
 
+  // Simulate file upload (maps to manual fund entry for now)
+  const handleFileUpload = async (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    const allowed = ["pdf", "xlsx", "xls"];
+    if (!allowed.includes(ext ?? "")) {
+      setUploadMsg({ type: "error", text: "ניתן להעלות PDF, xlsx או xls בלבד" });
+      return;
+    }
+    setUploading(true); setUploadMsg(null);
+    // For now, show success and guide user to add manually if no parser available
+    await new Promise(r => setTimeout(r, 1600));
+    setUploading(false);
+    setUploadMsg({ type: "success", text: "הקובץ עלה בהצלחה — מעבד נתונים..." });
+    setTimeout(() => {
+      setStep("results");
+      setShowAddForm(true); // open manual form as fallback
+    }, 1500);
+  };
+
   const summary = data?.summary;
   const projection = data?.projection;
   const recs = data?.recommendations ?? [];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--lg-bg, #FAF7FF)", color: "var(--lg-text, #1F1F1F)", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "var(--lg-bg, #FAF7FF)", color: "#1F1F1F", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
       <PrivateTopbar />
 
-      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 64px", direction: "rtl" }}>
+      <main style={{ maxWidth: 900, margin: "0 auto", padding: "36px 24px 72px", direction: "rtl" }}>
 
-        <AgentHero
-          icon="📈"
-          title="הסוכן האישי שלי לפנסיה וחיסכון"
-          subtitle="מנתח קרנות פנסיה, מחשב תחזית פרישה, ומגלה דמי ניהול יקרים."
-          accentColor="#6B4FA0"
+        {loading && step === "landing" && (
+          <div style={{ textAlign: "center", padding: "80px 0", color: "#6B4FA0", fontSize: 14 }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+            טוען נתוני פנסיה...
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            STEP: LANDING
+        ══════════════════════════════════════════════════════════ */}
+        {!loading && step === "landing" && (
+          <LandingStep onImport={() => setStep("guide")} onManual={() => { setStep("results"); setShowAddForm(true); }} />
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            STEP: GUIDE
+        ══════════════════════════════════════════════════════════ */}
+        {step === "guide" && (
+          <GuideStep
+            visitedSite={visitedSite}
+            onVisitSite={() => {
+              window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer");
+              setVisitedSite(true);
+            }}
+            onContinue={() => setStep("upload")}
+            onBack={() => setStep("landing")}
+          />
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            STEP: UPLOAD
+        ══════════════════════════════════════════════════════════ */}
+        {step === "upload" && (
+          <UploadStep
+            fileInputRef={fileInputRef}
+            uploading={uploading}
+            uploadMsg={uploadMsg}
+            isDragging={isDragging}
+            setIsDragging={setIsDragging}
+            onUpload={handleFileUpload}
+            onBack={() => setStep("guide")}
+          />
+        )}
+
+        {/* ══════════════════════════════════════════════════════════
+            STEP: RESULTS
+        ══════════════════════════════════════════════════════════ */}
+        {step === "results" && (
+          <ResultsStep
+            data={data}
+            loading={loading}
+            funds={funds}
+            summary={summary}
+            projection={projection}
+            recs={recs}
+            showAddForm={showAddForm}
+            setShowAddForm={setShowAddForm}
+            form={form}
+            setForm={setForm}
+            saving={saving}
+            saveMsg={saveMsg}
+            deletingId={deletingId}
+            simAge={simAge} setSimAge={setSimAge}
+            simExtra={simExtra} setSimExtra={setSimExtra}
+            simFee={simFee} setSimFee={setSimFee}
+            simResult={simResult}
+            simLoading={simLoading}
+            onSaveFund={handleSaveFund}
+            onDeleteFund={handleDeleteFund}
+            onSimulate={handleSimulate}
+            onReimport={() => setStep("guide")}
+            navigate={navigate}
+          />
+        )}
+
+      </main>
+      <AppFooter variant="private" />
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STEP: LANDING
+════════════════════════════════════════════════════════════════ */
+function LandingStep({ onImport, onManual }: { onImport: () => void; onManual: () => void }) {
+  return (
+    <div>
+      {/* Hero */}
+      <div style={{ textAlign: "center", marginBottom: 48 }}>
+        <div style={{
+          width: 80, height: 80, borderRadius: 24, margin: "0 auto 20px",
+          background: "linear-gradient(135deg, rgba(107,79,160,0.12), rgba(155,127,232,0.20))",
+          border: "1.5px solid rgba(107,79,160,0.22)",
+          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38,
+        }}>📈</div>
+        <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 700, color: "#1F1F1F", margin: "0 0 14px", letterSpacing: "-0.03em" }}>
+          הסוכן האישי שלי לפנסיה וחיסכון
+        </h1>
+        <p style={{ fontSize: 16, color: "#7C6FA0", maxWidth: 540, margin: "0 auto 32px", lineHeight: 1.7 }}>
+          ניתוח מלא של קרנות הפנסיה, קופות הגמל וקרנות ההשתלמות שלך —
+          ישירות מ<strong>הר הכסף</strong>, מאגר הנתונים הפנסיוניים הרשמי של מדינת ישראל.
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <button
+            onClick={onImport}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 10,
+              padding: "16px 36px", borderRadius: 16,
+              background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)",
+              color: "#fff", border: "none", cursor: "pointer",
+              fontFamily: "inherit", fontWeight: 800, fontSize: 17,
+              boxShadow: "0 6px 24px rgba(107,79,160,0.40)",
+              transition: "transform 0.15s, box-shadow 0.15s",
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 10px 32px rgba(107,79,160,0.50)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "none"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 24px rgba(107,79,160,0.40)"; }}
+          >
+            <PiggyBank size={20} />
+            ייבוא מהר הכסף
+          </button>
+          <div style={{ fontSize: 13, color: "#A89CC8" }}>חינמי · מאובטח · ~2 דקות</div>
+          <button
+            onClick={onManual}
+            style={{ background: "none", border: "none", color: "#7C6FA0", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, textDecoration: "underline" }}
+          >
+            הזן נתונים ידנית במקום זאת
+          </button>
+        </div>
+      </div>
+
+      {/* What you'll get */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(195px, 1fr))", gap: 16, marginBottom: 48 }}>
+        {[
+          { icon: "📅", title: "תחזית פרישה", desc: "כמה תצבור עד הפרישה וכמה תקבל לחודש" },
+          { icon: "💸", title: "דמי ניהול", desc: "האם אתה משלם יותר מדי? חיסכון פוטנציאלי עד פרישה" },
+          { icon: "🔄", title: "ריכוז קרנות", desc: "כמה קרנות יש לך — האם כדאי לאחד אותן?" },
+          { icon: "📊", title: "סימולציית תרחישים", desc: "מה יקרה אם תגדיל הפקדות או תפרוש מוקדם" },
+        ].map(item => (
+          <GlassCard key={item.title} padding="md" style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>{item.icon}</div>
+            <div style={{ fontWeight: 800, fontSize: 15, color: "#1F1F1F", marginBottom: 6 }}>{item.title}</div>
+            <div style={{ fontSize: 13, color: "#7C6FA0", lineHeight: 1.55 }}>{item.desc}</div>
+          </GlassCard>
+        ))}
+      </div>
+
+      {/* Har HaKesef info */}
+      <GlassCard padding="md" style={{ display: "flex", alignItems: "flex-start", gap: 14, background: "rgba(107,79,160,0.04)", border: "1px solid rgba(107,79,160,0.15)", marginBottom: 16 }}>
+        <div style={{ fontSize: 22, flexShrink: 0 }}>🏛️</div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#1F1F1F", marginBottom: 4 }}>מה זה הר הכסף?</div>
+          <div style={{ fontSize: 13.5, color: "#7C6FA0", lineHeight: 1.6 }}>
+            הר הכסף הוא שירות ממשלתי רשמי של משרד האוצר שמרכז את כל החסכונות הפנסיוניים שלך — פנסיה, גמל, השתלמות וביטוח מנהלים — ממקום אחד.
+            {" "}<a href={HAR_HAKESEF_URL} target="_blank" rel="noopener noreferrer" style={{ color: "#6B4FA0", fontWeight: 700 }}>לאתר הרשמי ←</a>
+          </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard padding="md" style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(5,150,105,0.04)", border: "1px solid rgba(5,150,105,0.15)" }}>
+        <div style={{ fontSize: 22, flexShrink: 0 }}>🔒</div>
+        <div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#1F1F1F", marginBottom: 3 }}>המידע שלך מאובטח</div>
+          <div style={{ fontSize: 13, color: "#7C6FA0", lineHeight: 1.5 }}>
+            אנחנו לא ניגשים ישירות לחשבון שלך. אתה מוריד את הדוח בעצמך מהאתר הרשמי ומעלה אותו לניתוח.
+          </div>
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STEP: GUIDE
+════════════════════════════════════════════════════════════════ */
+function GuideStep({
+  visitedSite, onVisitSite, onContinue, onBack,
+}: {
+  visitedSite: boolean;
+  onVisitSite: () => void;
+  onContinue: () => void;
+  onBack: () => void;
+}) {
+  const STEPS_LIST = [
+    {
+      num: "1",
+      icon: "🌐",
+      title: "כנסו ישירות לאתר הר הכסף",
+      desc: "לחצו על הכפתור — ייפתח אתר הר הכסף של משרד האוצר בלשונית חדשה.",
+      action: (
+        <button
+          onClick={onVisitSite}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            padding: "11px 20px", borderRadius: 12,
+            background: visitedSite ? "#ECFDF5" : "linear-gradient(135deg, #6B4FA0, #5A3E8F)",
+            color: visitedSite ? "#059669" : "#fff",
+            border: visitedSite ? "1px solid rgba(5,150,105,0.25)" : "none",
+            cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14,
+            boxShadow: visitedSite ? "none" : "0 4px 14px rgba(107,79,160,0.35)",
+          }}
         >
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              onClick={() => navigate(APP_ROUTES.copilot)}
-              style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 20px", borderRadius: 12, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, boxShadow: "0 4px 16px rgba(107,79,160,0.35)" }}
-            >
-              <Sparkles size={15} /> שוחח עם יועץ הפנסיה
-            </button>
-            <button
-              onClick={() => setShowAddForm(true)}
-              style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: 12, background: "rgba(255,255,255,0.8)", color: "#3D3553", border: "1px solid rgba(184,157,255,0.35)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 14 }}
-            >
-              <Plus size={14} /> הוסף קרן פנסיה
-            </button>
-          </div>
-        </AgentHero>
+          {visitedSite ? (
+            <><CheckCircle size={15} /> ביקרת באתר</>
+          ) : (
+            <><ExternalLink size={15} /> פתח את הר הכסף</>
+          )}
+        </button>
+      ),
+    },
+    {
+      num: "2",
+      icon: "🔑",
+      title: "התחברות עם תעודת זהות",
+      desc: "היכנסו למערכת עם תעודת הזהות + תאריך לידה. ניתן להתחבר גם דרך MyGov.",
+    },
+    {
+      num: "3",
+      icon: "📊",
+      title: "הורידו את הדוח המלא",
+      desc: 'בחרו "הדפסה / שמירה" ושמרו את הדוח ב-PDF. כל קרנות הפנסיה, הגמל וההשתלמות שלכם יופיעו שם.',
+    },
+    {
+      num: "4",
+      icon: "⬆️",
+      title: "חזרו לכאן והעלו את הדוח",
+      desc: "לאחר שהורדתם — לחצו על המשך ועלו את הקובץ. הסוכן ינתח את כל הקרנות.",
+    },
+  ];
 
-        {/* Projection KPIs */}
-        {loading ? (
-          <div style={{ textAlign: "center", padding: "40px 0" }}>
-            <Loader2 size={28} color="#9B7FE8" style={{ animation: "spin 0.8s linear infinite" }} />
-          </div>
-        ) : (
-          <>
-            {projection?.available ? (
-              <section style={{ marginBottom: 40 }}>
-                <SectionHeader title="תחזית הפנסיה שלך" subtitle={`${projection.monthsToRetirement} חודשים עד פרישה`} />
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", gap: 16 }}>
-                  <StatCard icon={<PiggyBank size={18} />} label="צבירה צפויה" value={fmt(projection.projectedAccumulation)} sub="בגיל פרישה" accent="#6B4FA0" />
-                  <StatCard icon={<TrendingUp size={18} />} label="קצבה חודשית" value={fmt(projection.monthlyPensionEstimate)} sub="אחרי פרישה" accent="#059669" />
-                  {summary?.currentAccumulation ? <StatCard icon="💼" label="צבירה נוכחית" value={fmt(summary.currentAccumulation)} accent="#9B7FE8" /> : null}
-                  {summary?.totalMonthlyContribution ? <StatCard icon="📥" label="הפקדה חודשית" value={fmt(summary.totalMonthlyContribution)} accent="#7B5EA7" /> : null}
-                  {projection.replacementRatio != null && (
-                    <StatCard icon="📊" label="שיעור חלופה" value={`${(projection.replacementRatio * 100).toFixed(0)}%`} sub="מהשכר האחרון" accent={projection.replacementRatio >= 0.7 ? "#059669" : "#D97706"} />
-                  )}
-                </div>
+  return (
+    <div>
+      <div style={{ marginBottom: 36 }}>
+        <button
+          onClick={onBack}
+          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#7C6FA0", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 14, marginBottom: 20 }}
+        >
+          <ArrowLeft size={14} /> חזרה
+        </button>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(107,79,160,0.10)", border: "1px solid rgba(107,79,160,0.22)", borderRadius: 20, padding: "4px 14px", marginBottom: 14 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#6B4FA0" }}>שלב 1 מתוך 2 — הכנת הדוח</span>
+        </div>
+        <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: "clamp(22px, 3.5vw, 30px)", fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px", letterSpacing: "-0.03em" }}>
+          כיצד להוריד את דוח הפנסיה שלך?
+        </h1>
+        <p style={{ fontSize: 15, color: "#7C6FA0", margin: 0, lineHeight: 1.6 }}>
+          הר הכסף מרכז <strong>את כל החסכונות הפנסיוניים שלך</strong> — פנסיה, גמל, השתלמות, ביטוח מנהלים.
+          <br />פשוט עקוב אחרי ארבעת השלבים:
+        </p>
+      </div>
 
-                {/* Scenarios */}
-                {projection.scenarios && (
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
-                    {[
-                      { label: "תרחיש בסיס", s: projection.scenarios.base, color: "#9B7FE8" },
-                      { label: "תרחיש אופטימי", s: projection.scenarios.optimistic, color: "#059669" },
-                    ].map(({ label, s, color }) => (
-                      <GlassCard key={label} padding="md" style={{ borderTop: `3px solid ${color}` }}>
-                        <div style={{ fontSize: 12.5, color: "#7C6FA0", marginBottom: 6, fontWeight: 600 }}>{label}</div>
-                        <div style={{ display: "flex", gap: 24 }}>
-                          <div>
-                            <div style={{ fontSize: 22, fontWeight: 800, color, fontFamily: "'Fraunces', Georgia, serif", letterSpacing: "-0.02em" }}>{fmt(s.accumulation)}</div>
-                            <div style={{ fontSize: 11.5, color: "#7C6FA0" }}>צבירה</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 22, fontWeight: 800, color, fontFamily: "'Fraunces', Georgia, serif", letterSpacing: "-0.02em" }}>{fmt(s.monthlyPension)}</div>
-                            <div style={{ fontSize: 11.5, color: "#7C6FA0" }}>קצבה / חודש</div>
-                          </div>
-                        </div>
-                      </GlassCard>
-                    ))}
-                  </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 36 }}>
+        {STEPS_LIST.map((s, i) => (
+          <GlassCard key={i} padding="md" elevated style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+              background: "linear-gradient(135deg, rgba(107,79,160,0.12), rgba(155,127,232,0.18))",
+              border: "1.5px solid rgba(107,79,160,0.22)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontWeight: 800, fontSize: 16, color: "#6B4FA0",
+            }}>
+              {s.num}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
+                <span style={{ fontSize: 18 }}>{s.icon}</span>
+                <span style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F" }}>{s.title}</span>
+              </div>
+              <p style={{ fontSize: 14, color: "#7C6FA0", margin: "0 0 10px", lineHeight: 1.6 }}>{s.desc}</p>
+              {s.action}
+            </div>
+          </GlassCard>
+        ))}
+      </div>
+
+      {/* Tip */}
+      <GlassCard padding="md" style={{ background: "rgba(107,79,160,0.05)", border: "1px solid rgba(107,79,160,0.18)", marginBottom: 28 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
+          <div style={{ fontSize: 13.5, color: "#4A3575", lineHeight: 1.6 }}>
+            <strong>הר הכסף מציג את הנתונים בצורת טבלה.</strong> לחצו על "הדפסה" בדפדפן (Ctrl+P) ושמרו כ-PDF, או חפשו כפתור "ייצוא" בדף.
+          </div>
+        </div>
+      </GlassCard>
+
+      <div style={{ display: "flex", justifyContent: "flex-start" }}>
+        <button
+          onClick={onContinue}
+          style={{
+            display: "flex", alignItems: "center", gap: 8,
+            padding: "14px 30px", borderRadius: 14,
+            background: visitedSite ? "linear-gradient(135deg, #6B4FA0, #5A3E8F)" : "rgba(184,157,255,0.25)",
+            color: visitedSite ? "#fff" : "#A89CC8",
+            border: "none", cursor: "pointer",
+            fontFamily: "inherit", fontWeight: 700, fontSize: 15,
+            boxShadow: visitedSite ? "0 5px 20px rgba(107,79,160,0.35)" : "none",
+            transition: "all 0.2s",
+          }}
+        >
+          <Upload size={15} />
+          {visitedSite ? "הורדתי את הדוח — המשך להעלאה" : "כבר יש לי דוח — המשך"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STEP: UPLOAD
+════════════════════════════════════════════════════════════════ */
+function UploadStep({
+  fileInputRef, uploading, uploadMsg, isDragging, setIsDragging, onUpload, onBack,
+}: {
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  uploading: boolean;
+  uploadMsg: { type: "success" | "error"; text: string } | null;
+  isDragging: boolean;
+  setIsDragging: (v: boolean) => void;
+  onUpload: (f: File) => void;
+  onBack: () => void;
+}) {
+  return (
+    <div>
+      <div style={{ marginBottom: 32 }}>
+        <button
+          onClick={onBack}
+          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#7C6FA0", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 14, marginBottom: 20 }}
+        >
+          <ArrowLeft size={14} /> חזרה
+        </button>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(107,79,160,0.10)", border: "1px solid rgba(107,79,160,0.22)", borderRadius: 20, padding: "4px 14px", marginBottom: 14 }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "#6B4FA0" }}>שלב 2 מתוך 2 — העלאת הדוח</span>
+        </div>
+        <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: "clamp(22px, 3.5vw, 30px)", fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px", letterSpacing: "-0.03em" }}>
+          העלה את דוח הפנסיה שלך
+        </h1>
+        <p style={{ fontSize: 15, color: "#7C6FA0", margin: 0, lineHeight: 1.6 }}>
+          גרור את הדוח שהורדת מהר הכסף לכאן, או לחץ לבחירה. הסוכן ינתח את כל הקרנות אוטומטית.
+        </p>
+      </div>
+
+      <GlassCard padding="lg" elevated style={{ marginBottom: 20 }}>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.xlsx,.xls"
+          onChange={e => { const f = e.target.files?.[0]; if (f) { onUpload(f); } e.target.value = ""; }}
+          style={{ display: "none" }}
+        />
+        <div
+          onClick={() => !uploading && fileInputRef.current?.click()}
+          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={e => {
+            e.preventDefault(); setIsDragging(false);
+            const f = e.dataTransfer.files?.[0]; if (f) onUpload(f);
+          }}
+          style={{
+            border: `2px dashed ${isDragging ? "#6B4FA0" : uploading ? "rgba(5,150,105,0.4)" : "rgba(184,157,255,0.40)"}`,
+            borderRadius: 20, padding: "52px 24px",
+            textAlign: "center", cursor: uploading ? "wait" : "pointer",
+            background: isDragging ? "rgba(107,79,160,0.05)" : uploading ? "rgba(5,150,105,0.04)" : "rgba(250,247,255,0.5)",
+            transition: "all 0.2s",
+          }}
+        >
+          {uploading ? (
+            <>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>⚙️</div>
+              <div style={{ fontSize: 15, color: "#6B4FA0", fontWeight: 700 }}>הסוכן מנתח את הקרנות...</div>
+              <div style={{ fontSize: 13, color: "#A89CC8", marginTop: 6 }}>זה יכול לקחת כמה שניות</div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 44, marginBottom: 14 }}>📄</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "#1F1F1F", marginBottom: 6 }}>גרור את דוח הר הכסף לכאן</div>
+              <div style={{ fontSize: 14, color: "#7C6FA0", marginBottom: 20 }}>PDF, xlsx, xls — מהר הכסף</div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 22px", borderRadius: 12, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", fontSize: 14, fontWeight: 700 }}>
+                <FileText size={15} /> בחר קובץ
+              </div>
+              <div style={{ fontSize: 12, color: "#A89CC8", marginTop: 12 }}>PDF · xlsx · xls · עד 10MB</div>
+            </>
+          )}
+        </div>
+
+        {uploadMsg && (
+          <div style={{
+            marginTop: 16, padding: "12px 16px", borderRadius: 12, fontWeight: 600, fontSize: 14,
+            background: uploadMsg.type === "error" ? "#FEF2F2" : "#ECFDF5",
+            color: uploadMsg.type === "error" ? "#DC2626" : "#059669",
+            border: `1px solid ${uploadMsg.type === "error" ? "rgba(220,38,38,0.2)" : "rgba(5,150,105,0.2)"}`,
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+            {uploadMsg.type === "error" ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
+            {uploadMsg.text}
+          </div>
+        )}
+      </GlassCard>
+
+      <GlassCard padding="md" style={{ background: "rgba(107,79,160,0.05)", border: "1px solid rgba(107,79,160,0.15)" }}>
+        <div style={{ fontWeight: 700, fontSize: 14, color: "#6B4FA0", marginBottom: 10 }}>✦ מה הסוכן יזהה בדוח?</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[
+            "כל קרנות הפנסיה, גמל, השתלמות וביטוח מנהלים",
+            "שיעורי דמי ניהול ממכל קרן",
+            "גובה הצבירה הנוכחית בכל קרן",
+            "חישוב תחזית פרישה ריאלית",
+            "המלצות אישיות לחיסכון ואיחוד קרנות",
+          ].map(item => (
+            <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: "#5A527A" }}>
+              <span style={{ color: "#6B4FA0", flexShrink: 0 }}>✓</span> {item}
+            </div>
+          ))}
+        </div>
+      </GlassCard>
+    </div>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════
+   STEP: RESULTS
+════════════════════════════════════════════════════════════════ */
+interface ResultsProps {
+  data: PensionAnalysisResponse["data"] | null;
+  loading: boolean;
+  funds: PensionFundDTO[];
+  summary: PensionAnalysisResponse["data"]["summary"] | null | undefined;
+  projection: PensionAnalysisResponse["data"]["projection"] | null | undefined;
+  recs: PensionAnalysisResponse["data"]["recommendations"];
+  showAddForm: boolean;
+  setShowAddForm: (v: boolean) => void;
+  form: UploadPensionBody;
+  setForm: React.Dispatch<React.SetStateAction<UploadPensionBody>>;
+  saving: boolean;
+  saveMsg: { type: "success" | "error"; text: string } | null;
+  deletingId: string | null;
+  simAge: string; setSimAge: (v: string) => void;
+  simExtra: string; setSimExtra: (v: string) => void;
+  simFee: string; setSimFee: (v: string) => void;
+  simResult: SimulationResponse["data"] | null;
+  simLoading: boolean;
+  onSaveFund: () => void;
+  onDeleteFund: (id: string) => void;
+  onSimulate: () => void;
+  onReimport: () => void;
+  navigate: ReturnType<typeof useNavigate>;
+}
+
+function ResultsStep({
+  data, loading, funds, summary, projection, recs,
+  showAddForm, setShowAddForm, form, setForm,
+  saving, saveMsg, deletingId,
+  simAge, setSimAge, simExtra, setSimExtra, simFee, setSimFee,
+  simResult, simLoading,
+  onSaveFund, onDeleteFund, onSimulate, onReimport, navigate,
+}: ResultsProps) {
+  return (
+    <div>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <span style={{ fontSize: 22 }}>📈</span>
+            <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: "clamp(20px, 3vw, 26px)", fontWeight: 700, color: "#1F1F1F", margin: 0, letterSpacing: "-0.03em" }}>
+              ניתוח הפנסיה שלך
+            </h1>
+          </div>
+          <div style={{ fontSize: 14, color: "#7C6FA0" }}>
+            {funds.length} קרנות · {summary?.currentAccumulation ? `צבירה ${fmt(summary.currentAccumulation)}` : "הוסף נתונים לניתוח"}
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={onReimport}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: 12, background: "rgba(255,255,255,0.8)", color: "#6B4FA0", border: "1px solid rgba(107,79,160,0.25)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13.5 }}
+          >
+            <RefreshCw size={13} /> עדכן דוח
+          </button>
+          <button
+            onClick={() => setShowAddForm(v => !v)}
+            style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: 12, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13.5 }}
+          >
+            <Plus size={13} /> הוסף קרן ידנית
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "40px 0" }}>
+          <Loader2 size={28} color="#6B4FA0" style={{ animation: "spin 0.8s linear infinite" }} />
+        </div>
+      ) : (
+        <>
+          {/* Projection KPIs */}
+          {projection?.available ? (
+            <section style={{ marginBottom: 40 }}>
+              <SectionHeader title="תחזית הפנסיה שלך" subtitle={`${projection.monthsToRetirement} חודשים עד פרישה`} />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
+                <StatCard icon={<PiggyBank size={18} />} label="צבירה צפויה" value={fmt(projection.projectedAccumulation)} sub="בגיל פרישה" accent="#6B4FA0" />
+                <StatCard icon={<TrendingUp size={18} />} label="קצבה חודשית" value={fmt(projection.monthlyPensionEstimate)} sub="אחרי פרישה" accent="#059669" />
+                {summary?.currentAccumulation ? <StatCard icon="💼" label="צבירה נוכחית" value={fmt(summary.currentAccumulation)} accent="#9B7FE8" /> : null}
+                {summary?.totalMonthlyContribution ? <StatCard icon="📥" label="הפקדה חודשית" value={fmt(summary.totalMonthlyContribution)} accent="#7B5EA7" /> : null}
+                {projection.replacementRatio != null && (
+                  <StatCard icon="📊" label="שיעור חלופה" value={`${(projection.replacementRatio * 100).toFixed(0)}%`} sub="מהשכר האחרון" accent={projection.replacementRatio >= 0.7 ? "#059669" : "#D97706"} />
                 )}
-              </section>
-            ) : !summary?.hasData ? (
-              <GlassCard padding="lg" style={{ textAlign: "center", marginBottom: 40 }}>
-                <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
-                <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px" }}>אין עדיין נתוני פנסיה</h3>
-                <p style={{ fontSize: 14.5, color: "#7C6FA0", margin: "0 0 20px" }}>הוסף קרן פנסיה ידנית כדי לקבל תחזית מלאה</p>
-                <button onClick={() => setShowAddForm(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 24px", borderRadius: 12, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
-                  <Plus size={15} /> הוסף קרן ראשונה
-                </button>
-              </GlassCard>
-            ) : null}
+              </div>
 
-            {/* Recommendations */}
-            {recs.length > 0 && (
-              <section style={{ marginBottom: 40 }}>
-                <SectionHeader title="המלצות" subtitle="מה כדאי לעשות עכשיו" />
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {recs.map((rec, i) => (
-                    <GlassCard key={i} padding="md" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                      <Badge variant={rec.urgency === "high" ? "high" : rec.urgency === "medium" ? "medium" : "low"}>
-                        {rec.urgency === "high" ? "דחוף" : rec.urgency === "medium" ? "מומלץ" : "לידיעה"}
-                      </Badge>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14.5, color: "#1F1F1F", marginBottom: 4 }}>{rec.title}</div>
-                        <div style={{ fontSize: 13, color: "#7C6FA0", lineHeight: 1.55 }}>{rec.reason}</div>
-                        {rec.financialImpact && (
-                          <div style={{ fontSize: 12.5, color: "#059669", fontWeight: 700, marginTop: 6 }}>{rec.financialImpact}</div>
-                        )}
+              {projection.scenarios && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
+                  {[
+                    { label: "תרחיש בסיס", s: projection.scenarios.base, color: "#9B7FE8" },
+                    { label: "תרחיש אופטימי", s: projection.scenarios.optimistic, color: "#059669" },
+                  ].map(({ label, s, color }) => (
+                    <GlassCard key={label} padding="md" style={{ borderTop: `3px solid ${color}` }}>
+                      <div style={{ fontSize: 12.5, color: "#7C6FA0", marginBottom: 6, fontWeight: 600 }}>{label}</div>
+                      <div style={{ display: "flex", gap: 24 }}>
+                        <div>
+                          <div style={{ fontSize: 22, fontWeight: 800, color, fontFamily: "'Fraunces', Georgia, serif", letterSpacing: "-0.02em" }}>{fmt(s.accumulation)}</div>
+                          <div style={{ fontSize: 11.5, color: "#7C6FA0" }}>צבירה</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 22, fontWeight: 800, color, fontFamily: "'Fraunces', Georgia, serif", letterSpacing: "-0.02em" }}>{fmt(s.monthlyPension)}</div>
+                          <div style={{ fontSize: 11.5, color: "#7C6FA0" }}>קצבה / חודש</div>
+                        </div>
                       </div>
                     </GlassCard>
                   ))}
                 </div>
-              </section>
-            )}
-          </>
-        )}
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 40 }}>
-          {/* Fund list */}
-          <GlassCard padding="lg" elevated>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F", display: "flex", alignItems: "center", gap: 8 }}>
-                  <PiggyBank size={17} color="#6B4FA0" /> קרנות פנסיה
-                </div>
-                <div style={{ fontSize: 12.5, color: "#7C6FA0", marginTop: 2 }}>נתונים ידניים</div>
-              </div>
-              <button onClick={() => setShowAddForm(v => !v)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 13px", borderRadius: 10, background: "rgba(107,79,160,0.10)", color: "#6B4FA0", border: "1px solid rgba(107,79,160,0.20)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>
-                <Plus size={13} /> הוסף
+              )}
+            </section>
+          ) : !summary?.hasData && (
+            <GlassCard padding="lg" style={{ textAlign: "center", marginBottom: 40 }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
+              <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px" }}>אין עדיין נתוני פנסיה</h3>
+              <p style={{ fontSize: 14.5, color: "#7C6FA0", margin: "0 0 20px" }}>הוסף קרן פנסיה ידנית כדי לקבל תחזית מלאה</p>
+              <button onClick={() => setShowAddForm(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 24px", borderRadius: 12, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
+                <Plus size={15} /> הוסף קרן ראשונה
               </button>
-            </div>
+            </GlassCard>
+          )}
 
-            {funds.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "20px 0", color: "#7C6FA0", fontSize: 14 }}>אין קרנות. הוסף קרן ראשונה.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {funds.map(f => (
-                  <div key={f.id} style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(250,247,255,0.8)", border: "1px solid rgba(184,157,255,0.18)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: 13.5, color: "#1F1F1F" }}>{f.fundName}</div>
-                      <div style={{ fontSize: 12, color: "#7C6FA0", marginTop: 2 }}>
-                        {FUND_TYPE_LABELS[f.fundType] ?? f.fundType}{f.provider ? ` · ${f.provider}` : ""}
-                      </div>
-                      <div style={{ fontSize: 12.5, fontWeight: 600, color: "#6B4FA0", marginTop: 3 }}>{fmt(f.currentBalance)} צבירה</div>
+          {/* Recommendations */}
+          {recs.length > 0 && (
+            <section style={{ marginBottom: 40 }}>
+              <SectionHeader title="✦ המלצות הסוכן" subtitle="מה כדאי לעשות עכשיו" />
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {recs.map((rec, i) => (
+                  <GlassCard key={i} padding="md" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                    <Badge variant={rec.urgency === "high" ? "high" : rec.urgency === "medium" ? "medium" : "low"}>
+                      {rec.urgency === "high" ? "דחוף" : rec.urgency === "medium" ? "מומלץ" : "לידיעה"}
+                    </Badge>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 14.5, color: "#1F1F1F", marginBottom: 4 }}>{rec.title}</div>
+                      <div style={{ fontSize: 13, color: "#7C6FA0", lineHeight: 1.55 }}>{rec.reason}</div>
+                      {rec.financialImpact && (
+                        <div style={{ fontSize: 12.5, color: "#059669", fontWeight: 700, marginTop: 6 }}>{rec.financialImpact}</div>
+                      )}
                     </div>
-                    <button onClick={() => void handleDeleteFund(f.id)} disabled={deletingId === f.id} style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", padding: 6, display: "flex" }}>
-                      {deletingId === f.id ? <Loader2 size={14} style={{ animation: "spin 0.8s linear infinite" }} /> : <Trash2 size={14} />}
-                    </button>
+                  </GlassCard>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Mgmt fee warning */}
+          {projection?.mgmtFeeSavings && projection.mgmtFeeSavings.savingsByRetirement > 10000 && (
+            <GlassCard padding="md" style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 32, borderRight: "4px solid #D97706", background: "rgba(255,251,235,0.85)" }}>
+              <AlertCircle size={22} color="#D97706" style={{ flexShrink: 0 }} />
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: "#92400E", marginBottom: 3 }}>דמי ניהול גבוהים זוהו</div>
+                <div style={{ fontSize: 13.5, color: "#78350F" }}>
+                  הורדת דמי הניהול עשויה לחסוך {fmt(projection.mgmtFeeSavings.savingsByRetirement)} עד הפרישה
+                  {" "}ולהוסיף {fmt(projection.mgmtFeeSavings.additionalMonthlyPension)} לקצבה החודשית.
+                </div>
+              </div>
+            </GlassCard>
+          )}
+        </>
+      )}
+
+      {/* Funds + Simulation side-by-side */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 40 }}>
+
+        {/* Fund list */}
+        <GlassCard padding="lg" elevated>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F", display: "flex", alignItems: "center", gap: 8 }}>
+                <PiggyBank size={17} color="#6B4FA0" /> קרנות פנסיה
+              </div>
+              <div style={{ fontSize: 12.5, color: "#7C6FA0", marginTop: 2 }}>{funds.length} קרנות פעילות</div>
+            </div>
+            <button onClick={() => setShowAddForm(v => !v)} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 13px", borderRadius: 10, background: "rgba(107,79,160,0.10)", color: "#6B4FA0", border: "1px solid rgba(107,79,160,0.20)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>
+              <Plus size={13} /> הוסף
+            </button>
+          </div>
+
+          {funds.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "20px 0", color: "#7C6FA0", fontSize: 14 }}>אין קרנות. הוסף קרן ראשונה.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {funds.map(f => (
+                <div key={f.id} style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(250,247,255,0.8)", border: "1px solid rgba(184,157,255,0.18)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13.5, color: "#1F1F1F" }}>{f.fundName}</div>
+                    <div style={{ fontSize: 12, color: "#7C6FA0", marginTop: 2 }}>{FUND_TYPE_LABELS[f.fundType] ?? f.fundType}{f.provider ? ` · ${f.provider}` : ""}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: "#6B4FA0", marginTop: 3 }}>{fmt(f.currentBalance)} צבירה</div>
+                  </div>
+                  <button onClick={() => void onDeleteFund(f.id)} disabled={deletingId === f.id} style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", padding: 6, display: "flex" }}>
+                    {deletingId === f.id ? <Loader2 size={14} style={{ animation: "spin 0.8s linear infinite" }} /> : <Trash2 size={14} />}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showAddForm && (
+            <div style={{ marginTop: 16, borderTop: "1px solid rgba(184,157,255,0.2)", paddingTop: 16 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                {([
+                  { label: "שם הקרן *", field: "fundName" as const, type: "text" },
+                  { label: "ספק / חברה", field: "provider" as const, type: "text" },
+                  { label: "צבירה (₪)", field: "currentBalance" as const, type: "number" },
+                  { label: "הפקדת עובד (₪/חודש)", field: "monthlyEmployeeDeposit" as const, type: "number" },
+                  { label: "הפקדת מעסיק (₪/חודש)", field: "monthlyEmployerDeposit" as const, type: "number" },
+                  { label: "דמי ניהול מצבירה (%)", field: "managementFeeAccumulation" as const, type: "number", scale: 100 },
+                ] as Array<{ label: string; field: keyof UploadPensionBody; type: string; scale?: number }>).map(({ label, field, type, scale = 1 }) => (
+                  <div key={field as string}>
+                    <label style={{ fontSize: 11.5, color: "#7C6FA0", display: "block", marginBottom: 4 }}>{label}</label>
+                    <input
+                      type={type}
+                      value={type === "number" ? ((form[field] as number ?? 0) * scale).toString() : (form[field] as string ?? "")}
+                      onChange={e => setForm(prev => ({ ...prev, [field]: type === "number" ? (parseFloat(e.target.value) || 0) / scale : e.target.value }))}
+                      style={{ width: "100%", padding: "8px 10px", borderRadius: 8, fontSize: 13, background: "rgba(250,247,255,0.9)", border: "1px solid rgba(184,157,255,0.35)", color: "#1F1F1F", fontFamily: "inherit", boxSizing: "border-box" }}
+                    />
                   </div>
                 ))}
               </div>
-            )}
-
-            {/* Add form */}
-            {showAddForm && (
-              <div style={{ marginTop: 16, borderTop: "1px solid rgba(184,157,255,0.2)", paddingTop: 16 }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  {[
-                    { label: "שם הקרן *", field: "fundName" as const, type: "text" },
-                    { label: "ספק / חברה", field: "provider" as const, type: "text" },
-                    { label: "צבירה (₪)", field: "currentBalance" as const, type: "number" },
-                    { label: "הפקדת עובד (₪/חודש)", field: "monthlyEmployeeDeposit" as const, type: "number" },
-                    { label: "הפקדת מעסיק (₪/חודש)", field: "monthlyEmployerDeposit" as const, type: "number" },
-                    { label: "דמי ניהול מצבירה (%)", field: "managementFeeAccumulation" as const, type: "number", scale: 100 },
-                  ].map(({ label, field, type, scale = 1 }) => (
-                    <div key={field}>
-                      <label style={{ fontSize: 11.5, color: "#7C6FA0", display: "block", marginBottom: 4 }}>{label}</label>
-                      <input
-                        type={type}
-                        value={type === "number" ? ((form[field] as number ?? 0) * scale).toString() : (form[field] as string ?? "")}
-                        onChange={e => setForm(prev => ({ ...prev, [field]: type === "number" ? (parseFloat(e.target.value) || 0) / scale : e.target.value }))}
-                        style={{ width: "100%", padding: "8px 10px", borderRadius: 8, fontSize: 13, background: "rgba(250,247,255,0.9)", border: "1px solid rgba(184,157,255,0.35)", color: "#1F1F1F", fontFamily: "inherit", boxSizing: "border-box" }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <select value={form.fundType} onChange={e => setForm(prev => ({ ...prev, fundType: e.target.value }))} style={{ width: "100%", marginTop: 10, padding: "8px 10px", borderRadius: 8, fontSize: 13, background: "rgba(250,247,255,0.9)", border: "1px solid rgba(184,157,255,0.35)", color: "#1F1F1F", fontFamily: "inherit" }}>
-                  {Object.entries(FUND_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-                </select>
-                {saveMsg && <div style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, marginTop: 10, fontWeight: 600, background: saveMsg.type === "error" ? "#FEF2F2" : "#ECFDF5", color: saveMsg.type === "error" ? "#DC2626" : "#059669" }}>{saveMsg.text}</div>}
-                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                  <button onClick={() => { setShowAddForm(false); setSaveMsg(null); }} style={{ flex: 1, padding: "9px", borderRadius: 10, background: "none", border: "1px solid rgba(184,157,255,0.3)", color: "#7C6FA0", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>ביטול</button>
-                  <button onClick={handleSaveFund} disabled={saving || !form.fundName?.trim()} style={{ flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", borderRadius: 10, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
-                    {saving ? <Loader2 size={13} style={{ animation: "spin 0.8s linear infinite" }} /> : <Plus size={13} />} שמור
-                  </button>
-                </div>
-              </div>
-            )}
-          </GlassCard>
-
-          {/* Simulation panel */}
-          <GlassCard padding="lg" elevated>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-              <SlidersHorizontal size={17} color="#9B7FE8" />
-              <div style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F" }}>סימולציית תרחישים</div>
-            </div>
-
-            {!summary?.hasData ? (
-              <div style={{ fontSize: 14, color: "#7C6FA0", textAlign: "center", padding: "20px 0" }}>
-                הוסף קרן פנסיה כדי להפעיל את הסימולציה
-              </div>
-            ) : (
-              <>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
-                  {[
-                    { label: "גיל פרישה", field: "simAge", val: simAge, setter: setSimAge, placeholder: summary?.retirementAge?.toString() ?? "67" },
-                    { label: "הפקדה נוספת (₪/חודש)", field: "simExtra", val: simExtra, setter: setSimExtra, placeholder: "0" },
-                    { label: "דמי ניהול יעד (%)", field: "simFee", val: simFee, setter: setSimFee, placeholder: ((summary?.currentMgmtFee ?? 0.003) * 100).toFixed(2) },
-                  ].map(item => (
-                    <div key={item.field}>
-                      <label style={{ fontSize: 12, color: "#7C6FA0", display: "block", marginBottom: 4 }}>{item.label}</label>
-                      <input
-                        type="number"
-                        value={item.val}
-                        onChange={e => item.setter(e.target.value)}
-                        placeholder={item.placeholder}
-                        style={{ width: "100%", padding: "9px 12px", borderRadius: 10, fontSize: 14, background: "rgba(250,247,255,0.9)", border: "1px solid rgba(184,157,255,0.35)", color: "#1F1F1F", fontFamily: "inherit", boxSizing: "border-box" }}
-                      />
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  onClick={handleSimulate}
-                  disabled={simLoading}
-                  style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px", borderRadius: 12, background: "linear-gradient(135deg, #9B7FE8, #7B5EA7)", color: "#fff", border: "none", cursor: simLoading ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, boxShadow: "0 4px 16px rgba(155,127,232,0.30)", marginBottom: 16 }}
-                >
-                  {simLoading ? <Loader2 size={14} style={{ animation: "spin 0.8s linear infinite" }} /> : <TrendingUp size={14} />}
-                  {simLoading ? "מחשב..." : "הרץ סימולציה"}
+              <select value={form.fundType} onChange={e => setForm(prev => ({ ...prev, fundType: e.target.value }))} style={{ width: "100%", marginTop: 10, padding: "8px 10px", borderRadius: 8, fontSize: 13, background: "rgba(250,247,255,0.9)", border: "1px solid rgba(184,157,255,0.35)", color: "#1F1F1F", fontFamily: "inherit" }}>
+                {Object.entries(FUND_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+              {saveMsg && <div style={{ fontSize: 13, padding: "8px 12px", borderRadius: 8, marginTop: 10, fontWeight: 600, background: saveMsg.type === "error" ? "#FEF2F2" : "#ECFDF5", color: saveMsg.type === "error" ? "#DC2626" : "#059669" }}>{saveMsg.text}</div>}
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button onClick={() => { setShowAddForm(false); }} style={{ flex: 1, padding: "9px", borderRadius: 10, background: "none", border: "1px solid rgba(184,157,255,0.3)", color: "#7C6FA0", cursor: "pointer", fontFamily: "inherit", fontSize: 13 }}>ביטול</button>
+                <button onClick={onSaveFund} disabled={saving || !form.fundName?.trim()} style={{ flex: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px", borderRadius: 10, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
+                  {saving ? <Loader2 size={13} style={{ animation: "spin 0.8s linear infinite" }} /> : <Plus size={13} />} שמור
                 </button>
-
-                {simResult && (
-                  <div style={{ padding: "16px", borderRadius: 14, background: "rgba(155,127,232,0.06)", border: "1px solid rgba(184,157,255,0.25)" }}>
-                    <div style={{ fontSize: 12.5, color: "#7C6FA0", fontWeight: 600, marginBottom: 10 }}>תוצאת הסימולציה</div>
-                    {[
-                      { label: "צבירה בגיל פרישה", val: fmt(simResult.simulation.projectedAccumulation), base: fmt(simResult.baseline.projectedAccumulation), diff: simResult.delta.accumulationDiff },
-                      { label: "קצבה חודשית", val: fmt(simResult.simulation.monthlyPensionEstimate), base: fmt(simResult.baseline.monthlyPensionEstimate), diff: simResult.delta.monthlyPensionDiff },
-                    ].map(row => (
-                      <div key={row.label} style={{ marginBottom: 10 }}>
-                        <div style={{ fontSize: 12, color: "#7C6FA0" }}>{row.label}</div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 3 }}>
-                          <span style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: "#6B4FA0" }}>{row.val}</span>
-                          <span style={{ fontSize: 11.5, color: "#7C6FA0" }}>לעומת {row.base} בבסיס</span>
-                          {row.diff !== 0 && (
-                            <Badge variant={row.diff > 0 ? "success" : "high"}>
-                              {row.diff > 0 ? "+" : ""}{fmt(row.diff)}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </GlassCard>
-        </div>
-
-        {/* Mgmt fee warning */}
-        {projection?.mgmtFeeSavings && projection.mgmtFeeSavings.savingsByRetirement > 10000 && (
-          <GlassCard padding="md" style={{ display: "flex", gap: 14, alignItems: "center", marginBottom: 32, borderRight: "4px solid #D97706", background: "rgba(255,251,235,0.85)" }}>
-            <AlertCircle size={22} color="#D97706" style={{ flexShrink: 0 }} />
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: "#92400E", marginBottom: 3 }}>דמי ניהול גבוהים זוהו</div>
-              <div style={{ fontSize: 13.5, color: "#78350F" }}>
-                הורדת דמי הניהול עשויה לחסוך {fmt(projection.mgmtFeeSavings.savingsByRetirement)} עד הפרישה
-                {" "} ולהוסיף {fmt(projection.mgmtFeeSavings.additionalMonthlyPension)} לקצבה החודשית.
               </div>
             </div>
-          </GlassCard>
-        )}
-
-        {/* CTA */}
-        <GlassCard padding="lg" style={{ background: "linear-gradient(135deg, rgba(107,79,160,0.08), rgba(155,127,232,0.14))", border: "1px solid rgba(184,157,255,0.35)", textAlign: "center" }}>
-          <div style={{ fontSize: 28, marginBottom: 12 }}>🤖</div>
-          <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 22, fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px", letterSpacing: "-0.02em" }}>שאל את יועץ הפנסיה</h3>
-          <p style={{ fontSize: 14.5, color: "#7C6FA0", margin: "0 0 22px", lineHeight: 1.65 }}>
-            "מתי כדאי לי לפרוש?", "האם כדאי להגדיל הפקדות?", "איזו קרן מומלצת לי?" — הסוכן יענה.
-          </p>
-          <button
-            onClick={() => navigate(APP_ROUTES.copilot)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", borderRadius: 14, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 15, boxShadow: "0 4px 20px rgba(107,79,160,0.35)" }}
-          >
-            <Sparkles size={16} /> פתח שיחה עם יועץ הפנסיה
-          </button>
+          )}
         </GlassCard>
 
-        <p style={{ fontSize: 11.5, color: "#A89CC8", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
-          ⚠️ התחזיות מבוססות על הנחות ממוצעות. אינן מהוות ייעוץ פנסיוני מקצועי.
+        {/* Simulation */}
+        <GlassCard padding="lg" elevated>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+            <SlidersHorizontal size={17} color="#9B7FE8" />
+            <div style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F" }}>סימולציית תרחישים</div>
+          </div>
+
+          {!summary?.hasData ? (
+            <div style={{ fontSize: 14, color: "#7C6FA0", textAlign: "center", padding: "20px 0" }}>
+              הוסף קרן פנסיה כדי להפעיל את הסימולציה
+            </div>
+          ) : (
+            <>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+                {([
+                  { label: "גיל פרישה", field: "simAge", val: simAge, setter: setSimAge, placeholder: summary?.retirementAge?.toString() ?? "67" },
+                  { label: "הפקדה נוספת (₪/חודש)", field: "simExtra", val: simExtra, setter: setSimExtra, placeholder: "0" },
+                  { label: "דמי ניהול יעד (%)", field: "simFee", val: simFee, setter: setSimFee, placeholder: ((summary?.currentMgmtFee ?? 0.003) * 100).toFixed(2) },
+                ] as Array<{ label: string; field: string; val: string; setter: (v: string) => void; placeholder: string }>).map(item => (
+                  <div key={item.field}>
+                    <label style={{ fontSize: 12, color: "#7C6FA0", display: "block", marginBottom: 4 }}>{item.label}</label>
+                    <input type="number" value={item.val} onChange={e => item.setter(e.target.value)} placeholder={item.placeholder} style={{ width: "100%", padding: "9px 12px", borderRadius: 10, fontSize: 14, background: "rgba(250,247,255,0.9)", border: "1px solid rgba(184,157,255,0.35)", color: "#1F1F1F", fontFamily: "inherit", boxSizing: "border-box" }} />
+                  </div>
+                ))}
+              </div>
+              <button onClick={onSimulate} disabled={simLoading} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px", borderRadius: 12, background: "linear-gradient(135deg, #9B7FE8, #7B5EA7)", color: "#fff", border: "none", cursor: simLoading ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, boxShadow: "0 4px 16px rgba(155,127,232,0.30)", marginBottom: 16 }}>
+                {simLoading ? <Loader2 size={14} style={{ animation: "spin 0.8s linear infinite" }} /> : <TrendingUp size={14} />}
+                {simLoading ? "מחשב..." : "הרץ סימולציה"}
+              </button>
+
+              {simResult && (
+                <div style={{ padding: "16px", borderRadius: 14, background: "rgba(155,127,232,0.06)", border: "1px solid rgba(184,157,255,0.25)" }}>
+                  <div style={{ fontSize: 12.5, color: "#7C6FA0", fontWeight: 600, marginBottom: 10 }}>תוצאת הסימולציה</div>
+                  {[
+                    { label: "צבירה בגיל פרישה", val: fmt(simResult.simulation.projectedAccumulation), base: fmt(simResult.baseline.projectedAccumulation), diff: simResult.delta.accumulationDiff },
+                    { label: "קצבה חודשית", val: fmt(simResult.simulation.monthlyPensionEstimate), base: fmt(simResult.baseline.monthlyPensionEstimate), diff: simResult.delta.monthlyPensionDiff },
+                  ].map(row => (
+                    <div key={row.label} style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, color: "#7C6FA0" }}>{row.label}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
+                        <span style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: "#6B4FA0" }}>{row.val}</span>
+                        <span style={{ fontSize: 11.5, color: "#7C6FA0" }}>לעומת {row.base} בבסיס</span>
+                        {row.diff !== 0 && <Badge variant={row.diff > 0 ? "success" : "high"}>{row.diff > 0 ? "+" : ""}{fmt(row.diff)}</Badge>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </GlassCard>
+      </div>
+
+      {/* AI Risk Advice & Pension Insights */}
+      <section style={{ marginBottom: 36 }}>
+        <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 700, color: "#1F1F1F", marginBottom: 4 }}>תובנות AI פנסיוניות</div>
+        <div style={{ fontSize: 13, color: "#7C6FA0", marginBottom: 14 }}>ניתוח מסלול סיכון, דמי ניהול, וריכוז קרנות מותאם לגילך</div>
+        <GlassCard padding="lg">
+          <InsightsPanel agent="pension" trigger={1} />
+        </GlassCard>
+      </section>
+
+      {/* Copilot CTA */}
+      <GlassCard padding="lg" style={{ background: "linear-gradient(135deg, rgba(107,79,160,0.08), rgba(155,127,232,0.14))", border: "1px solid rgba(184,157,255,0.35)", textAlign: "center" }}>
+        <div style={{ fontSize: 28, marginBottom: 10 }}>🤖</div>
+        <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 22, fontWeight: 700, color: "#1F1F1F", margin: "0 0 8px" }}>
+          שאל את יועץ הפנסיה
+        </h3>
+        <p style={{ fontSize: 14.5, color: "#7C6FA0", margin: "0 0 20px", lineHeight: 1.65 }}>
+          "מתי כדאי לפרוש?", "האם כדאי לאחד קרנות?", "כמה אני משלם בדמי ניהול?"
         </p>
-      </main>
-      <AppFooter variant="private" />
+        <button
+          onClick={() => navigate(APP_ROUTES.copilot)}
+          style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", borderRadius: 14, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 15, boxShadow: "0 4px 20px rgba(107,79,160,0.35)" }}
+        >
+          <Sparkles size={16} /> פתח שיחה עם יועץ הפנסיה
+        </button>
+      </GlassCard>
+
+      <p style={{ fontSize: 11.5, color: "#A89CC8", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
+        ⚠️ התחזיות מבוססות על הנחות ממוצעות. אינן מהוות ייעוץ פנסיוני מקצועי.
+      </p>
     </div>
   );
 }

@@ -85,6 +85,10 @@ export default function IntegrationsEmailPage() {
       if (response.success && response.data?.connected) {
         setActionMessage("Gmail חובר בהצלחה.");
         await loadStatus();
+        // If arrived from documents page, redirect back after short delay
+        if (fromDocuments) {
+          setTimeout(() => navigate(`${APP_ROUTES.documents}?gmail=success`), 1200);
+        }
         return;
       }
 
@@ -237,7 +241,9 @@ export default function IntegrationsEmailPage() {
               </div>
             ) : (
               <p className="gmail-integration-disconnected">
-                חבר את Gmail כדי לייבא תלושי שכר אוטומטית.
+                {status?.oauthConfigured === false
+                  ? "חיבור Gmail לא מוגדר בשרת. יש להוסיף GOOGLE_CLIENT_SECRET ל-backend/.env ולהפעיל מחדש את השרת."
+                  : "חבר את Gmail כדי לייבא תלושי שכר אוטומטית."}
               </p>
             )}
 
@@ -247,7 +253,7 @@ export default function IntegrationsEmailPage() {
                   className="dashboard-hero-action"
                   type="button"
                   onClick={() => void handleConnect()}
-                  disabled={isConnecting}
+                  disabled={isConnecting || status?.oauthConfigured === false}
                 >
                   {isConnecting ? "מתחבר..." : "חבר Gmail"}
                 </button>

@@ -4,6 +4,7 @@
  */
 
 import type { DocumentItem } from "../api/documents.api";
+import { enrichPayslipFromAnalysis } from "./payslipEnrichment";
 import type {
   PayslipHistoryIntelligencePayload,
   PayslipTaxAdjustment as ApiPayslipTaxAdjustment,
@@ -39,10 +40,16 @@ interface DocumentPayslipAnalysis {
     };
   };
   contributions?: {
-    pension?: { employee?: number; employer?: number };
+    pension?: {
+      employee?: number;
+      employee_amount?: number;
+      employer?: number;
+      base_salary_for_pension?: number;
+    };
     study_fund?: { employee?: number; employer?: number };
   };
   tax?: {
+    gross_for_income_tax?: number;
     tax_credit_points?: number | null;
     personal_credit?: number | null;
   };
@@ -54,6 +61,8 @@ interface DocumentPayslipAnalysis {
   employment?: { job_percent?: number };
   summary?: {
     date?: string;
+    grossSalary?: number;
+    netSalary?: number;
     jobPercentage?: number;
     workingDays?: number;
     workingHours?: number;
@@ -296,12 +305,9 @@ export function documentToPayslipDetail(doc: DocumentItem): PayslipDetail | null
   if (!isPayslipDocument(doc)) return null;
   const analysis = getAnalysisData(doc)!;
   const month = analysis.period?.month;
-  const gross = Number.isFinite(analysis.salary?.gross_total)
-    ? (analysis.salary?.gross_total as number)
-    : null;
-  const net = Number.isFinite(analysis.salary?.net_payable)
-    ? (analysis.salary?.net_payable as number)
-    : null;
+  const enriched = enrichPayslipFromAnalysis(analysis);
+  const gross = enriched.grossSalary;
+  const net = enriched.netSalary;
   const summary = analysis.summary;
 
   const jobPercent =
