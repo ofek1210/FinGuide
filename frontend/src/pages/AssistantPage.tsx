@@ -55,7 +55,7 @@ export default function AssistantPage() {
 
   const popOutToFloating = useCallback(() => {
     openPanel();
-    navigate(APP_ROUTES.dashboard);
+    navigate(APP_ROUTES.documents);
   }, [openPanel, navigate]);
 
   return (

@@ -1,6 +1,7 @@
 import { FileText, Sparkles, Upload } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import GlassCard from "../components/ui/GlassCard";
 
 import type { DocumentItem } from "../api/documents.api";
 import DashboardChatPanel from "../components/dashboard/DashboardChatPanel";
@@ -89,7 +90,7 @@ export default function DashboardPage() {
           fileInputRef={fileInputRef}
           onUploadClick={handleUploadClick}
           onFileSelected={handleFileSelected}
-          onNavigateDashboard={() => navigate(APP_ROUTES.dashboard)}
+          onNavigateDashboard={() => navigate(APP_ROUTES.documents)}
           onNavigateDocuments={() => navigate(APP_ROUTES.documents)}
         />
 
@@ -111,6 +112,34 @@ export default function DashboardPage() {
             מעלה ומנתח את התלוש באמצעות AI...
           </div>
         ) : null}
+
+        {/* 3 Product quick-access cards */}
+        <div dir="rtl" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16, padding: "24px 24px 0" }}>
+          {[
+            { emoji: "📄", title: "תלושים ומסמכים", sub: "סוכן ניתוח שכר", color: "#9B7FE8", bg: "#F3EEFF", route: APP_ROUTES.documents },
+            { emoji: "🛡️", title: "ביטוח ופוליסות", sub: "סוכן ביטוח AI", color: "#7B5EA7", bg: "#EDE8F9", route: APP_ROUTES.insurance },
+            { emoji: "📈", title: "פנסיה וחיסכון", sub: "יועץ פנסיוני AI", color: "#6B4FA0", bg: "#EAE3F7", route: APP_ROUTES.pension },
+          ].map(p => (
+            <GlassCard
+              key={p.title}
+              padding="md"
+              onClick={() => navigate(p.route)}
+              style={{
+                display: "flex", alignItems: "center", gap: 14, cursor: "pointer",
+                transition: "box-shadow 0.2s, transform 0.2s",
+              }}
+            >
+              <div style={{ width: 48, height: 48, borderRadius: 14, background: p.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, flexShrink: 0 }}>
+                {p.emoji}
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 15, color: "#1F1F1F", letterSpacing: "-0.01em" }}>{p.title}</div>
+                <div style={{ fontSize: 12.5, color: p.color, fontWeight: 600, marginTop: 2 }}>{p.sub}</div>
+              </div>
+              <span style={{ marginRight: "auto", color: p.color, fontSize: 16, opacity: 0.6 }}>←</span>
+            </GlassCard>
+          ))}
+        </div>
 
         {/* Upload prompt — shown when no documents yet */}
         {!hasDocuments && !documents.isLoading ? (

@@ -754,7 +754,7 @@ export default function FindingsPage() {
           <button
             className="dashboard-hero-action"
             type="button"
-            onClick={() => navigate(APP_ROUTES.dashboard)}
+            onClick={() => navigate(APP_ROUTES.documents)}
           >
             חזרה ללוח הבקרה
           </button>

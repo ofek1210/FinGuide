@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import {
-  Shield, ShieldAlert, ShieldCheck, Upload, Trash2, AlertCircle,
-  CheckCircle, Loader2, ChevronRight, FileSpreadsheet, Lightbulb, BarChart3, ExternalLink,
-} from "lucide-react";
+import { Shield, Upload, AlertCircle, CheckCircle, ChevronLeft, Sparkles, Trash2, FileSpreadsheet } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
+import AgentHero from "../components/agent/AgentHero";
+import GlassCard from "../components/ui/GlassCard";
+import StatCard from "../components/ui/StatCard";
+import SectionHeader from "../components/ui/SectionHeader";
+import Badge from "../components/ui/Badge";
 import {
   getInsuranceAnalysis,
   uploadInsuranceExcel,
@@ -12,537 +15,312 @@ import {
   type InsuranceAnalysisResponse,
   type InsurancePolicyDTO,
 } from "../api/insuranceAI.api";
+import { APP_ROUTES } from "../types/navigation";
 
-const TYPE_LABELS: Record<string, string> = {
-  life:             "חיים",
-  health:           "בריאות",
-  disability:       'אכ"ע',
-  apartment:        "דירה",
-  car:              "רכב",
-  mortgage:         "משכנתא",
-  critical_illness: "מחלות קשות",
-  other:            "אחר",
+const POLICY_TYPE_LABELS: Record<string, string> = {
+  life: "חיים", health: "בריאות", disability: 'אכ"ע',
+  apartment: "דירה", car: "רכב", mortgage: "משכנתא",
+  critical_illness: "מחלות קשות", other: "אחר",
 };
 
-const URGENCY_COLOR: Record<string, string> = {
-  high:   "var(--figma-error, #ef4444)",
-  medium: "var(--figma-warning, #eab308)",
-  low:    "var(--figma-success, #22c55e)",
-};
-
-const URGENCY_LABEL: Record<string, string> = {
-  high:   "דחוף",
-  medium: "מומלץ",
-  low:    "לידיעה",
+const URGENCY_MAP: Record<string, "high" | "medium" | "low"> = {
+  high: "high", medium: "medium", low: "low",
 };
 
 const fmt = (n: number | null | undefined) =>
   n != null ? `₪${Number(n).toLocaleString("he-IL")}` : "—";
 
-const AI_DISCLAIMER = "ניתוח זה נוצר על ידי מודל AI על בסיס הנתונים שהזנת. אינו מהווה ייעוץ פיננסי או ביטוחי מקצועי. לפני כל החלטה, פנה/י לסוכן ביטוח מורשה.";
-
-/* ── Market data from mygemel.net ── */
-const INSURANCE_MARKET_DATA = [
-  { label: 'אכ"ע (אובדן כושר)', min: 80, max: 450, avg: 200, color: "#818CF8" },
-  { label: "חיים (ריסק)", min: 40, max: 350, avg: 150, color: "#34D399" },
-  { label: "בריאות פרטי", min: 150, max: 600, avg: 320, color: "#F472B6" },
-  { label: 'שב"ן (משלים)', min: 30, max: 80, avg: 55, color: "#FBBF24" },
-  { label: "דירה (מבנה+תכולה)", min: 35, max: 200, avg: 100, color: "#60A5FA" },
-];
-
-const PENSION_FEE_DATA = [
-  { label: "דמי ניהול מהפקדה", market: 1.5, recommended: 0, unit: "%" },
-  { label: "דמי ניהול מצבירה", market: 0.2, recommended: 0.1, unit: "%" },
-  { label: "דמי ניהול קה\"ש מצבירה", market: 0.67, recommended: 0.3, unit: "%" },
-];
-
-const MARKET_TIPS = [
-  { icon: "💡", text: "ביטוח אכ\"ע בקרן הפנסיה מכסה בד\"כ 75% מהשכר המבוטח — בדוק אם זה מספיק לך" },
-  { icon: "🔍", text: "ביטוח חיים מומלץ: הכנסה שנתית × 10 או לפחות גובה המשכנתא" },
-  { icon: "💰", text: "משא ומתן על דמי ניהול יכול לחסוך עשרות אלפי ₪ לאורך השנים" },
-  { icon: "⚠️", text: "בדוק תקופת המתנה, חריגות מצבים קיימים, והאם הפרמיה עולה עם הגיל" },
-  { icon: "📊", text: "השווה פוליסות באתר mygemel.net לפני חידוש או רכישת ביטוח חדש" },
-];
-
 export default function InsurancePage() {
+  const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [data, setData] = useState<InsuranceAnalysisResponse["data"] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [uploadMsg, setUploadMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
-  const loadAnalysis = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
-    setError(null);
     const res = await getInsuranceAnalysis();
+    if (res.ok && res.data?.success && res.data.data) setData(res.data.data);
     setLoading(false);
-    if (res.ok && res.data.success && res.data.data) {
-      setData(res.data.data);
-    } else {
-      setError("לא הצלחנו לטעון את נתוני הביטוח");
-    }
   }, []);
 
-  useEffect(() => { void loadAnalysis(); }, [loadAnalysis]);
+  useEffect(() => { void load(); }, [load]);
 
-  const handleFileUpload = useCallback(async (file: File) => {
+  const handleUpload = async (file: File) => {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (!["xlsx", "xls"].includes(ext ?? "")) {
+      setUploadMsg({ type: "error", text: "ניתן להעלות קבצי Excel בלבד (.xlsx/.xls)" });
+      return;
+    }
     setUploading(true);
     setUploadMsg(null);
     const res = await uploadInsuranceExcel(file);
     setUploading(false);
     if (res.success) {
-      setUploadMsg({ ok: true, text: res.message ?? `ייבאנו ${res.data?.imported ?? 0} פוליסות` });
-      await loadAnalysis();
+      setUploadMsg({ type: "success", text: `יובאו ${res.data?.imported ?? 0} פוליסות בהצלחה` });
+      void load();
     } else {
-      setUploadMsg({ ok: false, text: res.message ?? "שגיאה בהעלאת הקובץ" });
+      setUploadMsg({ type: "error", text: res.message ?? "שגיאה בייבוא הקובץ" });
     }
-  }, [loadAnalysis]);
+  };
 
-  const handleDelete = useCallback(async (policy: InsurancePolicyDTO) => {
-    if (!window.confirm(`למחוק את פוליסת ${TYPE_LABELS[policy.type] ?? policy.type}?`)) return;
-    setDeletingId(policy.id);
-    await deleteInsurancePolicy(policy.id);
+  const handleDelete = async (id: string) => {
+    if (!window.confirm("למחוק פוליסה זו?")) return;
+    setDeletingId(id);
+    await deleteInsurancePolicy(id);
     setDeletingId(null);
-    await loadAnalysis();
-  }, [loadAnalysis]);
+    void load();
+  };
 
   const analysis = data?.analysis;
+  const policies = data?.policies ?? [];
+  const recs = data?.recommendations ?? [];
+  const totalPremium = policies.reduce((s, p) => s + (p.monthlyPremium ?? 0), 0);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--rapyd-bg)", direction: "rtl" }}>
+    <div style={{ minHeight: "100vh", background: "var(--lg-bg, #FAF7FF)", color: "var(--lg-text, #1F1F1F)", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
       <PrivateTopbar />
 
-      <main style={{ maxWidth: 1000, margin: "0 auto", padding: "40px 24px 80px" }}>
+      <main style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px 64px", direction: "rtl" }}>
 
-        {/* ── Header ── */}
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 32, gap: 16, flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <span style={{
-              width: 48, height: 48, background: "rgba(99,102,241,0.15)",
-              borderRadius: 14, display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#818CF8",
-            }}>
-              <ShieldCheck size={24} />
-            </span>
-            <div>
-              <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, color: "var(--rapyd-text)" }}>
-                ניתוח ביטוחי חכם
-              </h1>
-              <p style={{ color: "var(--rapyd-text-muted)", margin: "4px 0 0", fontSize: 14 }}>
-                זיהוי כיסוי חסר, ביטוח כפול וחיסכון פוטנציאלי
-              </p>
+        <AgentHero
+          icon="🛡️"
+          title="הסוכן האישי שלי לביטוח ופוליסות"
+          subtitle="מנתח את כל הפוליסות שלך, מוצא כפילויות, פערים בכיסוי, וחיסכון פוטנציאלי."
+          accentColor="#7B5EA7"
+        >
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={() => navigate(APP_ROUTES.copilot)}
+              style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 20px", borderRadius: 12, background: "linear-gradient(135deg, #7B5EA7, #6B4FA0)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, boxShadow: "0 4px 16px rgba(123,94,167,0.35)" }}
+            >
+              <Sparkles size={15} /> שוחח עם סוכן הביטוח
+            </button>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: 12, background: "rgba(255,255,255,0.8)", color: "#3D3553", border: "1px solid rgba(184,157,255,0.35)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 14 }}
+            >
+              <FileSpreadsheet size={14} /> ייבא הר הביטוח
+            </button>
+          </div>
+        </AgentHero>
+
+        {/* KPI cards */}
+        {analysis && (
+          <section style={{ marginBottom: 40 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16 }}>
+              <StatCard icon="💸" label="הוצאה חודשית" value={fmt(totalPremium)} sub="סך הפוליסות" accent="#7B5EA7" />
+              <StatCard icon="♻️" label="בזבוז מכפילויות" value={fmt(analysis.totalMonthlyWaste)} sub="לחודש" accent="#DC2626" trend={analysis.totalMonthlyWaste > 0 ? "down" : "flat"} trendValue={analysis.duplicateCount > 0 ? `${analysis.duplicateCount} כפולים` : undefined} />
+              <StatCard icon="💰" label="חיסכון שנתי פוטנציאלי" value={fmt(analysis.savings.annualSavings)} accent="#059669" trend="up" />
+              <StatCard icon="📋" label="פוליסות פעילות" value={policies.length.toString()} accent="#9B7FE8" />
+              {analysis.missingCoverage.length > 0 && (
+                <StatCard icon="⚠️" label="כיסויים חסרים" value={analysis.missingCoverage.length.toString()} accent="#D97706" />
+              )}
             </div>
-          </div>
-
-          {/* Upload button */}
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            style={{
-              background: "rgba(129,140,248,0.12)", color: "#818CF8",
-              border: "1px solid rgba(129,140,248,0.3)", borderRadius: 10,
-              padding: "10px 20px", fontSize: 14, fontWeight: 700,
-              cursor: uploading ? "not-allowed" : "pointer",
-              fontFamily: "inherit", display: "flex", alignItems: "center", gap: 8,
-            }}
-          >
-            {uploading
-              ? <><Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} /> מייבא...</>
-              : <><FileSpreadsheet size={15} /> ייבא מהר הביטוח</>}
-          </button>
-          <input
-            ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }}
-            onChange={e => { const f = e.target.files?.[0]; if (f) void handleFileUpload(f); e.target.value = ""; }}
-          />
-        </div>
-
-        {/* Upload feedback */}
-        {uploadMsg && (
-          <div style={{
-            marginBottom: 20,
-            background: uploadMsg.ok ? "rgba(5,150,105,0.1)" : "rgba(239,68,68,0.1)",
-            border: `1px solid ${uploadMsg.ok ? "rgba(5,150,105,0.3)" : "rgba(239,68,68,0.3)"}`,
-            borderRadius: 10, padding: "12px 18px",
-            display: "flex", alignItems: "center", gap: 10,
-            color: uploadMsg.ok ? "#34D399" : "#FCA5A5", fontSize: 14,
-          }}>
-            {uploadMsg.ok ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
-            {uploadMsg.text}
-          </div>
+          </section>
         )}
 
-        {loading && (
-          <div style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--rapyd-text-muted)", padding: "60px 0" }}>
-            <Loader2 size={20} style={{ animation: "spin 1s linear infinite" }} />
-            <span>טוען ניתוח ביטוחי...</span>
-          </div>
-        )}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 40 }}>
 
-        {error && (
-          <div style={{
-            background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)",
-            borderRadius: 12, padding: "16px 20px", color: "#FCA5A5",
-            display: "flex", alignItems: "center", gap: 10,
-          }}>
-            <AlertCircle size={18} /> {error}
-          </div>
-        )}
+          {/* Upload panel */}
+          <GlassCard padding="lg" elevated>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(123,94,167,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Upload size={20} color="#7B5EA7" />
+              </div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F" }}>ייבוא הר הביטוח</div>
+                <div style={{ fontSize: 12.5, color: "#7C6FA0" }}>קובץ Excel מ-Har HaBituach</div>
+              </div>
+            </div>
 
-        {data && !loading && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={e => { const f = e.target.files?.[0]; if (f) void handleUpload(f); e.target.value = ""; }} style={{ display: "none" }} />
 
-            {/* ── Critical alert strip ── */}
-            {analysis?.hasCriticalGap && (
-              <div style={{
-                background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
-                borderRadius: 12, padding: "16px 22px",
-                display: "flex", alignItems: "center", gap: 14,
-              }}>
-                <ShieldAlert size={22} style={{ color: "#F87171", flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontWeight: 700, color: "#FCA5A5", marginBottom: 3 }}>
-                    זוהו פערים קריטיים בכיסוי הביטוחי שלך
-                  </div>
-                  <div style={{ fontSize: 13, color: "rgba(252,165,165,0.75)" }}>
-                    {analysis.duplicateCount > 0 && `${analysis.duplicateCount} ביטוח כפול · `}
-                    {analysis.missingCoverage.length > 0 && `${analysis.missingCoverage.length} כיסוי חסר`}
-                  </div>
-                </div>
+            <div
+              onClick={() => !uploading && fileInputRef.current?.click()}
+              onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={e => { e.preventDefault(); setIsDragging(false); const f = e.dataTransfer.files?.[0]; if (f) void handleUpload(f); }}
+              style={{
+                border: `2px dashed ${isDragging ? "#7B5EA7" : "rgba(184,157,255,0.40)"}`,
+                borderRadius: 16, padding: "28px 16px", textAlign: "center",
+                cursor: uploading ? "wait" : "pointer",
+                background: isDragging ? "rgba(123,94,167,0.06)" : "rgba(250,247,255,0.5)",
+                transition: "all 0.2s", marginBottom: 14,
+              }}
+            >
+              <div style={{ fontSize: 28, marginBottom: 8 }}>📊</div>
+              {uploading ? (
+                <div style={{ fontSize: 14, color: "#7B5EA7", fontWeight: 600 }}>מייבא פוליסות...</div>
+              ) : (
+                <>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#1F1F1F", marginBottom: 4 }}>גרור קובץ Excel לכאן</div>
+                  <div style={{ fontSize: 12.5, color: "#7C6FA0" }}>xlsx / xls · עד 5MB</div>
+                </>
+              )}
+            </div>
+
+            {uploadMsg && (
+              <div style={{ fontSize: 13, padding: "10px 14px", borderRadius: 10, fontWeight: 600, marginBottom: 12, background: uploadMsg.type === "error" ? "#FEF2F2" : "#ECFDF5", color: uploadMsg.type === "error" ? "#DC2626" : "#059669" }}>
+                {uploadMsg.text}
               </div>
             )}
 
-            {/* ── Stats bar ── */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14 }}>
-              {[
-                {
-                  label: "ביטוחים כפולים",
-                  value: analysis?.duplicateCount ?? 0,
-                  sub: analysis?.totalMonthlyWaste ? `${fmt(analysis.totalMonthlyWaste)}/חודש מיותר` : null,
-                  alert: (analysis?.duplicateCount ?? 0) > 0,
-                },
-                {
-                  label: "כיסוי חסר",
-                  value: analysis?.missingCoverage.length ?? 0,
-                  sub: analysis?.missingUrgency === "high" ? "דחוי לטיפול" : null,
-                  alert: (analysis?.missingCoverage.length ?? 0) > 0,
-                },
-                {
-                  label: "חיסכון פוטנציאלי",
-                  value: fmt(analysis?.savings?.annualSavings ?? null),
-                  sub: "לשנה",
-                  alert: false,
-                },
-                {
-                  label: "פוליסות מיובאות",
-                  value: data.policies.length,
-                  sub: data.hasImportedPolicies ? "מהר הביטוח" : "ללא ייבוא",
-                  alert: false,
-                },
-              ].map(card => (
-                <div key={card.label} className="dashboard-card" style={{
-                  padding: "18px 22px",
-                  borderColor: card.alert ? "rgba(239,68,68,0.3)" : undefined,
-                }}>
-                  <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    {card.label}
-                  </div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: card.alert ? "#F87171" : "var(--rapyd-text)" }}>
-                    {card.value}
-                  </div>
-                  {card.sub && (
-                    <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 4 }}>
-                      {card.sub}
+            <div style={{ fontSize: 12.5, color: "#7C6FA0", lineHeight: 1.6 }}>
+              💡 ניתן להוריד את קובץ ה-Excel מאתר{" "}
+              <a href="https://www.gov.il/he/departments/ministry_of_finance" target="_blank" rel="noreferrer" style={{ color: "#7B5EA7", textDecoration: "underline" }}>הר הביטוח</a>
+            </div>
+          </GlassCard>
+
+          {/* Recommendations panel */}
+          <GlassCard padding="lg" elevated>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 13, background: "rgba(155,127,232,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Sparkles size={20} color="#9B7FE8" />
+              </div>
+              <div style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F" }}>המלצות ה-AI</div>
+            </div>
+
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "24px 0", color: "#9B7FE8" }}>טוען ניתוח...</div>
+            ) : recs.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "24px 0", color: "#7C6FA0", fontSize: 14 }}>
+                {data?.hasImportedPolicies ? "לא נמצאו המלצות — הכיסוי שלך תקין!" : "ייבא פוליסות כדי לקבל המלצות מותאמות אישית"}
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 340, overflowY: "auto" }}>
+                {recs.slice(0, 5).map((rec, i) => (
+                  <div key={i} style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(250,247,255,0.7)", border: "1px solid rgba(184,157,255,0.18)", display: "flex", gap: 10 }}>
+                    <Badge variant={URGENCY_MAP[rec.urgency] ?? "neutral"}>
+                      {rec.urgency === "high" ? "דחוף" : rec.urgency === "medium" ? "מומלץ" : "לידיעה"}
+                    </Badge>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5, color: "#1F1F1F", marginBottom: 3 }}>{rec.title}</div>
+                      <div style={{ fontSize: 12.5, color: "#7C6FA0", lineHeight: 1.5 }}>{rec.reason}</div>
+                      {rec.financialImpact && (
+                        <div style={{ fontSize: 12, color: "#059669", fontWeight: 600, marginTop: 4 }}>{rec.financialImpact}</div>
+                      )}
                     </div>
-                  )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </GlassCard>
+        </div>
+
+        {/* Duplicate alerts */}
+        {analysis && analysis.duplicates.length > 0 && (
+          <section style={{ marginBottom: 32 }}>
+            <SectionHeader title="כיסויים כפולים שזוהו" subtitle="פוליסות אשר ייתכן ומיותרות" />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
+              {analysis.duplicates.map((dup, i) => (
+                <GlassCard key={i} padding="md" style={{ borderRight: "4px solid #DC2626" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                    <div style={{ fontWeight: 800, fontSize: 15, color: "#DC2626" }}>{POLICY_TYPE_LABELS[dup.type] ?? dup.type}</div>
+                    <Badge variant="high">{dup.policies.length} כפולים</Badge>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: "#7C6FA0", marginBottom: 6 }}>
+                    {dup.policies.map(p => p.provider).filter(Boolean).join(" · ")}
+                  </div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#DC2626" }}>
+                    בזבוז: {fmt(dup.estimatedMonthlyWaste)} / חודש
+                  </div>
+                </GlassCard>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Missing coverage */}
+        {analysis && analysis.missingCoverage.length > 0 && (
+          <section style={{ marginBottom: 32 }}>
+            <SectionHeader title="כיסויים חסרים" subtitle="ביטוחים שכדאי לשקול" />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {analysis.missingCoverage.map(cov => (
+                <div key={cov} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 12, background: "rgba(217,119,6,0.06)", border: "1px solid rgba(217,119,6,0.2)" }}>
+                  <AlertCircle size={15} color="#D97706" />
+                  <span style={{ fontSize: 13.5, fontWeight: 600, color: "#D97706" }}>{POLICY_TYPE_LABELS[cov] ?? cov}</span>
                 </div>
               ))}
             </div>
-
-            {/* ── Recommendations ── */}
-            {data.recommendations.length > 0 && (
-              <div className="dashboard-card" style={{ padding: "24px 28px" }}>
-                <h2 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 18px", color: "var(--rapyd-text)" }}>
-                  המלצות AI
-                </h2>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {data.recommendations.map((rec) => {
-                    const uc = URGENCY_COLOR[rec.urgency] ?? URGENCY_COLOR.low;
-                    return (
-                      <div key={rec.type} style={{
-                        background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "14px 18px",
-                        border: "1px solid rgba(255,255,255,0.07)", display: "flex", gap: 14, alignItems: "flex-start",
-                      }}>
-                        <span style={{
-                          background: `${uc}22`, color: uc, borderRadius: 6,
-                          padding: "2px 10px", fontSize: 12, fontWeight: 700,
-                          whiteSpace: "nowrap", marginTop: 2,
-                        }}>
-                          {URGENCY_LABEL[rec.urgency] ?? rec.urgency}
-                        </span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, color: "var(--rapyd-text)", marginBottom: 4, fontSize: 15 }}>
-                            {rec.title}
-                          </div>
-                          <div style={{ fontSize: 13, color: "var(--rapyd-text-muted)" }}>
-                            {rec.reason}
-                          </div>
-                          {rec.financialImpact && (
-                            <div style={{ fontSize: 13, color: "#34D399", marginTop: 6, fontWeight: 600 }}>
-                              💰 {rec.financialImpact}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", whiteSpace: "nowrap" }}>
-                          {rec.confidenceScore}%
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* ── Imported policies table ── */}
-            {data.policies.length > 0 && (
-              <div className="dashboard-card" style={{ padding: "24px 28px" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-                  <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: "var(--rapyd-text)" }}>
-                    פוליסות מיובאות
-                  </h2>
-                  <span style={{ fontSize: 13, color: "var(--rapyd-text-muted)" }}>
-                    {data.policies.length} פוליסות
-                  </span>
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {data.policies.map(p => (
-                    <div key={p.id} style={{
-                      background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "12px 16px",
-                      display: "flex", alignItems: "center", gap: 14,
-                      border: "1px solid rgba(255,255,255,0.06)",
-                    }}>
-                      <Shield size={16} style={{ color: "#818CF8", flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontWeight: 700, color: "var(--rapyd-text)", fontSize: 14 }}>
-                          {TYPE_LABELS[p.type] ?? p.type}
-                        </span>
-                        {p.provider && (
-                          <span style={{ fontSize: 13, color: "var(--rapyd-text-muted)", marginRight: 10 }}>
-                            {p.provider}
-                          </span>
-                        )}
-                      </div>
-                      {p.monthlyPremium != null && (
-                        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--rapyd-text)", whiteSpace: "nowrap" }}>
-                          {fmt(p.monthlyPremium)}/חודש
-                        </div>
-                      )}
-                      <button
-                        onClick={() => void handleDelete(p)}
-                        disabled={deletingId === p.id}
-                        style={{
-                          background: "none", border: "none", cursor: "pointer",
-                          color: "var(--rapyd-text-muted)", padding: 4,
-                          opacity: deletingId === p.id ? 0.5 : 1,
-                        }}
-                      >
-                        {deletingId === p.id
-                          ? <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} />
-                          : <Trash2 size={15} />}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* ── No data / prompt to upload ── */}
-            {!data.hasImportedPolicies && data.policies.length === 0 && (
-              <div className="dashboard-card" style={{ padding: "48px 28px", textAlign: "center" }}>
-                <Upload size={38} style={{ color: "var(--rapyd-text-muted)", marginBottom: 16 }} />
-                <h3 style={{ color: "var(--rapyd-text)", marginBottom: 8 }}>ייבא נתוני ביטוח</h3>
-                <p style={{ color: "var(--rapyd-text-muted)", fontSize: 14, marginBottom: 20, maxWidth: 380, margin: "0 auto 20px" }}>
-                  הורד את קובץ הנתונים מ-<strong>הר הביטוח</strong> (gov.il) והעלה אותו כאן לניתוח מלא
-                </p>
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  style={{
-                    background: "#5B4FF5", color: "#fff", border: "none", borderRadius: 10,
-                    padding: "12px 28px", fontSize: 15, fontWeight: 700, cursor: "pointer",
-                    fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 8,
-                  }}
-                >
-                  <FileSpreadsheet size={16} /> העלה קובץ Excel
-                </button>
-                <p style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 12 }}>
-                  תומך ב-.xlsx ו-.xls · עד 5MB · הנתונים מוצפנים
-                </p>
-              </div>
-            )}
-
-            {/* ── Coverage flags from profile ── */}
-            {analysis?.flags && analysis.flags.length > 0 && (
-              <div className="dashboard-card" style={{ padding: "22px 28px" }}>
-                <h2 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 16px", color: "var(--rapyd-text)" }}>
-                  תובנות מהפרופיל שלך
-                </h2>
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  {analysis.flags.map(flag => (
-                    <div key={flag.code} style={{
-                      display: "flex", alignItems: "center", gap: 12,
-                      background: "rgba(255,255,255,0.03)", borderRadius: 8,
-                      padding: "12px 16px", border: "1px solid rgba(255,255,255,0.06)",
-                    }}>
-                      <ChevronRight size={16} style={{ color: URGENCY_COLOR[flag.urgency] ?? "#818CF8" }} />
-                      <span style={{ fontSize: 14, color: "var(--rapyd-text)" }}>{flag.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-          </div>
+          </section>
         )}
 
-        {/* ── Market Data Section (always visible) ── */}
-        {!loading && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24, marginTop: data ? 24 : 0 }}>
-
-            {/* ── Insurance Cost Ranges Chart ── */}
-            <div className="dashboard-card" style={{ padding: "24px 28px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-                <BarChart3 size={20} style={{ color: "#818CF8" }} />
-                <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: "var(--rapyd-text)" }}>
-                  עלויות ביטוח בשוק — 2026
-                </h2>
-                <span style={{ fontSize: 11, color: "var(--rapyd-text-muted)", marginRight: "auto" }}>
-                  מקור: mygemel.net
-                </span>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {INSURANCE_MARKET_DATA.map(item => {
-                  const maxVal = 600;
-                  return (
-                    <div key={item.label}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, color: "var(--rapyd-text)" }}>{item.label}</span>
-                        <span style={{ fontSize: 13, color: "var(--rapyd-text-muted)" }}>
-                          ₪{item.min}–₪{item.max}/חודש
-                        </span>
-                      </div>
-                      <div style={{ position: "relative", height: 28, borderRadius: 8, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
-                        {/* Range bar */}
-                        <div style={{
-                          position: "absolute",
-                          right: `${(1 - item.max / maxVal) * 100}%`,
-                          width: `${((item.max - item.min) / maxVal) * 100}%`,
-                          height: "100%",
-                          background: `${item.color}22`,
-                          borderRadius: 8,
-                          border: `1px solid ${item.color}44`,
-                        }} />
-                        {/* Average marker */}
-                        <div style={{
-                          position: "absolute",
-                          right: `${(1 - item.avg / maxVal) * 100}%`,
-                          top: 2, bottom: 2,
-                          width: 3,
-                          background: item.color,
-                          borderRadius: 2,
-                        }} />
-                        {/* Average label */}
-                        <span style={{
-                          position: "absolute",
-                          right: `${(1 - item.avg / maxVal) * 100 + 1}%`,
-                          top: "50%", transform: "translateY(-50%)",
-                          fontSize: 11, fontWeight: 700, color: item.color,
-                        }}>
-                          ממוצע ₪{item.avg}
-                        </span>
-                      </div>
+        {/* Policies list */}
+        {policies.length > 0 && (
+          <section style={{ marginBottom: 40 }}>
+            <SectionHeader
+              title="הפוליסות שלך"
+              subtitle={`${policies.length} פוליסות · ${fmt(totalPremium)} / חודש`}
+            />
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {policies.map((p: InsurancePolicyDTO) => (
+                <GlassCard key={p.id} padding="sm" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 11, background: "rgba(123,94,167,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Shield size={17} color="#7B5EA7" />
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* ── Management Fees Comparison ── */}
-            <div className="dashboard-card" style={{ padding: "24px 28px" }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 18px", color: "var(--rapyd-text)" }}>
-                דמי ניהול — ממוצע שוק vs. מומלץ
-              </h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
-                {PENSION_FEE_DATA.map(fee => (
-                  <div key={fee.label} style={{
-                    background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "16px 20px",
-                    border: "1px solid rgba(255,255,255,0.07)", textAlign: "center",
-                  }}>
-                    <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginBottom: 10, fontWeight: 600 }}>
-                      {fee.label}
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "center", gap: 24, alignItems: "baseline" }}>
-                      <div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: "#F87171" }}>{fee.market}{fee.unit}</div>
-                        <div style={{ fontSize: 11, color: "var(--rapyd-text-muted)" }}>ממוצע שוק</div>
-                      </div>
-                      <ChevronRight size={16} style={{ color: "var(--rapyd-text-muted)", transform: "scaleX(-1)" }} />
-                      <div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: "#34D399" }}>{fee.recommended}{fee.unit}</div>
-                        <div style={{ fontSize: 11, color: "var(--rapyd-text-muted)" }}>מומלץ</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#1F1F1F" }}>{POLICY_TYPE_LABELS[p.type] ?? p.type}</div>
+                      <div style={{ fontSize: 12.5, color: "#7C6FA0" }}>
+                        {p.provider ?? "—"}
+                        {p.policyNumber ? ` · ${p.policyNumber}` : ""}
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* ── Tips from mygemel.net ── */}
-            <div className="dashboard-card" style={{ padding: "24px 28px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-                <Lightbulb size={20} style={{ color: "#FBBF24" }} />
-                <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0, color: "var(--rapyd-text)" }}>
-                  טיפים לחיסכון בביטוח
-                </h2>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {MARKET_TIPS.map((tip, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "flex-start", gap: 12,
-                    background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: "14px 18px",
-                    border: "1px solid rgba(255,255,255,0.07)",
-                  }}>
-                    <span style={{ fontSize: 18, flexShrink: 0 }}>{tip.icon}</span>
-                    <span style={{ fontSize: 14, color: "var(--rapyd-text)", lineHeight: 1.6 }}>{tip.text}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F" }}>{fmt(p.monthlyPremium)}</div>
+                      <div style={{ fontSize: 11.5, color: "#7C6FA0" }}>לחודש</div>
+                    </div>
+                    {p.status === "active"
+                      ? <CheckCircle size={16} color="#059669" />
+                      : <AlertCircle size={16} color="#D97706" />
+                    }
+                    <button
+                      onClick={() => void handleDelete(p.id)}
+                      disabled={deletingId === p.id}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", padding: 4, display: "flex" }}
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
-                ))}
-              </div>
-              <a
-                href="https://www.mygemel.net"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  marginTop: 16, fontSize: 13, color: "#818CF8",
-                  textDecoration: "none", fontWeight: 600,
-                }}
-              >
-                <ExternalLink size={14} />
-                השוואת פוליסות מלאה באתר mygemel.net
-              </a>
+                </GlassCard>
+              ))}
             </div>
-
-            {/* ── Disclaimer ── */}
-            <p style={{ fontSize: 12, color: "var(--rapyd-text-muted)", textAlign: "center", margin: "8px 0 0", lineHeight: 1.6 }}>
-              {AI_DISCLAIMER}
-            </p>
-
-          </div>
+          </section>
         )}
+
+        {/* Copilot CTA */}
+        <GlassCard padding="lg" style={{ background: "linear-gradient(135deg, rgba(123,94,167,0.08), rgba(155,127,232,0.14))", border: "1px solid rgba(184,157,255,0.35)", textAlign: "center" }}>
+          <div style={{ fontSize: 28, marginBottom: 12 }}>🤖</div>
+          <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 22, fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px", letterSpacing: "-0.02em" }}>
+            שאל את סוכן הביטוח
+          </h3>
+          <p style={{ fontSize: 14.5, color: "#7C6FA0", margin: "0 0 22px", lineHeight: 1.65 }}>
+            "האם אני צריך ביטוח חיים?", "כמה אני משלם יותר מהממוצע?", "מה הסיכון הכי גדול שלי?" — הסוכן יענה.
+          </p>
+          <button
+            onClick={() => navigate(APP_ROUTES.copilot)}
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", borderRadius: 14, background: "linear-gradient(135deg, #7B5EA7, #6B4FA0)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 15, boxShadow: "0 4px 20px rgba(123,94,167,0.35)" }}
+          >
+            <Sparkles size={16} /> פתח שיחה עם הסוכן
+          </button>
+        </GlassCard>
+
+        <div style={{ height: 4 }} />
+        <button
+          onClick={() => navigate(APP_ROUTES.findings)}
+          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#9B7FE8", fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", marginTop: 8 }}
+        >
+          כל הממצאים וההתראות <ChevronLeft size={14} />
+        </button>
       </main>
-
       <AppFooter variant="private" />
     </div>
   );
 }
-

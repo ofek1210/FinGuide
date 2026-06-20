@@ -62,7 +62,7 @@ export default function FAQPage() {
             <button
               className="landing-primary landing-nav-primary"
               type="button"
-              onClick={() => navigate(APP_ROUTES.dashboard)}
+              onClick={() => navigate(APP_ROUTES.documents)}
             >
               ללוח הבקרה
             </button>

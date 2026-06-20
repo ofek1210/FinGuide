@@ -3,6 +3,7 @@
 const { MOCK_PENSION_ANALYSIS } = require('../ai/mock/mockData');
 const { getPensionSummary, projectRetirementIncome, generatePensionRecommendations } = require('../ai/tools/pensionTools');
 const { projectPensionIncome } = require('../ai/engines/calculationEngine');
+const PensionFund = require('../models/PensionFund');
 
 /**
  * GET /api/pension/analysis
@@ -89,4 +90,106 @@ async function simulateScenario(req, res) {
   });
 }
 
-module.exports = { getPensionAnalysis, simulateScenario };
+/**
+ * POST /api/pension/upload  — save manual pension fund entry
+ * GET  /api/pension/funds   — list saved funds (when listMode=true)
+ *
+ * Body (POST): {
+ *   fundName, fundType, provider,
+ *   currentBalance, monthlyEmployeeDeposit, monthlyEmployerDeposit,
+ *   managementFeeAccumulation, managementFeeDeposit
+ * }
+ */
+async function uploadPensionData(req, res, listMode = false) {
+  const userId = req.user._id;
+
+  // GET mode: list existing funds
+  if (req.method === 'GET' || listMode) {
+    const funds = await PensionFund.find({ user: userId }).lean();
+    return res.json({
+      success: true,
+      data: funds.map((f) => ({
+        id: f._id,
+        fundName: f.fundName,
+        fundType: f.fundType,
+        provider: f.provider,
+        currentBalance: f.currentBalance,
+        monthlyEmployeeDeposit: f.monthlyEmployeeDeposit,
+        monthlyEmployerDeposit: f.monthlyEmployerDeposit,
+        managementFeeAccumulation: f.managementFeeAccumulation,
+        managementFeeDeposit: f.managementFeeDeposit,
+        source: f.source,
+      })),
+    });
+  }
+
+  const {
+    fundName,
+    fundType = 'pension_comprehensive',
+    provider = null,
+    currentBalance = 0,
+    monthlyEmployeeDeposit = 0,
+    monthlyEmployerDeposit = 0,
+    managementFeeAccumulation = 0.003,
+    managementFeeDeposit = 0.001,
+  } = req.body || {};
+
+  if (!fundName || typeof fundName !== 'string' || !fundName.trim()) {
+    return res.status(400).json({ success: false, message: 'שם הקרן נדרש' });
+  }
+
+  const validTypes = ['pension_comprehensive', 'pension_old', 'managers_insurance', 'provident_fund', 'study_fund', 'other'];
+  if (!validTypes.includes(fundType)) {
+    return res.status(400).json({ success: false, message: 'סוג קרן לא תקין' });
+  }
+
+  const fund = await PensionFund.findOneAndUpdate(
+    { user: userId, fundName: fundName.trim() },
+    {
+      user: userId,
+      fundName: fundName.trim(),
+      fundType,
+      provider: provider || null,
+      currentBalance: Number(currentBalance) || 0,
+      monthlyEmployeeDeposit: Number(monthlyEmployeeDeposit) || 0,
+      monthlyEmployerDeposit: Number(monthlyEmployerDeposit) || 0,
+      managementFeeAccumulation: Number(managementFeeAccumulation) || 0.003,
+      managementFeeDeposit: Number(managementFeeDeposit) || 0.001,
+      source: 'manual',
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+
+  return res.json({
+    success: true,
+    message: 'נתוני הקרן נשמרו בהצלחה',
+    data: {
+      id: fund._id,
+      fundName: fund.fundName,
+      fundType: fund.fundType,
+      provider: fund.provider,
+      currentBalance: fund.currentBalance,
+      monthlyEmployeeDeposit: fund.monthlyEmployeeDeposit,
+      monthlyEmployerDeposit: fund.monthlyEmployerDeposit,
+      managementFeeAccumulation: fund.managementFeeAccumulation,
+      managementFeeDeposit: fund.managementFeeDeposit,
+    },
+  });
+}
+
+/**
+ * DELETE /api/pension/funds/:id
+ */
+async function deletePensionFund(req, res) {
+  const userId = req.user._id;
+  const { id } = req.params;
+
+  const fund = await PensionFund.findOneAndDelete({ _id: id, user: userId });
+  if (!fund) {
+    return res.status(404).json({ success: false, message: 'קרן לא נמצאה' });
+  }
+
+  return res.json({ success: true, message: 'הקרן נמחקה בהצלחה' });
+}
+
+module.exports = { getPensionAnalysis, simulateScenario, uploadPensionData, deletePensionFund };

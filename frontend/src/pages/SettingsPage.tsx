@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Shield, Trash2, Unplug } from "lucide-react";
 import {
   updateProfile,
   getAvatarDisplayUrl,
@@ -13,6 +14,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { APP_ROUTES } from "../types/navigation";
 import { logoutWithConfirm } from "../utils/logout";
 import { changePassword } from "../api/auth.api";
+import { apiJson } from "../api/client";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -35,6 +37,11 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  // Privacy controls
+  const [gmailConnected, setGmailConnected] = useState<boolean | null>(null);
+  const [privacyLoading, setPrivacyLoading] = useState<string | null>(null);
+  const [privacyMsg, setPrivacyMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [showPasswords, setShowPasswords] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -54,6 +61,55 @@ export default function SettingsPage() {
     setFieldError({});
   }, [user]);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    void apiJson<{ status: string }>("/api/gmail/status", { auth: true }).then((res) => {
+      if (res.ok && res.data) setGmailConnected(res.data.status === "connected");
+    });
+  }, []);
+
+  const handleDisconnectGmail = useCallback(async () => {
+    if (!window.confirm("לנתק את Gmail? ניתן לחבר מחדש בכל עת.")) return;
+    setPrivacyLoading("gmail");
+    const res = await apiJson("/api/gmail/disconnect", { method: "DELETE", auth: true });
+    setPrivacyLoading(null);
+    if (res.ok) {
+      setGmailConnected(false);
+      setPrivacyMsg({ type: "success", text: "Gmail נותק בהצלחה" });
+    } else {
+      setPrivacyMsg({ type: "error", text: "שגיאה בניתוק Gmail" });
+    }
+  }, []);
+
+  const handleDeletePensionData = useCallback(async () => {
+    if (!window.confirm("למחוק את כל נתוני הפנסיה? פעולה זו אינה הפיכה.")) return;
+    setPrivacyLoading("pension");
+    const res = await apiJson("/api/pension/funds", { method: "DELETE", auth: true });
+    setPrivacyLoading(null);
+    setPrivacyMsg(res.ok
+      ? { type: "success", text: "נתוני הפנסיה נמחקו" }
+      : { type: "error", text: "שגיאה במחיקת נתוני פנסיה" });
+  }, []);
+
+  const handleDeleteInsuranceData = useCallback(async () => {
+    if (!window.confirm("למחוק את כל נתוני הביטוח? פעולה זו אינה הפיכה.")) return;
+    setPrivacyLoading("insurance");
+    const res = await apiJson("/api/insurance/data", { method: "DELETE", auth: true });
+    setPrivacyLoading(null);
+    setPrivacyMsg(res.ok
+      ? { type: "success", text: "נתוני הביטוח נמחקו" }
+      : { type: "error", text: "שגיאה במחיקת נתוני ביטוח" });
+  }, []);
+
+  const handleDeleteAllAnalyses = useCallback(async () => {
+    if (!window.confirm("למחוק את כל הניתוחים והמסמכים? פעולה זו אינה הפיכה.")) return;
+    setPrivacyLoading("all");
+    const res = await apiJson("/api/documents/all", { method: "DELETE", auth: true });
+    setPrivacyLoading(null);
+    setPrivacyMsg(res.ok
+      ? { type: "success", text: "כל הניתוחים נמחקו" }
+      : { type: "error", text: "שגיאה במחיקת נתונים" });
+  }, []);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -479,13 +535,98 @@ export default function SettingsPage() {
           <button
             className="dashboard-hero-action"
             type="button"
-            onClick={() => navigate(APP_ROUTES.dashboard)}
+            onClick={() => navigate(APP_ROUTES.documents)}
           >
             חזרה ללוח הבקרה
           </button>
           <button className="dashboard-logout-action" type="button" onClick={handleLogout}>
             התנתקות
           </button>
+        </section>
+
+        {/* ── Privacy & Data Controls ── */}
+        <section style={{ marginTop: 32, padding: "24px 28px", background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(248,113,113,0.2)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+            <Shield size={18} style={{ color: "#F87171" }} />
+            <span style={{ fontWeight: 700, fontSize: 16 }}>פרטיות ומחיקת נתונים</span>
+          </div>
+
+          {privacyMsg && (
+            <div style={{
+              padding: "10px 16px", borderRadius: 8, marginBottom: 16, fontSize: 13, fontWeight: 600,
+              background: privacyMsg.type === "success" ? "rgba(52,211,153,0.12)" : "rgba(248,113,113,0.12)",
+              color: privacyMsg.type === "success" ? "#34D399" : "#F87171",
+              border: `1px solid ${privacyMsg.type === "success" ? "rgba(52,211,153,0.3)" : "rgba(248,113,113,0.3)"}`,
+            }}>
+              {privacyMsg.text}
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Gmail disconnect */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>חיבור Gmail</div>
+                <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>
+                  {gmailConnected === null ? "בודק..." : gmailConnected ? "✅ Gmail מחובר" : "Gmail אינו מחובר"}
+                </div>
+              </div>
+              {gmailConnected && (
+                <button
+                  onClick={handleDisconnectGmail}
+                  disabled={privacyLoading === "gmail"}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.4)", background: "rgba(248,113,113,0.1)", color: "#F87171", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
+                >
+                  <Unplug size={13} /> נתק Gmail
+                </button>
+              )}
+            </div>
+
+            {/* Delete pension data */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>נתוני פנסיה</div>
+                <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>מחק את כל קרנות הפנסיה שהזנת ידנית</div>
+              </div>
+              <button
+                onClick={handleDeletePensionData}
+                disabled={privacyLoading === "pension"}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.4)", background: "rgba(248,113,113,0.1)", color: "#F87171", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
+              >
+                <Trash2 size={13} /> מחק נתוני פנסיה
+              </button>
+            </div>
+
+            {/* Delete insurance data */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>נתוני ביטוח</div>
+                <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>מחק את כל פוליסות הביטוח שנטענו</div>
+              </div>
+              <button
+                onClick={handleDeleteInsuranceData}
+                disabled={privacyLoading === "insurance"}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.4)", background: "rgba(248,113,113,0.1)", color: "#F87171", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
+              >
+                <Trash2 size={13} /> מחק נתוני ביטוח
+              </button>
+            </div>
+
+            {/* Delete all analyses */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0" }}>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: "#F87171" }}>מחק את כל הנתונים</div>
+                <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>מחק את כל המסמכים, הניתוחים, וההיסטוריה. הפעולה אינה הפיכה.</div>
+              </div>
+              <button
+                onClick={handleDeleteAllAnalyses}
+                disabled={privacyLoading === "all"}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.6)", background: "rgba(248,113,113,0.15)", color: "#F87171", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700 }}
+              >
+                <Trash2 size={13} /> מחק הכל
+              </button>
+            </div>
+          </div>
         </section>
 
         <AppFooter variant="private" />

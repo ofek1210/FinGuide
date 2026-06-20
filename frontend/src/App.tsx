@@ -1,12 +1,10 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
 import AuthScreen from "./components/AuthScreen";
-import DashboardPage from "./pages/DashboardPage";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
 import BackButton from "./components/BackButton";
-import ThemeToggle from "./components/ThemeToggle";
 import FloatingAssistant from "./components/FloatingAssistant";
-import DocumentsPage from "./pages/DocumentsPage";
+import PayslipsAgentPage from "./pages/PayslipsAgentPage";
 import ScanStatusPage from "./pages/ScanStatusPage";
 import ScanCompletePage from "./pages/ScanCompletePage";
 import PayslipHistoryPage from "./pages/PayslipHistoryPage";
@@ -41,12 +39,12 @@ import Error404 from "./pages/errors/Error404";
 import Error500 from "./pages/errors/Error500";
 import { APP_ROUTES } from "./types/navigation";
 import "./App.css";
+import "./theme/light.css";
 
 export default function App() {
   return (
     <>
       <BackButton />
-      <ThemeToggle />
       <Routes>
         <Route
           path={APP_ROUTES.home}
@@ -75,11 +73,7 @@ export default function App() {
         <Route path={APP_ROUTES.resetPassword} element={<ResetPasswordPage />} />
         <Route
           path={APP_ROUTES.dashboard}
-          element={
-            <RequireAuth>
-              <DashboardPage />
-            </RequireAuth>
-          }
+          element={<Navigate to={APP_ROUTES.documents} replace />}
         />
         <Route
           path={APP_ROUTES.onboarding}
@@ -93,7 +87,7 @@ export default function App() {
           path={APP_ROUTES.documents}
           element={
             <RequireAuth>
-              <DocumentsPage />
+              <PayslipsAgentPage />
             </RequireAuth>
           }
         />
