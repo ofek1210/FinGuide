@@ -11,6 +11,7 @@ const {
   getInsurancePolicies,
   deleteInsurancePolicy,
 } = require('../controllers/insuranceController');
+const { getInsuranceInsights } = require('../services/insuranceProfileAnalyzer');
 
 // Excel upload — memory storage (no file saved to disk)
 const excelUpload = multer({
@@ -46,6 +47,14 @@ router.post('/upload-excel', excelUpload.single('file'), (req, res, next) => {
 // DELETE /api/insurance/policies/:id
 router.delete('/policies/:id', (req, res, next) => {
   Promise.resolve(deleteInsurancePolicy(req, res)).catch(next);
+});
+
+// GET /api/insurance/profile-insights — AI profile-based analysis
+router.get('/profile-insights', async (req, res, next) => {
+  try {
+    const result = await getInsuranceInsights(req.user._id);
+    return res.json({ success: true, data: result });
+  } catch (err) { next(err); }
 });
 
 // DELETE /api/insurance/data — delete ALL insurance policies for the user

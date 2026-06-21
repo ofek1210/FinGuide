@@ -27,6 +27,7 @@ const {
   resolveContributionCandidates,
 } = require('./payslipOcrContributions');
 const { buildPayslipSummary } = require('./payslipOcrSummary');
+const { applyNumericRescue } = require('./payslipOcrNumericRescue');
 const {
   extractHMO,
   linesOf,
@@ -163,12 +164,21 @@ function isLikelyBrokenHebrew(text) {
   const value = String(text);
   const hebrewCount = (value.match(/[\u0590-\u05FF]/g) || []).length;
   const weirdLatinCount = (value.match(/[À-ÿ]/g) || []).length;
-  // Modifier letters (ʹ-ʿ range U+02B0-U+02FF) appear in some broken
-  // Hebrew PDF encodings where proper Hebrew chars are mapped to the
-  // phonetic modifier block instead.
   const modifierLetterCount = (value.match(/[\u02B0-\u02FF]/g) || []).length;
+  const replacementCount = (value.match(/\uFFFD/g) || []).length;
+
+  // Mojibake: PDF fonts decoded as replacement chars — labels unusable, prefer OCR/rescue
+  if (replacementCount > 15) return true;
+  // Long payslip text with almost no Hebrew is almost certainly broken encoding
+  if (value.length > 400 && hebrewCount < 8) return true;
   if (hebrewCount < 5 && modifierLetterCount > 30) return true;
   return hebrewCount < 5 && weirdLatinCount > 20;
+}
+
+function hasCriticalSalaryFields(data) {
+  const gross = data?.salary?.gross_total;
+  const net = data?.salary?.net_payable;
+  return Number.isFinite(gross) && gross > 500 && Number.isFinite(net) && net > 500;
 }
 
 async function pdfToPngs(pdfPath, outDir, { password } = {}) {
@@ -641,7 +651,7 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
   };
 
   result.summary = buildPayslipSummary(result, fullTextSource);
-  return result;
+  return applyNumericRescue(result, fullTextSource);
 }
 
 async function extractPayslipFile(inputPath, options = {}) {
@@ -655,30 +665,50 @@ async function extractPayslipFile(inputPath, options = {}) {
 
   let imagePaths = [];
   if (ext === '.pdf') {
+    let embeddedText = '';
     try {
-      const embeddedText = await extractPdfEmbeddedText(abs, { password });
+      embeddedText = await extractPdfEmbeddedText(abs, { password });
       const normalized = embeddedText.replace(/\s+/g, ' ').trim();
       const brokenHebrew = isLikelyBrokenHebrew(embeddedText);
 
       if (normalized.length >= MIN_PDF_TEXT_LENGTH && !brokenHebrew) {
         extractionMethod = 'pdf_text';
         const sections = splitPayslipSections(embeddedText);
-        // Use first section (most recent payslip in multi-month PDFs)
+        const sectionText = sections[0].text;
+        let data = await extractPayslipFinancialEN(sectionText, { sourcePath: abs });
+
+        if (hasCriticalSalaryFields(data)) {
+          logExtractionResult({ sourcePath: abs, extractionMethod, data });
+          data.raw = {
+            ...data.raw,
+            rawText: sectionText,
+            rawLines: toRawLines(sectionText),
+            extractionMethod,
+            total_sections: sections.length,
+          };
+          return { data };
+        }
+
+        // eslint-disable-next-line no-console
+        console.warn('[payslipOcr] pdf_text missing gross/net — falling back to OCR');
+      } else if (normalized.length >= MIN_PDF_TEXT_LENGTH && brokenHebrew) {
+        // eslint-disable-next-line no-console
+        console.warn('[payslipOcr] broken PDF text encoding — trying numeric rescue before OCR');
+        extractionMethod = 'numeric_rescue';
+        const sections = splitPayslipSections(embeddedText);
         const sectionText = sections[0].text;
         const data = await extractPayslipFinancialEN(sectionText, { sourcePath: abs });
-        logExtractionResult({
-          sourcePath: abs,
-          extractionMethod,
-          data,
-        });
-        data.raw = {
-          ...data.raw,
-          rawText: sectionText,
-          rawLines: toRawLines(sectionText),
-          extractionMethod,
-          total_sections: sections.length,
-        };
-        return { data };
+        if (hasCriticalSalaryFields(data)) {
+          logExtractionResult({ sourcePath: abs, extractionMethod, data });
+          data.raw = {
+            ...data.raw,
+            rawText: sectionText,
+            rawLines: toRawLines(sectionText),
+            extractionMethod,
+            total_sections: sections.length,
+          };
+          return { data };
+        }
       }
     } catch (error) {
       if (error instanceof PdfPasswordRequiredError || error?.code === 'PDF_PASSWORD_REQUIRED') {

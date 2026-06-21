@@ -9,6 +9,7 @@ export type GmailIntegrationStatus = {
   importedCount: number;
   recentImports: DocumentItem[];
   redirectUri: string;
+  oauthConfigured?: boolean;
 };
 
 export type GmailConnectResult = {

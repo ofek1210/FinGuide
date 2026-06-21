@@ -119,6 +119,13 @@ const buildConnectAuthUrl = redirectUri => {
 };
 
 const connectWithAuthorizationCode = async (userId, { code, redirectUri }) => {
+  if (!getGoogleClientSecret()) {
+    throw new AppError(
+      'חיבור Gmail דורש GOOGLE_CLIENT_SECRET בשרת. הוסיפו ב-Google Cloud Console OAuth client.',
+      503
+    );
+  }
+
   if (!code) {
     return { authUrl: buildConnectAuthUrl(redirectUri) };
   }
@@ -368,6 +375,7 @@ const getGmailIntegrationStatus = async userId => {
     importedCount,
     recentImports: recentImports.map(serializeDocument),
     redirectUri: getGmailRedirectUri(),
+    oauthConfigured: Boolean(getGoogleClientSecret()),
   };
 };
 

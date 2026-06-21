@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const { getPensionAnalysis, simulateScenario, uploadPensionData, deletePensionFund } = require('../controllers/pensionController');
+const { getPensionInsights } = require('../services/pensionRiskAdvisor');
 
 router.use(protect);
 
@@ -40,6 +41,14 @@ router.delete('/funds', async (req, res, next) => {
     const PensionFund = require('../models/PensionFund');
     await PensionFund.deleteMany({ user: req.user._id, source: 'manual' });
     return res.json({ success: true, message: 'כל נתוני הפנסיה הידניים נמחקו' });
+  } catch (err) { next(err); }
+});
+
+// GET /api/pension/risk-advice — AI risk level + fee analysis based on profile
+router.get('/risk-advice', async (req, res, next) => {
+  try {
+    const result = await getPensionInsights(req.user._id);
+    return res.json({ success: true, data: result });
   } catch (err) { next(err); }
 });
 

@@ -28,10 +28,8 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: var(--font-body);
-  background: radial-gradient(circle at 18% 12%, var(--bg-glow-1), transparent 45%),
-    radial-gradient(circle at 85% 85%, var(--bg-glow-2), transparent 55%),
-    linear-gradient(135deg, #0b0f16 0%, #111827 55%, #0d1424 100%);
-  color: #f5f7fb;
+  background: #FAF7FF;
+  color: #1F1F1F;
 }
 
 #root {

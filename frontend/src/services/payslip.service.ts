@@ -14,7 +14,10 @@ import {
 export const fetchPayslipHistory = async (year?: number): Promise<PayslipHistoryResponse> => {
   const intelligence = await getPayslipHistoryIntelligence(year);
   if (intelligence.success && intelligence.data) {
-    return getPayslipHistoryFromIntelligence(intelligence.data);
+    const fromIntelligence = getPayslipHistoryFromIntelligence(intelligence.data);
+    if (fromIntelligence.items.length > 0) {
+      return fromIntelligence;
+    }
   }
 
   const fallbackResponse = await listDocuments();

@@ -45,7 +45,7 @@ export function RequireGuest({ children }: GuardProps) {
   }
 
   if (auth.status === "authenticated") {
-    return <Navigate to={APP_ROUTES.documents} replace />;
+    return <Navigate to={APP_ROUTES.hub} replace />;
   }
 
   return <>{children}</>;

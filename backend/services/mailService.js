@@ -80,7 +80,35 @@ const sendPasswordResetEmail = async ({ to, resetUrl, expiresInMinutes }) => {
   }
 };
 
+/**
+ * Generic mail sender — used by summaryEmailService and other services.
+ * @param {{ to: string, subject: string, html?: string, text?: string }} opts
+ */
+const sendMail = async ({ to, subject, html, text }) => {
+  let transport;
+  try {
+    transport = getTransporter();
+  } catch (error) {
+    if (error instanceof AppError) throw error;
+    throw new AppError(MAIL_SERVICE_UNAVAILABLE_MESSAGE, 500);
+  }
+
+  try {
+    await transport.sendMail({
+      from: process.env.SMTP_FROM,
+      to,
+      subject,
+      text: text || '',
+      ...(html ? { html } : {}),
+    });
+  } catch {
+    throw new AppError(MAIL_SERVICE_UNAVAILABLE_MESSAGE, 500);
+  }
+};
+
 module.exports = {
   MAIL_SERVICE_UNAVAILABLE_MESSAGE,
   sendPasswordResetEmail,
+  sendMail,
+  getTransporter,
 };
