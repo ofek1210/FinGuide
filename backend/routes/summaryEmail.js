@@ -2,10 +2,11 @@ const express = require('express');
 
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { sendSummaryEmail, buildWhatsAppShareUrl } = require('../services/summaryEmailService');
+const { buildWhatsAppShareUrl, sendSummaryEmail } = require('../services/summaryEmailService');
 const { getPayslipInsights } = require('../services/payslipInsightsService');
 const { getInsuranceInsights } = require('../services/insuranceProfileAnalyzer');
 const { getPensionInsights } = require('../services/pensionRiskAdvisor');
+const { buildUnifiedSummary } = require('../services/unifiedSummaryService');
 const { AppError } = require('../utils/appErrors');
 
 router.use(protect);
@@ -38,13 +39,14 @@ router.post('/send', async (req, res, next) => {
  */
 router.get('/whatsapp-url', async (req, res, next) => {
   try {
-    const [payslip, insurance, pension] = await Promise.allSettled([
+    const [payslip, insurance, pension, unified] = await Promise.allSettled([
       getPayslipInsights(req.user._id),
       getInsuranceInsights(req.user._id),
       getPensionInsights(req.user._id),
+      buildUnifiedSummary(req.user._id),
     ]).then(results => results.map(r => (r.status === 'fulfilled' ? r.value : null)));
 
-    const url = buildWhatsAppShareUrl(payslip, insurance, pension);
+    const url = buildWhatsAppShareUrl(payslip, insurance, pension, unified);
     return res.json({ success: true, data: { url } });
   } catch (err) {
     return next(err);

@@ -251,3 +251,37 @@ export async function apiBlob(
   return { ok: true, status: response.status, blob, response };
 }
 
+type FormUploadOptions = {
+  fieldName?: string;
+  auth?: boolean;
+  fallbackErrorMessage?: string;
+  extraFields?: Record<string, string>;
+};
+
+/**
+ * Multipart file upload via shared apiJson (auth + error handling).
+ */
+export async function apiFormUpload<T>(
+  path: string,
+  file: File,
+  options: FormUploadOptions = {},
+): Promise<ApiResult<T>> {
+  const {
+    fieldName = "file",
+    auth = true,
+    fallbackErrorMessage = "שגיאה בהעלאת הקובץ.",
+    extraFields = {},
+  } = options;
+
+  const form = new FormData();
+  form.append(fieldName, file);
+  Object.entries(extraFields).forEach(([key, value]) => form.append(key, value));
+
+  return apiJson<T>(path, {
+    method: "POST",
+    auth,
+    body: form,
+    fallbackErrorMessage,
+  });
+}
+

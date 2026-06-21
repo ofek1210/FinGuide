@@ -3,6 +3,8 @@ const User = require('../models/User');
 const { buildSavingsForecast } = require('../services/savingsForecastService');
 const { buildFundDepositFindings } = require('../utils/detectFundWithoutDeposit');
 const { buildContributionRateGapFindings } = require('../utils/detectContributionRateGap');
+const { buildPensionBenchmarkFindingsForUser } = require('../utils/detectPensionBenchmark');
+const { buildInsuranceBenchmarkFindingsForUser } = require('../utils/detectInsuranceBenchmark');
 const { buildDepositContinuityFindings } = require('../utils/detectDepositContinuityGap');
 
 const STALE_DAYS = 30;
@@ -57,24 +59,18 @@ exports.getFindings = async (req, res, next) => {
 
     const user = await User.findById(req.user.id).select('onboarding').lean();
 
+    const findings = [];
+
     if (documents.length === 0) {
-      const findings = [
+      findings.push(
         buildFinding(
           'no_documents',
           'אין מסמכים',
           'info',
           'לא נמצאו מסמכים בחשבון. העלו מסמך ראשון כדי להתחיל.'
         ),
-      ];
-
-      return res.status(200).json({
-        success: true,
-        count: findings.length,
-        data: findings,
-      });
-    }
-
-    const findings = [];
+      );
+    } else {
     let missingMetadataCount = 0;
     let futureDateCount = 0;
     let pendingCount = 0;
@@ -208,6 +204,20 @@ exports.getFindings = async (req, res, next) => {
         buildFinding(item.id, item.title, item.severity, item.details, item.meta)
       );
     });
+    }
+
+    const DOMAIN_FINDINGS_BUILDERS = [
+      buildPensionBenchmarkFindingsForUser,
+      buildInsuranceBenchmarkFindingsForUser,
+    ];
+    for (const buildDomainFindings of DOMAIN_FINDINGS_BUILDERS) {
+      const domainFindings = await buildDomainFindings(req.user._id);
+      domainFindings.forEach(item => {
+        findings.push(
+          buildFinding(item.id, item.title, item.severity, item.details, item.meta)
+        );
+      });
+    }
 
     const sortedFindings = sortFindingsDeterministic(findings);
 

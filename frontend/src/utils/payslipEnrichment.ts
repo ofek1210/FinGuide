@@ -62,7 +62,7 @@ type AnalysisShape = {
   };
   tax?: {
     gross_for_income_tax?: number;
-    tax_credit_points?: number;
+    tax_credit_points?: number | null;
   };
 };
 

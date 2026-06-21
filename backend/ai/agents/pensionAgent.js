@@ -1,12 +1,12 @@
 /**
  * Pension Agent
  *
- * Pipeline: getPensionSummary → projectRetirementIncome → generateRecommendations → LLM
+ * Pipeline: buildPensionAnalysis → LLM explanation
  */
 
 'use strict';
 
-const { getPensionSummary, projectRetirementIncome, generatePensionRecommendations } = require('../tools/pensionTools');
+const { buildPensionAnalysis } = require('../../services/pensionAnalysisService');
 const { buildPensionSystemPrompt } = require('../prompts/pensionPrompt');
 const { askClaude } = require('../../services/claudeChatService');
 
@@ -19,13 +19,14 @@ const { askClaude } = require('../../services/claudeChatService');
 async function runPensionAgent(userId, { skipLLM = false } = {}) {
   const startedAt = Date.now();
 
-  const summary = await getPensionSummary(userId);
+  const analysis = await buildPensionAnalysis(userId);
+  const { summary, projection, benchmark, healthCheck, recommendations } = analysis;
 
   if (!summary.hasData) {
     return {
       agentId: 'pension',
       status: 'no_data',
-      message: 'לא נמצאו נתוני פנסיה. העלה תלוש שכר עם נתוני הפרשות.',
+      message: 'לא נמצאו נתוני פנסיה. העלה תלוש שכר או דוח הר הכסף.',
       data: null,
       recommendations: [],
       llmExplanation: null,
@@ -33,19 +34,18 @@ async function runPensionAgent(userId, { skipLLM = false } = {}) {
     };
   }
 
-  const projection = projectRetirementIncome(summary);
-  const recommendations = generatePensionRecommendations(summary, projection);
-
   let llmExplanation = null;
   if (!skipLLM && process.env.ANTHROPIC_API_KEY) {
     try {
       const systemPrompt = buildPensionSystemPrompt({
         summary,
         projection,
+        benchmark: benchmark?.summary,
+        healthCheck: { score: healthCheck?.score, level: healthCheck?.level?.label },
         recommendationCount: recommendations.length,
       });
       const result = await askClaude(
-        'ספק ניתוח קצר של מצב הפנסיה והתחזית לפרישה ב-3-4 משפטים בעברית.',
+        'ספק ניתוח קצר של מצב הפנסיה, דירוג מול השוק, ושורה תחתונה ב-3-4 משפטים בעברית.',
         systemPrompt,
         [],
       );
@@ -63,7 +63,9 @@ async function runPensionAgent(userId, { skipLLM = false } = {}) {
       pensionEmployee: summary.pensionEmployee,
       pensionEmployer: summary.pensionEmployer,
       totalMonthlyContribution: summary.totalMonthlyContribution,
-      projection: projection.available ? {
+      benchmark: benchmark?.summary ?? null,
+      healthCheck: healthCheck ? { score: healthCheck.score, level: healthCheck.level } : null,
+      projection: projection ? {
         monthsToRetirement: projection.monthsToRetirement,
         projectedAccumulation: projection.projectedAccumulation,
         monthlyPensionEstimate: projection.monthlyPensionEstimate,

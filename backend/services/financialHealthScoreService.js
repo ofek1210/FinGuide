@@ -2,6 +2,7 @@ const Document = require('../models/Document');
 const UserProfile = require('../models/UserProfile');
 const Recommendation = require('../models/Recommendation');
 const { buildTaxAssistantSummary, buildYearEntries, enrichEntrySummary, getEmployerName, isForm106Document, HEBREW_MONTHS } = require('./taxAssistantService');
+const { statusFromRatio, getScoreLevel } = require('../utils/healthScoreShared');
 
 const CATEGORY_MAX = {
   documentCompleteness: 25,
@@ -15,19 +16,6 @@ const DISCLAIMER =
   'הציון מבוסס על המסמכים והמידע שהועלו למערכת ואינו מהווה ייעוץ פיננסי או ייעוץ מס.';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, Math.round(value)));
-
-const statusFromRatio = ratio => {
-  if (ratio >= 0.85) return 'good';
-  if (ratio >= 0.55) return 'warning';
-  return 'poor';
-};
-
-const getScoreLevel = score => {
-  if (score >= 85) return { level: 'excellent', label: 'מצב פיננסי מצוין' };
-  if (score >= 70) return { level: 'good', label: 'מצב פיננסי טוב' };
-  if (score >= 50) return { level: 'fair', label: 'יש מקום לשיפור' };
-  return { level: 'poor', label: 'דורש טיפול' };
-};
 
 const formatMonthList = months =>
   months
@@ -412,7 +400,7 @@ const buildFinancialHealthScore = async (userId, yearInput) => {
     0,
     100,
   );
-  const { level, label } = getScoreLevel(score);
+  const { level, label } = getScoreLevel(score, 'financial');
 
   return {
     year,

@@ -8,44 +8,50 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  PiggyBank, Sparkles, Plus, Trash2, TrendingUp, AlertCircle,
-  Loader2, SlidersHorizontal, ExternalLink, Upload, ArrowLeft,
-  CheckCircle, RefreshCw, FileText,
+  PiggyBank, Plus, Trash2, TrendingUp, AlertCircle,
+  Loader2, SlidersHorizontal,
 } from "lucide-react";
-import { InsightsPanel } from "../components/ai/InsightsPanel";
 import { useNavigate } from "react-router-dom";
-import PrivateTopbar from "../components/PrivateTopbar";
-import AppFooter from "../components/AppFooter";
+import { PrivateDomainPageLayout } from "../components/layout/PrivateDomainPageLayout";
 import GlassCard from "../components/ui/GlassCard";
 import StatCard from "../components/ui/StatCard";
 import SectionHeader from "../components/ui/SectionHeader";
 import Badge from "../components/ui/Badge";
 import {
   getPensionAnalysis,
+  getPensionImportHistory,
   simulatePensionScenario,
   getPensionFunds,
   uploadPensionFund,
+  uploadPensionFile,
   deletePensionFund,
-  type PensionAnalysisResponse,
+  updatePensionFund,
+  type PensionAnalysisData,
+  type PensionBenchmarkFundDTO,
+  type PensionImportSnapshotDTO,
   type SimulationResponse,
   type PensionFundDTO,
   type UploadPensionBody,
 } from "../api/pension.api";
 import { APP_ROUTES } from "../types/navigation";
+import { formatCurrencyOrDash } from "../utils/formatters";
+import {
+  FUND_TYPE_LABELS,
+  RANK_BADGE,
+  UPLOAD_PROGRESS_STEPS,
+} from "../utils/pensionDisplay";
+import { HealthCheckPanel, SavingsDeltaCard } from "../components/import/HealthCheckPanel";
+import { GovReportImportFlow } from "../components/import/GovReportImportFlow";
+import { PENSION_IMPORT_CONFIG } from "../config/govReportImportConfig";
+import { DomainResultsHeader } from "../components/import/DomainResultsHeader";
+import { DomainRecommendationsSection } from "../components/import/DomainRecommendationsSection";
+import { DomainResultsFooter } from "../components/import/DomainResultsFooter";
+import { useGovReportUploadProgress } from "../hooks/useGovReportUploadProgress";
+import { computeImportHistoryDelta } from "../utils/domainImportHistory";
 
-const HAR_HAKESEF_URL = "https://harkesher.mof.gov.il/ReportAnonymous/gamal";
+const HAR_HAKESEF_URL = PENSION_IMPORT_CONFIG.siteUrl;
 
-const fmt = (n: number | null | undefined) =>
-  n != null ? `₪${Number(n).toLocaleString("he-IL")}` : "—";
-
-const FUND_TYPE_LABELS: Record<string, string> = {
-  pension_comprehensive: "פנסיה מקיפה",
-  pension_old: "פנסיה ותיקה",
-  managers_insurance: "ביטוח מנהלים",
-  provident_fund: "קופת גמל",
-  study_fund: "קרן השתלמות",
-  other: "אחר",
-};
+const fmt = formatCurrencyOrDash;
 
 const EMPTY_FORM: UploadPensionBody = {
   fundName: "", fundType: "pension_comprehensive", provider: "",
@@ -61,9 +67,10 @@ type FlowStep = "landing" | "guide" | "upload" | "results";
 export default function PensionPage() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { uploadProgressStep, start: startProgress, stop: stopProgress } = useGovReportUploadProgress(UPLOAD_PROGRESS_STEPS.length);
 
   const [step, setStep] = useState<FlowStep>("landing");
-  const [data, setData] = useState<PensionAnalysisResponse["data"] | null>(null);
+  const [data, setData] = useState<PensionAnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
   const [visitedSite, setVisitedSite] = useState(false);
 
@@ -86,10 +93,34 @@ export default function PensionPage() {
   const [simFee, setSimFee] = useState("");
   const [simResult, setSimResult] = useState<SimulationResponse["data"] | null>(null);
   const [simLoading, setSimLoading] = useState(false);
+  const [insightsTrigger, setInsightsTrigger] = useState(0);
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
+  const [importSource, setImportSource] = useState<"har_hakesef" | "quarterly_report">("har_hakesef");
+  const [showAgeModal, setShowAgeModal] = useState(false);
+  const [importHistory, setImportHistory] = useState<PensionImportSnapshotDTO[]>([]);
+  const [lastSavingsDelta, setLastSavingsDelta] = useState<number | null>(null);
 
   const loadFunds = useCallback(async () => {
     const res = await getPensionFunds();
     if (res.ok && res.data?.data) setFunds(res.data.data);
+  }, []);
+
+  const loadImportHistory = useCallback(async () => {
+    const res = await getPensionImportHistory();
+    if (res.ok && res.data?.success && res.data.data) {
+      setImportHistory(res.data.data);
+    }
+  }, []);
+
+  const loadAnalysis = useCallback(async () => {
+    const res = await getPensionAnalysis();
+    if (res.ok && res.data?.success && res.data.data) {
+      setData(res.data.data);
+      if (res.data.data.summary?.hasData) {
+        setStep("results");
+      }
+    }
+    return res;
   }, []);
 
   useEffect(() => {
@@ -97,14 +128,17 @@ export default function PensionPage() {
       setLoading(false);
       if (res.ok && res.data?.success && res.data.data) {
         setData(res.data.data);
-        // If user already has pension data, skip to results
         if (res.data.data.summary?.hasData) {
           setStep("results");
+          if (!res.data.data.summary.currentAge) {
+            setShowAgeModal(true);
+          }
         }
       }
     });
     void loadFunds();
-  }, [loadFunds]);
+    void loadImportHistory();
+  }, [loadFunds, loadImportHistory]);
 
   const handleSaveFund = async () => {
     if (!form.fundName?.trim()) return;
@@ -115,7 +149,8 @@ export default function PensionPage() {
       setSaveMsg({ type: "success", text: "הקרן נשמרה בהצלחה" });
       setForm(EMPTY_FORM); setShowAddForm(false);
       void loadFunds();
-      // After adding first fund, show results
+      void loadAnalysis();
+      setInsightsTrigger(t => t + 1);
       setStep("results");
     } else {
       setSaveMsg({ type: "error", text: "שגיאה בשמירה" });
@@ -128,6 +163,7 @@ export default function PensionPage() {
     await deletePensionFund(id);
     setDeletingId(null);
     void loadFunds();
+    void loadAnalysis();
   };
 
   const handleSimulate = async () => {
@@ -141,7 +177,6 @@ export default function PensionPage() {
     if (res.ok && res.data?.success && res.data.data) setSimResult(res.data.data);
   };
 
-  // Simulate file upload (maps to manual fund entry for now)
   const handleFileUpload = async (file: File) => {
     const ext = file.name.split(".").pop()?.toLowerCase();
     const allowed = ["pdf", "xlsx", "xls"];
@@ -149,26 +184,71 @@ export default function PensionPage() {
       setUploadMsg({ type: "error", text: "ניתן להעלות PDF, xlsx או xls בלבד" });
       return;
     }
-    setUploading(true); setUploadMsg(null);
-    // For now, show success and guide user to add manually if no parser available
-    await new Promise(r => setTimeout(r, 1600));
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadMsg({ type: "error", text: "הקובץ גדול מדי. מקסימום 10MB." });
+      return;
+    }
+    setUploading(true);
+    setUploadMsg(null);
+    const progressTimer = startProgress();
+    const res = await uploadPensionFile(file, importSource);
+    stopProgress(progressTimer);
     setUploading(false);
-    setUploadMsg({ type: "success", text: "הקובץ עלה בהצלחה — מעבד נתונים..." });
-    setTimeout(() => {
-      setStep("results");
-      setShowAddForm(true); // open manual form as fallback
-    }, 1500);
+    if (res.success && res.data) {
+      const warnings = res.data.warnings ?? [];
+      setImportWarnings(warnings);
+      if (res.data.savingsDelta != null) setLastSavingsDelta(res.data.savingsDelta);
+      setUploadMsg({
+        type: "success",
+        text: `יובאו ${res.data.imported} קרנות בהצלחה — הסוכן מנתח...`,
+      });
+      await loadFunds();
+      const analysisRes = await loadAnalysis();
+      void loadImportHistory();
+      setInsightsTrigger(t => t + 1);
+      const age = analysisRes.ok && analysisRes.data?.success
+        ? analysisRes.data.data?.summary?.currentAge
+        : undefined;
+      if (!age) setShowAgeModal(true);
+      setTimeout(() => setStep("results"), 800);
+    } else {
+      setUploadMsg({ type: "error", text: res.message ?? "שגיאה בייבוא הקובץ" });
+    }
   };
 
   const summary = data?.summary;
   const projection = data?.projection;
+  const benchmark = data?.benchmark;
+  const healthCheck = data?.healthCheck;
   const recs = data?.recommendations ?? [];
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--lg-bg, #FAF7FF)", color: "#1F1F1F", fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
-      <PrivateTopbar />
+    <PrivateDomainPageLayout maxWidth={900}>
 
-      <main style={{ maxWidth: 900, margin: "0 auto", padding: "36px 24px 72px", direction: "rtl" }}>
+        {showAgeModal && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <GlassCard padding="lg" elevated style={{ maxWidth: 420, width: "100%" }}>
+              <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 22, margin: "0 0 10px" }}>חסר גיל בפרופיל</h2>
+              <p style={{ fontSize: 14, color: "#7C6FA0", lineHeight: 1.6, margin: "0 0 20px" }}>
+                לניתוח מסלול סיכון ותחזית פרישה מדויקת, הגדר את גילך בפרופיל.
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => { setShowAgeModal(false); navigate(APP_ROUTES.settings); }}
+                  style={{ flex: 1, padding: "11px", borderRadius: 12, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700 }}
+                >
+                  עדכן פרופיל
+                </button>
+                <button
+                  onClick={() => setShowAgeModal(false)}
+                  style={{ padding: "11px 16px", borderRadius: 12, background: "none", border: "1px solid rgba(184,157,255,0.35)", color: "#7C6FA0", cursor: "pointer", fontWeight: 600 }}
+                >
+                  המשך בכל זאת
+                </button>
+              </div>
+            </GlassCard>
+          </div>
+        )}
 
         {loading && step === "landing" && (
           <div style={{ textAlign: "center", padding: "80px 0", color: "#6B4FA0", fontSize: 14 }}>
@@ -180,37 +260,55 @@ export default function PensionPage() {
         {/* ══════════════════════════════════════════════════════════
             STEP: LANDING
         ══════════════════════════════════════════════════════════ */}
-        {!loading && step === "landing" && (
-          <LandingStep onImport={() => setStep("guide")} onManual={() => { setStep("results"); setShowAddForm(true); }} />
-        )}
-
-        {/* ══════════════════════════════════════════════════════════
-            STEP: GUIDE
-        ══════════════════════════════════════════════════════════ */}
-        {step === "guide" && (
-          <GuideStep
+        {!loading && (step === "landing" || step === "guide" || step === "upload") && (
+          <GovReportImportFlow
+            domain="pension"
+            step={step}
+            progressSteps={UPLOAD_PROGRESS_STEPS}
+            onImport={() => setStep("guide")}
+            onManual={() => { setStep("results"); setShowAddForm(true); }}
             visitedSite={visitedSite}
             onVisitSite={() => {
               window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer");
               setVisitedSite(true);
             }}
             onContinue={() => setStep("upload")}
-            onBack={() => setStep("landing")}
-          />
-        )}
-
-        {/* ══════════════════════════════════════════════════════════
-            STEP: UPLOAD
-        ══════════════════════════════════════════════════════════ */}
-        {step === "upload" && (
-          <UploadStep
+            onBack={() => setStep(step === "upload" ? "guide" : "landing")}
             fileInputRef={fileInputRef}
             uploading={uploading}
             uploadMsg={uploadMsg}
+            uploadProgressStep={uploadProgressStep}
             isDragging={isDragging}
             setIsDragging={setIsDragging}
             onUpload={handleFileUpload}
-            onBack={() => setStep("guide")}
+            uploadHeaderExtra={step === "upload" ? (
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {([
+                  { id: "har_hakesef" as const, label: "הר הכסף", sub: "Excel / PDF מהמסלקה" },
+                  { id: "quarterly_report" as const, label: "דוח תקופתי", sub: "PDF מהגוף המנהל" },
+                ]).map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setImportSource(opt.id)}
+                    style={{
+                      flex: "1 1 160px", padding: "12px 16px", borderRadius: 12, textAlign: "right", cursor: "pointer",
+                      fontFamily: "inherit", border: importSource === opt.id ? "2px solid #6B4FA0" : "1px solid rgba(184,157,255,0.35)",
+                      background: importSource === opt.id ? "rgba(107,79,160,0.08)" : "rgba(255,255,255,0.7)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, fontSize: 14, color: "#1F1F1F" }}>{opt.label}</div>
+                    <div style={{ fontSize: 12, color: "#7C6FA0", marginTop: 4 }}>{opt.sub}</div>
+                  </button>
+                ))}
+              </div>
+            ) : undefined}
+            uploadOverrides={step === "upload" && importSource === "quarterly_report" ? {
+              subtitle: "העלה דוח תקופתי מהגוף המנהל (מגדל, הראל, כלל וכו') — מקור עשיר יותר לדמי ניהול ומסלולים.",
+              idleTitle: "גרור דוח תקופתי לכאן",
+              idleSub: "PDF מהגוף המנהל",
+              progressFallback: "מנתח מול השוק...",
+            } : undefined}
           />
         )}
 
@@ -219,12 +317,16 @@ export default function PensionPage() {
         ══════════════════════════════════════════════════════════ */}
         {step === "results" && (
           <ResultsStep
-            data={data}
             loading={loading}
             funds={funds}
             summary={summary}
             projection={projection}
+            benchmark={benchmark}
+            healthCheck={healthCheck}
             recs={recs}
+            importHistory={importHistory}
+            lastSavingsDelta={lastSavingsDelta}
+            onReloadAnalysis={() => { void loadAnalysis(); void loadFunds(); }}
             showAddForm={showAddForm}
             setShowAddForm={setShowAddForm}
             form={form}
@@ -242,364 +344,32 @@ export default function PensionPage() {
             onSimulate={handleSimulate}
             onReimport={() => setStep("guide")}
             navigate={navigate}
+            insightsTrigger={insightsTrigger}
+            importWarnings={importWarnings}
           />
         )}
 
-      </main>
-      <AppFooter variant="private" />
-    </div>
+    </PrivateDomainPageLayout>
   );
 }
 
-/* ════════════════════════════════════════════════════════════════
-   STEP: LANDING
-════════════════════════════════════════════════════════════════ */
-function LandingStep({ onImport, onManual }: { onImport: () => void; onManual: () => void }) {
-  return (
-    <div>
-      {/* Hero */}
-      <div style={{ textAlign: "center", marginBottom: 48 }}>
-        <div style={{
-          width: 80, height: 80, borderRadius: 24, margin: "0 auto 20px",
-          background: "linear-gradient(135deg, rgba(107,79,160,0.12), rgba(155,127,232,0.20))",
-          border: "1.5px solid rgba(107,79,160,0.22)",
-          display: "flex", alignItems: "center", justifyContent: "center", fontSize: 38,
-        }}>📈</div>
-        <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 700, color: "#1F1F1F", margin: "0 0 14px", letterSpacing: "-0.03em" }}>
-          הסוכן האישי שלי לפנסיה וחיסכון
-        </h1>
-        <p style={{ fontSize: 16, color: "#7C6FA0", maxWidth: 540, margin: "0 auto 32px", lineHeight: 1.7 }}>
-          ניתוח מלא של קרנות הפנסיה, קופות הגמל וקרנות ההשתלמות שלך —
-          ישירות מ<strong>הר הכסף</strong>, מאגר הנתונים הפנסיוניים הרשמי של מדינת ישראל.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-          <button
-            onClick={onImport}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 10,
-              padding: "16px 36px", borderRadius: 16,
-              background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)",
-              color: "#fff", border: "none", cursor: "pointer",
-              fontFamily: "inherit", fontWeight: 800, fontSize: 17,
-              boxShadow: "0 6px 24px rgba(107,79,160,0.40)",
-              transition: "transform 0.15s, box-shadow 0.15s",
-            }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.transform = "translateY(-2px)"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 10px 32px rgba(107,79,160,0.50)"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.transform = "none"; (e.currentTarget as HTMLButtonElement).style.boxShadow = "0 6px 24px rgba(107,79,160,0.40)"; }}
-          >
-            <PiggyBank size={20} />
-            ייבוא מהר הכסף
-          </button>
-          <div style={{ fontSize: 13, color: "#A89CC8" }}>חינמי · מאובטח · ~2 דקות</div>
-          <button
-            onClick={onManual}
-            style={{ background: "none", border: "none", color: "#7C6FA0", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 600, textDecoration: "underline" }}
-          >
-            הזן נתונים ידנית במקום זאת
-          </button>
-        </div>
-      </div>
-
-      {/* What you'll get */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(195px, 1fr))", gap: 16, marginBottom: 48 }}>
-        {[
-          { icon: "📅", title: "תחזית פרישה", desc: "כמה תצבור עד הפרישה וכמה תקבל לחודש" },
-          { icon: "💸", title: "דמי ניהול", desc: "האם אתה משלם יותר מדי? חיסכון פוטנציאלי עד פרישה" },
-          { icon: "🔄", title: "ריכוז קרנות", desc: "כמה קרנות יש לך — האם כדאי לאחד אותן?" },
-          { icon: "📊", title: "סימולציית תרחישים", desc: "מה יקרה אם תגדיל הפקדות או תפרוש מוקדם" },
-        ].map(item => (
-          <GlassCard key={item.title} padding="md" style={{ textAlign: "center" }}>
-            <div style={{ fontSize: 28, marginBottom: 10 }}>{item.icon}</div>
-            <div style={{ fontWeight: 800, fontSize: 15, color: "#1F1F1F", marginBottom: 6 }}>{item.title}</div>
-            <div style={{ fontSize: 13, color: "#7C6FA0", lineHeight: 1.55 }}>{item.desc}</div>
-          </GlassCard>
-        ))}
-      </div>
-
-      {/* Har HaKesef info */}
-      <GlassCard padding="md" style={{ display: "flex", alignItems: "flex-start", gap: 14, background: "rgba(107,79,160,0.04)", border: "1px solid rgba(107,79,160,0.15)", marginBottom: 16 }}>
-        <div style={{ fontSize: 22, flexShrink: 0 }}>🏛️</div>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: "#1F1F1F", marginBottom: 4 }}>מה זה הר הכסף?</div>
-          <div style={{ fontSize: 13.5, color: "#7C6FA0", lineHeight: 1.6 }}>
-            הר הכסף הוא שירות ממשלתי רשמי של משרד האוצר שמרכז את כל החסכונות הפנסיוניים שלך — פנסיה, גמל, השתלמות וביטוח מנהלים — ממקום אחד.
-            {" "}<a href={HAR_HAKESEF_URL} target="_blank" rel="noopener noreferrer" style={{ color: "#6B4FA0", fontWeight: 700 }}>לאתר הרשמי ←</a>
-          </div>
-        </div>
-      </GlassCard>
-
-      <GlassCard padding="md" style={{ display: "flex", alignItems: "center", gap: 14, background: "rgba(5,150,105,0.04)", border: "1px solid rgba(5,150,105,0.15)" }}>
-        <div style={{ fontSize: 22, flexShrink: 0 }}>🔒</div>
-        <div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: "#1F1F1F", marginBottom: 3 }}>המידע שלך מאובטח</div>
-          <div style={{ fontSize: 13, color: "#7C6FA0", lineHeight: 1.5 }}>
-            אנחנו לא ניגשים ישירות לחשבון שלך. אתה מוריד את הדוח בעצמך מהאתר הרשמי ומעלה אותו לניתוח.
-          </div>
-        </div>
-      </GlassCard>
-    </div>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════════
-   STEP: GUIDE
-════════════════════════════════════════════════════════════════ */
-function GuideStep({
-  visitedSite, onVisitSite, onContinue, onBack,
-}: {
-  visitedSite: boolean;
-  onVisitSite: () => void;
-  onContinue: () => void;
-  onBack: () => void;
-}) {
-  const STEPS_LIST = [
-    {
-      num: "1",
-      icon: "🌐",
-      title: "כנסו ישירות לאתר הר הכסף",
-      desc: "לחצו על הכפתור — ייפתח אתר הר הכסף של משרד האוצר בלשונית חדשה.",
-      action: (
-        <button
-          onClick={onVisitSite}
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 8,
-            padding: "11px 20px", borderRadius: 12,
-            background: visitedSite ? "#ECFDF5" : "linear-gradient(135deg, #6B4FA0, #5A3E8F)",
-            color: visitedSite ? "#059669" : "#fff",
-            border: visitedSite ? "1px solid rgba(5,150,105,0.25)" : "none",
-            cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14,
-            boxShadow: visitedSite ? "none" : "0 4px 14px rgba(107,79,160,0.35)",
-          }}
-        >
-          {visitedSite ? (
-            <><CheckCircle size={15} /> ביקרת באתר</>
-          ) : (
-            <><ExternalLink size={15} /> פתח את הר הכסף</>
-          )}
-        </button>
-      ),
-    },
-    {
-      num: "2",
-      icon: "🔑",
-      title: "התחברות עם תעודת זהות",
-      desc: "היכנסו למערכת עם תעודת הזהות + תאריך לידה. ניתן להתחבר גם דרך MyGov.",
-    },
-    {
-      num: "3",
-      icon: "📊",
-      title: "הורידו את הדוח המלא",
-      desc: 'בחרו "הדפסה / שמירה" ושמרו את הדוח ב-PDF. כל קרנות הפנסיה, הגמל וההשתלמות שלכם יופיעו שם.',
-    },
-    {
-      num: "4",
-      icon: "⬆️",
-      title: "חזרו לכאן והעלו את הדוח",
-      desc: "לאחר שהורדתם — לחצו על המשך ועלו את הקובץ. הסוכן ינתח את כל הקרנות.",
-    },
-  ];
-
-  return (
-    <div>
-      <div style={{ marginBottom: 36 }}>
-        <button
-          onClick={onBack}
-          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#7C6FA0", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 14, marginBottom: 20 }}
-        >
-          <ArrowLeft size={14} /> חזרה
-        </button>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(107,79,160,0.10)", border: "1px solid rgba(107,79,160,0.22)", borderRadius: 20, padding: "4px 14px", marginBottom: 14 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#6B4FA0" }}>שלב 1 מתוך 2 — הכנת הדוח</span>
-        </div>
-        <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: "clamp(22px, 3.5vw, 30px)", fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px", letterSpacing: "-0.03em" }}>
-          כיצד להוריד את דוח הפנסיה שלך?
-        </h1>
-        <p style={{ fontSize: 15, color: "#7C6FA0", margin: 0, lineHeight: 1.6 }}>
-          הר הכסף מרכז <strong>את כל החסכונות הפנסיוניים שלך</strong> — פנסיה, גמל, השתלמות, ביטוח מנהלים.
-          <br />פשוט עקוב אחרי ארבעת השלבים:
-        </p>
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 36 }}>
-        {STEPS_LIST.map((s, i) => (
-          <GlassCard key={i} padding="md" elevated style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
-            <div style={{
-              width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-              background: "linear-gradient(135deg, rgba(107,79,160,0.12), rgba(155,127,232,0.18))",
-              border: "1.5px solid rgba(107,79,160,0.22)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              fontWeight: 800, fontSize: 16, color: "#6B4FA0",
-            }}>
-              {s.num}
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-                <span style={{ fontSize: 18 }}>{s.icon}</span>
-                <span style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F" }}>{s.title}</span>
-              </div>
-              <p style={{ fontSize: 14, color: "#7C6FA0", margin: "0 0 10px", lineHeight: 1.6 }}>{s.desc}</p>
-              {s.action}
-            </div>
-          </GlassCard>
-        ))}
-      </div>
-
-      {/* Tip */}
-      <GlassCard padding="md" style={{ background: "rgba(107,79,160,0.05)", border: "1px solid rgba(107,79,160,0.18)", marginBottom: 28 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-          <span style={{ fontSize: 16, flexShrink: 0 }}>💡</span>
-          <div style={{ fontSize: 13.5, color: "#4A3575", lineHeight: 1.6 }}>
-            <strong>הר הכסף מציג את הנתונים בצורת טבלה.</strong> לחצו על "הדפסה" בדפדפן (Ctrl+P) ושמרו כ-PDF, או חפשו כפתור "ייצוא" בדף.
-          </div>
-        </div>
-      </GlassCard>
-
-      <div style={{ display: "flex", justifyContent: "flex-start" }}>
-        <button
-          onClick={onContinue}
-          style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "14px 30px", borderRadius: 14,
-            background: visitedSite ? "linear-gradient(135deg, #6B4FA0, #5A3E8F)" : "rgba(184,157,255,0.25)",
-            color: visitedSite ? "#fff" : "#A89CC8",
-            border: "none", cursor: "pointer",
-            fontFamily: "inherit", fontWeight: 700, fontSize: 15,
-            boxShadow: visitedSite ? "0 5px 20px rgba(107,79,160,0.35)" : "none",
-            transition: "all 0.2s",
-          }}
-        >
-          <Upload size={15} />
-          {visitedSite ? "הורדתי את הדוח — המשך להעלאה" : "כבר יש לי דוח — המשך"}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════════
-   STEP: UPLOAD
-════════════════════════════════════════════════════════════════ */
-function UploadStep({
-  fileInputRef, uploading, uploadMsg, isDragging, setIsDragging, onUpload, onBack,
-}: {
-  fileInputRef: React.RefObject<HTMLInputElement>;
-  uploading: boolean;
-  uploadMsg: { type: "success" | "error"; text: string } | null;
-  isDragging: boolean;
-  setIsDragging: (v: boolean) => void;
-  onUpload: (f: File) => void;
-  onBack: () => void;
-}) {
-  return (
-    <div>
-      <div style={{ marginBottom: 32 }}>
-        <button
-          onClick={onBack}
-          style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#7C6FA0", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 14, marginBottom: 20 }}
-        >
-          <ArrowLeft size={14} /> חזרה
-        </button>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(107,79,160,0.10)", border: "1px solid rgba(107,79,160,0.22)", borderRadius: 20, padding: "4px 14px", marginBottom: 14 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#6B4FA0" }}>שלב 2 מתוך 2 — העלאת הדוח</span>
-        </div>
-        <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: "clamp(22px, 3.5vw, 30px)", fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px", letterSpacing: "-0.03em" }}>
-          העלה את דוח הפנסיה שלך
-        </h1>
-        <p style={{ fontSize: 15, color: "#7C6FA0", margin: 0, lineHeight: 1.6 }}>
-          גרור את הדוח שהורדת מהר הכסף לכאן, או לחץ לבחירה. הסוכן ינתח את כל הקרנות אוטומטית.
-        </p>
-      </div>
-
-      <GlassCard padding="lg" elevated style={{ marginBottom: 20 }}>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.xlsx,.xls"
-          onChange={e => { const f = e.target.files?.[0]; if (f) { onUpload(f); } e.target.value = ""; }}
-          style={{ display: "none" }}
-        />
-        <div
-          onClick={() => !uploading && fileInputRef.current?.click()}
-          onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={e => {
-            e.preventDefault(); setIsDragging(false);
-            const f = e.dataTransfer.files?.[0]; if (f) onUpload(f);
-          }}
-          style={{
-            border: `2px dashed ${isDragging ? "#6B4FA0" : uploading ? "rgba(5,150,105,0.4)" : "rgba(184,157,255,0.40)"}`,
-            borderRadius: 20, padding: "52px 24px",
-            textAlign: "center", cursor: uploading ? "wait" : "pointer",
-            background: isDragging ? "rgba(107,79,160,0.05)" : uploading ? "rgba(5,150,105,0.04)" : "rgba(250,247,255,0.5)",
-            transition: "all 0.2s",
-          }}
-        >
-          {uploading ? (
-            <>
-              <div style={{ fontSize: 36, marginBottom: 12 }}>⚙️</div>
-              <div style={{ fontSize: 15, color: "#6B4FA0", fontWeight: 700 }}>הסוכן מנתח את הקרנות...</div>
-              <div style={{ fontSize: 13, color: "#A89CC8", marginTop: 6 }}>זה יכול לקחת כמה שניות</div>
-            </>
-          ) : (
-            <>
-              <div style={{ fontSize: 44, marginBottom: 14 }}>📄</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: "#1F1F1F", marginBottom: 6 }}>גרור את דוח הר הכסף לכאן</div>
-              <div style={{ fontSize: 14, color: "#7C6FA0", marginBottom: 20 }}>PDF, xlsx, xls — מהר הכסף</div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 22px", borderRadius: 12, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", fontSize: 14, fontWeight: 700 }}>
-                <FileText size={15} /> בחר קובץ
-              </div>
-              <div style={{ fontSize: 12, color: "#A89CC8", marginTop: 12 }}>PDF · xlsx · xls · עד 10MB</div>
-            </>
-          )}
-        </div>
-
-        {uploadMsg && (
-          <div style={{
-            marginTop: 16, padding: "12px 16px", borderRadius: 12, fontWeight: 600, fontSize: 14,
-            background: uploadMsg.type === "error" ? "#FEF2F2" : "#ECFDF5",
-            color: uploadMsg.type === "error" ? "#DC2626" : "#059669",
-            border: `1px solid ${uploadMsg.type === "error" ? "rgba(220,38,38,0.2)" : "rgba(5,150,105,0.2)"}`,
-            display: "flex", alignItems: "center", gap: 8,
-          }}>
-            {uploadMsg.type === "error" ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
-            {uploadMsg.text}
-          </div>
-        )}
-      </GlassCard>
-
-      <GlassCard padding="md" style={{ background: "rgba(107,79,160,0.05)", border: "1px solid rgba(107,79,160,0.15)" }}>
-        <div style={{ fontWeight: 700, fontSize: 14, color: "#6B4FA0", marginBottom: 10 }}>✦ מה הסוכן יזהה בדוח?</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {[
-            "כל קרנות הפנסיה, גמל, השתלמות וביטוח מנהלים",
-            "שיעורי דמי ניהול ממכל קרן",
-            "גובה הצבירה הנוכחית בכל קרן",
-            "חישוב תחזית פרישה ריאלית",
-            "המלצות אישיות לחיסכון ואיחוד קרנות",
-          ].map(item => (
-            <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, color: "#5A527A" }}>
-              <span style={{ color: "#6B4FA0", flexShrink: 0 }}>✓</span> {item}
-            </div>
-          ))}
-        </div>
-      </GlassCard>
-    </div>
-  );
-}
 
 /* ════════════════════════════════════════════════════════════════
    STEP: RESULTS
 ════════════════════════════════════════════════════════════════ */
 interface ResultsProps {
-  data: PensionAnalysisResponse["data"] | null;
   loading: boolean;
   funds: PensionFundDTO[];
-  summary: PensionAnalysisResponse["data"]["summary"] | null | undefined;
-  projection: PensionAnalysisResponse["data"]["projection"] | null | undefined;
-  recs: PensionAnalysisResponse["data"]["recommendations"];
+  summary: PensionAnalysisData["summary"] | null | undefined;
+  projection: PensionAnalysisData["projection"] | null | undefined;
+  benchmark: PensionAnalysisData["benchmark"] | undefined;
+  healthCheck: PensionAnalysisData["healthCheck"] | undefined;
+  recs: PensionAnalysisData["recommendations"];
+  importHistory: PensionImportSnapshotDTO[];
+  lastSavingsDelta: number | null;
+  onReloadAnalysis: () => void;
   showAddForm: boolean;
-  setShowAddForm: (v: boolean) => void;
+  setShowAddForm: React.Dispatch<React.SetStateAction<boolean>>;
   form: UploadPensionBody;
   setForm: React.Dispatch<React.SetStateAction<UploadPensionBody>>;
   saving: boolean;
@@ -615,46 +385,76 @@ interface ResultsProps {
   onSimulate: () => void;
   onReimport: () => void;
   navigate: ReturnType<typeof useNavigate>;
+  insightsTrigger: number;
+  importWarnings: string[];
 }
 
 function ResultsStep({
-  data, loading, funds, summary, projection, recs,
+  loading, funds, summary, projection, benchmark, healthCheck, recs,
+  importHistory, lastSavingsDelta, onReloadAnalysis,
   showAddForm, setShowAddForm, form, setForm,
   saving, saveMsg, deletingId,
   simAge, setSimAge, simExtra, setSimExtra, simFee, setSimFee,
   simResult, simLoading,
   onSaveFund, onDeleteFund, onSimulate, onReimport, navigate,
+  insightsTrigger, importWarnings,
 }: ResultsProps) {
+  const [editingFundId, setEditingFundId] = useState<string | null>(null);
+  const [editTrack, setEditTrack] = useState("");
+  const [editFeePct, setEditFeePct] = useState("");
+  const [editSaving, setEditSaving] = useState(false);
+
+  const benchmarkByFundId = new Map(
+    (benchmark?.funds ?? []).map(b => [b.fundId, b] as const),
+  );
+  const benchmarkByName = new Map(
+    (benchmark?.funds ?? []).map(b => [b.fundName, b] as const),
+  );
+
+  const getFundBenchmark = (f: PensionFundDTO): PensionBenchmarkFundDTO | undefined =>
+    benchmarkByFundId.get(f.id) ?? benchmarkByName.get(f.fundName);
+
+  const historyDelta = computeImportHistoryDelta(
+    importHistory,
+    "totalPotentialSavings",
+    lastSavingsDelta,
+  );
+
+  const startEditFund = (f: PensionFundDTO) => {
+    setEditingFundId(f.id);
+    setEditTrack(f.investmentTrack || "");
+    setEditFeePct(((f.managementFeeAccumulation ?? 0) * 100).toFixed(2));
+  };
+
+  const saveEditFund = async (id: string) => {
+    setEditSaving(true);
+    await updatePensionFund(id, {
+      investmentTrack: editTrack || undefined,
+      managementFeeAccumulation: parseFloat(editFeePct) / 100 || undefined,
+    });
+    setEditSaving(false);
+    setEditingFundId(null);
+    onReloadAnalysis();
+  };
+
   return (
     <div>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 32 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-            <span style={{ fontSize: 22 }}>📈</span>
-            <h1 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: "clamp(20px, 3vw, 26px)", fontWeight: 700, color: "#1F1F1F", margin: 0, letterSpacing: "-0.03em" }}>
-              ניתוח הפנסיה שלך
-            </h1>
-          </div>
-          <div style={{ fontSize: 14, color: "#7C6FA0" }}>
-            {funds.length} קרנות · {summary?.currentAccumulation ? `צבירה ${fmt(summary.currentAccumulation)}` : "הוסף נתונים לניתוח"}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
+      <DomainResultsHeader
+        emoji="📈"
+        title="ניתוח הפנסיה שלך"
+        subtitle={`${funds.length} קרנות · ${summary?.currentAccumulation ? `צבירה ${fmt(summary.currentAccumulation)}` : "הוסף נתונים לניתוח"}`}
+        accentColor="#6B4FA0"
+        onReimport={onReimport}
+        actions={
           <button
-            onClick={onReimport}
-            style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: 12, background: "rgba(255,255,255,0.8)", color: "#6B4FA0", border: "1px solid rgba(107,79,160,0.25)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13.5 }}
-          >
-            <RefreshCw size={13} /> עדכן דוח
-          </button>
-          <button
+            type="button"
             onClick={() => setShowAddForm(v => !v)}
             style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: 12, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13.5 }}
           >
             <Plus size={13} /> הוסף קרן ידנית
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {loading ? (
         <div style={{ textAlign: "center", padding: "40px 0" }}>
@@ -662,6 +462,58 @@ function ResultsStep({
         </div>
       ) : (
         <>
+          {importWarnings.length > 0 && (
+            <GlassCard padding="md" style={{ marginBottom: 24, borderRight: "4px solid #D97706", background: "rgba(255,251,235,0.85)" }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: "#92400E", marginBottom: 8 }}>נתונים חלקיים מהדוח</div>
+              <div style={{ fontSize: 13, color: "#78350F", lineHeight: 1.55 }}>
+                {importWarnings.slice(0, 3).map(w => <div key={w}>• {w}</div>)}
+                {importWarnings.length > 3 && <div>...ועוד {importWarnings.length - 3}</div>}
+              </div>
+              <button
+                onClick={() => setShowAddForm(true)}
+                style={{ marginTop: 12, padding: "8px 16px", borderRadius: 10, background: "rgba(107,79,160,0.10)", color: "#6B4FA0", border: "1px solid rgba(107,79,160,0.25)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}
+              >
+                השלם נתונים חסרים
+              </button>
+            </GlassCard>
+          )}
+
+          {/* FINQ-style bottom line + health check */}
+          {(benchmark?.summary || healthCheck) && summary?.hasData && (
+            <section style={{ marginBottom: 32 }}>
+              {historyDelta != null && historyDelta !== 0 && (
+                <SavingsDeltaCard
+                  delta={historyDelta}
+                  label="שינוי בחיסכון עד פרישה"
+                  formatValue={n => fmt(n)}
+                />
+              )}
+              {benchmark?.summary && benchmark.summary.totalPotentialSavings > 0 && (
+                <GlassCard padding="lg" elevated style={{ marginBottom: 16, background: "linear-gradient(135deg, rgba(5,150,105,0.08), rgba(107,79,160,0.06))", border: "1px solid rgba(5,150,105,0.25)" }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "#059669", marginBottom: 8 }}>שורה תחתונה</div>
+                  <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: "clamp(24px, 4vw, 32px)", fontWeight: 800, color: "#1F1F1F", letterSpacing: "-0.03em" }}>
+                    {fmt(benchmark.summary.totalPotentialSavings)} חיסכון פוטנציאלי עד פרישה
+                  </div>
+                  <div style={{ fontSize: 14, color: "#7C6FA0", marginTop: 8 }}>
+                    {benchmark.summary.fundsAboveMarketFee > 0
+                      ? `${benchmark.summary.fundsAboveMarketFee} קרנות עם דמי ניהול מעל ממוצע השוק`
+                      : "דמי הניהול שלך בממוצע שוק או טובים יותר"}
+                    {benchmark.summary.avgRankPercentile != null && ` · דירוג ממוצע: אחוזון ${benchmark.summary.avgRankPercentile}`}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: "#A89CC8", marginTop: 10 }}>⚠️ אינו מהווה ייעוץ פנסיוני מקצועי.</div>
+                </GlassCard>
+              )}
+
+              {healthCheck && (
+                <HealthCheckPanel
+                  title="בדיקת בריאות פנסיונית"
+                  healthCheck={healthCheck}
+                  accentColor="#6B4FA0"
+                />
+              )}
+            </section>
+          )}
+
           {/* Projection KPIs */}
           {projection?.available ? (
             <section style={{ marginBottom: 40 }}>
@@ -672,12 +524,12 @@ function ResultsStep({
                 {summary?.currentAccumulation ? <StatCard icon="💼" label="צבירה נוכחית" value={fmt(summary.currentAccumulation)} accent="#9B7FE8" /> : null}
                 {summary?.totalMonthlyContribution ? <StatCard icon="📥" label="הפקדה חודשית" value={fmt(summary.totalMonthlyContribution)} accent="#7B5EA7" /> : null}
                 {projection.replacementRatio != null && (
-                  <StatCard icon="📊" label="שיעור חלופה" value={`${(projection.replacementRatio * 100).toFixed(0)}%`} sub="מהשכר האחרון" accent={projection.replacementRatio >= 0.7 ? "#059669" : "#D97706"} />
+                  <StatCard icon="📊" label="שיעור חלופה" value={`${projection.replacementRatio}%`} sub="מהשכר האחרון" accent={projection.replacementRatio >= 70 ? "#059669" : "#D97706"} />
                 )}
               </div>
 
               {projection.scenarios && (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginTop: 16 }}>
                   {[
                     { label: "תרחיש בסיס", s: projection.scenarios.base, color: "#9B7FE8" },
                     { label: "תרחיש אופטימי", s: projection.scenarios.optimistic, color: "#059669" },
@@ -710,28 +562,12 @@ function ResultsStep({
             </GlassCard>
           )}
 
-          {/* Recommendations */}
-          {recs.length > 0 && (
-            <section style={{ marginBottom: 40 }}>
-              <SectionHeader title="✦ המלצות הסוכן" subtitle="מה כדאי לעשות עכשיו" />
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {recs.map((rec, i) => (
-                  <GlassCard key={i} padding="md" style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                    <Badge variant={rec.urgency === "high" ? "high" : rec.urgency === "medium" ? "medium" : "low"}>
-                      {rec.urgency === "high" ? "דחוף" : rec.urgency === "medium" ? "מומלץ" : "לידיעה"}
-                    </Badge>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: 700, fontSize: 14.5, color: "#1F1F1F", marginBottom: 4 }}>{rec.title}</div>
-                      <div style={{ fontSize: 13, color: "#7C6FA0", lineHeight: 1.55 }}>{rec.reason}</div>
-                      {rec.financialImpact && (
-                        <div style={{ fontSize: 12.5, color: "#059669", fontWeight: 700, marginTop: 6 }}>{rec.financialImpact}</div>
-                      )}
-                    </div>
-                  </GlassCard>
-                ))}
-              </div>
-            </section>
-          )}
+          <DomainRecommendationsSection
+            recommendations={recs}
+            title="✦ המלצות — ממוינות לפי השפעה כספית"
+            subtitle="מה כדאי לעשות עכשיו"
+            limit={recs.length}
+          />
 
           {/* Mgmt fee warning */}
           {projection?.mgmtFeeSavings && projection.mgmtFeeSavings.savingsByRetirement > 10000 && (
@@ -750,7 +586,7 @@ function ResultsStep({
       )}
 
       {/* Funds + Simulation side-by-side */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, marginBottom: 40 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, marginBottom: 40 }}>
 
         {/* Fund list */}
         <GlassCard padding="lg" elevated>
@@ -770,24 +606,62 @@ function ResultsStep({
             <div style={{ textAlign: "center", padding: "20px 0", color: "#7C6FA0", fontSize: 14 }}>אין קרנות. הוסף קרן ראשונה.</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {funds.map(f => (
-                <div key={f.id} style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(250,247,255,0.8)", border: "1px solid rgba(184,157,255,0.18)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: 13.5, color: "#1F1F1F" }}>{f.fundName}</div>
+              {funds.map(f => {
+                const bf = getFundBenchmark(f);
+                const rank = bf ? RANK_BADGE[bf.rankLabel] ?? RANK_BADGE.unknown : null;
+                return (
+                <div key={f.id} style={{ padding: "12px 14px", borderRadius: 14, background: "rgba(250,247,255,0.8)", border: "1px solid rgba(184,157,255,0.18)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <div style={{ fontWeight: 700, fontSize: 13.5, color: "#1F1F1F" }}>{f.fundName}</div>
+                      {rank && (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, color: rank.color, background: rank.bg }}>
+                          {bf && bf.matchConfidence < 60 ? "לא מזוהה" : rank.label}
+                        </span>
+                      )}
+                      {bf && bf.matchConfidence < 60 && (
+                        <span style={{ fontSize: 11, color: "#7C6FA0" }}>({bf.matchConfidence}% התאמה)</span>
+                      )}
+                      {bf?.riskMismatch && (
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20, color: "#DC2626", background: "rgba(220,38,38,0.10)" }}>
+                          סיכון לא מתאים
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 12, color: "#7C6FA0", marginTop: 2 }}>{FUND_TYPE_LABELS[f.fundType] ?? f.fundType}{f.provider ? ` · ${f.provider}` : ""}</div>
                     <div style={{ fontSize: 12.5, fontWeight: 600, color: "#6B4FA0", marginTop: 3 }}>{fmt(f.currentBalance)} צבירה</div>
+                    {bf && bf.userFee != null && (
+                      <div style={{ fontSize: 11.5, color: bf.feeVsMarket === "above_market" || bf.feeVsMarket === "high" ? "#DC2626" : "#059669", marginTop: 4 }}>
+                        דמ"צ {(bf.userFee * 100).toFixed(2)}% vs שוק {((bf.marketAvgFee ?? 0) * 100).toFixed(2)}%
+                      </div>
+                    )}
+                    {bf && bf.matchConfidence < 60 && editingFundId !== f.id && (
+                      <button type="button" onClick={() => startEditFund(f)} style={{ marginTop: 6, fontSize: 12, color: "#6B4FA0", background: "none", border: "none", cursor: "pointer", fontWeight: 700, padding: 0 }}>
+                        השלם מסלול / דמ"צ
+                      </button>
+                    )}
+                    {editingFundId === f.id && (
+                      <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                        <input value={editTrack} onChange={e => setEditTrack(e.target.value)} placeholder="מסלול השקעה" style={{ padding: "6px 8px", borderRadius: 8, fontSize: 12, border: "1px solid rgba(184,157,255,0.35)" }} />
+                        <input value={editFeePct} onChange={e => setEditFeePct(e.target.value)} placeholder="דמ%צ (%)" type="number" style={{ padding: "6px 8px", borderRadius: 8, fontSize: 12, border: "1px solid rgba(184,157,255,0.35)" }} />
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button type="button" disabled={editSaving} onClick={() => void saveEditFund(f.id)} style={{ padding: "6px 10px", borderRadius: 8, background: "#6B4FA0", color: "#fff", border: "none", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>שמור</button>
+                          <button type="button" onClick={() => setEditingFundId(null)} style={{ padding: "6px 10px", borderRadius: 8, background: "none", border: "1px solid rgba(184,157,255,0.35)", fontSize: 12, cursor: "pointer" }}>ביטול</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <button onClick={() => void onDeleteFund(f.id)} disabled={deletingId === f.id} style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", padding: 6, display: "flex" }}>
+                  <button onClick={() => void onDeleteFund(f.id)} disabled={deletingId === f.id} style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", padding: 6, display: "flex", flexShrink: 0 }}>
                     {deletingId === f.id ? <Loader2 size={14} style={{ animation: "spin 0.8s linear infinite" }} /> : <Trash2 size={14} />}
                   </button>
                 </div>
-              ))}
+              );})}
             </div>
           )}
 
           {showAddForm && (
             <div style={{ marginTop: 16, borderTop: "1px solid rgba(184,157,255,0.2)", paddingTop: 16 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
                 {([
                   { label: "שם הקרן *", field: "fundName" as const, type: "text" },
                   { label: "ספק / חברה", field: "provider" as const, type: "text" },
@@ -874,35 +748,21 @@ function ResultsStep({
         </GlassCard>
       </div>
 
-      {/* AI Risk Advice & Pension Insights */}
-      <section style={{ marginBottom: 36 }}>
-        <div style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 18, fontWeight: 700, color: "#1F1F1F", marginBottom: 4 }}>תובנות AI פנסיוניות</div>
-        <div style={{ fontSize: 13, color: "#7C6FA0", marginBottom: 14 }}>ניתוח מסלול סיכון, דמי ניהול, וריכוז קרנות מותאם לגילך</div>
-        <GlassCard padding="lg">
-          <InsightsPanel agent="pension" trigger={1} />
-        </GlassCard>
-      </section>
-
-      {/* Copilot CTA */}
-      <GlassCard padding="lg" style={{ background: "linear-gradient(135deg, rgba(107,79,160,0.08), rgba(155,127,232,0.14))", border: "1px solid rgba(184,157,255,0.35)", textAlign: "center" }}>
-        <div style={{ fontSize: 28, marginBottom: 10 }}>🤖</div>
-        <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 22, fontWeight: 700, color: "#1F1F1F", margin: "0 0 8px" }}>
-          שאל את יועץ הפנסיה
-        </h3>
-        <p style={{ fontSize: 14.5, color: "#7C6FA0", margin: "0 0 20px", lineHeight: 1.65 }}>
-          "מתי כדאי לפרוש?", "האם כדאי לאחד קרנות?", "כמה אני משלם בדמי ניהול?"
-        </p>
-        <button
-          onClick={() => navigate(APP_ROUTES.copilot)}
-          style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", borderRadius: 14, background: "linear-gradient(135deg, #6B4FA0, #5A3E8F)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 15, boxShadow: "0 4px 20px rgba(107,79,160,0.35)" }}
-        >
-          <Sparkles size={16} /> פתח שיחה עם יועץ הפנסיה
-        </button>
-      </GlassCard>
-
-      <p style={{ fontSize: 11.5, color: "#A89CC8", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
-        ⚠️ התחזיות מבוססות על הנחות ממוצעות. אינן מהוות ייעוץ פנסיוני מקצועי.
-      </p>
+      <DomainResultsFooter
+        agent="pension"
+        insightsTrigger={insightsTrigger}
+        insightsTitle="תובנות AI פנסיוניות"
+        insightsSubtitle="ניתוח מסלול סיכון, דמי ניהול, וריכוז קרנות מותאם לגילך"
+        copilot={{
+          title: "שאל את יועץ הפנסיה",
+          description: '"מתי כדאי לפרוש?", "האם כדאי לאחד קרנות?", "כמה אני משלם בדמי ניהול?"',
+          buttonLabel: "פתח שיחה עם יועץ הפנסיה",
+          gradientFrom: "#6B4FA0",
+          gradientTo: "#5A3E8F",
+        }}
+        disclaimer="⚠️ התחזיות מבוססות על הנחות ממוצעות. אינן מהוות ייעוץ פנסיוני מקצועי."
+        onNavigate={route => navigate(route)}
+      />
     </div>
   );
 }

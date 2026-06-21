@@ -49,6 +49,9 @@ export interface InsuranceInsightsData {
     activePolicies: number;
     totalMonthlyPremium: number;
     totalAnnualPremium: number;
+    healthScore?: number | null;
+    duplicateCount?: number;
+    annualSavings?: number;
   };
 }
 
@@ -62,6 +65,9 @@ export interface PensionInsightsData {
     projectedBalance?: number;
     yearsToRetirement?: number;
     recommendedRiskLevel?: "low" | "medium" | "high";
+    healthScore?: number | null;
+    totalPotentialSavings?: number;
+    avgRankPercentile?: number | null;
   };
 }
 

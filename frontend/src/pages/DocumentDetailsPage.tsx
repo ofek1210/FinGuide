@@ -9,6 +9,7 @@ import {
   type PayslipSummaryFromBackend,
   type DigestResponse,
 } from "../api/documents.api";
+import { APP_ROUTES } from "../types/navigation";
 import {
   formatCurrencyILS,
   formatPercent,

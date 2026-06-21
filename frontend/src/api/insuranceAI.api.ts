@@ -1,4 +1,4 @@
-import { apiJson } from "./client";
+import { apiJson, apiFormUpload } from "./client";
 
 export type InsurancePolicyDTO = {
   id: string;
@@ -46,6 +46,18 @@ export type InsuranceRecommendationDTO = {
   confidenceScore: number;
 };
 
+export type InsuranceHealthCheck = {
+  score: number;
+  level: { label: string; code?: string };
+  categories: { id: string; label: string; status: string; score: number; detail?: string }[];
+};
+
+export type InsuranceAnalysisSummary = {
+  hasData: boolean;
+  policyCount: number;
+  totalMonthlyPremium: number;
+};
+
 export type InsuranceAnalysisResponse = {
   success: boolean;
   data?: {
@@ -55,8 +67,21 @@ export type InsuranceAnalysisResponse = {
     policies: InsurancePolicyDTO[];
     analysis: InsuranceAnalysisDTO;
     recommendations: InsuranceRecommendationDTO[];
+    healthCheck?: InsuranceHealthCheck;
+    summary?: InsuranceAnalysisSummary;
     hasImportedPolicies: boolean;
   };
+};
+
+export type InsuranceImportHistoryItem = {
+  id: string;
+  sourceFile: string;
+  importedAt: string;
+  policyCount: number;
+  duplicateCount: number;
+  totalMonthlyWaste: number;
+  healthScore: number | null;
+  annualSavings: number;
 };
 
 export type UploadExcelResponse = {
@@ -64,27 +89,27 @@ export type UploadExcelResponse = {
   message?: string;
   data?: {
     imported: number;
+    savingsDelta?: number;
+    healthScore?: number | null;
+    healthCheck?: InsuranceHealthCheck;
+    analysis?: InsuranceAnalysisDTO;
+    recommendations?: InsuranceRecommendationDTO[];
     policies: Pick<InsurancePolicyDTO, "id" | "type" | "provider" | "monthlyPremium" | "status">[];
   };
 };
+
+export const getInsuranceImportHistory = () =>
+  apiJson<{ success: boolean; data: InsuranceImportHistoryItem[] }>("/api/insurance/import-history", { auth: true });
 
 export const getInsuranceAnalysis = () =>
   apiJson<InsuranceAnalysisResponse>("/api/insurance/analysis", { auth: true });
 
 export const uploadInsuranceExcel = async (file: File): Promise<UploadExcelResponse> => {
-  const token = localStorage.getItem("token");
-  const form = new FormData();
-  form.append("file", file);
-  const res = await fetch("/api/insurance/upload-excel", {
-    method: "POST",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: form,
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { message?: string };
-    return { success: false, message: err.message ?? "שגיאה בהעלאת הקובץ" };
+  const result = await apiFormUpload<UploadExcelResponse>("/api/insurance/upload-excel", file);
+  if (!result.ok) {
+    return { success: false, message: result.error.message };
   }
-  return res.json() as Promise<UploadExcelResponse>;
+  return result.data;
 };
 
 export const deleteInsurancePolicy = (id: string) =>

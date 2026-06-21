@@ -4,13 +4,27 @@ export type FindingSeverity = "info" | "warning";
 
 export type FindingFundType = "pension" | "study_fund";
 
-export type FindingKind = "rate" | "continuity" | "deposit";
+export type FindingKind =
+  | "rate"
+  | "continuity"
+  | "deposit"
+  | "pension_health_low"
+  | "fee_above_market"
+  | "risk_wrong_for_age"
+  | "track_underperforming"
+  | "insurance_health_low"
+  | "insurance_duplicate"
+  | "insurance_missing_coverage";
 
 export type FindingMeta = {
   fundType?: FindingFundType;
   periods?: string[];
   documentIds?: string[];
-  findingKind?: FindingKind;
+  findingKind?: FindingKind | string;
+  score?: number;
+  fundId?: string;
+  fundName?: string;
+  currentAge?: number | null;
 };
 
 export type FindingItem = {
