@@ -33,7 +33,6 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
   const [emailConsent, setEmailConsent] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailMsg, setEmailMsg] = useState<string | null>(null);
-  const [waUrl, setWaUrl] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchInsights();
@@ -74,19 +73,20 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
   async function handleWhatsApp() {
     const res = await getWhatsAppShareUrl();
     if (res.ok) {
-      const url = res.data.data.url;
-      setWaUrl(url);
-      window.open(url, "_blank", "noopener,noreferrer");
+      window.open(res.data.data.url, "_blank", "noopener,noreferrer");
     }
   }
 
   const insights: AIInsight[] = (data as any)?.insights || [];
   const narrative: string = (data as any)?.narrative || "";
+  const pensionMeta = agent === "pension" ? (data as PensionInsightsData)?.meta : null;
+  const insuranceMeta = agent === "insurance" ? (data as InsuranceInsightsData)?.meta : null;
 
-  const totalSavings = insights.reduce(
-    (sum, i) => sum + (i.financialImpact || 0),
-    0
-  );
+  const totalSavings = pensionMeta?.totalPotentialSavings && pensionMeta.totalPotentialSavings > 0
+    ? pensionMeta.totalPotentialSavings
+    : insuranceMeta?.annualSavings && insuranceMeta.annualSavings > 0
+      ? insuranceMeta.annualSavings
+      : insights.reduce((sum, i) => sum + (i.financialImpact || 0), 0);
 
   if (loading) {
     return (
@@ -178,6 +178,27 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
               label="פוטנציאל חיסכון"
               value={`₪${totalSavings.toLocaleString("he-IL")}`}
               color="#2d7d46"
+            />
+          )}
+          {pensionMeta?.healthScore != null && (
+            <StatBadge
+              label="ציון בריאות פנסיונית"
+              value={`${pensionMeta.healthScore}/100`}
+              color={pensionMeta.healthScore >= 70 ? "#2d7d46" : pensionMeta.healthScore >= 50 ? "#D97706" : "#e53e3e"}
+            />
+          )}
+          {insuranceMeta?.healthScore != null && (
+            <StatBadge
+              label="ציון בריאות ביטוח"
+              value={`${insuranceMeta.healthScore}/100`}
+              color={insuranceMeta.healthScore >= 70 ? "#2d7d46" : insuranceMeta.healthScore >= 50 ? "#D97706" : "#e53e3e"}
+            />
+          )}
+          {insuranceMeta?.duplicateCount != null && insuranceMeta.duplicateCount > 0 && (
+            <StatBadge
+              label="כפילויות ביטוח"
+              value={String(insuranceMeta.duplicateCount)}
+              color="#e53e3e"
             />
           )}
           <StatBadge

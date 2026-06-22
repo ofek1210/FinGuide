@@ -1,15 +1,7 @@
 import { useCallback, useState } from "react";
 import { Sparkles, Loader2, AlertCircle, CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { runFullAnalysis, type FullAnalysisRecommendation } from "../../api/fullAnalysis.api";
-
-const urgencyBadge = (u: string) => {
-  const map: Record<string, { bg: string; color: string; label: string }> = {
-    high:   { bg: "rgba(239,68,68,0.15)",   color: "#FCA5A5", label: "דחוף" },
-    medium: { bg: "rgba(234,179,8,0.15)",   color: "#FDE68A", label: "מומלץ" },
-    low:    { bg: "rgba(16,185,129,0.12)",  color: "#6EE7B7", label: "לידיעה" },
-  };
-  return map[u] ?? map.low;
-};
+import { urgencyBadgeStyle } from "../../utils/recommendationDisplay";
 
 export default function DashboardFullAnalysisCard() {
   const [loading, setLoading] = useState(false);
@@ -25,7 +17,7 @@ export default function DashboardFullAnalysisCard() {
     setLoading(true);
     setError(null);
     setResult(null);
-    const res = await runFullAnalysis({ skipLLM: false, demo });
+    const res = await runFullAnalysis({ skipLLM: true, demo });
     setLoading(false);
     if (res.ok && res.data) {
       setResult({
@@ -154,7 +146,7 @@ export default function DashboardFullAnalysisCard() {
                     המלצות ({result.recommendations.length})
                   </div>
                   {result.recommendations.slice(0, 5).map((rec, i) => {
-                    const badge = urgencyBadge(rec.urgency);
+                    const badge = urgencyBadgeStyle(rec.urgency);
                     return (
                       <div key={i} style={{
                         background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "12px 16px",

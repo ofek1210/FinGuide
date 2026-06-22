@@ -1,9 +1,35 @@
 'use strict';
 
 const { MOCK_PENSION_ANALYSIS } = require('../ai/mock/mockData');
-const { getPensionSummary, projectRetirementIncome, generatePensionRecommendations } = require('../ai/tools/pensionTools');
+const { getPensionSummary, projectRetirementIncome } = require('../ai/tools/pensionTools');
 const { projectPensionIncome } = require('../ai/engines/calculationEngine');
+const { parseHarHaKesef } = require('../services/harHaKesefService');
+const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
 const PensionFund = require('../models/PensionFund');
+const { importPensionFile, syncProfileRetirement } = require('../services/pensionImportService');
+const PensionImportSnapshot = require('../models/PensionImportSnapshot');
+const path = require('path');
+
+const SNAPSHOT_CAP = 5;
+
+function mapPensionFundToDto(f, { idField = '_id' } = {}) {
+  const id = f[idField] ?? f.id;
+  return {
+    id: id?.toString?.() ?? id,
+    fundName: f.fundName,
+    fundType: f.fundType,
+    provider: f.provider,
+    currentBalance: f.currentBalance,
+    monthlyEmployeeDeposit: f.monthlyEmployeeDeposit,
+    monthlyEmployerDeposit: f.monthlyEmployerDeposit,
+    managementFeeAccumulation: f.managementFeeAccumulation,
+    managementFeeDeposit: f.managementFeeDeposit,
+    investmentTrack: f.investmentTrack,
+    source: f.source,
+    status: f.status,
+    isActive: f.isActive,
+  };
+}
 
 /**
  * GET /api/pension/analysis
@@ -12,25 +38,37 @@ async function getPensionAnalysis(req, res) {
   if (req.query.demo === 'true') {
     return res.json({ success: true, data: MOCK_PENSION_ANALYSIS });
   }
-  const userId = req.user._id;
+  const data = await buildPensionAnalysis(req.user._id);
+  return res.json({ success: true, data });
+}
 
-  const summary = await getPensionSummary(userId);
-  const projection = projectRetirementIncome(summary);
-  const recommendations = generatePensionRecommendations(summary, projection);
+/**
+ * GET /api/pension/import-history
+ */
+async function getImportHistory(req, res) {
+  const snapshots = await PensionImportSnapshot.find({ user: req.user._id })
+    .sort({ importedAt: -1 })
+    .limit(SNAPSHOT_CAP)
+    .lean();
 
   return res.json({
     success: true,
-    data: {
-      summary,
-      projection: projection.available ? projection : null,
-      recommendations,
-    },
+    data: snapshots.map(s => ({
+      id: s._id.toString(),
+      source: s.source,
+      sourceFile: s.sourceFile,
+      importedAt: s.importedAt,
+      fundCount: s.fundCount,
+      totalPotentialSavings: s.totalPotentialSavings,
+      healthScore: s.healthScore,
+      avgRankPercentile: s.avgRankPercentile,
+      fundsAboveMarketFee: s.fundsAboveMarketFee,
+    })),
   });
 }
 
 /**
  * POST /api/pension/simulate
- * Body: { retirementAge, additionalMonthlyContribution, targetMgmtFee }
  */
 async function simulateScenario(req, res) {
   const userId = req.user._id;
@@ -58,7 +96,6 @@ async function simulateScenario(req, res) {
     mgmtFeeAccumulation: simMgmtFee,
   });
 
-  // Baseline for comparison
   const baseResult = projectPensionIncome({
     currentAge: summary.currentAge,
     retirementAge: summary.retirementAge,
@@ -91,35 +128,79 @@ async function simulateScenario(req, res) {
 }
 
 /**
+ * POST /api/pension/upload-file
+ */
+async function uploadPensionFile(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'לא קיבלנו קובץ' });
+  }
+
+  const userId = req.user._id;
+  const ext = path.extname(req.file.originalname || '').toLowerCase();
+  const importSource = req.query.importSource === 'quarterly_report' ? 'quarterly_report' : 'har_hakesef';
+
+  let parsed;
+  try {
+    parsed = await parseHarHaKesef(req.file.buffer, {
+      ext,
+      originalName: req.file.originalname,
+      importSource,
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message || 'שגיאה בפרסור הקובץ',
+    });
+  }
+
+  if (!parsed.funds?.length) {
+    return res.status(400).json({
+      success: false,
+      message: importSource === 'quarterly_report'
+        ? 'לא הצלחנו לפרסר את הדוח התקופתי. ודא שזה PDF או Excel מלא מהגוף המנהל.'
+        : 'לא הצלחנו לפרסר את הקובץ. ודא שזהו דוח הר הכסף תקין (Excel או PDF).',
+      warnings: parsed.summary?.parseWarnings || [],
+    });
+  }
+
+  const result = await importPensionFile(userId, parsed.funds, importSource, req.file.originalname);
+  const analysis = result.analysis;
+
+  return res.json({
+    success: true,
+    message: `ייבאנו ${result.imported} קרנות בהצלחה`,
+    data: {
+      imported: result.imported,
+      merged: result.merged,
+      created: result.created,
+      warnings: parsed.summary?.parseWarnings || [],
+      summary: parsed.summary,
+      savingsDelta: result.savingsDelta,
+      healthScore: result.healthScore,
+      healthCheck: analysis?.healthCheck ?? null,
+      recommendations: analysis?.recommendations ?? [],
+      analysis: analysis ? {
+        summary: analysis.summary,
+        benchmark: analysis.benchmark,
+        projection: analysis.projection,
+      } : null,
+      funds: result.funds.map(f => mapPensionFundToDto(f)),
+    },
+  });
+}
+
+/**
  * POST /api/pension/upload  — save manual pension fund entry
  * GET  /api/pension/funds   — list saved funds (when listMode=true)
- *
- * Body (POST): {
- *   fundName, fundType, provider,
- *   currentBalance, monthlyEmployeeDeposit, monthlyEmployerDeposit,
- *   managementFeeAccumulation, managementFeeDeposit
- * }
  */
 async function uploadPensionData(req, res, listMode = false) {
   const userId = req.user._id;
 
-  // GET mode: list existing funds
   if (req.method === 'GET' || listMode) {
     const funds = await PensionFund.find({ user: userId }).lean();
     return res.json({
       success: true,
-      data: funds.map((f) => ({
-        id: f._id,
-        fundName: f.fundName,
-        fundType: f.fundType,
-        provider: f.provider,
-        currentBalance: f.currentBalance,
-        monthlyEmployeeDeposit: f.monthlyEmployeeDeposit,
-        monthlyEmployerDeposit: f.monthlyEmployerDeposit,
-        managementFeeAccumulation: f.managementFeeAccumulation,
-        managementFeeDeposit: f.managementFeeDeposit,
-        source: f.source,
-      })),
+      data: funds.map(f => mapPensionFundToDto(f, { idField: '_id' })),
     });
   }
 
@@ -156,24 +237,60 @@ async function uploadPensionData(req, res, listMode = false) {
       managementFeeAccumulation: Number(managementFeeAccumulation) || 0.003,
       managementFeeDeposit: Number(managementFeeDeposit) || 0.001,
       source: 'manual',
+      status: 'active',
+      isActive: true,
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 
+  await syncProfileRetirement(userId);
+
   return res.json({
     success: true,
     message: 'נתוני הקרן נשמרו בהצלחה',
-    data: {
-      id: fund._id,
-      fundName: fund.fundName,
-      fundType: fund.fundType,
-      provider: fund.provider,
-      currentBalance: fund.currentBalance,
-      monthlyEmployeeDeposit: fund.monthlyEmployeeDeposit,
-      monthlyEmployerDeposit: fund.monthlyEmployerDeposit,
-      managementFeeAccumulation: fund.managementFeeAccumulation,
-      managementFeeDeposit: fund.managementFeeDeposit,
-    },
+    data: mapPensionFundToDto(fund, { idField: '_id' }),
+  });
+}
+
+/**
+ * PATCH /api/pension/funds/:id
+ */
+async function updatePensionFund(req, res) {
+  const userId = req.user._id;
+  const { id } = req.params;
+  const body = req.body || {};
+
+  const allowed = [
+    'fundName', 'fundType', 'provider', 'currentBalance',
+    'monthlyEmployeeDeposit', 'monthlyEmployerDeposit',
+    'managementFeeAccumulation', 'managementFeeDeposit', 'investmentTrack',
+  ];
+
+  const updates = {};
+  for (const key of allowed) {
+    if (body[key] !== undefined) updates[key] = body[key];
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return res.status(400).json({ success: false, message: 'אין שדות לעדכון' });
+  }
+
+  const fund = await PensionFund.findOneAndUpdate(
+    { _id: id, user: userId },
+    { $set: { ...updates, lastUpdated: new Date() } },
+    { new: true },
+  );
+
+  if (!fund) {
+    return res.status(404).json({ success: false, message: 'קרן לא נמצאה' });
+  }
+
+  await syncProfileRetirement(userId);
+
+  return res.json({
+    success: true,
+    message: 'הקרן עודכנה בהצלחה',
+    data: mapPensionFundToDto(fund, { idField: '_id' }),
   });
 }
 
@@ -189,7 +306,17 @@ async function deletePensionFund(req, res) {
     return res.status(404).json({ success: false, message: 'קרן לא נמצאה' });
   }
 
+  await syncProfileRetirement(userId);
+
   return res.json({ success: true, message: 'הקרן נמחקה בהצלחה' });
 }
 
-module.exports = { getPensionAnalysis, simulateScenario, uploadPensionData, deletePensionFund };
+module.exports = {
+  getPensionAnalysis,
+  getImportHistory,
+  simulateScenario,
+  uploadPensionData,
+  uploadPensionFile,
+  updatePensionFund,
+  deletePensionFund,
+};

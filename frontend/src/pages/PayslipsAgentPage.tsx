@@ -7,9 +7,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Mail, Upload, FileText, TrendingUp, RefreshCw,
-  ChevronLeft, Sparkles, CheckCircle, ArrowLeft, ArrowRight,
-  Pause, Play,
+  Mail, Upload, FileText, RefreshCw,
+  Sparkles, CheckCircle, ArrowLeft, ArrowRight,
+  Pause, Play, Search, History,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
@@ -29,6 +29,7 @@ import {
   type PayslipAnalysisSummary,
   type MoneyFlow,
 } from "../utils/payslipAnalysisSummary";
+import { formatCurrencyPositiveOrDash } from "../utils/formatters";
 
 /* ── Types ───────────────────────────────────────────────────── */
 interface IntakeData {
@@ -240,8 +241,7 @@ const QUESTIONS: QuestionDef[] = [
 ];
 
 /* ── Helpers ─────────────────────────────────────────────────── */
-const fmt = (n: number | null | undefined) =>
-  n != null && n > 0 ? `₪${Number(n).toLocaleString("he-IL")}` : "—";
+const fmt = formatCurrencyPositiveOrDash;
 
 const loadSavedProgress = (): IntakeProgress | null => {
   try {
@@ -261,7 +261,6 @@ const clearProgress = () => localStorage.removeItem(STORAGE_KEY);
    MAIN PAGE
 ════════════════════════════════════════════════════════════════ */
 export default function PayslipsAgentPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // Handle Gmail OAuth callback — ?gmail=success
@@ -1195,7 +1194,13 @@ function ResultsStep({
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => navigate(APP_ROUTES.findings)} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(155,127,232,0.10)", border: "1px solid rgba(184,157,255,0.30)", color: "#7B5EA7", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", borderRadius: 10, padding: "6px 12px" }}>
+            <Search size={14} /> ממצאים
+          </button>
+          <button onClick={() => navigate(APP_ROUTES.payslipHistory)} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(155,127,232,0.10)", border: "1px solid rgba(184,157,255,0.30)", color: "#7B5EA7", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", borderRadius: 10, padding: "6px 12px" }}>
+            <History size={14} /> היסטוריית תלושים
+          </button>
           <button onClick={onAddMore} style={{ background: "none", border: "1px solid rgba(184,157,255,0.30)", color: "#9B7FE8", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", borderRadius: 10, padding: "6px 12px" }}>+ הוסף תלושים</button>
           <button onClick={onEditProfile} style={{ background: "none", border: "none", color: "#A89CC8", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>עדכן פרופיל</button>
         </div>

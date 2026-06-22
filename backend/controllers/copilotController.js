@@ -5,6 +5,7 @@ const { buildInvestmentRecommendations } = require('../services/investmentRecomm
 const { analyzeBudget } = require('../services/budgetAnalysisService');
 const { generateMonthlyReport } = require('../services/monthlyReportService');
 const { buildFinancialHealthScore } = require('../services/financialHealthScoreService');
+const { buildUnifiedSummary } = require('../services/unifiedSummaryService');
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -471,6 +472,7 @@ exports.generateReport = async (req, res, next) => {
 
     const investmentRecs = buildInvestmentRecommendations(profile, { grossSalary, netSalary });
     const healthScore = await buildFinancialHealthScore(userId, new Date().getFullYear());
+    const unifiedSummary = await buildUnifiedSummary(userId);
 
     const result = await generateMonthlyReport({
       profile,
@@ -479,6 +481,7 @@ exports.generateReport = async (req, res, next) => {
       healthScore,
       insights,
       latestPayslip: payslip,
+      unifiedSummary,
     });
 
     res.json({ success: true, data: result });

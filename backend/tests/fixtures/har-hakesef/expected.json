@@ -1,0 +1,23 @@
+{
+  "excel": {
+    "source": "har_hakesef",
+    "exportDate": "15/03/2026",
+    "fundCount": 4,
+    "totalBalance": 400000,
+    "fundTypes": ["pension_comprehensive", "provident_fund", "study_fund", "managers_insurance"],
+    "sampleFund": {
+      "fundName": "מגדל מקיפה",
+      "provider": "מגדל",
+      "fundType": "pension_comprehensive",
+      "currentBalance": 185000,
+      "managementFeeAccumulation": 0.006,
+      "riskLevel": "high"
+    }
+  },
+  "quarterlyText": {
+    "source": "quarterly_report",
+    "minFunds": 1,
+    "provider": "מגדל",
+    "balance": 220000
+  }
+}

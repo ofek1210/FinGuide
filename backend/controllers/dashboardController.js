@@ -5,6 +5,8 @@ const Document = require('../models/Document');
 const UserProfile = require('../models/UserProfile');
 const InsurancePolicy = require('../models/InsurancePolicy');
 const Recommendation = require('../models/Recommendation');
+const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
+const { buildInsuranceAnalysis } = require('../services/insuranceAnalysisService');
 
 /**
  * GET /api/dashboard/summary
@@ -52,7 +54,15 @@ async function getDashboardSummary(req, res) {
 
   // ── Insurance score (0-100) ───────────────────────────────────────────────
   let insuranceScore = null;
-  if (profile?.insurance) {
+  try {
+    const insuranceAnalysis = await buildInsuranceAnalysis(userId);
+    if (insuranceAnalysis?.hasImportedPolicies && insuranceAnalysis.healthCheck?.score != null) {
+      insuranceScore = insuranceAnalysis.healthCheck.score;
+    }
+  } catch {
+    // fallback to profile heuristic below
+  }
+  if (insuranceScore == null && profile?.insurance) {
     const ins = profile.insurance;
     const checks = [
       ins.hasLifeInsurance,
@@ -69,7 +79,15 @@ async function getDashboardSummary(req, res) {
 
   // ── Pension score (0-100) ─────────────────────────────────────────────────
   let pensionScore = null;
-  if (profile?.retirement) {
+  try {
+    const pensionAnalysis = await buildPensionAnalysis(userId);
+    if (pensionAnalysis?.summary?.hasData && pensionAnalysis.healthCheck?.score != null) {
+      pensionScore = pensionAnalysis.healthCheck.score;
+    }
+  } catch {
+    // fallback to profile heuristic below
+  }
+  if (pensionScore == null && profile?.retirement) {
     const ret = profile.retirement;
     const emp = profile.employment;
     let score = 0;
@@ -111,8 +129,8 @@ async function getDashboardSummary(req, res) {
       },
       profile: {
         hasProfile: !!profile,
-        hasInsuranceData: !!profile?.insurance,
-        hasPensionData: !!profile?.retirement,
+        hasInsuranceData: policies.length > 0 || !!profile?.insurance,
+        hasPensionData: !!profile?.retirement?.hasPension || !!profile?.retirement?.currentPensionAccumulation,
         importedPolicies: policies.length,
       },
       warnings,

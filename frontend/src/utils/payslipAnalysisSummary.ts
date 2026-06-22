@@ -72,22 +72,22 @@ export function buildAnalysisSummary(docs: DocumentItem[], limit = 3): PayslipAn
   const enriched = recent.map(enrichPayslipFromDoc);
   const moneyFlow = buildMoneyFlow(enriched);
 
-  const rows: PayslipRow[] = recent
-    .map((doc, i) => {
-      const detail = documentToPayslipDetail(doc);
-      if (!detail) return null;
-      const e = enriched[i];
-      return {
-        ...detail,
-        grossSalary: e?.grossSalary ?? detail.grossSalary,
-        netSalary: e?.netSalary ?? detail.netSalary,
-        vacationDays: e?.vacationDays ?? detail.vacationDays,
-        sickDays: e?.sickDays ?? detail.sickDays,
-        uploadedAt: doc.uploadedAt || doc.createdAt,
-        displayLabel: displayLabelFor(doc, detail),
-      };
-    })
-    .filter((r): r is PayslipRow => r !== null);
+  const rows: PayslipRow[] = [];
+  for (let i = 0; i < recent.length; i++) {
+    const doc = recent[i]!;
+    const detail = documentToPayslipDetail(doc);
+    if (!detail) continue;
+    const e = enriched[i];
+    rows.push({
+      ...detail,
+      grossSalary: e?.grossSalary ?? detail.grossSalary,
+      netSalary: e?.netSalary ?? detail.netSalary,
+      vacationDays: e?.vacationDays ?? detail.vacationDays,
+      sickDays: e?.sickDays ?? detail.sickDays,
+      uploadedAt: doc.uploadedAt || doc.createdAt,
+      displayLabel: displayLabelFor(doc, detail),
+    });
+  }
 
   const breakdown = moneyFlow
     ? moneyFlow.items.map(i => ({ label: i.label, avgAmount: i.avgAmount }))

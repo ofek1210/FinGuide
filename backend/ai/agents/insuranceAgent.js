@@ -1,12 +1,12 @@
 /**
  * Insurance Agent
  *
- * Pipeline: getInsuranceProfile → analyzeInsuranceCoverage → generateRecommendations → LLM
+ * Pipeline: buildInsuranceAnalysis → LLM explanation
  */
 
 'use strict';
 
-const { getInsuranceProfile, analyzeInsuranceCoverage, generateInsuranceRecommendations } = require('../tools/insuranceTools');
+const { buildInsuranceAnalysis } = require('../../services/insuranceAnalysisService');
 const { buildInsuranceSystemPrompt } = require('../prompts/insurancePrompt');
 const { askClaude } = require('../../services/claudeChatService');
 
@@ -19,13 +19,15 @@ const { askClaude } = require('../../services/claudeChatService');
 async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
   const startedAt = Date.now();
 
-  const insuranceProfile = await getInsuranceProfile(userId);
+  const analysis = await buildInsuranceAnalysis(userId);
+  const { profile, personal, assets, policies, analysis: coverage, healthCheck, recommendations } = analysis;
 
-  if (!insuranceProfile.hasProfile) {
+  const hasData = analysis.hasImportedPolicies || analysis.summary?.hasData;
+  if (!hasData && !profile) {
     return {
       agentId: 'insurance',
-      status: 'no_profile',
-      message: 'לא נמצא פרופיל ביטוחי. השלם את שלב הביטוח ב-onboarding.',
+      status: 'no_data',
+      message: 'לא נמצאו נתוני ביטוח. ייבא דוח מהר הביטוח או השלם את פרופיל הביטוח.',
       data: null,
       recommendations: [],
       llmExplanation: null,
@@ -33,19 +35,17 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
     };
   }
 
-  const analysis = analyzeInsuranceCoverage(insuranceProfile);
-  const recommendations = generateInsuranceRecommendations(analysis);
-
   let llmExplanation = null;
   if (!skipLLM && process.env.ANTHROPIC_API_KEY) {
     try {
       const systemPrompt = buildInsuranceSystemPrompt({
-        profile: insuranceProfile.profile,
-        personal: insuranceProfile.personal,
-        assets: insuranceProfile.assets,
-        duplicates: analysis.duplicates,
-        missingCoverage: analysis.missingCoverage,
-        savings: analysis.savings,
+        profile,
+        personal,
+        assets,
+        duplicates: coverage?.duplicates,
+        missingCoverage: coverage?.missingCoverage,
+        savings: coverage?.savings,
+        healthCheck: healthCheck ? { score: healthCheck.score, level: healthCheck.level?.label } : null,
       });
       const result = await askClaude(
         'ספק סיכום קצר של מצב הביטוח וההמלצות ב-3-4 משפטים בעברית.',
@@ -62,13 +62,15 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
     agentId: 'insurance',
     status: 'success',
     data: {
-      duplicateCount: analysis.duplicateCount,
-      totalMonthlyWaste: analysis.totalMonthlyWaste,
-      missingCoverage: analysis.missingCoverage,
-      missingUrgency: analysis.missingUrgency,
-      flags: analysis.flags,
-      savings: analysis.savings,
-      hasCriticalGap: analysis.hasCriticalGap,
+      policyCount: policies?.length ?? 0,
+      duplicateCount: coverage?.duplicateCount ?? 0,
+      totalMonthlyWaste: coverage?.totalMonthlyWaste ?? 0,
+      missingCoverage: coverage?.missingCoverage ?? [],
+      missingUrgency: coverage?.missingUrgency,
+      flags: coverage?.flags ?? [],
+      savings: coverage?.savings,
+      hasCriticalGap: coverage?.hasCriticalGap ?? false,
+      healthCheck: healthCheck ? { score: healthCheck.score, level: healthCheck.level } : null,
     },
     recommendations,
     llmExplanation,

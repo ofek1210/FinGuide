@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, PiggyBank, FileText, Activity, AlertTriangle } from "lucide-react";
+import Loader from "../ui/Loader";
 import { getDashboardSummary, type DashboardSummaryData } from "../../api/dashboard.api";
 import { APP_ROUTES } from "../../types/navigation";
+import { useAsyncLoad } from "../../hooks/useAsyncLoad";
 
 type ScoreTier = "great" | "ok" | "poor" | "none";
 
@@ -64,6 +66,7 @@ function ScoreItem({
 
   return (
     <button
+      type="button"
       onClick={() => onNavigate(route)}
       style={{
         background: TIER_BG[tier],
@@ -73,8 +76,8 @@ function ScoreItem({
         cursor: "pointer", width: "100%", fontFamily: "inherit",
         transition: "background 0.2s, transform 0.15s",
       }}
-      onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-2px)")}
-      onMouseLeave={e => (e.currentTarget.style.transform = "translateY(0)")}
+      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; }}
     >
       <div style={{ position: "relative" }}>
         <ScoreRing score={score} />
@@ -101,21 +104,39 @@ function ScoreItem({
 
 export default function DashboardScoresCard() {
   const navigate = useNavigate();
-  const [data, setData] = useState<DashboardSummaryData | null>(null);
 
-  useEffect(() => {
-    getDashboardSummary().then(res => {
-      if (res.ok && res.data.success && res.data.data) setData(res.data.data);
-    });
+  const loadSummary = useCallback(async () => {
+    const res = await getDashboardSummary();
+    if (res.ok && res.data.success && res.data.data) {
+      return res.data.data;
+    }
+    throw new Error("לא הצלחנו לטעון את הציונים");
   }, []);
 
-  if (!data) return null;
+  const { data, loading, error, reload } = useAsyncLoad<DashboardSummaryData>(loadSummary);
+
+  if (loading) {
+    return (
+      <div className="dashboard-card" style={{ padding: "22px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+        <Loader />
+        <span className="dashboard-muted">טוען ציוני בריאות...</span>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="dashboard-card" style={{ padding: "22px 24px" }}>
+        <p className="dashboard-muted">{error ?? "אין נתונים"}</p>
+        <button type="button" className="dashboard-link-btn" onClick={reload}>נסה שוב</button>
+      </div>
+    );
+  }
 
   const { scores, warnings } = data;
 
   return (
     <div className="dashboard-card" style={{ padding: "22px 24px" }}>
-      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
         <Activity size={16} style={{ color: "#818CF8" }} />
         <span style={{ fontWeight: 700, fontSize: 15, color: "var(--rapyd-text)" }}>
@@ -131,7 +152,6 @@ export default function DashboardScoresCard() {
         )}
       </div>
 
-      {/* Score grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: warnings.length > 0 ? 16 : 0 }}>
         <ScoreItem icon={<FileText size={13} />} label="תלושים" score={scores.payslip}
           route={APP_ROUTES.payslipHistory} onNavigate={navigate} />
@@ -141,7 +161,6 @@ export default function DashboardScoresCard() {
           route={APP_ROUTES.pension} onNavigate={navigate} />
       </div>
 
-      {/* Warnings */}
       {warnings.length > 0 && (
         <div style={{
           background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)",

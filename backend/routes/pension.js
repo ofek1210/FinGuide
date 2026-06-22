@@ -2,40 +2,71 @@
 
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const { protect } = require('../middleware/auth');
-const { getPensionAnalysis, simulateScenario, uploadPensionData, deletePensionFund } = require('../controllers/pensionController');
+const {
+  getPensionAnalysis,
+  getImportHistory,
+  simulateScenario,
+  uploadPensionData,
+  uploadPensionFile,
+  updatePensionFund,
+  deletePensionFund,
+} = require('../controllers/pensionController');
 const { getPensionInsights } = require('../services/pensionRiskAdvisor');
+
+const fileUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const allowed = ['.xlsx', '.xls', '.pdf'];
+    if (req.query?.importSource === 'quarterly_report') {
+      allowed.push('.txt');
+    }
+    if (allowed.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('PDF או Excel בלבד (.pdf/.xlsx/.xls)'));
+    }
+  },
+});
 
 router.use(protect);
 
-// GET /api/pension/analysis — full pension analysis for the current user
 router.get('/analysis', (req, res, next) => {
   Promise.resolve(getPensionAnalysis(req, res)).catch(next);
 });
 
-// POST /api/pension/simulate — run a what-if simulation
-// Body: { retirementAge, additionalContribution, targetMgmtFee }
+router.get('/import-history', (req, res, next) => {
+  Promise.resolve(getImportHistory(req, res)).catch(next);
+});
+
 router.post('/simulate', (req, res, next) => {
   Promise.resolve(simulateScenario(req, res)).catch(next);
 });
 
-// POST /api/pension/upload — save manual pension fund data
-// Body: { fundName, fundType, provider, currentBalance, monthlyEmployeeDeposit, monthlyEmployerDeposit, managementFeeAccumulation, managementFeeDeposit }
 router.post('/upload', (req, res, next) => {
   Promise.resolve(uploadPensionData(req, res)).catch(next);
 });
 
-// GET /api/pension/funds — list saved pension funds
+router.post('/upload-file', fileUpload.single('file'), (req, res, next) => {
+  Promise.resolve(uploadPensionFile(req, res)).catch(next);
+});
+
 router.get('/funds', (req, res, next) => {
   Promise.resolve(uploadPensionData(req, res, true)).catch(next);
 });
 
-// DELETE /api/pension/funds/:id — delete a specific fund
 router.delete('/funds/:id', (req, res, next) => {
   Promise.resolve(deletePensionFund(req, res)).catch(next);
 });
 
-// DELETE /api/pension/funds — delete ALL manual funds for the user
+router.patch('/funds/:id', (req, res, next) => {
+  Promise.resolve(updatePensionFund(req, res)).catch(next);
+});
+
 router.delete('/funds', async (req, res, next) => {
   try {
     const PensionFund = require('../models/PensionFund');
@@ -44,7 +75,6 @@ router.delete('/funds', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/pension/risk-advice — AI risk level + fee analysis based on profile
 router.get('/risk-advice', async (req, res, next) => {
   try {
     const result = await getPensionInsights(req.user._id);

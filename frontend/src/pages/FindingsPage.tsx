@@ -76,9 +76,50 @@ const findingKindLabel = (meta?: FindingMeta): string | null => {
       return "רצף הפקדות";
     case "deposit":
       return "הפקדה";
+    case "pension_health_low":
+      return "בריאות פנסיונית";
+    case "fee_above_market":
+      return "דמי ניהול";
+    case "risk_wrong_for_age":
+      return "מסלול סיכון";
+    case "track_underperforming":
+      return "ביצועי מסלול";
+    case "insurance_health_low":
+      return "בריאות ביטוח";
+    case "insurance_duplicate":
+      return "כפילויות ביטוח";
+    case "insurance_missing_coverage":
+      return "כיסוי חסר";
     default:
       return null;
   }
+};
+
+const PENSION_FINDING_KINDS = new Set([
+  "pension_health_low",
+  "fee_above_market",
+  "risk_wrong_for_age",
+  "track_underperforming",
+]);
+
+const INSURANCE_FINDING_KINDS = new Set([
+  "insurance_health_low",
+  "insurance_duplicate",
+  "insurance_missing_coverage",
+]);
+
+const isPensionBenchmarkFinding = (finding: FindingItem) => {
+  const kind = finding.meta?.findingKind;
+  if (kind && PENSION_FINDING_KINDS.has(kind)) return true;
+  return finding.id.startsWith("pension_health")
+    || finding.id.startsWith("fee_above_market")
+    || finding.id.startsWith("risk_wrong_for_age");
+};
+
+const isInsuranceBenchmarkFinding = (finding: FindingItem) => {
+  const kind = finding.meta?.findingKind;
+  if (kind && INSURANCE_FINDING_KINDS.has(kind)) return true;
+  return finding.id.startsWith("insurance_");
 };
 
 const findingFundLabel = (meta?: FindingMeta): string | null => {
@@ -720,7 +761,11 @@ export default function FindingsPage() {
                   <h2 className="insights-section-title">ממצאים נוספים</h2>
                 ) : null}
                 <ul className="insights-list">
-                  {otherFindingsInView.map((finding) => (
+                  {otherFindingsInView.map((finding) => {
+                    const kind = findingKindLabel(finding.meta);
+                    const isPension = isPensionBenchmarkFinding(finding);
+                    const isInsurance = isInsuranceBenchmarkFinding(finding);
+                    return (
                     <li
                       key={finding.id}
                       className={`insight-card insight-card--${finding.severity}`}
@@ -730,13 +775,35 @@ export default function FindingsPage() {
                       </span>
                       <div className="insight-card-body">
                         <h3 className="insight-card-title">{finding.title}</h3>
+                        {kind ? (
+                          <span className="insight-card-kind" title="סוג ממצא">{kind}</span>
+                        ) : null}
                         <p className="insight-card-details">{finding.details}</p>
                         <span className={`insight-card-badge severity-${finding.severity}`}>
                           {findingSeverityLabels[finding.severity]}
                         </span>
+                        {isPension ? (
+                          <button
+                            type="button"
+                            className="dashboard-hero-action insight-card-action"
+                            onClick={() => navigate(APP_ROUTES.pension)}
+                          >
+                            לניתוח פנסיה
+                          </button>
+                        ) : null}
+                        {isInsurance ? (
+                          <button
+                            type="button"
+                            className="dashboard-hero-action insight-card-action"
+                            onClick={() => navigate(APP_ROUTES.insurance)}
+                          >
+                            לניתוח ביטוח
+                          </button>
+                        ) : null}
                       </div>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               </>
             ) : null}

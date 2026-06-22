@@ -63,6 +63,11 @@ const insurancePolicySchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    source: {
+      type: String,
+      enum: ['har_bituach', 'manual'],
+      default: 'har_bituach',
+    },
     rawData: {
       type: mongoose.Schema.Types.Mixed,
       default: null,

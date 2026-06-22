@@ -4,6 +4,7 @@
  * Uses streaming-compatible or one-shot Claude call.
  */
 const Anthropic = require('@anthropic-ai/sdk');
+const { formatDomainHealthLines } = require('../utils/summaryFormatters');
 
 let anthropicClient = null;
 function getClient() {
@@ -15,7 +16,7 @@ function getClient() {
 
 const REPORT_MODEL = process.env.CHAT_MODEL || 'claude-sonnet-4-20250514';
 
-function buildReportContext({ profile, budgetAnalysis, investmentRecs, healthScore, insights, latestPayslip }) {
+function buildReportContext({ profile, budgetAnalysis, investmentRecs, healthScore, insights, latestPayslip, unifiedSummary }) {
   const lines = [
     `תאריך הדוח: ${new Date().toLocaleDateString('he-IL', { year: 'numeric', month: 'long' })}`,
     '',
@@ -37,6 +38,8 @@ function buildReportContext({ profile, budgetAnalysis, investmentRecs, healthSco
   if (healthScore) {
     lines.push('', `ציון פיננסי: ${healthScore.score}/100 (${healthScore.level?.label || ''})`);
   }
+
+  formatDomainHealthLines(unifiedSummary).forEach(line => lines.push(line));
 
   if (insights?.length) {
     lines.push('', 'תובנות פעילות:');
@@ -64,13 +67,13 @@ function buildReportContext({ profile, budgetAnalysis, investmentRecs, healthSco
   return lines.join('\n');
 }
 
-async function generateMonthlyReport({ profile, budgetAnalysis, investmentRecs, healthScore, insights, latestPayslip }) {
+async function generateMonthlyReport({ profile, budgetAnalysis, investmentRecs, healthScore, insights, latestPayslip, unifiedSummary }) {
   const client = getClient();
   if (!client) {
-    return { report: buildFallbackReport({ budgetAnalysis, healthScore, investmentRecs }), source: 'rule' };
+    return { report: buildFallbackReport({ budgetAnalysis, healthScore, investmentRecs, unifiedSummary }), source: 'rule' };
   }
 
-  const context = buildReportContext({ profile, budgetAnalysis, investmentRecs, healthScore, insights, latestPayslip });
+  const context = buildReportContext({ profile, budgetAnalysis, investmentRecs, healthScore, insights, latestPayslip, unifiedSummary });
   const systemPrompt = [
     'אתה יועץ פיננסי של FinGuide. כתוב דוח פיננסי חודשי אישי בעברית.',
     'הדוח צריך להיות: חם, מעודד, מקצועי ומועיל.',
@@ -107,13 +110,14 @@ async function generateMonthlyReport({ profile, budgetAnalysis, investmentRecs, 
     };
   } catch (err) {
     console.error('[monthlyReport] Claude error', err.message);
-    return { report: buildFallbackReport({ budgetAnalysis, healthScore, investmentRecs }), source: 'rule' };
+    return { report: buildFallbackReport({ budgetAnalysis, healthScore, investmentRecs, unifiedSummary }), source: 'rule' };
   }
 }
 
-function buildFallbackReport({ budgetAnalysis, healthScore, investmentRecs }) {
+function buildFallbackReport({ budgetAnalysis, healthScore, investmentRecs, unifiedSummary }) {
   const lines = ['## סיכום חודשי', ''];
   if (healthScore) lines.push(`**ציון פיננסי:** ${healthScore.score}/100 — ${healthScore.level?.label || ''}`);
+  formatDomainHealthLines(unifiedSummary).forEach(line => lines.push(`**${line.split(':')[0]}:** ${line.split(':').slice(1).join(':').trim()}`));
   if (budgetAnalysis?.available) {
     lines.push(`**מצב תקציב:** ${budgetAnalysis.health.label}`);
     lines.push(`**יחס חיסכון:** ${budgetAnalysis.savingsRate}`);
