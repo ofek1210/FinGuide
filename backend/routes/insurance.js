@@ -9,6 +9,7 @@ const {
   getInsuranceAnalysis,
   uploadInsuranceExcel,
   getInsurancePolicies,
+  getInsuranceImportHistory,
   deleteInsurancePolicy,
 } = require('../controllers/insuranceController');
 const { getInsuranceInsights } = require('../services/insuranceProfileAnalyzer');
@@ -37,6 +38,10 @@ router.get('/analysis', (req, res, next) => {
 // GET /api/insurance/policies — list all imported policies for the user
 router.get('/policies', (req, res, next) => {
   Promise.resolve(getInsurancePolicies(req, res)).catch(next);
+});
+
+router.get('/import-history', (req, res, next) => {
+  Promise.resolve(getInsuranceImportHistory(req, res)).catch(next);
 });
 
 // POST /api/insurance/upload-excel — parse Har HaBituach Excel

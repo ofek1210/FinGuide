@@ -285,6 +285,22 @@ async function buildUserContext(userId) {
     trainingFundEmployee: p.analysisData?.summary?.trainingFundEmployee ?? null,
   }));
 
+  let pensionAnalysis = null;
+  try {
+    const analysis = await buildPensionAnalysis(userId);
+    pensionAnalysis = toPensionSummary(analysis);
+  } catch {
+    // Non-fatal — copilot works without pension import data
+  }
+
+  let insuranceAnalysis = null;
+  try {
+    const analysis = await buildInsuranceAnalysis(userId);
+    insuranceAnalysis = toInsuranceSummary(analysis);
+  } catch {
+    // Non-fatal
+  }
+
   return {
     documents: documents.map(d => ({
       status: d.status,
@@ -325,6 +341,8 @@ async function buildUserContext(userId) {
     profile,
     insights,
     recommendations,
+    pensionAnalysis,
+    insuranceAnalysis,
   };
 }
 
@@ -900,6 +918,21 @@ function buildUserContextSummary(ctx) {
   if (ctx.marginalTaxRate) lines.push(`שיעור מס שולי: ${ctx.marginalTaxRate}%`);
   if (ctx.documents?.length) lines.push(`מסמכים: ${ctx.documents.length}`);
   if (ctx.insights?.length) lines.push(`תובנות: ${ctx.insights.slice(0,3).map(i => i.title).join(', ')}`);
+  if (ctx.pensionAnalysis?.healthScore != null) {
+    lines.push(`ציון בריאות פנסיונית: ${ctx.pensionAnalysis.healthScore}/100`);
+  }
+  if (ctx.pensionAnalysis?.totalPotentialSavings > 0) {
+    lines.push(`חיסכון פוטנציאלי עד פרישה: ₪${Math.round(ctx.pensionAnalysis.totalPotentialSavings).toLocaleString('he-IL')}`);
+  }
+  if (ctx.pensionAnalysis?.topRecs?.length) {
+    lines.push(`המלצות פנסיה: ${ctx.pensionAnalysis.topRecs.join(', ')}`);
+  }
+  if (ctx.insuranceAnalysis?.healthScore != null) {
+    lines.push(`ציון בריאות ביטוח: ${ctx.insuranceAnalysis.healthScore}/100`);
+  }
+  if (ctx.insuranceAnalysis?.duplicateCount > 0) {
+    lines.push(`כפילויות ביטוח: ${ctx.insuranceAnalysis.duplicateCount}`);
+  }
   return lines.join('\n') || 'אין עדיין נתונים';
 }
 

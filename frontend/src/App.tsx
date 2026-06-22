@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
+import DashboardPage from "./pages/DashboardPage";
 import HubPage from "./pages/HubPage";
 import AuthScreen from "./components/AuthScreen";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
@@ -82,7 +83,11 @@ export default function App() {
         />
         <Route
           path={APP_ROUTES.dashboard}
-          element={<Navigate to={APP_ROUTES.hub} replace />}
+          element={
+            <RequireAuth>
+              <DashboardPage />
+            </RequireAuth>
+          }
         />
         <Route
           path={APP_ROUTES.onboarding}

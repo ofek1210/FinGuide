@@ -3,8 +3,8 @@
 const mongoose = require('mongoose');
 
 /**
- * PensionFund — stores user's pension fund data imported from Har HaBituach
- * or extracted from uploaded documents.
+ * PensionFund — stores user's pension fund data imported from Har HaKesef
+ * or entered manually / extracted from uploaded documents.
  */
 const pensionFundSchema = new mongoose.Schema(
   {
@@ -48,6 +48,16 @@ const pensionFundSchema = new mongoose.Schema(
       min: 0,
       default: null,
     },
+    monthlyEmployeeDeposit: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+    monthlyEmployerDeposit: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
     employeeContributionRate: {
       type: Number,
       min: 0,
@@ -84,13 +94,33 @@ const pensionFundSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    riskLevel: {
+      type: String,
+      enum: ['high', 'medium', 'low', null],
+      default: null,
+    },
+    status: {
+      type: String,
+      enum: ['active', 'closed'],
+      default: 'active',
+    },
     isActive: {
       type: Boolean,
       default: true,
     },
+    source: {
+      type: String,
+      enum: ['manual', 'har_hakesef', 'quarterly_report'],
+      default: 'manual',
+    },
     sourceFile: {
       type: String,
       default: null,
+    },
+    rawData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+      select: false,
     },
     lastUpdated: {
       type: Date,
@@ -104,5 +134,6 @@ const pensionFundSchema = new mongoose.Schema(
 );
 
 pensionFundSchema.index({ user: 1, isActive: 1 });
+pensionFundSchema.index({ user: 1, source: 1 });
 
 module.exports = mongoose.model('PensionFund', pensionFundSchema);

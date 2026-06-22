@@ -1,7 +1,8 @@
-import { apiJson } from "./client";
+import { apiJson, apiFormUpload } from "./client";
 
 export type PensionSummaryDTO = {
   hasData: boolean;
+  dataSource?: "har_hakesef" | "quarterly_report" | "manual" | "payslip" | null;
   grossSalary: number | null;
   pensionEmployee: number | null;
   pensionEmployer: number | null;
@@ -12,6 +13,11 @@ export type PensionSummaryDTO = {
   currentAge: number | null;
   retirementAge: number;
   currentAccumulation: number;
+  currentMgmtFee?: number | null;
+  currentFundName?: string | null;
+  fundCount?: number;
+  hasStudyFund?: boolean | null;
+  parseWarnings?: string[];
 };
 
 export type PensionScenario = {
@@ -41,13 +47,64 @@ export type PensionRecommendationDTO = {
   confidenceScore: number;
 };
 
+export type PensionBenchmarkFundDTO = {
+  fundId?: string;
+  fundName: string;
+  provider?: string | null;
+  fundType?: string;
+  matchedTrack: { id: string; name: string; provider: string; rank: number } | null;
+  matchConfidence: number;
+  marketRankPercentile: number | null;
+  rankLabel: "above_average" | "average" | "below_average" | "unknown";
+  feeVsMarket: "excellent" | "fair" | "above_market" | "high" | "unknown";
+  marketAvgFee?: number;
+  userFee?: number | null;
+  riskLevel?: string;
+  recommendedRiskLevel?: string | null;
+  riskMismatch?: boolean;
+  potentialSavingsToRetirement: number;
+};
+
+export type PensionBenchmarkDTO = {
+  funds: PensionBenchmarkFundDTO[];
+  summary: {
+    totalPotentialSavings: number;
+    avgRankPercentile: number | null;
+    fundsAboveMarketFee: number;
+    riskMismatchCount: number;
+    belowAverageCount: number;
+    issuesCount: number;
+    recommendedRiskLevel: string | null;
+  };
+};
+
+export type PensionHealthCategoryDTO = {
+  id: string;
+  label: string;
+  score: number;
+  maxScore: number;
+  status: "good" | "warning" | "poor";
+  detail: string;
+};
+
+export type PensionHealthCheckDTO = {
+  score: number;
+  level: { level: string; label: string };
+  categories: PensionHealthCategoryDTO[];
+  disclaimer: string;
+};
+
+export type PensionAnalysisData = {
+  summary: PensionSummaryDTO;
+  projection: PensionProjectionDTO | null;
+  benchmark?: PensionBenchmarkDTO;
+  healthCheck?: PensionHealthCheckDTO;
+  recommendations: PensionRecommendationDTO[];
+};
+
 export type PensionAnalysisResponse = {
   success: boolean;
-  data?: {
-    summary: PensionSummaryDTO;
-    projection: PensionProjectionDTO | null;
-    recommendations: PensionRecommendationDTO[];
-  };
+  data?: PensionAnalysisData;
 };
 
 export type SimulationResponse = {
@@ -82,8 +139,33 @@ export type PensionFundDTO = {
   monthlyEmployerDeposit: number;
   managementFeeAccumulation: number;
   managementFeeDeposit: number;
+  investmentTrack?: string | null;
   source?: string;
 };
+
+export type PensionImportSnapshotDTO = {
+  id: string;
+  source: string;
+  sourceFile: string | null;
+  importedAt: string;
+  fundCount: number;
+  totalPotentialSavings: number;
+  healthScore: number | null;
+  avgRankPercentile: number | null;
+  fundsAboveMarketFee: number;
+};
+
+export type UpdatePensionFundBody = Partial<{
+  fundName: string;
+  fundType: string;
+  provider: string;
+  currentBalance: number;
+  monthlyEmployeeDeposit: number;
+  monthlyEmployerDeposit: number;
+  managementFeeAccumulation: number;
+  managementFeeDeposit: number;
+  investmentTrack: string;
+}>;
 
 export type UploadPensionBody = {
   fundName: string;
@@ -96,8 +178,26 @@ export type UploadPensionBody = {
   managementFeeDeposit?: number;
 };
 
+export type UploadPensionFileResponse = {
+  success: boolean;
+  message?: string;
+  data?: {
+    imported: number;
+    merged?: number;
+    created?: number;
+    savingsDelta?: number;
+    healthScore?: number | null;
+    warnings: string[];
+    funds: PensionFundDTO[];
+    summary?: { totalFunds: number; totalBalance: number | null; fundTypes: string[] };
+  };
+};
+
 export const getPensionAnalysis = () =>
   apiJson<PensionAnalysisResponse>("/api/pension/analysis", { auth: true });
+
+export const getPensionImportHistory = () =>
+  apiJson<{ success: boolean; data: PensionImportSnapshotDTO[] }>("/api/pension/import-history", { auth: true });
 
 export const getPensionFunds = () =>
   apiJson<{ success: boolean; data: PensionFundDTO[] }>("/api/pension/funds", { auth: true });
@@ -115,6 +215,13 @@ export const deletePensionFund = (id: string) =>
     auth: true,
   });
 
+export const updatePensionFund = (id: string, body: UpdatePensionFundBody) =>
+  apiJson<{ success: boolean; message: string; data: PensionFundDTO }>(`/api/pension/funds/${id}`, {
+    method: "PATCH",
+    auth: true,
+    body: JSON.stringify(body),
+  });
+
 export const simulatePensionScenario = (params: {
   retirementAge?: number;
   additionalMonthlyContribution?: number;
@@ -125,3 +232,15 @@ export const simulatePensionScenario = (params: {
     auth: true,
     body: JSON.stringify(params),
   });
+
+export const uploadPensionFile = async (
+  file: File,
+  importSource: "har_hakesef" | "quarterly_report" = "har_hakesef",
+): Promise<UploadPensionFileResponse & { message?: string }> => {
+  const qs = importSource === "quarterly_report" ? "?importSource=quarterly_report" : "";
+  const result = await apiFormUpload<UploadPensionFileResponse>(`/api/pension/upload-file${qs}`, file);
+  if (!result.ok) {
+    return { success: false, message: result.error.message };
+  }
+  return result.data;
+};

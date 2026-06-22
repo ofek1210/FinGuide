@@ -7,9 +7,10 @@
  * Returns: { insights: Insight[], narrative: string, meta: object }
  */
 
-const InsurancePolicy = require('../models/InsurancePolicy');
-const UserProfile = require('../models/UserProfile');
-const { analyzeWithAI } = require('./aiProviderService');
+const { buildInsuranceAnalysis } = require('./insuranceAnalysisService');
+const { generateDomainNarrative } = require('./domainNarrativeService');
+const { buildDomainInsights } = require('./domainInsightService');
+const { recommendationsToInsights, healthCategoriesToInsights } = require('../utils/insightMapper');
 
 const SMOKING_PREMIUM_UPLIFT = 0.30;
 
@@ -54,7 +55,6 @@ function buildInsights(profile, policies) {
     return sum + getMonthly(pol);
   }, 0);
 
-  // ── 1. Life insurance + no dependents + no mortgage ────────────────
   if (hasLifeInsurance && childrenCount === 0 && !hasMortgage) {
     const lifeAnnual = (activeByType.life || []).reduce((sum, pol) => sum + getAnnual(pol), 0);
     const lifeMonthly = Math.round(lifeAnnual / 12);
@@ -70,7 +70,6 @@ function buildInsights(profile, policies) {
     });
   }
 
-  // ── 2. Smoker premium uplift ────────────────────────────────────────
   if (isSmoker === true && policies.length > 0) {
     const yearSavings = calcSmokerSavingsPerYear(policies);
     if (yearSavings > 0) {
@@ -79,7 +78,7 @@ function buildInsights(profile, policies) {
         severity: 'info',
         category: 'insurance',
         title: 'חיסכון בהפסקת עישון',
-        description: `כמעשן/ת אתה משלם/ת פרמיה גבוהה יותר על ביטוח חיים, בריאות ואכ"ע.`,
+        description: 'כמעשן/ת אתה משלם/ת פרמיה גבוהה יותר על ביטוח חיים, בריאות ואכ"ע.',
         recommendation: `לאחר הפסקת עישון ו-12 חודשים ללא עישון, ניתן לדרוש הפחתת פרמיה — חיסכון צפוי: ~₪${yearSavings.toLocaleString('he-IL')}/שנה.`,
         financialImpact: yearSavings,
         financialImpactLabel: `₪${yearSavings.toLocaleString('he-IL')}/שנה בהפסקת עישון`,
@@ -87,7 +86,6 @@ function buildInsights(profile, policies) {
     }
   }
 
-  // ── 3. Renter without contents insurance ───────────────────────────
   if (ownsApartment === false && !activeByType.apartment?.length) {
     insights.push({
       id: 'renter_no_contents_insurance',
@@ -101,7 +99,6 @@ function buildInsights(profile, policies) {
     });
   }
 
-  // ── 4. Missing disability insurance ────────────────────────────────
   if (!hasDisability && age != null && age < 50) {
     insights.push({
       id: 'disability_insurance_missing',
@@ -115,7 +112,6 @@ function buildInsights(profile, policies) {
     });
   }
 
-  // ── 5. Comprehensive car insurance on old car ───────────────────────
   if (ownsCar && hasCarInsurance) {
     const carPolicies = activeByType.car || [];
     const comprehensivePolicies = carPolicies.filter(pol => {
@@ -137,7 +133,6 @@ function buildInsights(profile, policies) {
     }
   }
 
-  // ── 6. Health insurance duplicate ──────────────────────────────────
   if (hasHealthInsurance) {
     const healthPolicies = activeByType.health || [];
     if (healthPolicies.length >= 2) {
@@ -155,7 +150,6 @@ function buildInsights(profile, policies) {
     }
   }
 
-  // ── 7. Total premium high relative to salary ───────────────────────
   const salaryRangeMap = { under_5k: 5000, '5k_10k': 7500, '10k_15k': 12500, '15k_20k': 17500, '20k_30k': 25000, '30k_50k': 40000, above_50k: 60000 };
   const estimatedSalary = salaryRangeMap[financial.salaryRange] || null;
   if (estimatedSalary && totalMonthlyPremium > estimatedSalary * 0.08) {
@@ -202,35 +196,65 @@ async function generateInsuranceNarrative(profile, policies, insights) {
 הדגש את 2-3 הנקודות הכי חשובות בלבד.
 ⚠️ חובה לסיים ב: "המידע הוא לצרכי מידע בלבד. לפני שינוי פוליסות — יש להתייעץ עם סוכן ביטוח מורשה."`;
 
-  const userPrompt = `${contextLines.join('\n')}\n\nכתוב ניתוח ביטוח אישי תמציתי.`;
-  const result = await analyzeWithAI(systemPrompt, userPrompt, { maxTokens: 600, temperature: 0.35 });
-  return result || insights.map(i => `• ${i.title}: ${i.recommendation}`).join('\n');
+  return generateDomainNarrative({
+    systemPrompt,
+    contextLines,
+    insights,
+    userPromptSuffix: 'כתוב ניתוח ביטוח אישי תמציתי.',
+  });
+}
+
+function buildProfileOnlyInsights(profile, policies, seenTitles) {
+  return buildInsights(profile, policies).filter(i => !seenTitles.has(i.title));
 }
 
 async function getInsuranceInsights(userId) {
-  const [policies, profile] = await Promise.all([
-    InsurancePolicy.find({ user: userId }).lean(),
-    UserProfile.findOne({ user: userId }).lean(),
-  ]);
-
-  const totalMonthlyPremium = policies.reduce((sum, pol) => {
-    if (pol.status !== 'active') return sum;
-    return sum + getMonthly(pol);
-  }, 0);
-
-  const insights = buildInsights(profile, policies);
-  const narrative = await generateInsuranceNarrative(profile, policies, insights);
-
-  return {
-    insights,
-    narrative,
-    meta: {
-      policyCount: policies.length,
-      activePolicies: policies.filter(pol => pol.status === 'active').length,
-      totalMonthlyPremium: Math.round(totalMonthlyPremium),
-      totalAnnualPremium: Math.round(totalMonthlyPremium * 12),
+  return buildDomainInsights({
+    userId,
+    category: 'insurance',
+    buildAnalysisFn: buildInsuranceAnalysis,
+    getExtraInsights: analysis => {
+      const profile = {
+        personal: analysis.personal || {},
+        assets: analysis.assets || {},
+        financial: analysis.profile?.financial || {},
+      };
+      const policies = analysis.policies || [];
+      const recTitles = new Set(
+        recommendationsToInsights(analysis.recommendations, 'insurance').map(i => i.title),
+      );
+      const healthTitles = new Set(
+        healthCategoriesToInsights(analysis.healthCheck?.categories, 'insurance').map(i => i.title),
+      );
+      const seenTitles = new Set([...recTitles, ...healthTitles]);
+      return buildProfileOnlyInsights(profile, policies, seenTitles);
     },
-  };
+    generateNarrative: async (analysis, insights) => {
+      const profile = {
+        personal: analysis.personal || {},
+        assets: analysis.assets || {},
+      };
+      return generateInsuranceNarrative(profile, analysis.policies || [], insights);
+    },
+    buildMeta: analysis => {
+      const policies = analysis.policies || [];
+      const totalMonthlyPremium = policies.reduce((sum, pol) => {
+        if (pol.status !== 'active') return sum;
+        return sum + getMonthly(pol);
+      }, 0);
+
+      return {
+        policyCount: policies.length,
+        activePolicies: policies.filter(pol => pol.status === 'active').length,
+        totalMonthlyPremium: Math.round(totalMonthlyPremium),
+        totalAnnualPremium: Math.round(totalMonthlyPremium * 12),
+        healthScore: analysis.healthCheck?.score ?? null,
+        duplicateCount: analysis.analysis?.duplicateCount ?? 0,
+        annualSavings: analysis.analysis?.savings?.annualSavings ?? 0,
+        totalMonthlyWaste: analysis.analysis?.totalMonthlyWaste ?? 0,
+      };
+    },
+  });
 }
 
 module.exports = { getInsuranceInsights };

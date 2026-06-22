@@ -12,6 +12,7 @@
     "test:integration": "jest --runInBand --testMatch '**/tests/integration/**/*.test.js'",
     "test:watch": "jest --watch",
     "reprocess:payslips": "node scripts/reprocessPayslips.js",
+    "validate:benchmark-tables": "node scripts/validateBenchmarkTables.js",
     "eval:ocr": "node scripts/evalOcr.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

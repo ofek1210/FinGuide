@@ -12,6 +12,12 @@ const { sendMail } = require('./mailService');
 const { getPayslipInsights } = require('./payslipInsightsService');
 const { getInsuranceInsights } = require('./insuranceProfileAnalyzer');
 const { getPensionInsights } = require('./pensionRiskAdvisor');
+const { buildUnifiedSummary } = require('./unifiedSummaryService');
+const {
+  formatDomainHealthLines,
+  formatDomainHealthLinesHtml,
+  formatDomainHealthLinesWhatsApp,
+} = require('../utils/summaryFormatters');
 
 const CPA_NAME = 'רו"ח דניאל לוי';
 const CPA_PHONE = '050-1234567';
@@ -38,7 +44,7 @@ function buildInsightRows(insights) {
   return insights.map(buildInsightRow).join('');
 }
 
-function buildEmailHtml({ userName, payslip, insurance, pension }) {
+function buildEmailHtml({ userName, payslip, insurance, pension, unified }) {
   const now = new Date().toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' });
 
   const payslipInsightRows = buildInsightRows(payslip?.insights || []);
@@ -79,6 +85,7 @@ function buildEmailHtml({ userName, payslip, insurance, pension }) {
         ניתוח FinGuide שלך מוכן. זיהינו <strong>${totalInsights} תובנות</strong>
         ${totalSavings > 0 ? `עם פוטנציאל חיסכון שנתי של <strong style="color:#2d7d46;">₪${totalSavings.toLocaleString('he-IL')}</strong>` : ''}.
       </p>
+      ${formatDomainHealthLinesHtml(unified)}
       <p style="font-size:12px;color:#a0aec0;">${now}</p>
     </div>
 
@@ -105,6 +112,7 @@ function buildEmailHtml({ userName, payslip, insurance, pension }) {
       <h2 style="font-size:16px;font-weight:700;color:#1a202c;margin:0 0 4px;">🏦 פנסיה וחיסכון</h2>
       ${pension?.meta?.totalBalance ? `<p style="font-size:13px;color:#718096;margin:0 0 12px;">צבירה נוכחית: ₪${pension.meta.totalBalance.toLocaleString('he-IL')}${pension.meta.projectedBalance ? ` | תחזית פרישה: ₪${pension.meta.projectedBalance.toLocaleString('he-IL')}` : ''}</p>` : ''}
       ${pensionInsightRows}
+      <p style="font-size:11px;color:#a0aec0;margin-top:12px;">⚠️ אינו מהווה ייעוץ פנסיוני מקצועי.</p>
     </div>
 
     <div style="padding:0 28px;"><div style="height:1px;background:#e2e8f0;"></div></div>
@@ -141,13 +149,14 @@ function buildEmailHtml({ userName, payslip, insurance, pension }) {
 </html>`;
 }
 
-function buildPlainText({ userName, payslip, insurance, pension }) {
+function buildPlainText({ userName, payslip, insurance, pension, unified }) {
   const allInsights = [
     ...(payslip?.insights || []).map(i => `[תלושים] ${i.title}: ${i.recommendation}`),
     ...(insurance?.insights || []).map(i => `[ביטוח] ${i.title}: ${i.recommendation}`),
     ...(pension?.insights || []).map(i => `[פנסיה] ${i.title}: ${i.recommendation}`),
   ];
 
+  const healthLines = formatDomainHealthLines(unified).filter(Boolean);
   return [
     `סיכום פיננסי אישי — ${APP_NAME}`,
     `שלום ${userName},`,
@@ -155,6 +164,7 @@ function buildPlainText({ userName, payslip, insurance, pension }) {
     `תלושים: ${payslip?.insights?.length || 0} תובנות`,
     `ביטוח: ${insurance?.insights?.length || 0} תובנות`,
     `פנסיה: ${pension?.insights?.length || 0} תובנות`,
+    ...healthLines,
     '',
     ...allInsights,
     '',
@@ -175,10 +185,11 @@ async function sendSummaryEmail(user, userConsent) {
     throw new Error('נדרש אישור מפורש של המשתמש לשליחת מייל סיכום');
   }
 
-  const [payslip, insurance, pension] = await Promise.allSettled([
+  const [payslip, insurance, pension, unified] = await Promise.allSettled([
     getPayslipInsights(user._id),
     getInsuranceInsights(user._id),
     getPensionInsights(user._id),
+    buildUnifiedSummary(user._id),
   ]).then(results => results.map(r => (r.status === 'fulfilled' ? r.value : null)));
 
   const payload = {
@@ -186,6 +197,7 @@ async function sendSummaryEmail(user, userConsent) {
     payslip,
     insurance,
     pension,
+    unified,
   };
 
   await sendMail({
@@ -206,7 +218,7 @@ async function sendSummaryEmail(user, userConsent) {
 /**
  * Build a WhatsApp share URL with pre-filled text summary.
  */
-function buildWhatsAppShareUrl(payslip, insurance, pension) {
+function buildWhatsAppShareUrl(payslip, insurance, pension, unified) {
   const totalSavings = [
     ...(payslip?.insights || []),
     ...(insurance?.insights || []),
@@ -219,6 +231,7 @@ function buildWhatsAppShareUrl(payslip, insurance, pension) {
     `📄 תלושים: ${payslip?.insights?.length || 0} תובנות`,
     `🛡️ ביטוח: ${insurance?.insights?.length || 0} תובנות`,
     `🏦 פנסיה: ${pension?.insights?.length || 0} תובנות`,
+    ...formatDomainHealthLinesWhatsApp(unified),
   ];
   if (totalSavings > 0) lines.push(`💰 פוטנציאל חיסכון: ₪${totalSavings.toLocaleString('he-IL')}`);
   lines.push('', `לקביעת פגישת ייעוץ: ${CPA_CALENDLY}`);

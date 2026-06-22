@@ -8,6 +8,14 @@ export const formatCurrencyILS = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+/** Currency with dash for null/undefined — matches legacy `fmt()` usage */
+export const formatCurrencyOrDash = (value?: number | null) =>
+  value != null ? formatCurrencyILS(value) : "—";
+
+/** Currency with dash for null, undefined, or zero */
+export const formatCurrencyPositiveOrDash = (value?: number | null) =>
+  value != null && value > 0 ? formatCurrencyILS(value) : "—";
+
 export const formatNumber = (value: number) =>
   new Intl.NumberFormat(CURRENCY_LOCALE).format(value);
 
