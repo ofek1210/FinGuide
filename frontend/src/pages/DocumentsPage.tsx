@@ -26,6 +26,7 @@ import {
 } from "../utils/documentMetadata";
 import { getDocumentImportSourceLabel } from "../utils/documentSource";
 import { getApiErrorMessage } from "../utils/apiErrorMessages";
+import { detectPayslipMetadataFromFilename } from "../utils/detectPayslipMetadataFromFilename";
 
 type UploadState = "idle" | "uploading" | "uploaded" | "error";
 
@@ -767,36 +768,6 @@ export default function DocumentsPage() {
     bulkFileInputRef.current?.click();
   };
 
-  const detectFileMetadata = (file: File): UploadDocumentPayload => {
-    const name = file.name;
-    let periodMonth: number | undefined;
-    let periodYear: number | undefined;
-
-    const patterns = [
-      /(?:^|[\D])(20\d{2})[\-_\.](\d{1,2})(?:[\D]|$)/,
-      /(?:^|[\D])(\d{1,2})[\-_\.](20\d{2})(?:[\D]|$)/,
-      /(20\d{2})(\d{2})(?:[\D]|$)/,
-    ];
-    for (const pat of patterns) {
-      const m = pat.exec(name);
-      if (m) {
-        const a = parseInt(m[1]), b = parseInt(m[2]);
-        const [year, month] = a > 100 ? [a, b] : [b, a];
-        if (year >= 2000 && year <= 2100 && month >= 1 && month <= 12) {
-          periodYear = year;
-          periodMonth = month;
-          break;
-        }
-      }
-    }
-
-    return {
-      category: "payslip",
-      ...(periodMonth !== undefined && { periodMonth }),
-      ...(periodYear !== undefined && { periodYear }),
-    };
-  };
-
   const handleBulkUpload = async (files: FileList) => {
     const validFiles: File[] = [];
     const maxSize = 10 * 1024 * 1024;
@@ -820,7 +791,7 @@ export default function DocumentsPage() {
     setBulkUploadCount(validFiles.length);
 
     const tempDocs: DocumentItem[] = validFiles.map((file) => {
-      const meta = detectFileMetadata(file);
+      const meta = detectPayslipMetadataFromFilename(file);
       return {
         id: `temp-bulk-${Date.now()}-${Math.random()}`,
         name: file.name,
@@ -840,7 +811,7 @@ export default function DocumentsPage() {
 
     const results = await Promise.allSettled(
       validFiles.map(async (file, idx) => {
-        const payload = detectFileMetadata(file);
+        const payload = detectPayslipMetadataFromFilename(file);
         const response = await uploadDocument(file, payload);
         return { file, tempId: tempDocs[idx].id, response };
       }),

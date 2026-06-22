@@ -36,18 +36,51 @@ describe('getPayslipSummaries', () => {
     mockFindChain([
       {
         _id: { toString: () => 'doc1' },
-        metadata: { periodMonth: 3, periodYear: 2025 },
+        status: 'completed',
+        metadata: { category: 'payslip', periodMonth: 3, periodYear: 2025 },
         uploadedAt: new Date('2025-03-10'),
-        analysisData: { summary: { grossSalary: 20000, netSalary: 14000, tax: 2500 } },
+        analysisData: {
+          period: { month: '2025-03' },
+          summary: { grossSalary: 20000, netSalary: 14000, tax: 2500 },
+        },
       },
     ]);
 
     const result = await getPayslipSummaries('user-1', 6);
     expect(result.count).toBe(1);
-    expect(result.latestPeriod).toBe('3/2025');
+    expect(result.latestPeriod).toBe('03/2025');
     const dto = result.payslips[0];
     expect(dto).toMatchObject({ documentId: 'doc1', grossSalary: 20000, netSalary: 14000 });
     expect(dto).not.toHaveProperty('analysisData');
+  });
+
+  it('returns payslips ordered by salary period, not upload date', async () => {
+    mockFindChain([
+      {
+        _id: { toString: () => 'mar' },
+        status: 'completed',
+        metadata: { category: 'payslip' },
+        uploadedAt: new Date('2025-04-01'),
+        analysisData: { period: { month: '2025-03' }, summary: { grossSalary: 30000 } },
+      },
+      {
+        _id: { toString: () => 'jan' },
+        status: 'completed',
+        metadata: { category: 'payslip' },
+        uploadedAt: new Date('2025-04-03'),
+        analysisData: { period: { month: '2025-01' }, summary: { grossSalary: 10000 } },
+      },
+      {
+        _id: { toString: () => 'feb' },
+        status: 'completed',
+        metadata: { category: 'payslip' },
+        uploadedAt: new Date('2025-04-02'),
+        analysisData: { period: { month: '2025-02' }, summary: { grossSalary: 20000 } },
+      },
+    ]);
+
+    const result = await getPayslipSummaries('user-1', 3);
+    expect(result.payslips.map(p => p.documentId)).toEqual(['mar', 'feb', 'jan']);
   });
 
   it('returns an empty summary when the user has no payslips', async () => {

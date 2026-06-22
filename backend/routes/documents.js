@@ -5,6 +5,7 @@ const {
   uploadDocument,
   getDocuments,
   getPayslipHistory,
+  getRecentPayslips,
   getDocument,
   deleteDocument,
   downloadDocument,
@@ -31,6 +32,9 @@ router.get('/', getDocuments);
 
 // GET /api/documents/payslip-history - תובנות תלושים לפי שנה/חודש
 router.get('/payslip-history', getPayslipHistory);
+
+// GET /api/documents/recent-payslips - N תלושים אחרונים לפי תקופת שכר
+router.get('/recent-payslips', getRecentPayslips);
 
 // GET /api/documents/ai-insights — AI insights based on profile + recent payslips
 router.get('/ai-insights', async (req, res, next) => {

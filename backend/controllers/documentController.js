@@ -5,6 +5,7 @@ const Document = require('../models/Document');
 const { FileUploadError, NotFoundError, ValidationError } = require('../utils/appErrors');
 const { serializeDocument } = require('../serializers/documentSerializer');
 const { buildPayslipHistoryIntelligence } = require('../services/payslipHistoryAggregationService');
+const { selectRecentPayslipDocuments } = require('../utils/selectRecentPayslipDocuments');
 const {
   computeFileChecksum,
   applyExtractionToDocument,
@@ -13,6 +14,21 @@ const {
 } = require('../services/financialDocumentService');
 
 const unlink = promisify(fs.unlink);
+
+function uploadOutcomeFromStatus(status) {
+  if (status === 'completed' || status === 'needs_review') return 'analyzed';
+  if (status === 'needs_password') return 'needs_password';
+  return 'failed';
+}
+
+function enrichUploadResponse(serialized) {
+  const analyzable = serialized.status === 'completed' || serialized.status === 'needs_review';
+  return {
+    ...serialized,
+    analyzable,
+    uploadOutcome: uploadOutcomeFromStatus(serialized.status),
+  };
+}
 
 // העלאת מסמך
 exports.uploadDocument = async (req, res, next) => {
@@ -34,7 +50,7 @@ exports.uploadDocument = async (req, res, next) => {
 
     const responseBody = {
       success: true,
-      data: serializeDocument(document),
+      data: enrichUploadResponse(serializeDocument(document)),
     };
     res.status(201).json(responseBody);
   } catch (error) {
@@ -71,6 +87,33 @@ exports.getPayslipHistory = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: intelligence,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.getRecentPayslips = async (req, res, next) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 3, 1), 12);
+    const documents = await Document.find({
+      user: req.user.id,
+      status: { $in: ['completed', 'needs_review'] },
+      analysisData: { $exists: true, $ne: null },
+    })
+      .sort('-uploadedAt')
+      .limit(50)
+      .lean();
+
+    const recent = selectRecentPayslipDocuments(documents, limit);
+
+    res.status(200).json({
+      success: true,
+      count: recent.length,
+      data: {
+        documents: recent.map(serializeDocument),
+        count: recent.length,
+      },
     });
   } catch (error) {
     next(error);
