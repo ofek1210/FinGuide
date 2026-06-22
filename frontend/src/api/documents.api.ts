@@ -77,6 +77,9 @@ export interface DocumentItem {
   analysisData?: { summary?: PayslipSummaryFromBackend; [k: string]: unknown };
   createdAt?: string;
   updatedAt?: string;
+  /** Present on upload response — true when status is completed or needs_review */
+  analyzable?: boolean;
+  uploadOutcome?: "analyzed" | "needs_password" | "failed";
 }
 
 export type UploadDocumentPayload = {
@@ -92,6 +95,16 @@ export type ListDocumentsResponse = {
   status?: number;
   count?: number;
   data?: DocumentItem[];
+};
+
+export type RecentPayslipsResponse = {
+  success: boolean;
+  message?: string;
+  count?: number;
+  data?: {
+    documents: DocumentItem[];
+    count: number;
+  };
 };
 
 export type UploadDocumentResponse = {
@@ -220,6 +233,30 @@ export const listDocuments = async () => {
   const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
   console.log("[frontend] listDocuments response", payload);
   return payload;
+};
+
+export const listRecentPayslips = async (limit = 3) => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as RecentPayslipsResponse;
+  }
+
+  const result = await apiJson<RecentPayslipsResponse>(
+    `/api/documents/recent-payslips?limit=${limit}`,
+    {
+      auth: true,
+      fallbackErrorMessage: "לא הצלחנו לטעון תלושים אחרונים.",
+    },
+  );
+
+  if (!result.ok) {
+    return {
+      success: false,
+      message: result.error.message,
+    } as RecentPayslipsResponse;
+  }
+
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as RecentPayslipsResponse);
 };
 
 export const uploadDocument = async (

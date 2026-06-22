@@ -44,3 +44,9 @@ export const formatPercent = (value?: number | null) => {
   if (value === undefined || value === null) return "—";
   return `${Number(value)}%`;
 };
+
+/** Currency for KPI cards — dash when value is missing or not finite */
+export const formatCurrencyPositiveOrDash = (value?: number | null) => {
+  if (value === undefined || value === null || !Number.isFinite(value)) return "—";
+  return formatCurrencyILS(value);
+};

@@ -13,6 +13,8 @@
 const Document = require('../../models/Document');
 const { runSalaryAnomalyRules, runPensionGapRules } = require('../engines/ruleEngine');
 const { calculateSalaryTrend } = require('../engines/calculationEngine');
+const { selectRecentPayslipDocuments } = require('../../utils/selectRecentPayslipDocuments');
+const { resolvePayslipPeriod } = require('../../utils/payslipPeriod');
 
 // ── Tool: getPayslipSummaries ─────────────────────────────────────────────────
 
@@ -32,21 +34,24 @@ async function getPayslipSummaries(userId, limit = 6) {
 
   const docs = await Document.find({
     user: userId,
-    status: 'completed',
-    $or: [
-      { 'metadata.category': 'payslip' },
-      { 'analysisData.summary.grossSalary': { $exists: true, $ne: null } },
-    ],
+    status: { $in: ['completed', 'needs_review'] },
+    analysisData: { $exists: true, $ne: null },
   })
     .sort({ uploadedAt: -1 })
-    .limit(limit)
+    .limit(50)
     .lean();
 
-  const payslips = docs.map((doc) => {
+  const recent = selectRecentPayslipDocuments(docs, limit);
+
+  const payslips = recent.map((doc) => {
     const s = doc.analysisData?.summary || {};
+    const period = resolvePayslipPeriod(doc);
+    const periodLabel = period.incompletePeriod
+      ? `${doc.metadata?.periodMonth || '?'}/${doc.metadata?.periodYear || '?'}`
+      : `${String(period.month).padStart(2, '0')}/${period.year}`;
     return {
       documentId: doc._id.toString(),
-      period: `${doc.metadata?.periodMonth || '?'}/${doc.metadata?.periodYear || '?'}`,
+      period: periodLabel,
       grossSalary: s.grossSalary ?? null,
       netSalary: s.netSalary ?? null,
       baseSalary: s.baseSalary ?? null,

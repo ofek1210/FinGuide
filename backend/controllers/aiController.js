@@ -7,6 +7,7 @@ const { askLLM } = require('../services/aiService');
 const { chat: claudeChat, streamChat: claudeStreamChat, askClaude } = require('../services/claudeChatService');
 const { detectSalaryAnomalies } = require('../utils/detectSalaryAnomalies');
 const { simulateWhatIf } = require('../utils/simulateWhatIf');
+const { selectRecentPayslipDocuments } = require('../utils/selectRecentPayslipDocuments');
 const mongoose = require('mongoose');
 
 const RLM = '\u200F';
@@ -252,9 +253,14 @@ function getRecommendedAction(documents) {
 // ── server-side RAG: build context from DB ────────────────────────────────────
 
 async function buildUserContext(userId) {
-  const documents = await Document.find({ user: userId })
-    .select('status uploadedAt metadata analysisData')
+  const documents = await Document.find({
+    user: userId,
+    status: { $in: ['completed', 'needs_review'] },
+    analysisData: { $exists: true, $ne: null },
+  })
+    .select('status uploadedAt processedAt metadata analysisData createdAt updatedAt')
     .sort({ uploadedAt: -1 })
+    .limit(50)
     .lean();
 
   const [profile, insights, recommendations] = await Promise.all([
@@ -263,14 +269,7 @@ async function buildUserContext(userId) {
     Recommendation.find({ user: userId, status: 'active' }).sort({ importance: 1 }).limit(5).lean(),
   ]);
 
-  // Get last 3 completed payslips for trend analysis
-  // Also match docs with category 'other' that have payslip analysisData (uploaded before auto-upgrade)
-  const completedPayslips = documents.filter(
-    d =>
-      d.status === 'completed' &&
-      (d.metadata?.category === 'payslip' || (d.analysisData?.summary?.grossSalary != null)) &&
-      d.analysisData?.summary,
-  ).slice(0, 3);
+  const completedPayslips = selectRecentPayslipDocuments(documents, 3);
 
   const latestPayslip = completedPayslips[0];
   const fullAnalysis = latestPayslip?.analysisData || {};

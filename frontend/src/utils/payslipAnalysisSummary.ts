@@ -1,6 +1,10 @@
-import { listDocuments, type DocumentItem } from "../api/documents.api";
+import type { DocumentItem } from "../api/documents.api";
 import type { PayslipDetail } from "../types/payslip";
-import { documentToPayslipDetail, isPayslipDocument } from "./documentToPayslip";
+import {
+  documentToPayslipDetail,
+  isPayslipDocument,
+  sortPayslipDocuments,
+} from "./documentToPayslip";
 import {
   enrichPayslipFromDoc,
   buildMoneyFlow,
@@ -54,40 +58,76 @@ function displayLabelFor(doc: DocumentItem, detail: PayslipDetail): string {
   return formatUploadLabel(doc.uploadedAt || doc.createdAt);
 }
 
+function periodKeyFromDoc(doc: DocumentItem): string | null {
+  const meta = doc.metadata;
+  if (meta?.periodYear && meta?.periodMonth) {
+    return `${meta.periodYear}-${String(meta.periodMonth).padStart(2, "0")}`;
+  }
+  const month = (doc.analysisData as { period?: { month?: string } } | undefined)?.period?.month;
+  if (typeof month === "string" && /^\d{4}-\d{2}$/.test(month)) {
+    return month;
+  }
+  return null;
+}
+
+function docUploadTime(doc: DocumentItem): number {
+  return new Date(doc.uploadedAt || doc.createdAt || 0).getTime();
+}
+
+/** Payslip usable for KPI / money-flow analysis. */
+export function isAnalyzablePayslip(doc: DocumentItem): boolean {
+  if (!isPayslipDocument(doc)) return false;
+  const cat = doc.metadata?.category;
+  if (cat && cat !== "payslip") return false;
+  return true;
+}
+
+/**
+ * Pick the N most recent payslips by salary period (dedupes same month).
+ */
+export function selectRecentPayslipDocuments(docs: DocumentItem[], limit = 3): DocumentItem[] {
+  const valid = docs.filter(isAnalyzablePayslip);
+  const byPeriod = new Map<string, DocumentItem>();
+  const withoutPeriod: DocumentItem[] = [];
+
+  for (const doc of valid) {
+    const key = periodKeyFromDoc(doc);
+    if (!key) {
+      withoutPeriod.push(doc);
+      continue;
+    }
+    const existing = byPeriod.get(key);
+    if (!existing || docUploadTime(doc) >= docUploadTime(existing)) {
+      byPeriod.set(key, doc);
+    }
+  }
+
+  const deduped = sortPayslipDocuments([...byPeriod.values()]);
+  const fallback = [...withoutPeriod].sort((a, b) => docUploadTime(b) - docUploadTime(a));
+  return [...deduped, ...fallback].slice(0, limit);
+}
+
 export function buildAnalysisSummary(docs: DocumentItem[], limit = 3): PayslipAnalysisSummary {
-  const valid = docs.filter((doc) => {
-    if (!isPayslipDocument(doc)) return false;
-    const cat = doc.metadata?.category;
-    if (cat && cat !== "payslip") return false;
-    return true;
-  });
-
-  const byUpload = [...valid].sort((a, b) => {
-    const ta = new Date(a.uploadedAt || a.createdAt || 0).getTime();
-    const tb = new Date(b.uploadedAt || b.createdAt || 0).getTime();
-    return tb - ta;
-  });
-
-  const recent = byUpload.slice(0, limit);
+  const recent = selectRecentPayslipDocuments(docs, limit);
   const enriched = recent.map(enrichPayslipFromDoc);
   const moneyFlow = buildMoneyFlow(enriched);
 
-  const rows: PayslipRow[] = recent
-    .map((doc, i) => {
-      const detail = documentToPayslipDetail(doc);
-      if (!detail) return null;
-      const e = enriched[i];
-      return {
-        ...detail,
-        grossSalary: e?.grossSalary ?? detail.grossSalary,
-        netSalary: e?.netSalary ?? detail.netSalary,
-        vacationDays: e?.vacationDays ?? detail.vacationDays,
-        sickDays: e?.sickDays ?? detail.sickDays,
-        uploadedAt: doc.uploadedAt || doc.createdAt,
-        displayLabel: displayLabelFor(doc, detail),
-      };
-    })
-    .filter((r): r is PayslipRow => r !== null);
+  const rows: PayslipRow[] = [];
+  for (let i = 0; i < recent.length; i++) {
+    const doc = recent[i]!;
+    const detail = documentToPayslipDetail(doc);
+    if (!detail) continue;
+    const e = enriched[i];
+    rows.push({
+      ...detail,
+      grossSalary: e?.grossSalary ?? detail.grossSalary,
+      netSalary: e?.netSalary ?? detail.netSalary,
+      vacationDays: e?.vacationDays ?? detail.vacationDays,
+      sickDays: e?.sickDays ?? detail.sickDays,
+      uploadedAt: doc.uploadedAt || doc.createdAt,
+      displayLabel: displayLabelFor(doc, detail),
+    });
+  }
 
   const breakdown = moneyFlow
     ? moneyFlow.items.map(i => ({ label: i.label, avgAmount: i.avgAmount }))
@@ -112,11 +152,15 @@ export function buildAnalysisSummary(docs: DocumentItem[], limit = 3): PayslipAn
 }
 
 export async function fetchLastPayslipAnalysis(limit = 3): Promise<PayslipAnalysisSummary> {
-  const response = await listDocuments();
+  const { listRecentPayslips } = await import("../api/documents.api");
+  const response = await listRecentPayslips(limit);
+  if (response.success && response.data?.documents) {
+    return buildAnalysisSummary(response.data.documents, limit);
+  }
   if (!response.success) {
     throw new Error(response.message || "לא הצלחנו לטעון מסמכים");
   }
-  return buildAnalysisSummary(response.data ?? [], limit);
+  return buildAnalysisSummary([], limit);
 }
 
 export type { MoneyFlow, MoneyFlowItem } from "./payslipEnrichment";

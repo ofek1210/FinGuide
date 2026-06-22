@@ -15,14 +15,20 @@ const Insight = require('../models/Insight');
 const Recommendation = require('../models/Recommendation');
 const { orchestrate, getAgentList } = require('../services/agents');
 const { indexKnowledgeBase, indexPayslipDocument, getRAGStats, isKnowledgeBaseIndexed } = require('../services/embeddings');
+const { selectRecentPayslipDocuments } = require('../utils/selectRecentPayslipDocuments');
 
 /**
  * Build user context from DB — same as in aiController but available for agents.
  */
 async function buildAgentUserContext(userId) {
-  const documents = await Document.find({ user: userId })
-    .select('status uploadedAt metadata analysisData')
+  const documents = await Document.find({
+    user: userId,
+    status: { $in: ['completed', 'needs_review'] },
+    analysisData: { $exists: true, $ne: null },
+  })
+    .select('status uploadedAt processedAt metadata analysisData createdAt updatedAt')
     .sort({ uploadedAt: -1 })
+    .limit(50)
     .lean();
 
   const [profile, insights, recommendations] = await Promise.all([
@@ -31,12 +37,7 @@ async function buildAgentUserContext(userId) {
     Recommendation.find({ user: userId, status: 'active' }).sort({ importance: 1 }).limit(5).lean(),
   ]);
 
-  const completedPayslips = documents.filter(
-    d =>
-      d.status === 'completed' &&
-      (d.metadata?.category === 'payslip' || d.analysisData?.summary?.grossSalary != null) &&
-      d.analysisData?.summary,
-  ).slice(0, 3);
+  const completedPayslips = selectRecentPayslipDocuments(documents, 3);
 
   const latestPayslip = completedPayslips[0];
   const fullAnalysis = latestPayslip?.analysisData || {};

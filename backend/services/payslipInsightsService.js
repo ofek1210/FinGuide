@@ -8,6 +8,7 @@ const Document = require('../models/Document');
 const UserProfile = require('../models/UserProfile');
 const { analyzeWithAI } = require('./aiProviderService');
 const { enrichSummary, buildMoneyFlow, avgField } = require('../utils/payslipEnrichment');
+const { selectRecentPayslipDocuments } = require('../utils/selectRecentPayslipDocuments');
 
 const MIN_PENSION_EMPLOYEE_RATE = 0.075;
 const MIN_PENSION_EMPLOYER_RATE = 0.065;
@@ -307,18 +308,12 @@ async function getPayslipInsights(userId) {
       analysisData: { $exists: true, $ne: null },
     })
       .sort({ uploadedAt: -1 })
-      .limit(12)
+      .limit(50)
       .lean(),
     UserProfile.findOne({ user: userId }).lean(),
   ]);
 
-  const payslips = allDocs
-    .filter((doc) => {
-      const cat = doc?.metadata?.category;
-      if (cat && cat !== 'payslip') return false;
-      return doc.analysisData && typeof doc.analysisData === 'object';
-    })
-    .slice(0, 3);
+  const payslips = selectRecentPayslipDocuments(allDocs, 3);
 
   if (!payslips.length) {
     return {

@@ -7,9 +7,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Mail, Upload, FileText, TrendingUp, RefreshCw,
-  ChevronLeft, Sparkles, CheckCircle, ArrowLeft, ArrowRight,
-  Pause, Play,
+  Mail, Upload, FileText, RefreshCw,
+  Sparkles, CheckCircle, ArrowLeft, ArrowRight,
+  Pause, Play, Search, History,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
@@ -17,7 +17,7 @@ import AppFooter from "../components/AppFooter";
 import GlassCard from "../components/ui/GlassCard";
 import StatCard from "../components/ui/StatCard";
 import SectionHeader from "../components/ui/SectionHeader";
-import { uploadDocument } from "../api/documents.api";
+import { listDocuments, type DocumentItem } from "../api/documents.api";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
 import { syncGmail, getGmailStatus, type GmailIntegrationStatus } from "../api/integrations.api";
 import { APP_ROUTES } from "../types/navigation";
@@ -25,10 +25,20 @@ import { apiJson } from "../api/client";
 import { getUserProfile, type UserProfileResponseData } from "../api/userProfile.api";
 import { completeOnboarding } from "../api/onboarding.api";
 import {
+  MAX_PAYSLIPS,
+  uploadFailureMessage,
+  isAnalyzableUpload,
+  uploadPayslipFile,
+  unlockPayslipDocument,
+} from "../hooks/usePayslipUpload";
+import {
+  buildAnalysisSummary,
   fetchLastPayslipAnalysis,
   type PayslipAnalysisSummary,
   type MoneyFlow,
 } from "../utils/payslipAnalysisSummary";
+import { documentToPayslipDetail } from "../utils/documentToPayslip";
+import { formatCurrencyPositiveOrDash } from "../utils/formatters";
 
 /* ── Types ───────────────────────────────────────────────────── */
 interface IntakeData {
@@ -69,6 +79,21 @@ const STORAGE_KEY = "fg_payslip_intake_v2";
 const PROFILE_DONE_KEY = "fg_payslip_profile_done";
 
 type WizardStep = "profile-check" | "intake" | "upload" | "results";
+
+function mergeDocumentsById(...groups: DocumentItem[][]): DocumentItem[] {
+  const map = new Map<string, DocumentItem>();
+  for (const group of groups) {
+    for (const doc of group) {
+      const id = doc._id || doc.id;
+      if (id) map.set(id, doc);
+    }
+  }
+  return [...map.values()];
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function profileToIntake(p: UserProfileResponseData): IntakeData {
   const name = p.personal?.fullName || "";
@@ -240,8 +265,7 @@ const QUESTIONS: QuestionDef[] = [
 ];
 
 /* ── Helpers ─────────────────────────────────────────────────── */
-const fmt = (n: number | null | undefined) =>
-  n != null && n > 0 ? `₪${Number(n).toLocaleString("he-IL")}` : "—";
+const fmt = formatCurrencyPositiveOrDash;
 
 const loadSavedProgress = (): IntakeProgress | null => {
   try {
@@ -261,7 +285,6 @@ const clearProgress = () => localStorage.removeItem(STORAGE_KEY);
    MAIN PAGE
 ════════════════════════════════════════════════════════════════ */
 export default function PayslipsAgentPage() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // Handle Gmail OAuth callback — ?gmail=success
@@ -276,6 +299,7 @@ export default function PayslipsAgentPage() {
   });
   const [intake, setIntake] = useState<IntakeData>(saved?.data ?? EMPTY_INTAKE);
   const [resultsRefreshKey, setResultsRefreshKey] = useState(0);
+  const [resultsSeedDocs, setResultsSeedDocs] = useState<DocumentItem[] | null>(null);
 
   useEffect(() => {
     if (gmailResult === "success") {
@@ -370,9 +394,15 @@ export default function PayslipsAgentPage() {
         {step === "upload" && (
           <UploadStep
             intake={intake}
-            onComplete={(uploadedCount) => {
-              if (uploadedCount > 0) setResultsRefreshKey(k => k + 1);
-              setStep("results");
+            onComplete={(analyzableCount, uploadedDocs) => {
+              if (analyzableCount > 0) {
+                setResultsSeedDocs(uploadedDocs);
+                setResultsRefreshKey(k => k + 1);
+                setStep("results");
+              } else {
+                setResultsSeedDocs(null);
+                setStep("results");
+              }
             }}
             onBack={() => setStep("intake")}
           />
@@ -381,8 +411,12 @@ export default function PayslipsAgentPage() {
           <ResultsStep
             intake={intake}
             refreshKey={resultsRefreshKey}
+            initialDocs={resultsSeedDocs}
             onEditProfile={() => setStep("profile-check")}
-            onAddMore={() => setStep("upload")}
+            onAddMore={() => {
+              setResultsSeedDocs(null);
+              setStep("upload");
+            }}
           />
         )}
       </main>
@@ -789,11 +823,25 @@ function IntakeWizard({
 /* ════════════════════════════════════════════════════════════════
    STEP 2 — UPLOAD
 ════════════════════════════════════════════════════════════════ */
+type UploadedEntry = {
+  id: string;
+  name: string;
+  doc: DocumentItem;
+};
+
+function entryDisplayLabel(entry: UploadedEntry): string {
+  const detail = documentToPayslipDetail(entry.doc);
+  if (detail?.periodLabel && detail.periodLabel !== "תלוש משכורת") {
+    return detail.periodLabel;
+  }
+  return entry.name;
+}
+
 function UploadStep({
   intake, onComplete, onBack,
 }: {
   intake: IntakeData;
-  onComplete: (uploadedCount: number) => void;
+  onComplete: (analyzableCount: number, uploadedDocs: DocumentItem[]) => void;
   onBack: () => void;
 }) {
   const navigate = useNavigate();
@@ -802,9 +850,19 @@ function UploadStep({
   const [gmailLoading, setGmailLoading] = useState(true);
   const [syncLoading, setSyncLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [continuing, setContinuing] = useState(false);
+  const [uploadedEntries, setUploadedEntries] = useState<UploadedEntry[]>([]);
+  const [passwordInputs, setPasswordInputs] = useState<Record<string, string>>({});
+  const [unlockingId, setUnlockingId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  const analyzableDocs = uploadedEntries
+    .map(e => e.doc)
+    .filter(doc => isAnalyzableUpload(doc));
+  const canShowResults = analyzableDocs.length > 0;
+  const hasUploadAttempts = uploadedEntries.length > 0;
+  const slotsLeft = MAX_PAYSLIPS - uploadedEntries.length;
 
   useEffect(() => {
     void getGmailStatus().then(res => {
@@ -813,8 +871,6 @@ function UploadStep({
     });
   }, []);
 
-  // Navigate to Gmail integration page — OAuth callback happens there,
-  // then it redirects back here with ?gmail=success
   const handleGmailConnect = () => {
     navigate(`${APP_ROUTES.integrationsEmail}?from=documents`);
   };
@@ -827,50 +883,128 @@ function UploadStep({
     if (res.success && res.data) {
       const count = res.data.imported;
       if (count > 0) {
-        setMsg({ type: "success", text: `יובאו ${count} תלושים חדשים בהצלחה` });
+        setMsg({ type: "success", text: `יובאו ${count} תלושים חדשים — טוען ניתוח...` });
+        try {
+          const analysis = await fetchLastPayslipAnalysis(3);
+          if (analysis.count > 0) {
+            setTimeout(() => onComplete(analysis.count, []), 800);
+          } else {
+            setMsg({
+              type: "error",
+              text: "התלושים יובאו אך עדיין לא מוכנים לניתוח — נסו שוב בעוד רגע",
+            });
+          }
+        } catch {
+          setMsg({ type: "error", text: "שגיאה בטעינת התלושים אחרי הסנכרון" });
+        }
       } else if (res.data.found === 0) {
         setMsg({ type: "info", text: "לא נמצאו תלושי שכר חדשים בתיבת הדואר" });
       } else {
         setMsg({ type: "info", text: `נמצאו ${res.data.found} קבצים, ${res.data.skippedDuplicates} כבר קיימים` });
-      }
-      if (count > 0) {
-        setTimeout(() => onComplete(count), 1500);
       }
     } else {
       setMsg({ type: "error", text: res.message || "שגיאה בסנכרון Gmail" });
     }
   };
 
+  const handleUnlock = async (entry: UploadedEntry) => {
+    const password = passwordInputs[entry.id]?.trim();
+    if (!password) return;
+    setUnlockingId(entry.id);
+    setMsg(null);
+    const res = await unlockPayslipDocument(entry.doc._id, password);
+    setUnlockingId(null);
+    if (res.success && res.data) {
+      setUploadedEntries(prev =>
+        prev.map(e => (e.id === entry.id ? { ...e, doc: res.data! } : e)),
+      );
+      if (isAnalyzableUpload(res.data)) {
+        setMsg({ type: "success", text: `${entry.name} נפתח ועובד בהצלחה ✓` });
+      } else {
+        setMsg({ type: "error", text: uploadFailureMessage(res.data, entry.name) });
+      }
+    } else {
+      setMsg({ type: "error", text: res.message || `שגיאה בפתיחת ${entry.name}` });
+    }
+  };
+
   const handleFileUpload = async (files: FileList) => {
+    if (slotsLeft <= 0) {
+      setMsg({ type: "error", text: `ניתן להעלות עד ${MAX_PAYSLIPS} תלושים בלבד` });
+      return;
+    }
+
     setUploading(true);
     setMsg(null);
-    const newUploaded: string[] = [];
+    const newEntries: UploadedEntry[] = [];
     const errors: string[] = [];
+    const successes: string[] = [];
 
-    for (const file of Array.from(files)) {
+    const fileList = Array.from(files).slice(0, slotsLeft);
+    if (files.length > slotsLeft) {
+      errors.push(`ניתן להעלות עד ${MAX_PAYSLIPS} תלושים — ${files.length - slotsLeft} קבצים לא הועלו`);
+    }
+
+    for (const file of fileList) {
       if (!file.name.toLowerCase().endsWith(".pdf")) {
         errors.push(`${file.name}: רק קובצי PDF נתמכים`);
         continue;
       }
-      const res = await uploadDocument(file, { category: "payslip" });
-      if (res.success) {
-        newUploaded.push(file.name);
-      } else {
+      const res = await uploadPayslipFile(file);
+      if (!res.success || !res.data) {
         errors.push(`${file.name}: ${res.message || "שגיאה בהעלאה"}`);
+        continue;
+      }
+
+      const doc = res.data;
+      const entry: UploadedEntry = {
+        id: doc._id || doc.id || `${file.name}-${Date.now()}`,
+        name: file.name,
+        doc,
+      };
+      newEntries.push(entry);
+
+      if (isAnalyzableUpload(doc)) {
+        successes.push(file.name);
+      } else {
+        errors.push(uploadFailureMessage(doc, file.name));
       }
     }
 
     setUploading(false);
 
-    if (newUploaded.length > 0) {
-      setUploadedFiles(prev => [...prev, ...newUploaded]);
+    if (newEntries.length > 0) {
+      setUploadedEntries(prev => [...prev, ...newEntries]);
+    }
+    if (successes.length > 0) {
       setMsg({
         type: "success",
-        text: `${newUploaded.length} תלוש/ים הועלו בהצלחה ✓`,
+        text: `${successes.length} תלוש/ים מוכנים לניתוח ✓`,
+      });
+    } else if (errors.length > 0) {
+      setMsg({ type: "error", text: errors.join(" · ") });
+    }
+    if (successes.length > 0 && errors.length > 0) {
+      setMsg({
+        type: "info",
+        text: `${successes.length} תלוש/ים מוכנים · ${errors.join(" · ")}`,
       });
     }
-    if (errors.length > 0) {
-      setMsg({ type: "error", text: errors.join(" · ") });
+  };
+
+  const handleContinue = () => {
+    if (continuing || uploading) return;
+    if (hasUploadAttempts && !canShowResults) return;
+
+    setContinuing(true);
+    try {
+      if (canShowResults) {
+        onComplete(analyzableDocs.length, analyzableDocs);
+      } else {
+        onComplete(0, []);
+      }
+    } finally {
+      setContinuing(false);
     }
   };
 
@@ -926,7 +1060,7 @@ function UploadStep({
                 <div style={{ fontSize: 12, color: "#059669", marginTop: 2, opacity: 0.7 }}>מחובר · {gmail.importedCount} תלושים</div>
               </div>
               <button
-                onClick={handleGmailSync}
+                onClick={() => void handleGmailSync()}
                 disabled={syncLoading}
                 style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 7, padding: "11px", borderRadius: 12, background: "rgba(155,127,232,0.10)", color: "#9B7FE8", border: "1px solid rgba(155,127,232,0.25)", cursor: syncLoading ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}
               >
@@ -959,7 +1093,7 @@ function UploadStep({
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: 16, color: "#1F1F1F" }}>העלאה ידנית</div>
-              <div style={{ fontSize: 12, color: "#7C6FA0", marginTop: 2 }}>PDF בלבד</div>
+              <div style={{ fontSize: 12, color: "#7C6FA0", marginTop: 2 }}>PDF בלבד · עד {MAX_PAYSLIPS} תלושים</div>
             </div>
           </div>
 
@@ -977,7 +1111,7 @@ function UploadStep({
           />
 
           <div
-            onClick={() => !uploading && fileInputRef.current?.click()}
+            onClick={() => !uploading && slotsLeft > 0 && fileInputRef.current?.click()}
             onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) void handleFileUpload(e.dataTransfer.files); }}
@@ -985,45 +1119,82 @@ function UploadStep({
               flex: 1,
               border: `2px dashed ${isDragging ? "#9B7FE8" : "rgba(184,157,255,0.40)"}`,
               borderRadius: 16, padding: "24px 14px",
-              textAlign: "center", cursor: uploading ? "wait" : "pointer",
+              textAlign: "center", cursor: uploading || slotsLeft <= 0 ? "not-allowed" : "pointer",
               background: isDragging ? "rgba(155,127,232,0.06)" : "rgba(250,247,255,0.5)",
               transition: "all 0.2s", marginBottom: 14,
+              opacity: slotsLeft <= 0 ? 0.6 : 1,
             }}
           >
             <div style={{ fontSize: 24, marginBottom: 8 }}>📎</div>
             {uploading ? (
               <div style={{ fontSize: 14, color: "#9B7FE8", fontWeight: 600 }}>מעלה ומעבד...</div>
+            ) : slotsLeft <= 0 ? (
+              <div style={{ fontSize: 14, fontWeight: 600, color: "#7C6FA0" }}>הגעת למקסימום {MAX_PAYSLIPS} תלושים</div>
             ) : (
               <>
                 <div style={{ fontSize: 14, fontWeight: 600, color: "#1F1F1F", marginBottom: 3 }}>גרור קבצים לכאן</div>
-                <div style={{ fontSize: 12.5, color: "#7C6FA0" }}>או לחץ לבחירה</div>
+                <div style={{ fontSize: 12.5, color: "#7C6FA0" }}>או לחץ לבחירה ({slotsLeft} נותרו)</div>
               </>
             )}
           </div>
 
-          {/* Uploaded files list */}
-          {uploadedFiles.length > 0 && (
+          {uploadedEntries.length > 0 && (
             <div style={{ marginBottom: 10 }}>
-              {uploadedFiles.map(name => (
-                <div key={name} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: "#ECFDF5", marginBottom: 4 }}>
-                  <CheckCircle size={13} color="#059669" />
-                  <span style={{ fontSize: 12, color: "#059669", fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
-                </div>
-              ))}
+              {uploadedEntries.map(entry => {
+                const ok = isAnalyzableUpload(entry.doc);
+                const needsPassword = entry.doc.status === "needs_password";
+                const bg = ok ? "#ECFDF5" : needsPassword ? "#FFF7ED" : "#FEF2F2";
+                const color = ok ? "#059669" : needsPassword ? "#D97706" : "#DC2626";
+                return (
+                  <div key={entry.id} style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: bg }}>
+                      <CheckCircle size={13} color={color} />
+                      <span style={{ fontSize: 12, color, fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {entryDisplayLabel(entry)}
+                      </span>
+                      <span style={{ fontSize: 11, color }}>{ok ? "מוכן" : needsPassword ? "סיסמה" : "שגיאה"}</span>
+                    </div>
+                    {needsPassword && (
+                      <div style={{ marginTop: 6, padding: "8px 10px", borderRadius: 8, background: "#FFFBEB", border: "1px solid rgba(217,119,6,0.2)" }}>
+                        <div style={{ fontSize: 12, color: "#92400E", marginBottom: 6 }}>הזן/י סיסמת PDF לפתיחה ועיבוד</div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <input
+                            type="password"
+                            value={passwordInputs[entry.id] || ""}
+                            onChange={e => setPasswordInputs(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                            placeholder="סיסמת PDF"
+                            disabled={unlockingId === entry.id}
+                            style={{ flex: 1, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(217,119,6,0.3)", fontFamily: "inherit", fontSize: 13 }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void handleUnlock(entry)}
+                            disabled={unlockingId === entry.id || !passwordInputs[entry.id]?.trim()}
+                            style={{ padding: "8px 12px", borderRadius: 8, background: "#D97706", color: "#fff", border: "none", cursor: unlockingId === entry.id ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 12 }}
+                          >
+                            {unlockingId === entry.id ? "פותח..." : "פתח"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
           <button
             onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            style={{ padding: "10px", borderRadius: 12, background: "rgba(155,127,232,0.08)", color: "#7B5EA7", border: "1px solid rgba(184,157,255,0.30)", cursor: uploading ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}
+            disabled={uploading || slotsLeft <= 0}
+            style={{ padding: "10px", borderRadius: 12, background: "rgba(155,127,232,0.08)", color: "#7B5EA7", border: "1px solid rgba(184,157,255,0.30)", cursor: uploading || slotsLeft <= 0 ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, opacity: slotsLeft <= 0 ? 0.5 : 1 }}
           >
-            {uploadedFiles.length > 0 ? `+ הוסף תלוש נוסף (${uploadedFiles.length} הועלו)` : "בחר קבצים להעלאה"}
+            {uploadedEntries.length > 0
+              ? `+ הוסף תלוש נוסף (${analyzableDocs.length}/${uploadedEntries.length} מוכנים)`
+              : "בחר קבצים להעלאה"}
           </button>
         </GlassCard>
       </div>
 
-      {/* Message */}
       {msg && (
         <div style={{
           padding: "14px 20px", borderRadius: 14, fontWeight: 600, fontSize: 14, marginBottom: 16, textAlign: "center",
@@ -1035,28 +1206,36 @@ function UploadStep({
         </div>
       )}
 
-      {/* Nav */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#7C6FA0", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 13.5 }}>
           <ArrowRight size={14} /> חזרה לפרטים
         </button>
         <button
-          onClick={() => onComplete(uploadedFiles.length)}
+          onClick={handleContinue}
+          disabled={continuing || uploading || (hasUploadAttempts && !canShowResults)}
           style={{
             display: "flex", alignItems: "center", gap: 8,
-            padding: uploadedFiles.length > 0 ? "13px 28px" : "11px 22px",
+            padding: canShowResults ? "13px 28px" : "11px 22px",
             borderRadius: 14,
-            background: uploadedFiles.length > 0 ? "linear-gradient(135deg, #9B7FE8, #7B5EA7)" : "rgba(184,157,255,0.18)",
-            color: uploadedFiles.length > 0 ? "#fff" : "#A89CC8",
-            border: "none", cursor: "pointer",
+            background: canShowResults ? "linear-gradient(135deg, #9B7FE8, #7B5EA7)" : "rgba(184,157,255,0.18)",
+            color: canShowResults ? "#fff" : hasUploadAttempts ? "#C4B5D8" : "#A89CC8",
+            border: "none",
+            cursor: continuing || uploading || (hasUploadAttempts && !canShowResults) ? "not-allowed" : "pointer",
             fontFamily: "inherit", fontWeight: 700,
-            fontSize: uploadedFiles.length > 0 ? 15 : 14,
-            boxShadow: uploadedFiles.length > 0 ? "0 4px 20px rgba(155,127,232,0.35)" : "none",
+            fontSize: canShowResults ? 15 : 14,
+            boxShadow: canShowResults ? "0 4px 20px rgba(155,127,232,0.35)" : "none",
             transition: "all 0.2s",
+            opacity: continuing || uploading || (hasUploadAttempts && !canShowResults) ? 0.7 : 1,
           }}
         >
           <Sparkles size={15} />
-          {uploadedFiles.length > 0 ? "הצג תוצאות ניתוח" : "דלג לתוצאות"}
+          {continuing
+            ? "טוען תוצאות..."
+            : canShowResults
+              ? "הצג תוצאות ניתוח"
+              : hasUploadAttempts
+                ? "יש לתקן את ההעלאות"
+                : "דלג לתוצאות"}
         </button>
       </div>
     </div>
@@ -1126,10 +1305,11 @@ function MoneyFlowSection({ flow }: { flow: MoneyFlow }) {
    STEP 3 — RESULTS
 ════════════════════════════════════════════════════════════════ */
 function ResultsStep({
-  intake, refreshKey, onEditProfile, onAddMore,
+  intake, refreshKey, initialDocs, onEditProfile, onAddMore,
 }: {
   intake: IntakeData;
   refreshKey: number;
+  initialDocs?: DocumentItem[] | null;
   onEditProfile: () => void;
   onAddMore: () => void;
 }) {
@@ -1141,12 +1321,33 @@ function ResultsStep({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<PayslipAnalysisSummary | null>(null);
+  const [passwordDoc, setPasswordDoc] = useState<DocumentItem | null>(null);
+  const [passwordInput, setPasswordInput] = useState("");
+  const [unlocking, setUnlocking] = useState(false);
 
   const loadAnalysis = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchLastPayslipAnalysis(3);
+      if (initialDocs?.length) {
+        const listRes = await listDocuments();
+        const allDocs = listRes.success ? (listRes.data ?? []) : [];
+        const merged = mergeDocumentsById(initialDocs, allDocs);
+        const seeded = buildAnalysisSummary(merged, 3);
+        if (seeded.count > 0) {
+          setSummary(seeded);
+          return;
+        }
+      }
+
+      let data = await fetchLastPayslipAnalysis(3);
+      if (data.count === 0 && initialDocs?.length) {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await sleep(500);
+          data = await fetchLastPayslipAnalysis(3);
+          if (data.count > 0) break;
+        }
+      }
       setSummary(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "שגיאה בטעינת התלושים");
@@ -1154,7 +1355,7 @@ function ResultsStep({
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [initialDocs]);
 
   useEffect(() => {
     void loadAnalysis();
@@ -1162,13 +1363,32 @@ function ResultsStep({
 
   const handleFileUpload = async (file: File) => {
     setUploading(true);
-    const res = await uploadDocument(file, { category: "payslip" });
+    setPasswordDoc(null);
+    const res = await uploadPayslipFile(file);
     setUploading(false);
-    if (res.success) {
+    if (res.success && res.data && isAnalyzableUpload(res.data)) {
       setUploadMsg("התלוש הועלה ועובד בהצלחה!");
       await loadAnalysis();
+    } else if (res.success && res.data?.status === "needs_password") {
+      setPasswordDoc(res.data);
+      setUploadMsg("נדרשת סיסמה לפתיחת הקובץ");
     } else {
-      setUploadMsg(res.message || "שגיאה בהעלאה — נסה שוב");
+      setUploadMsg(res.message || res.data?.processingError || "שגיאה בהעלאה — נסה שוב");
+    }
+  };
+
+  const handleResultsUnlock = async () => {
+    if (!passwordDoc || !passwordInput.trim()) return;
+    setUnlocking(true);
+    const res = await unlockPayslipDocument(passwordDoc._id, passwordInput.trim());
+    setUnlocking(false);
+    if (res.success && res.data && isAnalyzableUpload(res.data)) {
+      setPasswordDoc(null);
+      setPasswordInput("");
+      setUploadMsg("התלוש נפתח ועובד בהצלחה!");
+      await loadAnalysis();
+    } else {
+      setUploadMsg(res.message || "שגיאה בפתיחת הקובץ — בדקו את הסיסמה");
     }
   };
 
@@ -1195,7 +1415,13 @@ function ResultsStep({
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => navigate(APP_ROUTES.findings)} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(155,127,232,0.10)", border: "1px solid rgba(184,157,255,0.30)", color: "#7B5EA7", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", borderRadius: 10, padding: "6px 12px" }}>
+            <Search size={14} /> ממצאים
+          </button>
+          <button onClick={() => navigate(APP_ROUTES.payslipHistory)} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(155,127,232,0.10)", border: "1px solid rgba(184,157,255,0.30)", color: "#7B5EA7", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", borderRadius: 10, padding: "6px 12px" }}>
+            <History size={14} /> היסטוריית תלושים
+          </button>
           <button onClick={onAddMore} style={{ background: "none", border: "1px solid rgba(184,157,255,0.30)", color: "#9B7FE8", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit", borderRadius: 10, padding: "6px 12px" }}>+ הוסף תלושים</button>
           <button onClick={onEditProfile} style={{ background: "none", border: "none", color: "#A89CC8", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>עדכן פרופיל</button>
         </div>
@@ -1269,8 +1495,14 @@ function ResultsStep({
                   key={p.id}
                   padding="sm"
                   onClick={() => navigate(`${APP_ROUTES.payslipHistory}/${p.id}`)}
-                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}
+                  style={{ display: "flex", flexDirection: "column", cursor: "pointer", gap: 8 }}
                 >
+                  {p.extractionStatus === "needs_review" && (
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "#D97706", background: "#FFF7ED", borderRadius: 8, padding: "6px 10px", border: "1px solid rgba(217,119,6,0.25)" }}>
+                      חלק מהנתונים דורשים סקירה — לחצו לפרטים
+                    </div>
+                  )}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ width: 38, height: 38, borderRadius: 11, background: "rgba(155,127,232,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       <FileText size={17} color="#9B7FE8" />
@@ -1286,6 +1518,7 @@ function ResultsStep({
                     <div style={{ fontWeight: 800, fontSize: 16, color: "#059669" }}>{fmt(p.netSalary)}</div>
                     <div style={{ fontSize: 11.5, color: "#7C6FA0" }}>נטו</div>
                   </div>
+                  </div>
                 </GlassCard>
               ))}
             </div>
@@ -1294,23 +1527,13 @@ function ResultsStep({
       ) : (
         /* No payslips yet */
         <GlassCard padding="lg" style={{ textAlign: "center", marginBottom: 36 }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>{refreshKey > 0 ? "⏳" : "📋"}</div>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>📋</div>
           <h3 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 20, fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px" }}>
-            {refreshKey > 0 ? "מעבד את התלושים שהעלית" : "אין עדיין תלושים לניתוח"}
+            אין עדיין תלושים לניתוח
           </h3>
           <p style={{ fontSize: 14.5, color: "#7C6FA0", margin: "0 0 20px", lineHeight: 1.65 }}>
-            {refreshKey > 0
-              ? "התלושים הועלו בהצלחה. אם הנתונים לא מופיעים — לחצי רענון או המתיני רגע לסיום העיבוד."
-              : "העלה את התלוש הראשון שלך כדי שהסוכן יתחיל לנתח."}
+            העלה תלושי שכר מעובדים כדי שהסוכן יתחיל לנתח — או חזור/י למסך ההעלאה.
           </p>
-          {refreshKey > 0 && (
-            <button
-              onClick={() => void loadAnalysis()}
-              style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 22px", borderRadius: 12, background: "rgba(155,127,232,0.12)", color: "#7B5EA7", border: "1px solid rgba(184,157,255,0.35)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, marginBottom: 12 }}
-            >
-              <RefreshCw size={14} /> רענן תוצאות
-            </button>
-          )}
           <input ref={fileInputRef} type="file" accept=".pdf"
             onChange={e => { const f = e.target.files?.[0]; if (f) void handleFileUpload(f); e.target.value = ""; }}
             style={{ display: "none" }}
@@ -1331,7 +1554,30 @@ function ResultsStep({
               </>
             )}
           </div>
-          {uploadMsg && <div style={{ fontSize: 13, color: uploadMsg.includes("שגיאה") ? "#DC2626" : "#059669", fontWeight: 600 }}>{uploadMsg}</div>}
+          {uploadMsg && <div style={{ fontSize: 13, color: uploadMsg.includes("שגיאה") ? "#DC2626" : "#059669", fontWeight: 600, marginBottom: 12 }}>{uploadMsg}</div>}
+          {passwordDoc && (
+            <div style={{ marginBottom: 16, padding: "12px 14px", borderRadius: 12, background: "#FFFBEB", border: "1px solid rgba(217,119,6,0.25)", textAlign: "right" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#92400E", marginBottom: 8 }}>הזן/י סיסמת PDF לפתיחה ועיבוד</div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                <input
+                  type="password"
+                  value={passwordInput}
+                  onChange={e => setPasswordInput(e.target.value)}
+                  placeholder="סיסמת PDF"
+                  disabled={unlocking}
+                  style={{ flex: 1, maxWidth: 220, padding: "8px 10px", borderRadius: 8, border: "1px solid rgba(217,119,6,0.3)", fontFamily: "inherit", fontSize: 13 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleResultsUnlock()}
+                  disabled={unlocking || !passwordInput.trim()}
+                  style={{ padding: "8px 14px", borderRadius: 8, background: "#D97706", color: "#fff", border: "none", cursor: unlocking ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: 13 }}
+                >
+                  {unlocking ? "פותח..." : "פתח"}
+                </button>
+              </div>
+            </div>
+          )}
           <button onClick={onAddMore} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 22px", borderRadius: 12, background: "linear-gradient(135deg, #9B7FE8, #7B5EA7)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, marginTop: 8 }}>
             <Upload size={14} /> הוסף תלושים
           </button>
