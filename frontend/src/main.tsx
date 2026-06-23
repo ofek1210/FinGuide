@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./auth/AuthProvider";
 import { AiChatProvider } from "./assistant/AiChatProvider";
+import "./theme/finguide.css";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

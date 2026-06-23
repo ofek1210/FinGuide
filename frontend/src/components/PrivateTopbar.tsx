@@ -1,44 +1,17 @@
 import type { ReactNode } from "react";
 import { useRef, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Sparkles } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { getAvatarDisplayUrl } from "../api/profile.api";
 import NotificationBell from "./notifications/NotificationBell";
 import { APP_ROUTES } from "../types/navigation";
 import { logoutWithConfirm } from "../utils/logout";
+import { AGENTS, agentForPath } from "../theme/agents";
 
 interface PrivateTopbarProps {
   rightSlot?: ReactNode;
 }
-
-/* ── The 3 core assistants ───────────────────────────────────── */
-const ASSISTANTS = [
-  {
-    icon: "📄",
-    label: "תלושים ומסמכים",
-    sub: "ניתוח שכר ומיסים",
-    route: APP_ROUTES.documents,
-    color: "#9B7FE8",
-    bg: "#F3EEFF",
-  },
-  {
-    icon: "🛡️",
-    label: "ביטוחים",
-    sub: "ניתוח פוליסות וכיסויים",
-    route: APP_ROUTES.insurance,
-    color: "#7B5EA7",
-    bg: "#EDE8F9",
-  },
-  {
-    icon: "📈",
-    label: "עוזר פנסיוני",
-    sub: "תחזית פרישה וצבירה",
-    route: APP_ROUTES.pension,
-    color: "#6B4FA0",
-    bg: "#EAE3F7",
-  },
-];
 
 function getInitial(name: string | undefined): string {
   if (!name?.trim()) return "?";
@@ -57,7 +30,6 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
   const assistantRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
 
-  /* ── Close on outside click ─────────────────────────────────── */
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (assistantRef.current && !assistantRef.current.contains(e.target as Node))
@@ -69,12 +41,18 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  /* ── Close on route change ──────────────────────────────────── */
   useEffect(() => { setAssistantOpen(false); }, [location.pathname]);
 
-  const activeAssistant = ASSISTANTS.find(a =>
-    location.pathname === a.route || location.pathname.startsWith(a.route + "/")
-  );
+  const activeAgent = agentForPath(location.pathname);
+
+  // Wayfinding: tint the whole app to the current agent. Any element using
+  // var(--agent*) re-resolves automatically. Cleared on non-agent pages.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (activeAgent) root.setAttribute("data-agent", activeAgent.id);
+    else root.removeAttribute("data-agent");
+    return () => root.removeAttribute("data-agent");
+  }, [activeAgent]);
 
   const handleLogout = () => { setUserMenuOpen(false); logoutWithConfirm(navigate); };
   const goToSettings = () => { setUserMenuOpen(false); navigate(APP_ROUTES.settings); };
@@ -85,22 +63,22 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
       style={{
         position: "sticky", top: 0, zIndex: 100,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 28px",
-        height: 64,
-        background: "rgba(255,255,255,0.88)",
-        backdropFilter: "blur(20px) saturate(180%)",
-        WebkitBackdropFilter: "blur(20px) saturate(180%)",
-        borderBottom: "1px solid rgba(184,157,255,0.20)",
-        boxShadow: "0 1px 20px rgba(155,127,232,0.08)",
+        padding: "0 var(--gutter)",
+        height: 62,
+        background: "rgba(251,251,252,.92)",
+        backdropFilter: "blur(var(--blur-glass)) saturate(180%)",
+        WebkitBackdropFilter: "blur(var(--blur-glass)) saturate(180%)",
+        borderBottom: "1px solid var(--border-soft)",
+        boxShadow: "0 1px 0 var(--border-hair)",
       }}
     >
       {/* Logo */}
       <div
         onClick={() => navigate(APP_ROUTES.hub)}
         style={{
-          fontFamily: "'Fraunces', Georgia, serif",
-          fontSize: 22, fontWeight: 700, letterSpacing: "-0.03em",
-          background: "linear-gradient(135deg, #9B7FE8 0%, #6B4FA0 100%)",
+          fontFamily: "var(--font-display)",
+          fontSize: 21, fontWeight: 900, letterSpacing: "-0.04em",
+          background: "var(--grad-brand)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
           backgroundClip: "text",
           cursor: "pointer", userSelect: "none",
@@ -109,42 +87,40 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
         FinGuide
       </div>
 
-      {/* Centre nav — single "העוזר הראשי" dropdown */}
+      {/* Centre — assistant dropdown */}
       <nav style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }} ref={assistantRef}>
-        {/* Active assistant pill (shown when inside a product) */}
-        {activeAssistant && (
+        {activeAgent && (
           <div style={{
-            display: "flex", alignItems: "center", gap: 8,
-            padding: "5px 12px 5px 10px",
-            borderRadius: 20,
-            background: `${activeAssistant.color}12`,
-            border: `1px solid ${activeAssistant.color}28`,
-            fontSize: 12, fontWeight: 700, color: activeAssistant.color,
+            display: "flex", alignItems: "center", gap: 7,
+            padding: "5px 13px 5px 11px",
+            borderRadius: "var(--r-pill)",
+            background: "var(--agent-soft)",
+            border: "1px solid var(--agent-ring)",
+            fontSize: 12, fontWeight: 700, color: "var(--agent)",
           }}>
-            <span>{activeAssistant.icon}</span>
-            <span>{activeAssistant.label}</span>
+            <activeAgent.Icon size={14} strokeWidth={2} />
+            <span>{activeAgent.label}</span>
           </div>
         )}
 
-        {/* Main dropdown trigger */}
         <button
           type="button"
           onClick={() => setAssistantOpen(o => !o)}
           style={{
             display: "flex", alignItems: "center", gap: 7,
-            padding: "9px 18px", borderRadius: 14,
-            background: assistantOpen ? "rgba(155,127,232,0.12)" : "rgba(184,157,255,0.08)",
-            border: `1px solid ${assistantOpen ? "rgba(184,157,255,0.45)" : "rgba(184,157,255,0.20)"}`,
-            color: "#3D3553", fontFamily: "inherit",
-            fontWeight: 700, fontSize: 14,
+            padding: "8px 16px", borderRadius: "var(--r-btn)",
+            background: assistantOpen ? "var(--agent-soft)" : "var(--surface-card)",
+            border: `1px solid ${assistantOpen ? "var(--agent-ring)" : "var(--border-soft)"}`,
+            color: "var(--agent)", fontFamily: "inherit",
+            fontWeight: 700, fontSize: 13.5,
             cursor: "pointer",
-            transition: "all 0.18s ease",
+            transition: "all var(--dur-fast) var(--ease)",
           }}
         >
-          <span style={{ fontSize: 15 }}>🤖</span>
+          <Sparkles size={14} strokeWidth={2} />
           העוזר הראשי
           <ChevronDown
-            size={14}
+            size={13}
             style={{
               transition: "transform 0.2s",
               transform: assistantOpen ? "rotate(180deg)" : "none",
@@ -160,25 +136,25 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
             top: "calc(100% + 10px)",
             right: "50%",
             transform: "translateX(50%)",
-            minWidth: 320,
-            background: "rgba(255,255,255,0.97)",
+            minWidth: 310,
+            background: "var(--surface-card)",
             backdropFilter: "blur(24px) saturate(200%)",
             WebkitBackdropFilter: "blur(24px) saturate(200%)",
-            border: "1px solid rgba(184,157,255,0.28)",
-            borderRadius: 24,
-            boxShadow: "0 16px 56px rgba(155,127,232,0.22), 0 4px 16px rgba(0,0,0,0.06)",
-            padding: "10px",
+            border: "1px solid var(--border-soft)",
+            borderRadius: 20,
+            boxShadow: "var(--shadow-card)",
+            padding: 10,
             zIndex: 999,
           }}>
-            {/* Header */}
-            <div style={{ padding: "8px 14px 12px", borderBottom: "1px solid rgba(184,157,255,0.15)", marginBottom: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "#A89CC8", letterSpacing: "0.06em", textTransform: "uppercase" }}>
+            <div style={{ padding: "8px 14px 12px", borderBottom: "1px solid var(--border-hair)", marginBottom: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 בחר סוכן AI
               </div>
             </div>
 
-            {ASSISTANTS.map(a => {
-              const isActive = location.pathname.startsWith(a.route);
+            {AGENTS.map(a => {
+              const isActive = a.routes.some(r => location.pathname === r || location.pathname.startsWith(r + "/"));
+              const Icon = a.Icon;
               return (
                 <button
                   key={a.route}
@@ -186,61 +162,49 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                   onClick={() => { setAssistantOpen(false); navigate(a.route); }}
                   style={{
                     width: "100%",
-                    display: "flex", alignItems: "center", gap: 14,
-                    padding: "12px 14px",
-                    borderRadius: 16,
-                    background: isActive ? `${a.color}10` : "transparent",
-                    border: `1px solid ${isActive ? a.color + "28" : "transparent"}`,
+                    display: "flex", alignItems: "center", gap: 13,
+                    padding: "11px 14px",
+                    borderRadius: 14,
+                    background: isActive ? a.tone.soft : "transparent",
+                    border: `1px solid ${isActive ? a.tone.ring : "transparent"}`,
                     cursor: "pointer", textAlign: "right",
-                    fontFamily: "inherit", transition: "all 0.15s",
-                    marginBottom: 4,
+                    fontFamily: "inherit", transition: "background var(--dur-fast) var(--ease)",
+                    marginBottom: 3,
                   }}
                   onMouseEnter={e => {
-                    if (!isActive) {
-                      (e.currentTarget as HTMLButtonElement).style.background = a.bg;
-                    }
+                    if (!isActive) (e.currentTarget as HTMLElement).style.background = a.tone.soft;
                   }}
                   onMouseLeave={e => {
-                    if (!isActive) {
-                      (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                    }
+                    if (!isActive) (e.currentTarget as HTMLElement).style.background = "transparent";
                   }}
                 >
-                  {/* Icon chip */}
                   <div style={{
-                    width: 44, height: 44, borderRadius: 13, flexShrink: 0,
-                    background: a.bg,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 20,
-                    boxShadow: `0 2px 8px ${a.color}20`,
+                    width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                    background: a.tone.soft,
+                    display: "grid", placeItems: "center",
+                    border: `1px solid ${a.tone.ring}`,
                   }}>
-                    {a.icon}
+                    <Icon size={20} strokeWidth={1.75} color={a.tone.accent} />
                   </div>
-
-                  {/* Label */}
                   <div style={{ flex: 1, textAlign: "right" }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: isActive ? a.color : "#1F1F1F", letterSpacing: "-0.01em" }}>
+                    <div style={{ fontWeight: 800, fontSize: 13.5, color: isActive ? a.tone.accent : "var(--text-strong)", letterSpacing: "-0.01em" }}>
                       {a.label}
                     </div>
-                    <div style={{ fontSize: 11.5, color: "#7C6FA0", marginTop: 2 }}>
+                    <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
                       {a.sub}
                     </div>
                   </div>
-
-                  {/* Active indicator */}
                   {isActive && (
                     <div style={{
-                      width: 8, height: 8, borderRadius: "50%",
-                      background: a.color, flexShrink: 0,
-                      boxShadow: `0 0 0 3px ${a.color}25`,
+                      width: 7, height: 7, borderRadius: "50%",
+                      background: a.tone.accent, flexShrink: 0,
                     }} />
                   )}
                 </button>
               );
             })}
 
-            {/* Quick links footer */}
-            <div style={{ borderTop: "1px solid rgba(184,157,255,0.15)", marginTop: 8, padding: "10px 14px 4px", display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div style={{ borderTop: "1px solid var(--border-hair)", marginTop: 8, padding: "10px 14px 4px", display: "flex", gap: 8, flexWrap: "wrap" }}>
               {[
                 { label: "ממצאים", route: APP_ROUTES.findings },
                 { label: "מיסים", route: APP_ROUTES.taxAssistant },
@@ -250,15 +214,15 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                   key={link.route}
                   onClick={() => { setAssistantOpen(false); navigate(link.route); }}
                   style={{
-                    padding: "5px 12px", borderRadius: 20,
-                    background: "rgba(184,157,255,0.10)",
-                    border: "1px solid rgba(184,157,255,0.22)",
-                    color: "#7C6FA0", fontFamily: "inherit",
+                    padding: "5px 12px", borderRadius: "var(--r-pill)",
+                    background: "var(--accent-soft)",
+                    border: "1px solid var(--lav-200)",
+                    color: "var(--accent)", fontFamily: "inherit",
                     fontSize: 12, fontWeight: 600,
-                    cursor: "pointer", transition: "all 0.15s",
+                    cursor: "pointer", transition: "all var(--dur-fast) var(--ease)",
                   }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(155,127,232,0.14)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(184,157,255,0.10)"; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--lav-100)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent-soft)"; }}
                 >
                   {link.label}
                 </button>
@@ -273,18 +237,17 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
         {rightSlot}
         <NotificationBell />
 
-        {/* User menu */}
         <div ref={userRef} style={{ position: "relative" }}>
           <button
             type="button"
             onClick={() => setUserMenuOpen(o => !o)}
             style={{
-              width: 38, height: 38, borderRadius: "50%",
-              background: "linear-gradient(135deg, #9B7FE8, #6B4FA0)",
+              width: 36, height: 36, borderRadius: "50%",
+              background: "var(--grad-brand)",
               border: "none", cursor: "pointer",
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontWeight: 700, fontSize: 15,
-              boxShadow: "0 2px 10px rgba(155,127,232,0.35)",
+              color: "#fff", fontWeight: 700, fontSize: 14,
+              boxShadow: "var(--shadow-lav)",
               overflow: "hidden",
             }}
             title={user?.name ?? "משתמש"}
@@ -299,33 +262,33 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
           {userMenuOpen && (
             <div style={{
               position: "absolute", top: "calc(100% + 8px)", left: 0,
-              background: "rgba(255,255,255,0.97)",
+              background: "var(--surface-card)",
               backdropFilter: "blur(20px)",
-              border: "1px solid rgba(184,157,255,0.28)",
-              borderRadius: 16,
-              boxShadow: "0 12px 40px rgba(155,127,232,0.18)",
+              border: "1px solid var(--border-soft)",
+              borderRadius: 14,
+              boxShadow: "var(--shadow-card)",
               overflow: "hidden", minWidth: 180, zIndex: 999,
             }}>
-              <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid rgba(184,157,255,0.12)" }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: "#1F1F1F" }}>{user?.name ?? "משתמש"}</div>
-                <div style={{ fontSize: 12, color: "#7C6FA0", marginTop: 2 }}>{user?.email ?? ""}</div>
+              <div style={{ padding: "13px 16px 11px", borderBottom: "1px solid var(--border-hair)" }}>
+                <div style={{ fontWeight: 700, fontSize: 13.5, color: "var(--text-strong)" }}>{user?.name ?? "משתמש"}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{user?.email ?? ""}</div>
               </div>
               <div style={{ padding: "6px" }}>
                 <button
                   type="button"
                   onClick={goToSettings}
-                  style={{ width: "100%", padding: "9px 12px", borderRadius: 10, background: "none", border: "none", cursor: "pointer", textAlign: "right", fontFamily: "inherit", fontSize: 13.5, color: "#3D3553", fontWeight: 500, transition: "background 0.15s" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(184,157,255,0.10)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                  style={{ width: "100%", padding: "9px 12px", borderRadius: 10, background: "none", border: "none", cursor: "pointer", textAlign: "right", fontFamily: "inherit", fontSize: 13.5, color: "var(--text-body)", fontWeight: 500, transition: "background var(--dur-fast) var(--ease)" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent-soft)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                 >
                   הגדרות פרופיל
                 </button>
                 <button
                   type="button"
                   onClick={handleLogout}
-                  style={{ width: "100%", padding: "9px 12px", borderRadius: 10, background: "none", border: "none", cursor: "pointer", textAlign: "right", fontFamily: "inherit", fontSize: 13.5, color: "#DC2626", fontWeight: 600, transition: "background 0.15s" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = "#FEF2F2"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = "none"; }}
+                  style={{ width: "100%", padding: "9px 12px", borderRadius: 10, background: "none", border: "none", cursor: "pointer", textAlign: "right", fontFamily: "inherit", fontSize: 13.5, color: "var(--danger)", fontWeight: 600, transition: "background var(--dur-fast) var(--ease)" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#FEF2F2"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                 >
                   התנתקות
                 </button>

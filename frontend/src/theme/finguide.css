@@ -1,0 +1,214 @@
+/* ============================================================
+   FINGUIDE DESIGN SYSTEM — Token Foundation
+   Pastel-premium fintech: lavender primary, mint/butter/peach
+   accents, deep ink text, near-white surfaces. Heebo throughout.
+   ============================================================ */
+
+/* ---- Colors ---- */
+:root {
+  /* Lavender — primary brand */
+  --lav-50: #FAF7FF;
+  --lav-100: #F4EEFF;
+  --lav-200: #E4D7FF;
+  --lav-300: #CDB6FF;
+  --lav-400: #B49BF0;
+  --lav-500: #9B7FE8;
+  --lav-600: #7C5FD6;
+  --lav-700: #5E45B0;
+
+  /* Mint — success / pension */
+  --mint: #C9ECD6;
+  --mint-soft: #E6F6EC;
+  --mint-ink: #2F9C62;
+
+  /* Butter — tax / attention */
+  --butter: #F6E4A8;
+  --butter-soft: #FCF4D8;
+  --butter-ink: #B98B16;
+
+  /* Peach — alerts / documents */
+  --peach: #F8D2BE;
+  --peach-soft: #FCE9DF;
+  --peach-ink: #DA6F44;
+
+  /* Ink & neutrals */
+  --ink: #16151C;
+  --ink-soft: #3A3947;
+  --muted: #6B6A78;
+  --faint: #9B9AA6;
+  --card: #FFFFFF;
+  --line: rgba(22, 21, 28, .09);
+  --hair: #ECECEF;
+
+  /* Semantic surfaces */
+  --surface-page: #FBFBFC;
+  --surface-card: #FFFFFF;
+  --surface-sunken: #F5F5F4;
+  --surface-ink: #16151B;
+  --texture-dot: rgba(22, 21, 28, .06);
+
+  /* Semantic text */
+  --text-strong: #16151C;
+  --text-body: #3A3947;
+  --text-muted: #6B6A78;
+  --text-faint: #9B9AA6;
+  --text-on-ink: #FFFFFF;
+
+  /* Semantic accents */
+  --accent: #7C5FD6;
+  --accent-strong: #5E45B0;
+  --accent-soft: #F4EEFF;
+  --success: #2F9C62;
+  --warning: #B98B16;
+  --danger: #DC2626;
+
+  /* Borders */
+  --border-soft: rgba(22, 21, 28, .09);
+  --border-hair: #ECECEF;
+
+  /* Signature gradients */
+  --grad-brand: linear-gradient(150deg, #9B7FE8, #5E45B0);
+  --grad-text: linear-gradient(96deg, #7C5FD6, #DA6F44 68%, #B98B16);
+  --grad-prism: linear-gradient(96deg, #CDB6FF, #F8D2BE);
+}
+
+/* ---- Typography ---- */
+:root {
+  --font-display: "Heebo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-body: "Heebo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Heebo", ui-monospace, "SF Mono", monospace;
+
+  --fs-display: clamp(40px, 5.2vw, 68px);
+  --fs-h1: clamp(30px, 4vw, 52px);
+  --fs-h2: clamp(24px, 3vw, 38px);
+  --fs-h3: 21px;
+  --fs-lg: 18px;
+  --fs-body: 16px;
+  --fs-sm: 14px;
+  --fs-xs: 12px;
+
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --fw-extrabold: 800;
+  --fw-black: 900;
+
+  --lh-tight: 1.05;
+  --lh-snug: 1.25;
+  --lh-normal: 1.5;
+  --lh-relaxed: 1.65;
+
+  --tracking-display: -.038em;
+  --tracking-tight: -.02em;
+  --tracking-wide: .08em;
+}
+
+/* ---- Effects ---- */
+:root {
+  --radius: 7px;
+  --r-lg: 6px;
+  --r-md: 6px;
+  --r-sm: 5px;
+  --r-btn: 6px;
+  --r-pill: 999px;
+  --r-card: 14px;
+
+  --shadow-soft: 0 14px 34px -18px rgba(28, 26, 38, .16);
+  --shadow-card: 0 26px 58px -28px rgba(28, 26, 38, .20), 0 6px 18px -10px rgba(28, 26, 38, .10);
+  --shadow-xl: 0 50px 90px -42px rgba(18, 17, 24, .42);
+  --shadow-ink: 0 18px 38px -16px rgba(18, 17, 24, .55);
+  --shadow-lav: 0 8px 24px -8px rgba(155, 127, 232, .28);
+
+  --ease: cubic-bezier(.22, .61, .36, 1);
+  --ease-back: cubic-bezier(.34, 1.46, .5, 1);
+  --dur-fast: .18s;
+  --dur-base: .25s;
+  --dur-slow: .8s;
+
+  --blur-glass: 20px;
+  --glass-bg: rgba(255, 255, 255, .66);
+  --glass-border: rgba(255, 255, 255, .9);
+}
+
+/* ---- Spacing ---- */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  --maxw: 1240px;
+  --maxw-app: 1100px;
+  --gutter: 40px;
+  --section-y: 90px;
+}
+
+/* ============================================================
+   AGENT WAYFINDING THEME
+   Each domain page is tinted to its AI agent so the user always
+   knows which domain they're in. The Topbar sets `data-agent` on
+   <html> based on the route; any element styled with `var(--agent*)`
+   re-resolves automatically. Default (no data-agent) = lavender brand.
+   Source of truth for the mapping: src/theme/agents.ts
+   ============================================================ */
+:root {
+  --agent: var(--lav-600);
+  --agent-strong: var(--lav-700);
+  --agent-soft: var(--lav-100);
+  --agent-ring: var(--lav-200);
+  --agent-bg: var(--lav-50);
+  --agent-contrast: #ffffff;
+}
+
+[data-agent="payslips"] {
+  --agent: var(--lav-600);
+  --agent-strong: var(--lav-700);
+  --agent-soft: var(--lav-100);
+  --agent-ring: var(--lav-200);
+  --agent-bg: var(--lav-50);
+  --agent-contrast: #ffffff;
+}
+
+[data-agent="insurance"] {
+  --agent: var(--peach-ink);
+  --agent-strong: #C25A30;
+  --agent-soft: var(--peach-soft);
+  --agent-ring: var(--peach);
+  --agent-bg: #FFF8F4;
+  --agent-contrast: #ffffff;
+}
+
+[data-agent="pension"] {
+  --agent: var(--mint-ink);
+  --agent-strong: #247A4C;
+  --agent-soft: var(--mint-soft);
+  --agent-ring: var(--mint);
+  --agent-bg: #F2FBF6;
+  --agent-contrast: #ffffff;
+}
+
+/* ---- Legacy aliases (keep old tokens working) ---- */
+:root {
+  --lg-bg: var(--surface-page);
+  --lg-card: var(--surface-card);
+  --lg-accent: var(--accent);
+  --lg-accent-2: var(--mint-ink);
+  --lg-text: var(--text-strong);
+  --lg-muted: var(--text-muted);
+  --lg-border: var(--border-soft);
+  --lg-font-body: var(--font-body);
+  --lg-font-display: var(--font-display);
+  --dash-accent: var(--accent);
+  --dash-muted: var(--text-muted);
+  --dash-border: var(--border-hair);
+}

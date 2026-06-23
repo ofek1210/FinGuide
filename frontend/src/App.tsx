@@ -41,6 +41,7 @@ import Error404 from "./pages/errors/Error404";
 import Error500 from "./pages/errors/Error500";
 import { APP_ROUTES } from "./types/navigation";
 import "./App.css";
+import "./theme/overrides.css";
 
 export default function App() {
   return (
