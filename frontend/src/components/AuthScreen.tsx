@@ -11,6 +11,7 @@ import ToastContainer from "./ui/ToastContainer";
 import Loader from "./ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
 import { emitAuthChanged } from "../auth/authEvents";
+import "./landing/auth.css";
 
 interface AuthScreenProps {
   mode: "login" | "register";
@@ -319,11 +320,11 @@ export default function AuthScreen({
 
       googleButtonRef.current.innerHTML = "";
       window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "filled_black",
+        theme: "outline",
         size: "large",
         text: isRegister ? "signup_with" : "signin_with",
         shape: "rectangular",
-        width: 320,
+        width: Math.min(googleButtonRef.current.offsetWidth || 360, 480),
         locale: "he",
         logo_alignment: "left",
       });
@@ -433,10 +434,22 @@ export default function AuthScreen({
   };
 
   return (
-    <div className="auth-page">
+    <div className="fg-auth">
+      {/* Animated background */}
+      <div className="auth-bg" aria-hidden="true">
+        <div className="auth-blob lav" />
+        <div className="auth-blob mint" />
+        <div className="auth-blob peach" />
+      </div>
+
       <div className="auth-shell">
         <section className="auth-card">
           <header className="auth-card-header">
+            {/* Mini logo mark */}
+            <div className="auth-logo-mark" aria-hidden="true">
+              <span className="dot">F</span>
+              <span className="name">Fin<span>Guide</span></span>
+            </div>
             <h1>{isRegister ? "יצירת חשבון" : "ברוכים השבים"}</h1>
             <p>
               {isRegister
@@ -595,14 +608,17 @@ export default function AuthScreen({
         </section>
 
         <aside className="auth-side">
-          <div className="auth-logo">
-            <span className="auth-logo-badge" aria-hidden="true">
-              <SparkleIcon />
-            </span>
-            <span>FinGuide</span>
+          {/* Floating data pips */}
+          <div className="auth-side-pips" aria-hidden="true">
+            <span className="pip pip-1">+4.2% תשואה</span>
+            <span className="pip pip-2">₪12,400 נטו</span>
+            <span className="pip pip-3">85% כיסוי פנסיוני</span>
           </div>
 
-          <h2>העוזר הפיננסי המבוסס על AI שלכם</h2>
+          <h2>
+            <span className="grad">העוזר הפיננסי</span>
+            {" "}המבוסס על AI שלכם
+          </h2>
           <p>
             העלו מסמכים, קבלו תובנות מיידיות מבוססות בינה מלאכותית, וקחו שליטה
             על העתיד הפיננסי שלכם.
@@ -613,7 +629,7 @@ export default function AuthScreen({
               <span className="auth-feature-icon" aria-hidden="true">
                 <SparkleIcon />
               </span>
-              ניתוח מסמכים מבוסס בינה מלאכותית
+              ניתוח תלושי שכר מבוסס AI
             </div>
             <div className="auth-feature">
               <span className="auth-feature-icon" aria-hidden="true">
@@ -626,6 +642,24 @@ export default function AuthScreen({
                 <MailIcon />
               </span>
               אינטגרציה אוטומטית לתיבת המייל
+            </div>
+          </div>
+
+          {/* Mini app preview */}
+          <div className="auth-mockup" aria-hidden="true">
+            <div className="auth-mockup-label">תלוש שכר · יוני 2026</div>
+            <div className="auth-mockup-row w80" />
+            <div className="auth-mockup-row w60" />
+            <div className="auth-mockup-row w40" />
+            <div className="auth-mockup-stat">
+              <div className="auth-mockup-chip">
+                <div className="chip-label">פנסיה</div>
+                <div className="chip-value">6.5%</div>
+              </div>
+              <div className="auth-mockup-chip mint">
+                <div className="chip-label">נטו</div>
+                <div className="chip-value">12,400 ₪</div>
+              </div>
             </div>
           </div>
         </aside>
@@ -768,3 +802,4 @@ export default function AuthScreen({
     </div>
   );
 }
+
