@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { InsightCard } from "./InsightCard";
+import AIInsightsLoadingState from "./AIInsightsLoadingState";
 import type {
   PayslipInsightsData,
   InsuranceInsightsData,
@@ -24,6 +25,7 @@ interface Props {
 
 export function InsightsPanel({ agent, trigger = 0 }: Props) {
   const [loading, setLoading] = useState(false);
+  const [loaderDone, setLoaderDone] = useState(false);
   const [data, setData] = useState<
     PayslipInsightsData | InsuranceInsightsData | PensionInsightsData | null
   >(null);
@@ -41,6 +43,7 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
 
   async function fetchInsights() {
     setLoading(true);
+    setLoaderDone(false);
     setError(null);
     try {
       let res;
@@ -88,12 +91,15 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
       ? insuranceMeta.annualSavings
       : insights.reduce((sum, i) => sum + (i.financialImpact || 0), 0);
 
-  if (loading) {
+  // Keep the loading animation mounted through the real fetch, and let it
+  // finish to 100% once the answer is in (data present) before revealing.
+  if (loading || (data && !error && !loaderDone)) {
     return (
-      <div style={{ padding: "32px 0", textAlign: "center", color: "#9b8cff" }}>
-        <div className="spinner" style={{ margin: "0 auto 10px" }} />
-        מנתח נתונים עם AI...
-      </div>
+      <AIInsightsLoadingState
+        agent={agent}
+        ready={!loading}
+        onComplete={() => setLoaderDone(true)}
+      />
     );
   }
 

@@ -103,7 +103,7 @@ export default function InsightsPage() {
           ))}
         </div>
 
-        <p style={{ fontSize: 12, color: "var(--rapyd-text-muted)", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
+        <p style={{ fontSize: 12, color: "var(--text-faint)", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
           ⚠️ התובנות נוצרות אוטומטית על ידי AI על בסיס הנתונים שהעלית. אינן מהוות ייעוץ פיננסי מקצועי.
         </p>
 

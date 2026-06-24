@@ -1,0 +1,213 @@
+/* ============================================================
+   FINGUIDE DESIGN OVERRIDES
+   Applied after App.css to bring old CSS classes onto the new
+   design token system. Uses specificity to win without !important.
+   ============================================================ */
+
+/* ── AI page header icons & badges ─────────────────────────── */
+.ai-page-icon-wrap {
+  background: var(--lav-100) !important;
+  border-color: var(--lav-200) !important;
+  color: var(--lav-600) !important;
+}
+
+.ai-page-badge {
+  background: var(--accent-soft) !important;
+  border-color: var(--lav-200) !important;
+  color: var(--accent) !important;
+  border-radius: var(--r-pill) !important;
+}
+
+/* ── Dashboard hero action buttons ─────────────────────────── */
+.dashboard-hero-action {
+  background: var(--ink) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: var(--r-btn) !important;
+  font-family: var(--font-body) !important;
+  font-weight: 700 !important;
+  box-shadow: var(--shadow-ink) !important;
+  transition: opacity var(--dur-fast) var(--ease) !important;
+}
+.dashboard-hero-action:hover {
+  opacity: .88 !important;
+}
+
+/* ── Dashboard card ─────────────────────────────────────────── */
+.dashboard-card {
+  background: var(--surface-card) !important;
+  border: 1px solid var(--border-hair) !important;
+  border-radius: var(--r-card) !important;
+  box-shadow: var(--shadow-soft) !important;
+  padding: 24px !important;
+  color: var(--text-body) !important;
+}
+.dashboard-card h2,
+.dashboard-card h3 {
+  color: var(--text-strong) !important;
+  font-family: var(--font-body) !important;
+}
+
+/* ── Dashboard shell ────────────────────────────────────────── */
+.dashboard-shell {
+  max-width: 1180px !important;
+  padding: 0 !important;
+}
+
+/* ── Dashboard link button ──────────────────────────────────── */
+.dashboard-link-btn {
+  color: var(--accent) !important;
+  background: none !important;
+  border: none !important;
+  font-family: var(--font-body) !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+}
+.dashboard-link-btn:hover {
+  opacity: .75 !important;
+}
+
+/* ── Inline error ───────────────────────────────────────────── */
+.dashboard-inline-error {
+  color: var(--danger) !important;
+  background: rgba(220, 38, 38, .08) !important;
+  border: 1px solid rgba(220, 38, 38, .18) !important;
+  border-radius: var(--r-md) !important;
+  padding: 12px 16px !important;
+  font-size: var(--fs-sm) !important;
+}
+
+/* ── Summary card uses grad-brand not figma-gradient ──────── */
+.summary-card {
+  background: var(--grad-brand) !important;
+}
+
+/* ── Financial health ring levels ──────────────────────────── */
+.financial-health-ring-progress.level-good    { stroke: var(--mint-ink) !important; }
+.financial-health-ring-progress.level-warning { stroke: var(--butter-ink) !important; }
+.financial-health-ring-progress.level-poor    { stroke: var(--danger) !important; }
+.financial-health-ring-bg { stroke: var(--border-hair) !important; }
+
+.financial-health-category.status-good    { border-color: var(--mint) !important; }
+.financial-health-category.status-warning { border-color: var(--butter) !important; }
+.financial-health-category.status-poor    { border-color: var(--peach) !important; }
+.financial-health-category-bar-fill       { background: var(--lav-500) !important; }
+.financial-health-category.status-good    .financial-health-category-bar-fill { background: var(--mint-ink) !important; }
+.financial-health-category.status-warning .financial-health-category-bar-fill { background: var(--butter-ink) !important; }
+.financial-health-category.status-poor    .financial-health-category-bar-fill { background: var(--danger) !important; }
+
+/* ── Tax assistant severity ─────────────────────────────────── */
+.tax-assistant-issue.severity-high    { border-color: var(--peach) !important; background: var(--peach-soft) !important; }
+.tax-assistant-issue.severity-medium  { border-color: var(--butter) !important; background: var(--butter-soft) !important; }
+.tax-assistant-issue.severity-low     { border-color: var(--mint) !important; background: var(--mint-soft) !important; }
+.tax-assistant-severity.severity-high   { color: var(--peach-ink) !important; }
+.tax-assistant-severity.severity-medium { color: var(--butter-ink) !important; }
+.tax-assistant-severity.severity-low    { color: var(--mint-ink) !important; }
+
+/* ── Page tab bars ──────────────────────────────────────────── */
+.page-tab-btn {
+  font-family: var(--font-body) !important;
+  color: var(--text-muted) !important;
+  border-bottom-color: transparent !important;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease) !important;
+}
+.page-tab-btn.active,
+.page-tab-btn[aria-selected="true"] {
+  color: var(--accent) !important;
+  border-bottom-color: var(--accent) !important;
+}
+
+/* ── Payslip list rows ──────────────────────────────────────── */
+.payslip-row {
+  background: var(--surface-card) !important;
+  border-color: var(--border-hair) !important;
+  border-radius: var(--r-md) !important;
+}
+.payslip-row:hover {
+  box-shadow: var(--shadow-soft) !important;
+}
+
+/* ── Notification items ─────────────────────────────────────── */
+.notification-item:not(.is-read) {
+  background: var(--lav-50) !important;
+  border-color: var(--lav-200) !important;
+}
+
+/* ── Glass card component ───────────────────────────────────── */
+.glass-card {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--border-soft) !important;
+  border-radius: var(--r-card) !important;
+  box-shadow: var(--shadow-card) !important;
+  backdrop-filter: blur(var(--blur-glass)) !important;
+}
+
+/* ── Settings form inputs ───────────────────────────────────── */
+.settings-input,
+.settings-select {
+  background: var(--surface-sunken) !important;
+  border-color: var(--border-soft) !important;
+  color: var(--text-body) !important;
+  border-radius: var(--r-btn) !important;
+  font-family: var(--font-body) !important;
+}
+.settings-input:focus,
+.settings-select:focus {
+  border-color: var(--lav-400) !important;
+  outline: 2px solid var(--lav-200) !important;
+}
+
+/* ── Onboarding ob2 system ──────────────────────────────────── */
+.ob2-progress-bar { background: var(--lav-500) !important; }
+.ob2-step-header  { color: var(--text-strong) !important; font-family: var(--font-display) !important; }
+.ob2-option.selected { border-color: var(--lav-500) !important; background: var(--lav-50) !important; }
+
+/* ── AI Agents chat UI ──────────────────────────────────────── */
+.ai-agents-msg--user .ai-agents-msg-bubble {
+  background: var(--grad-brand) !important;
+}
+.ai-agents-send-btn {
+  background: var(--grad-brand) !important;
+  border-radius: var(--r-pill) !important;
+}
+.ai-agents-prompt-btn {
+  background: var(--accent-soft) !important;
+  border-color: var(--lav-200) !important;
+  color: var(--accent) !important;
+  border-radius: var(--r-pill) !important;
+}
+.ai-agents-input:focus {
+  border-color: var(--lav-400) !important;
+  box-shadow: 0 0 0 3px var(--lav-100) !important;
+}
+.ai-agents-chat {
+  border-color: var(--border-soft) !important;
+  background: var(--surface-card) !important;
+  border-radius: var(--r-card) !important;
+}
+.ai-agents-card {
+  background: var(--surface-card) !important;
+  border-color: var(--border-soft) !important;
+  border-radius: var(--r-card) !important;
+}
+
+/* ── Insight cards ──────────────────────────────────────────── */
+.insight-card { border-radius: var(--r-card) !important; border: 1px solid var(--border-hair) !important; }
+.insight-card.insight-critical { background: var(--peach-soft) !important; border-color: var(--peach) !important; }
+.insight-card.insight-warning  { background: var(--butter-soft) !important; border-color: var(--butter) !important; }
+.insight-card.insight-info     { background: var(--mint-soft) !important; border-color: var(--mint) !important; }
+.importance-badge.importance-critical { background: var(--peach-soft) !important; color: var(--peach-ink) !important; border-color: var(--peach) !important; }
+.importance-badge.importance-high     { background: var(--butter-soft) !important; color: var(--butter-ink) !important; border-color: var(--butter) !important; }
+.importance-badge.importance-medium   { background: var(--mint-soft) !important; color: var(--mint-ink) !important; border-color: var(--mint) !important; }
+
+/* ── Floating assistant ─────────────────────────────────────── */
+.floating-assistant-bubble {
+  background: var(--grad-brand) !important;
+  box-shadow: var(--shadow-lav) !important;
+}
+.floating-assistant-panel {
+  background: var(--surface-card) !important;
+  border: 1px solid var(--border-soft) !important;
+  border-radius: var(--r-card) !important;
+  box-shadow: var(--shadow-card) !important;
+}
