@@ -11,7 +11,7 @@ import {
   getPayslipHistoryFromDocuments,
 } from "../utils/documentToPayslip";
 
-export const fetchPayslipHistory = async (year?: number): Promise<PayslipHistoryResponse> => {
+export const fetchPayslipHistory = async (year?: number | "all"): Promise<PayslipHistoryResponse> => {
   const intelligence = await getPayslipHistoryIntelligence(year);
   if (intelligence.success && intelligence.data) {
     const fromIntelligence = getPayslipHistoryFromIntelligence(intelligence.data);

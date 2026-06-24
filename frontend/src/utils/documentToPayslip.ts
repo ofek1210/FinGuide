@@ -440,6 +440,8 @@ export function getPayslipHistoryFromIntelligence(
     pensionEmployer: item.pensionEmployer ?? null,
     pensionSeverance: item.pensionSeverance ?? null,
     isLatest: item.isLatest,
+    needsReview: item.needsReview ?? false,
+    missingCritical: item.missingCritical ?? [],
     downloadUrl: null,
   }));
 

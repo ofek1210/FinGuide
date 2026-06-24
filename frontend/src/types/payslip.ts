@@ -14,6 +14,10 @@ export type PayslipHistoryItem = {
   pensionEmployer?: number | null;
   pensionSeverance?: number | null;
   isLatest: boolean;
+  /** True when extraction flagged this payslip (needs_review or missing critical fields). */
+  needsReview?: boolean;
+  /** Critical fields the OCR/LLM could not extract (e.g. grossSalary, netSalary). */
+  missingCritical?: string[];
   downloadUrl?: string | null;
 };
 

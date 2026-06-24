@@ -11,6 +11,7 @@ const {
   downloadDocument,
   reprocessDocument,
   unlockDocument,
+  updateDocumentFields,
   getDocumentDigest,
 } = require('../controllers/documentController');
 const { protect } = require('../middleware/auth');
@@ -55,6 +56,9 @@ router.post('/:id/reprocess', reprocessDocument);
 
 // POST /api/documents/:id/unlock - פתיחת PDF מוגן בסיסמה והמשך עיבוד
 router.post('/:id/unlock', unlockDocument);
+
+// PATCH /api/documents/:id/fields - השלמה ידנית של שדות שה-OCR לא חילץ
+router.patch('/:id/fields', updateDocumentFields);
 
 // GET /api/documents/:id - קבלת מסמך בודד
 router.get('/:id', getDocument);

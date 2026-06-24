@@ -177,6 +177,8 @@ export type PayslipHistoryIntelligencePayload = {
     pensionSeverance?: number | null;
     uploadedAt: string | null;
     isLatest: boolean;
+    needsReview?: boolean;
+    missingCritical?: string[];
   }>;
   missingMonthsByYear: Array<{ year: number; missingMonths: number[] }>;
   incompletePeriods: Array<{
@@ -368,6 +370,36 @@ export const reprocessDocument = async (id: string) => {
   return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
 };
 
+/** Fields the user can fill manually when OCR could not extract them. */
+export type ManualPayslipFields = {
+  periodMonth?: string;
+  employerName?: string;
+  employeeName?: string;
+  employeeId?: string;
+  paymentDate?: string;
+  grossSalary?: string | number;
+  netSalary?: string | number;
+};
+
+export const updateDocumentFields = async (id: string, fields: ManualPayslipFields) => {
+  const token = getToken();
+  if (!token) {
+    return { success: false, message: "אין הרשאה. נא להתחבר." } as DocumentResponse;
+  }
+
+  const result = await apiJson<DocumentResponse>(`/api/documents/${id}/fields`, {
+    method: "PATCH",
+    auth: true,
+    body: { fields },
+    fallbackErrorMessage: "שגיאה בשמירת השדות.",
+  });
+
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as DocumentResponse;
+  }
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
+};
+
 export const removeDocument = async (id: string) => {
   const token = getToken();
   if (!token) {
@@ -403,13 +435,13 @@ export const downloadDocument = async (id: string) => {
   return { success: true, blob: result.blob, filename } as DownloadDocumentResponse;
 };
 
-export const getPayslipHistoryIntelligence = async (year?: number) => {
+export const getPayslipHistoryIntelligence = async (year?: number | "all") => {
   const token = getToken();
   if (!token) {
     return { success: false, message: "אין הרשאה. נא להתחבר." } as PayslipHistoryIntelligenceResponse;
   }
 
-  const query = Number.isFinite(year) ? `?year=${year}` : "";
+  const query = year === "all" ? "?year=all" : Number.isFinite(year) ? `?year=${year}` : "";
   const result = await apiJson<PayslipHistoryIntelligenceResponse>(
     `/api/documents/payslip-history${query}`,
     {
