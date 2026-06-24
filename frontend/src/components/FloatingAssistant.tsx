@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { Sparkles, X } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import {
   useAiChat,
@@ -231,7 +232,7 @@ export default function FloatingAssistant() {
         aria-label={isOpen ? "סגור עוזר AI" : "פתח עוזר AI"}
         title={isOpen ? "סגור עוזר AI" : "עוזר AI"}
       >
-        {isOpen ? "✕" : "✦"}
+        {isOpen ? <X size={22} strokeWidth={2.4} /> : <Sparkles size={23} strokeWidth={2} />}
       </button>
     </div>
   );
