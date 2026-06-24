@@ -545,18 +545,29 @@ export default function SettingsPage() {
         </section>
 
         {/* ── Privacy & Data Controls ── */}
-        <section style={{ marginTop: 32, padding: "24px 28px", background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid rgba(248,113,113,0.2)" }}>
+        <section style={{
+          marginTop: 32,
+          padding: "24px 28px",
+          background: "rgba(220,38,38,.04)",
+          borderRadius: "var(--r-card)",
+          border: "1px solid rgba(220,38,38,.18)",
+          fontFamily: "var(--font-body)",
+        }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-            <Shield size={18} style={{ color: "#F87171" }} />
-            <span style={{ fontWeight: 700, fontSize: 16 }}>פרטיות ומחיקת נתונים</span>
+            <Shield size={18} style={{ color: "var(--danger)" }} />
+            <span style={{ fontWeight: 700, fontSize: 16, color: "var(--text-strong)" }}>פרטיות ומחיקת נתונים</span>
           </div>
 
           {privacyMsg && (
             <div style={{
-              padding: "10px 16px", borderRadius: 8, marginBottom: 16, fontSize: 13, fontWeight: 600,
-              background: privacyMsg.type === "success" ? "rgba(52,211,153,0.12)" : "rgba(248,113,113,0.12)",
-              color: privacyMsg.type === "success" ? "#34D399" : "#F87171",
-              border: `1px solid ${privacyMsg.type === "success" ? "rgba(52,211,153,0.3)" : "rgba(248,113,113,0.3)"}`,
+              padding: "10px 16px",
+              borderRadius: "var(--r-btn)",
+              marginBottom: 16,
+              fontSize: 13,
+              fontWeight: 600,
+              background: privacyMsg.type === "success" ? "var(--mint-soft)" : "rgba(220,38,38,.08)",
+              color: privacyMsg.type === "success" ? "var(--mint-ink)" : "var(--danger)",
+              border: `1px solid ${privacyMsg.type === "success" ? "var(--mint)" : "rgba(220,38,38,.3)"}`,
             }}>
               {privacyMsg.text}
             </div>
@@ -564,10 +575,10 @@ export default function SettingsPage() {
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Gmail disconnect */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid var(--border-hair)" }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>חיבור Gmail</div>
-                <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-strong)" }}>חיבור Gmail</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                   {gmailConnected === null ? "בודק..." : gmailConnected ? "✅ Gmail מחובר" : "Gmail אינו מחובר"}
                 </div>
               </div>
@@ -575,7 +586,7 @@ export default function SettingsPage() {
                 <button
                   onClick={handleDisconnectGmail}
                   disabled={privacyLoading === "gmail"}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.4)", background: "rgba(248,113,113,0.1)", color: "#F87171", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
+                  style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: "var(--r-btn)", border: "1px solid rgba(220,38,38,.35)", background: "rgba(220,38,38,.08)", color: "var(--danger)", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600 }}
                 >
                   <Unplug size={13} /> נתק Gmail
                 </button>
@@ -583,30 +594,30 @@ export default function SettingsPage() {
             </div>
 
             {/* Delete pension data */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid var(--border-hair)" }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>נתוני פנסיה</div>
-                <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>מחק את כל קרנות הפנסיה שהזנת ידנית</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-strong)" }}>נתוני פנסיה</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>מחק את כל קרנות הפנסיה שהזנת ידנית</div>
               </div>
               <button
                 onClick={handleDeletePensionData}
                 disabled={privacyLoading === "pension"}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.4)", background: "rgba(248,113,113,0.1)", color: "#F87171", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: "var(--r-btn)", border: "1px solid rgba(220,38,38,.35)", background: "rgba(220,38,38,.08)", color: "var(--danger)", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600 }}
               >
                 <Trash2 size={13} /> מחק נתוני פנסיה
               </button>
             </div>
 
             {/* Delete insurance data */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0", borderBottom: "1px solid var(--border-hair)" }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>נתוני ביטוח</div>
-                <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>מחק את כל פוליסות הביטוח שנטענו</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-strong)" }}>נתוני ביטוח</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>מחק את כל פוליסות הביטוח שנטענו</div>
               </div>
               <button
                 onClick={handleDeleteInsuranceData}
                 disabled={privacyLoading === "insurance"}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.4)", background: "rgba(248,113,113,0.1)", color: "#F87171", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600 }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: "var(--r-btn)", border: "1px solid rgba(220,38,38,.35)", background: "rgba(220,38,38,.08)", color: "var(--danger)", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600 }}
               >
                 <Trash2 size={13} /> מחק נתוני ביטוח
               </button>
@@ -615,13 +626,13 @@ export default function SettingsPage() {
             {/* Delete all analyses */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 0" }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 14, color: "#F87171" }}>מחק את כל הנתונים</div>
-                <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)", marginTop: 2 }}>מחק את כל המסמכים, הניתוחים, וההיסטוריה. הפעולה אינה הפיכה.</div>
+                <div style={{ fontWeight: 600, fontSize: 14, color: "var(--danger)" }}>מחק את כל הנתונים</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>מחק את כל המסמכים, הניתוחים, וההיסטוריה. הפעולה אינה הפיכה.</div>
               </div>
               <button
                 onClick={handleDeleteAllAnalyses}
                 disabled={privacyLoading === "all"}
-                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.6)", background: "rgba(248,113,113,0.15)", color: "#F87171", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700 }}
+                style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: "var(--r-btn)", border: "1px solid rgba(220,38,38,.55)", background: "rgba(220,38,38,.12)", color: "var(--danger)", cursor: "pointer", fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 700 }}
               >
                 <Trash2 size={13} /> מחק הכל
               </button>

@@ -234,6 +234,67 @@ exports.getDocument = async (req, res, next) => {
   }
 };
 
+// PATCH /api/documents/:id/fields - manually fill fields the OCR could not extract.
+// Accepts a flat `fields` object and merges the provided values into the
+// canonical analysisData shape the frontend reads.
+exports.updateDocumentFields = async (req, res, next) => {
+  try {
+    const document = await Document.findOne({
+      _id: req.params.id,
+      user: req.user.id,
+    });
+    if (!document) {
+      return next(new NotFoundError('מסמך לא נמצא'));
+    }
+
+    const fields = req.body && typeof req.body.fields === 'object' ? req.body.fields : null;
+    if (!fields) {
+      return next(new ValidationError('שדות לא תקינים', [{ field: 'fields', message: 'Must be an object' }]));
+    }
+
+    const text = value => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
+    const num = value => {
+      if (value == null || value === '') return undefined;
+      const n = Number(String(value).replace(/,/g, ''));
+      return Number.isFinite(n) ? n : undefined;
+    };
+
+    const analysis = (document.analysisData && typeof document.analysisData === 'object')
+      ? { ...document.analysisData }
+      : {};
+    analysis.period = { ...(analysis.period || {}) };
+    analysis.salary = { ...(analysis.salary || {}) };
+    analysis.parties = { ...(analysis.parties || {}) };
+    analysis.summary = { ...(analysis.summary || {}) };
+
+    const set = (obj, key, value) => { if (value !== undefined) obj[key] = value; };
+    set(analysis.period, 'month', text(fields.periodMonth));
+    set(analysis.parties, 'employer_name', text(fields.employerName));
+    set(analysis.parties, 'employee_name', text(fields.employeeName));
+    set(analysis.parties, 'employee_id', text(fields.employeeId));
+    set(analysis.summary, 'date', text(fields.paymentDate));
+    set(analysis.salary, 'gross_total', num(fields.grossSalary));
+    set(analysis.salary, 'net_payable', num(fields.netSalary));
+
+    analysis.manuallyEdited = true;
+    analysis.manuallyEditedAt = new Date().toISOString();
+
+    document.analysisData = analysis;
+    document.markModified('analysisData');
+    if (document.status === 'needs_review' || document.status === 'failed') {
+      document.status = 'completed';
+    }
+    await document.save();
+
+    return res.status(200).json({
+      success: true,
+      data: serializeDocument(document),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.deleteDocument = async (req, res, next) => {
   try {
     const document = await Document.findOne({

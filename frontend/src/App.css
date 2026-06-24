@@ -3258,26 +3258,25 @@
 }
 
 .dashboard-page {
-  --dash-bg: var(--figma-bg-light);
-  --dash-card: #ffffff;
-  --dash-border: var(--figma-border-light);
-  --dash-text: var(--figma-text-light);
-  --dash-muted: var(--figma-muted-light);
-  --dash-accent: var(--figma-gradient-start);
-  --dash-accent-soft: rgba(90, 86, 246, 0.12);
-  --dash-cyan: var(--figma-gradient-end);
-  --dash-success: var(--figma-success);
-  --dash-warning: var(--figma-warning);
-  --dash-danger: var(--figma-error);
-  --dash-shadow: var(--figma-shadow-light);
-  --dash-radius: var(--figma-card-radius);
+  --dash-bg: var(--surface-page);
+  --dash-card: var(--surface-card);
+  --dash-border: var(--border-hair);
+  --dash-text: var(--text-strong);
+  --dash-muted: var(--text-muted);
+  --dash-accent: var(--accent);
+  --dash-accent-soft: var(--accent-soft);
+  --dash-cyan: var(--mint-ink);
+  --dash-success: var(--success);
+  --dash-warning: var(--warning);
+  --dash-danger: var(--danger);
+  --dash-shadow: var(--shadow-soft);
+  --dash-radius: var(--r-card);
 
   min-height: 100vh;
   padding: 26px 20px 60px;
-  background: radial-gradient(circle at 18% 12%, rgba(90, 86, 246, 0.08), transparent 45%),
-    radial-gradient(circle at 85% 80%, rgba(166, 70, 232, 0.08), transparent 55%),
-    #f8fafc;
-  color: var(--dash-text);
+  background: var(--surface-page);
+  color: var(--text-strong);
+  font-family: var(--font-body);
 }
 
 /* ── Dashboard shell fills full height ──────────────────────────────── */
@@ -3675,18 +3674,24 @@
 }
 
 .dashboard-hero-action {
-  border: 1px solid var(--dash-accent);
-  border-radius: var(--figma-btn-radius);
+  border: 1px solid var(--accent);
+  border-radius: var(--r-btn);
   padding: 12px 16px;
-  min-height: var(--figma-btn-height);
-  font-weight: 600;
-  font-size: 1rem;
+  min-height: 44px;
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
   cursor: pointer;
   background: transparent;
-  color: var(--dash-accent);
+  color: var(--accent);
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.dashboard-hero-action:hover {
+  background: var(--accent-soft);
 }
 
 .dashboard-hero-action svg {
@@ -5473,11 +5478,11 @@
   flex-wrap: wrap;
   padding: 24px 28px;
   margin-bottom: 24px;
-  border-radius: var(--figma-card-radius-lg);
+  border-radius: var(--r-card);
   border: none;
-  background: var(--figma-gradient);
+  background: var(--grad-brand);
   color: #fff;
-  box-shadow: 0 16px 40px rgba(90, 86, 246, 0.35);
+  box-shadow: var(--shadow-card);
 }
 
 .insights-summary-content {
@@ -5489,7 +5494,7 @@
 .insights-summary-icon {
   width: 48px;
   height: 48px;
-  border-radius: var(--figma-btn-radius);
+  border-radius: var(--r-btn);
   background: rgba(255, 255, 255, 0.2);
   display: inline-flex;
   align-items: center;
@@ -5551,9 +5556,9 @@
 .insights-empty-icon {
   width: 72px;
   height: 72px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, rgba(90, 86, 246, 0.12), rgba(166, 70, 232, 0.12));
-  color: var(--dash-accent);
+  border-radius: var(--r-card);
+  background: var(--accent-soft);
+  color: var(--accent);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5583,14 +5588,14 @@
 
 .insights-empty-cta {
   padding: 14px 24px;
-  border-radius: 14px;
+  border-radius: var(--r-card);
   border: none;
-  background: linear-gradient(135deg, var(--dash-accent), #4f46e5);
+  background: var(--grad-brand);
   color: #fff;
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 12px 28px rgba(90, 86, 246, 0.3);
+  box-shadow: var(--shadow-lav);
 }
 
 .insights-empty-cta:hover {
@@ -5614,19 +5619,22 @@
 }
 
 .insights-chip {
-  border: 1px solid var(--dash-border);
-  background: rgba(255,255,255,0.05);
-  color: var(--dash-muted);
-  border-radius: 999px;
+  border: 1px solid var(--border-hair);
+  background: var(--surface-card);
+  color: var(--text-muted);
+  border-radius: var(--r-pill);
   padding: 6px 14px;
-  font-size: 0.875rem;
+  font-size: var(--fs-sm);
   cursor: pointer;
+  font-family: var(--font-body);
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 
 .insights-chip.is-active {
-  border-color: rgba(90,38,255,0.6);
-  background: rgba(90,38,255,0.15);
-  color: #c4b5fd;
+  border-color: var(--lav-400);
+  background: var(--lav-100);
+  color: var(--lav-700);
+  font-weight: var(--fw-semibold);
 }
 
 .insights-section-title {
@@ -5637,8 +5645,8 @@
 
 .insight-card-kind {
   display: inline-block;
-  font-size: 0.75rem;
-  color: #5c6b7a;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
   margin-bottom: 6px;
 }
 
@@ -5663,22 +5671,24 @@
 .insights-search-input {
   width: 100%;
   padding: 12px 44px 12px 16px;
-  border-radius: 14px;
-  border: 1px solid var(--dash-border);
-  font-size: 0.95rem;
+  border-radius: var(--r-card);
+  border: 1px solid var(--border-hair);
+  font-size: var(--fs-body);
+  font-family: var(--font-body);
   direction: rtl;
-  background: rgba(255,255,255,0.07);
-  color: var(--dash-text);
+  background: var(--surface-card);
+  color: var(--text-strong);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 
 .insights-search-input::placeholder {
-  color: var(--dash-muted);
+  color: var(--text-faint);
 }
 
 .insights-search-input:focus {
   outline: none;
-  border-color: var(--dash-accent);
-  box-shadow: 0 0 0 3px rgba(90, 86, 246, 0.12);
+  border-color: var(--lav-400);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .insights-count {
@@ -5698,21 +5708,22 @@
   align-items: flex-start;
   gap: 20px;
   padding: 24px;
-  border-radius: 18px;
-  border: 1px solid var(--dash-border);
-  background: #fff;
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
-  transition: box-shadow 0.2s ease;
+  border-radius: var(--r-card);
+  border: 1px solid var(--border-hair);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-soft);
+  transition: box-shadow var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
 }
 
 .insight-card:hover {
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow-card);
+  transform: translateY(-1px);
 }
 
 .insight-card-icon {
   width: 48px;
   height: 48px;
-  border-radius: 14px;
+  border-radius: var(--r-card);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5725,13 +5736,13 @@
 }
 
 .insight-card--info .insight-card-icon {
-  background: rgba(90, 86, 246, 0.12);
-  color: var(--dash-accent);
+  background: var(--lav-100);
+  color: var(--lav-600);
 }
 
 .insight-card--warning .insight-card-icon {
-  background: rgba(251, 146, 60, 0.15);
-  color: #c2410c;
+  background: var(--peach-soft);
+  color: var(--peach-ink);
 }
 
 .insight-card-body {
@@ -5755,30 +5766,31 @@
 
 .insight-card-badge {
   display: inline-block;
-  border-radius: 999px;
-  padding: 6px 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  border-radius: var(--r-pill);
+  padding: 4px 12px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  font-family: var(--font-body);
 }
 
 .insight-card-badge.severity-info {
-  background: rgba(90, 86, 246, 0.12);
-  color: var(--dash-accent);
+  background: var(--lav-100);
+  color: var(--lav-600);
 }
 
 .insight-card-badge.severity-warning {
-  background: rgba(251, 146, 60, 0.2);
-  color: #c2410c;
+  background: var(--peach-soft);
+  color: var(--peach-ink);
 }
 
 .insights-no-results {
   margin: 20px 0 0;
   padding: 16px;
   text-align: center;
-  color: var(--dash-muted);
-  font-size: 0.95rem;
-  border-radius: 14px;
-  background: rgba(255,255,255,0.04);
+  color: var(--text-muted);
+  font-size: var(--fs-body);
+  border-radius: var(--r-card);
+  background: var(--surface-sunken);
 }
 
 /* ---------- Pension Insights (מבנה כמו Figma) ---------- */
@@ -5811,11 +5823,11 @@
 }
 
 .pension-kpi-card {
-  background: var(--dash-card);
-  border-radius: 18px;
+  background: var(--surface-card);
+  border-radius: var(--r-card);
   padding: 25px;
-  border: 1px solid var(--dash-border);
-  box-shadow: var(--dash-shadow);
+  border: 1px solid var(--border-hair);
+  box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -5824,9 +5836,9 @@
 .pension-kpi-icon {
   width: 40px;
   height: 40px;
-  border-radius: 12px;
-  background: rgba(90, 86, 246, 0.12);
-  color: var(--dash-accent);
+  border-radius: var(--radius);
+  background: var(--lav-100);
+  color: var(--lav-600);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -5869,11 +5881,11 @@
 }
 
 .pension-card {
-  background: var(--dash-card);
-  border-radius: 20px;
+  background: var(--surface-card);
+  border-radius: var(--r-card);
   padding: 24px 25px;
-  border: 1px solid var(--dash-border);
-  box-shadow: var(--dash-shadow);
+  border: 1px solid var(--border-hair);
+  box-shadow: var(--shadow-soft);
 }
 
 .pension-card-head {
@@ -5886,7 +5898,7 @@
 .pension-card-head-icon {
   width: 24px;
   height: 24px;
-  color: var(--dash-accent);
+  color: var(--accent);
   flex-shrink: 0;
 }
 
@@ -5927,27 +5939,35 @@
 
 .pension-form-field input {
   width: 100%;
-  border-radius: 14px;
-  border: 1px solid var(--dash-border);
+  border-radius: var(--r-card);
+  border: 1px solid var(--border-hair);
   padding: 12px 14px;
   font: inherit;
-  color: var(--dash-text);
-  background: #f8fafc;
+  font-family: var(--font-body);
+  color: var(--text-strong);
+  background: var(--surface-sunken);
+  transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+
+.pension-form-field input:focus {
+  outline: none;
+  border-color: var(--lav-400);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .pension-form-field input::placeholder {
-  color: #94a3b8;
+  color: var(--text-faint);
 }
 
 .pension-form-warnings {
   margin: 0;
   padding: 0.5rem 0.75rem;
   list-style: none;
-  font-size: 0.85rem;
-  color: #92400e;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  border-radius: 8px;
+  font-size: var(--fs-sm);
+  color: var(--butter-ink);
+  background: var(--butter-soft);
+  border: 1px solid var(--butter);
+  border-radius: var(--radius);
 }
 
 .pension-form-warnings li + li {
@@ -6004,7 +6024,7 @@
   right: 0;
   top: 0;
   bottom: 0;
-  background: linear-gradient(90deg, var(--dash-accent), #6366f1);
+  background: var(--grad-brand);
   border-radius: 4px;
 }
 
@@ -6060,9 +6080,9 @@
 
 .pension-recommendation-item {
   padding: 17px;
-  border-radius: 14px;
-  background: #f8fafc;
-  border: 1px solid var(--dash-border);
+  border-radius: var(--r-card);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-hair);
 }
 
 .pension-recommendation-title {
@@ -6088,26 +6108,27 @@
   margin-bottom: 20px;
 }
 
-/* Figma Pension Insights – exact design tokens */
+/* Pension chart — finguide tokens */
 .pension-chart-card {
-  border-color: #f3f4f6;
+  border-color: var(--border-hair);
 }
 .pension-chart-card .pension-card-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1a1f2e;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+  font-family: var(--font-display);
 }
 .pension-chart-subtitle {
   margin: 4px 0 0;
-  font-size: 14px;
-  color: #6a7282;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
 }
 .pension-chart-legend {
   display: flex;
   align-items: center;
   gap: 8px 24px;
-  font-size: 14px;
-  color: #4a5565;
+  font-size: var(--fs-sm);
+  color: var(--text-body);
 }
 .pension-legend-dot {
   width: 12px;
@@ -6116,15 +6137,15 @@
   flex-shrink: 0;
 }
 .pension-legend-current {
-  background: #0052ff;
+  background: var(--lav-600);
 }
 .pension-legend-adjusted {
-  background: #00d9ff;
+  background: var(--mint-ink);
 }
 .pension-chart-placeholder {
   min-height: 300px;
-  border-radius: 14px;
-  background: #fff;
+  border-radius: var(--r-card);
+  background: var(--surface-card);
   border: none;
   display: flex;
   flex-direction: column;
@@ -6157,19 +6178,19 @@
   display: block;
 }
 .pension-chart-axis {
-  font-family: Inter, Arimo, sans-serif;
+  font-family: var(--font-body);
   font-size: 12px;
-  fill: #9ca3af;
+  fill: var(--muted);
 }
 .pension-chart-grid {
-  stroke: #e5e7eb;
+  stroke: var(--border-hair);
   stroke-width: 1;
 }
 .pension-chart-note,
 .pension-chart-placeholder-label {
   margin: 16px 0 0;
-  font-size: 12px;
-  color: #9ca3af;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
 }
 
 .pension-mini-cards {
@@ -6179,11 +6200,11 @@
 }
 
 .pension-mini-card {
-  background: var(--dash-card);
-  border-radius: 18px;
+  background: var(--surface-card);
+  border-radius: var(--r-card);
   padding: 25px;
-  border: 1px solid var(--dash-border);
-  box-shadow: var(--dash-shadow);
+  border: 1px solid var(--border-hair);
+  box-shadow: var(--shadow-soft);
 }
 
 .pension-mini-card-head {
@@ -6196,7 +6217,7 @@
 .pension-mini-card-icon {
   width: 20px;
   height: 20px;
-  color: var(--dash-accent);
+  color: var(--accent);
 }
 
 .pension-mini-card-title {
@@ -7600,35 +7621,35 @@
 }
 
 .floating-assistant-launcher {
-  width: 60px;
-  height: 60px;
-  border-radius: 999px;
-  border: 3px solid var(--rapyd-black, #000);
+  width: 58px;
+  height: 58px;
+  border-radius: var(--r-pill, 999px);
+  border: none;
   cursor: pointer;
-  color: var(--rapyd-black, #000);
-  font-size: 1.5rem;
-  font-weight: 800;
-  background: var(--rapyd-yellow, #FAFF00);
-  box-shadow: 5px 5px 0 var(--rapyd-black, #000);
+  color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  background: var(--grad-brand, linear-gradient(150deg, #9B7FE8, #5E45B0));
+  box-shadow: var(--shadow-lav, 0 8px 24px -8px rgba(155, 127, 232, .28)),
+    0 18px 38px -16px rgba(94, 69, 176, .45);
+  transition: transform var(--dur-base, 0.25s) var(--ease, ease),
+    box-shadow var(--dur-base, 0.25s) var(--ease, ease);
 }
 
 .floating-assistant-launcher:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 7px 7px 0 var(--rapyd-black, #000);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lav, 0 8px 24px -8px rgba(155, 127, 232, .28)),
+    0 26px 48px -18px rgba(94, 69, 176, .5);
 }
 
 .floating-assistant-launcher:active {
-  transform: translate(2px, 2px);
-  box-shadow: 2px 2px 0 var(--rapyd-black, #000);
+  transform: translateY(-1px);
 }
 
 .floating-assistant-launcher.is-open {
-  background: var(--rapyd-pink, #FF00A8);
-  color: #fff;
+  background: var(--ink, #16151C);
+  box-shadow: var(--shadow-ink, 0 18px 38px -16px rgba(18, 17, 24, .55));
 }
 
 .floating-assistant-panel {
@@ -7778,5 +7799,61 @@
     width: calc(100vw - 32px);
     height: min(72vh, calc(100vh - 120px));
   }
+}
+
+/* ── FinGuide design-token additions ─────────────────────────────────── */
+
+/* Feature section title — used in DocumentDetailsPage */
+.feature-section-title {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  letter-spacing: -0.01em;
+}
+
+/* Insight rows — key/value pairs in DocumentDetailsPage */
+.insight-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border-hair);
+  font-size: 0.9rem;
+}
+
+.insight-row:last-child {
+  border-bottom: none;
+}
+
+.insight-label {
+  color: var(--text-muted);
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.insight-value {
+  color: var(--text-strong);
+  font-weight: 600;
+  text-align: left;
+  word-break: break-word;
+}
+
+/* Onboarding progress bar — used in OnboardingPage */
+.onboarding-progress-track {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--surface-sunken);
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.onboarding-progress-fill {
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--lav-500);
+  transition: width 0.35s var(--ease);
 }
 

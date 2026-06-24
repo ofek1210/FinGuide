@@ -201,9 +201,9 @@ function BudgetWidget({
   const { breakdown, health, savingsRate, monthlyFreeFlow, recommendations, ideal } = analysis;
 
   const DONUT_ITEMS = breakdown ? [
-    { label: "קבוע", pct: breakdown.fixed.pct, amount: breakdown.fixed.amount, color: "#F472B6" },
-    { label: "הוצאות", pct: breakdown.discretionary.pct, amount: breakdown.discretionary.amount, color: "#FBBF24" },
-    { label: "חיסכון", pct: breakdown.savings.pct, amount: breakdown.savings.amount, color: "#34D399" },
+    { label: "קבוע", pct: breakdown.fixed.pct, amount: breakdown.fixed.amount, color: "var(--peach-ink)" },
+    { label: "הוצאות", pct: breakdown.discretionary.pct, amount: breakdown.discretionary.amount, color: "var(--butter-ink)" },
+    { label: "חיסכון", pct: breakdown.savings.pct, amount: breakdown.savings.amount, color: "var(--mint-ink)" },
   ] : [];
 
   // Build conic-gradient for donut
@@ -302,7 +302,7 @@ function BudgetWidget({
 function InvestmentWidget({ recs }: { recs: CopilotAnalysis["investmentRecs"] }) {
   if (!recs?.riskProfile) return <p className="fc-empty-note">אין המלצות — הגדר פרופיל סיכון תחילה</p>;
 
-  const ALLOC_COLORS = ["#818CF8", "#34D399", "#FBBF24", "#F472B6", "#60A5FA", "#A78BFA"];
+  const ALLOC_COLORS = ["var(--lav-500)", "var(--mint-ink)", "var(--butter-ink)", "var(--peach-ink)", "var(--lav-400)", "var(--lav-700)"];
 
   return (
     <div className="fc-invest">
@@ -443,7 +443,7 @@ function GoalsWidget({
         <p className="fc-empty-note">אין יעדים פיננסיים. הוסף יעד ראשון!</p>
       )}
       {goals.map(g => {
-        const pctColor = g.progressPct >= 75 ? "#34D399" : g.progressPct >= 30 ? "#FBBF24" : "#F87171";
+        const pctColor = g.progressPct >= 75 ? "var(--mint-ink)" : g.progressPct >= 30 ? "var(--warning)" : "var(--danger)";
         return (
           <div key={g.id} className="fc-goal-item">
             <div className="fc-goal-header">
@@ -700,7 +700,7 @@ export default function FinancialCopilotPage() {
                     className="fc-score-fill"
                     style={{
                       strokeDasharray: `${(hs.score / 100) * 264} 264`,
-                      stroke: hs.score >= 70 ? "#34D399" : hs.score >= 40 ? "#FBBF24" : "#F87171",
+                      stroke: hs.score >= 70 ? "var(--mint-ink)" : hs.score >= 40 ? "var(--warning)" : "var(--danger)",
                     }}
                   />
                 </svg>

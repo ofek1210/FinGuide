@@ -14,7 +14,7 @@ const DEFAULT_STATE: PayslipHistoryState = {
   error: null,
 };
 
-export const usePayslipHistory = (year?: number) => {
+export const usePayslipHistory = (year?: number | "all") => {
   const [state, setState] = useState<PayslipHistoryState>(DEFAULT_STATE);
 
   const loadHistory = useCallback(async () => {

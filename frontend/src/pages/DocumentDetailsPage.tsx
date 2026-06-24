@@ -297,7 +297,7 @@ export default function DocumentDetailsPage() {
               </section>
             ) : (
               <section className="dashboard-card">
-                <p style={{ color: "var(--color-text-secondary)", fontSize: "0.95rem" }}>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.95rem" }}>
                   קובץ ה-xlsx יובא בהצלחה, אך לא נמצאו פוליסות פעילות בנתונים. אם ייצאת מהר הביטוח ולא קיבלת פוליסות — ייתכן שאין לך פוליסות רשומות במאגר.
                 </p>
               </section>

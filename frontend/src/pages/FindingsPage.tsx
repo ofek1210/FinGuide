@@ -518,12 +518,12 @@ export default function FindingsPage() {
                       >
                         <defs>
                           <linearGradient id="pensionFillCurrent" x1="0" y1="1" x2="0" y2="0">
-                            <stop offset="0%" stopColor="#0052ff" stopOpacity="0.18" />
-                            <stop offset="100%" stopColor="#0052ff" stopOpacity="0.02" />
+                            <stop offset="0%" stopColor="var(--lav-600)" stopOpacity="0.18" />
+                            <stop offset="100%" stopColor="var(--lav-600)" stopOpacity="0.02" />
                           </linearGradient>
                           <linearGradient id="pensionFillAdjusted" x1="0" y1="1" x2="0" y2="0">
-                            <stop offset="0%" stopColor="#00d9ff" stopOpacity="0.12" />
-                            <stop offset="100%" stopColor="#00d9ff" stopOpacity="0" />
+                            <stop offset="0%" stopColor="var(--mint-ink)" stopOpacity="0.14" />
+                            <stop offset="100%" stopColor="var(--mint-ink)" stopOpacity="0" />
                           </linearGradient>
                         </defs>
                         <g className="pension-chart-grid">
@@ -534,7 +534,7 @@ export default function FindingsPage() {
                               y1={tick.y}
                               x2={SVG_RIGHT}
                               y2={tick.y}
-                              stroke="#e5e7eb"
+                              stroke="var(--border-hair)"
                               strokeWidth="1"
                             />
                           ))}
@@ -545,7 +545,7 @@ export default function FindingsPage() {
                               y1={SVG_TOP}
                               x2={tick.x}
                               y2={SVG_BOTTOM}
-                              stroke="#e5e7eb"
+                              stroke="var(--border-hair)"
                               strokeWidth="1"
                             />
                           ))}
@@ -554,7 +554,7 @@ export default function FindingsPage() {
                         <path fill="url(#pensionFillAdjusted)" d={chartModel.adjustedAreaPath} />
                         <path
                           fill="none"
-                          stroke="#0052ff"
+                          stroke="var(--lav-600)"
                           strokeWidth="2"
                           strokeLinecap="round"
                           strokeLinejoin="round"
@@ -562,7 +562,7 @@ export default function FindingsPage() {
                         />
                         <path
                           fill="none"
-                          stroke="#00d9ff"
+                          stroke="var(--mint-ink)"
                           strokeWidth="2"
                           strokeDasharray="6 4"
                           strokeLinecap="round"
@@ -575,8 +575,8 @@ export default function FindingsPage() {
                             cx={point.x}
                             cy={point.y}
                             r="4"
-                            fill="#ffffff"
-                            stroke="#0052ff"
+                            fill="var(--surface-card)"
+                            stroke="var(--lav-600)"
                             strokeWidth="2"
                           />
                         ))}
@@ -586,8 +586,8 @@ export default function FindingsPage() {
                             cx={point.x}
                             cy={point.y}
                             r="4"
-                            fill="#ffffff"
-                            stroke="#00d9ff"
+                            fill="var(--surface-card)"
+                            stroke="var(--mint-ink)"
                             strokeWidth="2"
                           />
                         ))}
