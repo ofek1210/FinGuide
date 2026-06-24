@@ -43,6 +43,8 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
         personal,
         assets,
         policies,
+        aggregationSummary: coverage?.aggregationSummary,
+        aggregatedPolicies: coverage?.aggregatedPolicies,
         duplicates: coverage?.duplicates,
         missingCoverage: coverage?.missingCoverage,
         savings: coverage?.savings,
@@ -65,6 +67,7 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
     status: 'success',
     data: {
       policyCount: policies?.length ?? 0,
+      aggregation: coverage?.aggregationSummary ?? null,
       duplicateCount: coverage?.duplicateCount ?? 0,
       totalMonthlyWaste: coverage?.totalMonthlyWaste ?? 0,
       missingCoverage: coverage?.missingCoverage ?? [],

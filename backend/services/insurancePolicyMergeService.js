@@ -1,6 +1,7 @@
 'use strict';
 
 const InsurancePolicy = require('../models/InsurancePolicy');
+const { extractRiderFromPolicy } = require('./insurancePolicyAggregationService');
 const { norm, upsertImportedRecords } = require('./importMergeService');
 
 function policyMergeKey(policy) {
@@ -15,18 +16,32 @@ function policyMergeKey(policy) {
 const IMPORT_SOURCE = 'har_bituach';
 
 function mergePolicyRecord(existing, incoming) {
+  const existingRiders = existing.rawData?.riders || [];
+  if (existing.rawData && !existing.rawData.riders) {
+    existingRiders.push(extractRiderFromPolicy(existing));
+  }
+  const incomingRider = extractRiderFromPolicy(incoming);
+  const riders = [...existingRiders, incomingRider];
+
+  const summedMonthly = (existing.monthlyPremium || 0) + (incoming.monthlyPremium || 0);
+
   return {
     type: incoming.type || existing.type,
     provider: incoming.provider ?? existing.provider,
     policyNumber: incoming.policyNumber ?? existing.policyNumber,
-    monthlyPremium: incoming.monthlyPremium ?? existing.monthlyPremium,
+    monthlyPremium: summedMonthly || incoming.monthlyPremium || existing.monthlyPremium,
     coverageAmount: incoming.coverageAmount ?? existing.coverageAmount,
     startDate: incoming.startDate ?? existing.startDate,
     endDate: incoming.endDate ?? existing.endDate,
     status: incoming.status || existing.status || 'active',
     source: incoming.source || existing.source || IMPORT_SOURCE,
     sourceFile: incoming.sourceFile || existing.sourceFile,
-    rawData: incoming.rawData || existing.rawData,
+    rawData: {
+      ...(existing.rawData || {}),
+      aggregated: true,
+      riderCount: riders.length,
+      riders,
+    },
   };
 }
 

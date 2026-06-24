@@ -2,6 +2,7 @@
 
 const XLSX = require('xlsx');
 const { parseHarHaBituachBuffer, isHarHaBituachBuffer } = require('./harHaBituachService');
+const { aggregatePoliciesByPolicyNumber } = require('./insurancePolicyAggregationService');
 
 const TYPE_KEYWORDS = {
   life:             ['חיים', 'life', 'ריסק'],
@@ -93,9 +94,10 @@ function mapHarPolicyToImport(policy, originalName) {
 
 function parseHarHaBituachImport(buffer, originalName) {
   const parsed = parseHarHaBituachBuffer(buffer);
-  return (parsed.policies || [])
+  const rows = (parsed.policies || [])
     .filter(p => p.company || p.policyNumber)
     .map(p => mapHarPolicyToImport(p, originalName));
+  return aggregatePoliciesByPolicyNumber(rows);
 }
 
 function parseGenericInsuranceExcel(buffer, originalName) {

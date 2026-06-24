@@ -134,12 +134,17 @@ function parseHarHaBituachRows(rows) {
 
   const estimatedMonthlyTotal = Math.round(totalMonthlyPremium + totalAnnualPremium);
 
+  const uniquePolicyKeys = new Set(
+    policies.map(p => `${p.company}::${p.policyNumber}`).filter(k => !k.endsWith('::')),
+  );
+
   return {
     source: 'har_habitua',
     exportDate,
     policies,
     summary: {
-      totalPolicies: policies.length,
+      totalRawRows: policies.length,
+      totalPolicies: uniquePolicyKeys.size || policies.length,
       estimatedMonthlyPremium: estimatedMonthlyTotal || null,
       hasHealthInsurance: policies.some(p => p.branchType === 'health'),
       hasLifeInsurance: policies.some(p => p.branchType === 'life'),

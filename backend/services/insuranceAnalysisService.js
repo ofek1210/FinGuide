@@ -31,21 +31,24 @@ async function buildInsuranceAnalysis(userId) {
   }
 
   const analysis = analyzeInsuranceCoverage(profileDTO);
-  const healthCheck = runInsuranceHealthCheck(profileDTO, analysis);
+  const policiesForDisplay = analysis.aggregatedPolicies || profileDTO.policies;
+  const healthCheck = runInsuranceHealthCheck(profileDTO, { ...analysis, policies: policiesForDisplay });
   const recommendations = generateInsuranceRecommendations(analysis);
 
-  const marketAdvice = await buildMarketAdvice(profileDTO.policies, profileDTO);
+  const marketAdvice = await buildMarketAdvice(policiesForDisplay, profileDTO);
 
   return {
     summary: {
       hasData: dbPolicies.length > 0 || profileDTO.hasProfile,
-      policyCount: profileDTO.policies.length,
-      totalMonthlyPremium: profileDTO.policies.reduce((s, p) => s + (p.monthlyPremium || 0), 0),
+      policyCount: policiesForDisplay.length,
+      rawRowCount: profileDTO.policies.length,
+      totalMonthlyPremium: policiesForDisplay.reduce((s, p) => s + (p.monthlyPremium || 0), 0),
+      aggregation: analysis.aggregationSummary,
     },
     profile: profileDTO.profile,
     personal: profileDTO.personal,
     assets: profileDTO.assets,
-    policies: profileDTO.policies,
+    policies: policiesForDisplay,
     analysis,
     healthCheck,
     recommendations,

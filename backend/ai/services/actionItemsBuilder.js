@@ -42,12 +42,12 @@ function buildActionItems({ canvas, recommendations = [], agentResults = {}, glo
     });
   }
 
-  if (agentResults.insurance?.data?.duplicateCount > 0) {
+  if ((agentResults.insurance?.data?.aggregation?.cancellableMonthlyWaste || 0) > 0) {
     push({
       priority: 'high',
       domain: 'insurance',
       title: 'כפל ביטוחי — בזבוז פרמיות',
-      description: `זוהו ${agentResults.insurance.data.duplicateCount} כפילויות — חיסכון אפשרי ₪${Math.round(agentResults.insurance.data.totalMonthlyWaste || 0)}/חודש`,
+      description: `זוהו ${agentResults.insurance.data.aggregation?.redundantDuplications || 0} כפילויות אמיתיות — חיסכון אפשרי ₪${Math.round(agentResults.insurance.data.aggregation.cancellableMonthlyWaste)}/חודש`,
       actionUrl: '/insurance',
       source: 'insurance_agent',
     });

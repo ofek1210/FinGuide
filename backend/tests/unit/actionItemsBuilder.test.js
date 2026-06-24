@@ -20,7 +20,7 @@ describe('buildActionItems', () => {
         insurance: {
           data: {
             duplicateCount: 2,
-            totalMonthlyWaste: 150,
+            aggregation: { redundantDuplications: 1, cancellableMonthlyWaste: 150 },
             marketAdvice: { overallVerdict: 'REVIEW', overallVerdictLabelHe: 'בדוק מחדש' },
           },
         },
