@@ -117,7 +117,7 @@ export default function InsurancePage() {
     <PrivateDomainPageLayout>
 
         {loading && step === "landing" && (
-          <div style={{ textAlign: "center", padding: "80px 0", color: "#9B7FE8", fontSize: 14 }}>
+          <div style={{ textAlign: "center", padding: "80px 0", color: "var(--peach-ink)", fontSize: 14, fontFamily: "var(--font-body)" }}>
             <Loader2 size={28} style={{ animation: "spin 0.8s linear infinite", marginBottom: 12 }} />
             טוען נתוני ביטוח...
           </div>
@@ -194,19 +194,19 @@ function ResultsStep({
   if (loading) {
     return (
       <div style={{ textAlign: "center", padding: "60px 0" }}>
-        <Loader2 size={28} color="#7B5EA7" style={{ animation: "spin 0.8s linear infinite" }} />
-        <div style={{ marginTop: 12, fontSize: 14, color: "#7C6FA0" }}>מנתח את הפוליסות...</div>
+        <Loader2 size={28} color="var(--peach-ink)" style={{ animation: "spin 0.8s linear infinite" }} />
+        <div style={{ marginTop: 12, fontSize: 14, color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>מנתח את הפוליסות...</div>
       </div>
     );
   }
 
   if (analysisError) {
     return (
-      <GlassCard padding="lg" style={{ textAlign: "center", borderRight: "4px solid #DC2626" }}>
-        <AlertCircle size={28} color="#DC2626" style={{ marginBottom: 12 }} />
-        <div style={{ fontWeight: 700, fontSize: 16, color: "#1F1F1F", marginBottom: 8 }}>שגיאה בטעינת הניתוח</div>
-        <div style={{ fontSize: 14, color: "#7C6FA0", marginBottom: 16 }}>{analysisError}</div>
-        <button type="button" onClick={onRetry} style={{ padding: "10px 20px", borderRadius: 10, background: "#7B5EA7", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
+      <GlassCard padding="lg" style={{ textAlign: "center", borderRight: "4px solid var(--danger)" }}>
+        <AlertCircle size={28} color="var(--danger)" style={{ marginBottom: 12 }} />
+        <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-strong)", marginBottom: 8, fontFamily: "var(--font-body)" }}>שגיאה בטעינת הניתוח</div>
+        <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 16, fontFamily: "var(--font-body)" }}>{analysisError}</div>
+        <button type="button" onClick={onRetry} style={{ padding: "10px 20px", borderRadius: "var(--r-btn)", background: "var(--peach-ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "var(--font-body)", fontWeight: 700 }}>
           נסה שוב
         </button>
       </GlassCard>
@@ -217,16 +217,16 @@ function ResultsStep({
     return (
       <GlassCard padding="lg" style={{ textAlign: "center" }}>
         <div style={{ fontSize: 40, marginBottom: 12 }}>🛡️</div>
-        <h2 style={{ fontFamily: "'Fraunces', Georgia, serif", fontSize: 22, fontWeight: 700, color: "#1F1F1F", margin: "0 0 10px" }}>
+        <h2 style={{ fontFamily: "var(--font-body)", fontSize: 22, fontWeight: 700, color: "var(--text-strong)", margin: "0 0 10px" }}>
           אין עדיין פוליסות ביטוח
         </h2>
-        <p style={{ fontSize: 14.5, color: "#7C6FA0", margin: "0 0 20px" }}>
+        <p style={{ fontSize: 14.5, color: "var(--text-muted)", margin: "0 0 20px", fontFamily: "var(--font-body)" }}>
           ייבא דוח מהר הביטוח כדי לקבל ניתוח מלא
         </p>
         <button
           type="button"
           onClick={onReimport}
-          style={{ padding: "12px 24px", borderRadius: 12, background: "linear-gradient(135deg, #7B5EA7, #6B4FA0)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}
+          style={{ padding: "12px 24px", borderRadius: "var(--r-card)", background: "var(--peach-ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "var(--font-body)", fontWeight: 700, fontSize: 14 }}
         >
           ייבא דוח ביטוח
         </button>
@@ -235,12 +235,12 @@ function ResultsStep({
   }
 
   return (
-    <div>
+    <div style={{ maxWidth: "var(--maxw-app)", margin: "0 auto", padding: "36px var(--gutter) 80px" }}>
       <DomainResultsHeader
         emoji="🛡️"
         title="ניתוח הביטוח שלך"
         subtitle={`${policies.length} פוליסות פעילות · עלות חודשית ${fmt(totalPremium)}`}
-        accentColor="#7B5EA7"
+        accentColor="var(--peach-ink)"
         onReimport={onReimport}
       />
 
@@ -250,19 +250,19 @@ function ResultsStep({
             <SavingsDeltaCard delta={historyDelta} label="שינוי בחיסכון שנתי" formatValue={n => fmt(n)} />
           )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 14 }}>
-            <StatCard icon="💸" label="הוצאה חודשית" value={fmt(totalPremium)} sub="כל הפוליסות" accent="#7B5EA7" />
-            <StatCard icon="♻️" label="בזבוז מכפילויות" value={fmt(analysis.totalMonthlyWaste)} sub="לחודש" accent="#DC2626" trend={analysis.totalMonthlyWaste > 0 ? "down" : "flat"} />
-            <StatCard icon="💰" label="חיסכון שנתי" value={fmt(analysis.savings.annualSavings)} accent="#059669" trend="up" />
-            <StatCard icon="📋" label="פוליסות פעילות" value={policies.length.toString()} accent="#9B7FE8" />
+            <StatCard icon="💸" label="הוצאה חודשית" value={fmt(totalPremium)} sub="כל הפוליסות" accent="var(--peach-ink)" />
+            <StatCard icon="♻️" label="בזבוז מכפילויות" value={fmt(analysis.totalMonthlyWaste)} sub="לחודש" accent="var(--danger)" trend={analysis.totalMonthlyWaste > 0 ? "down" : "flat"} />
+            <StatCard icon="💰" label="חיסכון שנתי" value={fmt(analysis.savings.annualSavings)} accent="var(--success)" trend="up" />
+            <StatCard icon="📋" label="פוליסות פעילות" value={policies.length.toString()} accent="var(--accent)" />
             {analysis.missingCoverage.length > 0 && (
-              <StatCard icon="⚠️" label="כיסויים חסרים" value={analysis.missingCoverage.length.toString()} accent="#D97706" />
+              <StatCard icon="⚠️" label="כיסויים חסרים" value={analysis.missingCoverage.length.toString()} accent="var(--warning)" />
             )}
           </div>
         </section>
       )}
 
       {healthCheck && (
-        <HealthCheckPanel title="בדיקת בריאות ביטוח" healthCheck={healthCheck} accentColor="#7B5EA7" />
+        <HealthCheckPanel title="בדיקת בריאות ביטוח" healthCheck={healthCheck} accentColor="var(--peach-ink)" />
       )}
 
       {analysis && analysis.duplicates.length > 0 && (
@@ -270,15 +270,15 @@ function ResultsStep({
           <SectionHeader title="⚠️ כיסויים כפולים שזוהו" subtitle="פוליסות אשר ייתכן ומיותרות — שווה לבדוק" />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
             {analysis.duplicates.map((dup: InsuranceDuplicate, i: number) => (
-              <GlassCard key={i} padding="md" style={{ borderRight: "4px solid #DC2626" }}>
+              <GlassCard key={i} padding="md" style={{ borderRight: "4px solid var(--danger)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
-                  <div style={{ fontWeight: 800, fontSize: 15, color: "#DC2626" }}>{POLICY_TYPE_LABELS[dup.type] ?? dup.type}</div>
+                  <div style={{ fontWeight: 800, fontSize: 15, color: "var(--danger)", fontFamily: "var(--font-body)" }}>{POLICY_TYPE_LABELS[dup.type] ?? dup.type}</div>
                   <Badge variant="high">{dup.policies.length} כפולים</Badge>
                 </div>
-                <div style={{ fontSize: 12.5, color: "#7C6FA0", marginBottom: 6 }}>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 6, fontFamily: "var(--font-body)" }}>
                   {dup.policies.map((p: { provider?: string }) => p.provider).filter(Boolean).join(" · ")}
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#DC2626" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--danger)", fontFamily: "var(--font-body)" }}>
                   בזבוז: {fmt(dup.estimatedMonthlyWaste)} / חודש
                 </div>
               </GlassCard>
@@ -292,9 +292,9 @@ function ResultsStep({
           <SectionHeader title="כיסויים חסרים" subtitle="ביטוחים שכדאי לשקול בהתאם לפרופיל שלך" />
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             {analysis.missingCoverage.map((cov: string) => (
-              <div key={cov} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: 12, background: "rgba(217,119,6,0.06)", border: "1px solid rgba(217,119,6,0.2)" }}>
-                <AlertCircle size={15} color="#D97706" />
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: "#D97706" }}>{POLICY_TYPE_LABELS[cov] ?? cov}</span>
+              <div key={cov} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: "var(--r-card)", background: "var(--butter-soft)", border: "1px solid var(--border-soft)" }}>
+                <AlertCircle size={15} color="var(--butter-ink)" />
+                <span style={{ fontSize: 13.5, fontWeight: 600, color: "var(--butter-ink)", fontFamily: "var(--font-body)" }}>{POLICY_TYPE_LABELS[cov] ?? cov}</span>
               </div>
             ))}
           </div>
@@ -311,32 +311,32 @@ function ResultsStep({
         <SectionHeader title="הפוליסות שלך" subtitle={`${policies.length} פוליסות · ${fmt(totalPremium)} / חודש`} />
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {policies.map((p: InsurancePolicyDTO) => (
-            <GlassCard key={p.id} padding="sm" style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <GlassCard key={p.id} padding="sm" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderRadius: "var(--r-card)", boxShadow: "var(--shadow-soft)", background: "var(--surface-card)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 38, height: 38, borderRadius: 11, background: "rgba(123,94,167,0.10)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <Shield size={17} color="#7B5EA7" />
+                <div style={{ width: 38, height: 38, borderRadius: 11, background: "var(--peach-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Shield size={17} color="var(--peach-ink)" />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: "#1F1F1F" }}>{POLICY_TYPE_LABELS[p.type] ?? p.type}</div>
-                  <div style={{ fontSize: 12.5, color: "#7C6FA0" }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: "var(--text-strong)", fontFamily: "var(--font-body)" }}>{POLICY_TYPE_LABELS[p.type] ?? p.type}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>
                     {p.provider ?? "—"}{p.policyNumber ? ` · ${p.policyNumber}` : ""}
                   </div>
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontWeight: 800, fontSize: 15.5, color: "#1F1F1F" }}>{fmt(p.monthlyPremium)}</div>
-                  <div style={{ fontSize: 11.5, color: "#7C6FA0" }}>לחודש</div>
+                  <div style={{ fontWeight: 800, fontSize: 15.5, color: "var(--text-strong)", fontFamily: "var(--font-body)" }}>{fmt(p.monthlyPremium)}</div>
+                  <div style={{ fontSize: 11.5, color: "var(--text-muted)", fontFamily: "var(--font-body)" }}>לחודש</div>
                 </div>
                 {p.status === "active"
-                  ? <CheckCircle size={16} color="#059669" />
-                  : <AlertCircle size={16} color="#D97706" />
+                  ? <CheckCircle size={16} color="var(--success)" />
+                  : <AlertCircle size={16} color="var(--warning)" />
                 }
                 <button
                   type="button"
                   onClick={() => void onDelete(p.id)}
                   disabled={deletingId === p.id}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "#DC2626", padding: 4, display: "flex" }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 4, display: "flex" }}
                 >
                   <Trash2 size={15} />
                 </button>
@@ -355,8 +355,8 @@ function ResultsStep({
           title: "שאל את סוכן הביטוח",
           description: '"האם אני צריך ביטוח חיים?", "כמה אני משלם יותר מהממוצע?", "מה הסיכון הכי גדול שלי?"',
           buttonLabel: "פתח שיחה עם הסוכן",
-          gradientFrom: "#7B5EA7",
-          gradientTo: "#6B4FA0",
+          gradientFrom: "var(--peach-ink)",
+          gradientTo: "var(--peach)",
         }}
         disclaimer="⚠️ הניתוח מבוסס על נתוני הדוח שיובא. אינו מהווה ייעוץ ביטוחי מקצועי."
         onNavigate={route => navigate(route)}
