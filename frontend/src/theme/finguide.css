@@ -197,6 +197,10 @@
   --agent-contrast: #ffffff;
 }
 
+/* ---- Modal animations ---- */
+@keyframes mfFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mfRise { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }
+
 /* ---- Legacy aliases (keep old tokens working) ---- */
 :root {
   --lg-bg: var(--surface-page);
