@@ -3,6 +3,7 @@
 const InsurancePolicy = require('../models/InsurancePolicy');
 const { parseInsuranceExcel } = require('../services/insuranceExcelParser');
 const { buildInsuranceAnalysis, importInsuranceExcel } = require('../services/insuranceImportService');
+const { buildMarketAdvice } = require('../services/insuranceMarketAdvisorService');
 const InsuranceImportSnapshot = require('../models/InsuranceImportSnapshot');
 
 async function getInsuranceAnalysis(req, res) {
@@ -87,10 +88,34 @@ async function deleteInsurancePolicy(req, res) {
   return res.json({ success: true, message: 'הפוליסה נמחקה' });
 }
 
+/**
+ * GET /api/insurance/market-advice — cost vs service index comparison matrix
+ */
+async function getMarketAdvice(req, res) {
+  const forceRefresh = req.query.refresh === 'true';
+  const analysis = await buildInsuranceAnalysis(req.user._id);
+
+  if (!forceRefresh && analysis.marketAdvice?.hasData) {
+    return res.json({ success: true, data: analysis.marketAdvice });
+  }
+
+  const profileDTO = {
+    ...analysis,
+    policies: analysis.policies || [],
+    personal: analysis.personal,
+    assets: analysis.assets,
+    profile: analysis.profile,
+  };
+
+  const marketAdvice = await buildMarketAdvice(profileDTO.policies, profileDTO, { forceRefresh });
+  return res.json({ success: true, data: marketAdvice });
+}
+
 module.exports = {
   getInsuranceAnalysis,
   getInsurancePolicies,
   getInsuranceImportHistory,
   uploadInsuranceExcel,
   deleteInsurancePolicy,
+  getMarketAdvice,
 };

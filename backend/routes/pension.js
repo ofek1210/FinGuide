@@ -13,6 +13,7 @@ const {
   uploadPensionFile,
   updatePensionFund,
   deletePensionFund,
+  getFundAdvice,
 } = require('../controllers/pensionController');
 const { getPensionInsights } = require('../services/pensionRiskAdvisor');
 
@@ -80,6 +81,10 @@ router.get('/risk-advice', async (req, res, next) => {
     const result = await getPensionInsights(req.user._id);
     return res.json({ success: true, data: result });
   } catch (err) { next(err); }
+});
+
+router.get('/fund-advice', (req, res, next) => {
+  Promise.resolve(getFundAdvice(req, res)).catch(next);
 });
 
 module.exports = router;

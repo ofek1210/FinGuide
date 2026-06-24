@@ -207,6 +207,33 @@ const MOCK_PROFILE_AGENT_RESULT = {
 const MOCK_FULL_ANALYSIS_RESULT = {
   runId: 'demo_run_001',
   userId: 'demo',
+  canvas: {
+    focus: 'all',
+    summaryHe: '6 תלושים · 3 פוליסות · 2 קרנות',
+    onboarding: { age: 34, hasDependents: true, onboardingCompleted: true },
+    dataInventory: { payslipCount: 6, policyCount: 3, fundCount: 2, profileComplete: true },
+    agentsToRun: ['payslip', 'insurance', 'pension', 'profile'],
+  },
+  govData: {
+    prefetchedAt: new Date().toISOString(),
+    ready: true,
+    pension: { source: 'fixture', trackCount: 120, cached: true },
+    insurance: { source: 'fixture', providerCount: 18, cached: true },
+  },
+  globalScore: {
+    year: new Date().getFullYear(),
+    score: 62,
+    level: 'fair',
+    label: 'בינוני',
+    categories: [
+      { id: 'documents', label: 'מסמכים', score: 18, maxScore: 25, status: 'good' },
+      { id: 'pension', label: 'פנסיה', score: 12, maxScore: 25, status: 'warning' },
+    ],
+  },
+  actionItems: [
+    { priority: 'high', domain: 'insurance', title: 'כיסוי אכ"ע חסר', description: 'אין ביטוח אובדן כושר עבודה', actionUrl: '/insurance', source: 'agent_recommendation' },
+    { priority: 'high', domain: 'pension', title: 'דמי ניהול גבוהים', description: '0.6% — מעל ממוצע השוק', actionUrl: '/pension', source: 'pension_fund_advisor' },
+  ],
   agents: {
     payslip: MOCK_PAYSLIP_AGENT_RESULT,
     insurance: MOCK_INSURANCE_AGENT_RESULT,

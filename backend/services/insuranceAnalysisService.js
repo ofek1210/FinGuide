@@ -10,6 +10,7 @@ const {
   generateInsuranceRecommendations,
 } = require('../ai/tools/insuranceTools');
 const { runInsuranceHealthCheck } = require('./insuranceHealthCheckService');
+const { buildMarketAdvice } = require('./insuranceMarketAdvisorService');
 
 async function buildInsuranceAnalysis(userId) {
   const profileDTO = await getInsuranceProfile(userId);
@@ -33,6 +34,8 @@ async function buildInsuranceAnalysis(userId) {
   const healthCheck = runInsuranceHealthCheck(profileDTO, analysis);
   const recommendations = generateInsuranceRecommendations(analysis);
 
+  const marketAdvice = await buildMarketAdvice(profileDTO.policies, profileDTO);
+
   return {
     summary: {
       hasData: dbPolicies.length > 0 || profileDTO.hasProfile,
@@ -46,6 +49,7 @@ async function buildInsuranceAnalysis(userId) {
     analysis,
     healthCheck,
     recommendations,
+    marketAdvice,
     hasImportedPolicies: dbPolicies.length > 0,
   };
 }

@@ -7,6 +7,8 @@ export default function DashboardFullAnalysisCard() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{
     summary?: string;
+    globalScore?: { score: number; label: string; year: number } | null;
+    actionItems?: Array<{ priority: string; title: string; description?: string }>;
     recommendations?: FullAnalysisRecommendation[];
     meta?: { durationMs: number; successCount: number; agentCount: number; isDemo?: boolean };
   } | null>(null);
@@ -22,6 +24,8 @@ export default function DashboardFullAnalysisCard() {
     if (res.ok && res.data) {
       setResult({
         summary: res.data.summary,
+        globalScore: res.data.globalScore ?? null,
+        actionItems: res.data.actionItems,
         recommendations: res.data.recommendations,
         meta: res.data.meta,
       });
@@ -128,6 +132,49 @@ export default function DashboardFullAnalysisCard() {
 
           {expanded && (
             <>
+              {result.globalScore?.score != null && (
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 16, marginBottom: 16,
+                  background: "rgba(52,211,153,0.08)", borderRadius: 10, padding: "14px 18px",
+                  border: "1px solid rgba(52,211,153,0.2)",
+                }}>
+                  <div style={{
+                    fontSize: 32, fontWeight: 800, color: "#34D399", lineHeight: 1,
+                  }}>
+                    {result.globalScore.score}
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, color: "var(--rapyd-text)", fontSize: 14 }}>
+                      ציון בריאות פיננסי
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--rapyd-text-muted)" }}>
+                      {result.globalScore.label} · {result.globalScore.year}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {result.actionItems && result.actionItems.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--rapyd-text-muted)", marginBottom: 8 }}>
+                    פעולות דחופות
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {result.actionItems.slice(0, 3).map((item, i) => (
+                      <div key={i} style={{
+                        background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "10px 14px",
+                        border: "1px solid rgba(255,255,255,0.07)", fontSize: 13,
+                      }}>
+                        <div style={{ fontWeight: 700, color: "var(--rapyd-text)" }}>{item.title}</div>
+                        {item.description && (
+                          <div style={{ color: "var(--rapyd-text-muted)", marginTop: 2 }}>{item.description}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Summary */}
               {result.summary && (
                 <div style={{

@@ -20,7 +20,7 @@ async function runPensionAgent(userId, { skipLLM = false } = {}) {
   const startedAt = Date.now();
 
   const analysis = await buildPensionAnalysis(userId);
-  const { summary, projection, benchmark, healthCheck, recommendations } = analysis;
+  const { summary, projection, benchmark, healthCheck, recommendations, fundAdvice } = analysis;
 
   if (!summary.hasData) {
     return {
@@ -43,9 +43,10 @@ async function runPensionAgent(userId, { skipLLM = false } = {}) {
         benchmark: benchmark?.summary,
         healthCheck: { score: healthCheck?.score, level: healthCheck?.level?.label },
         recommendationCount: recommendations.length,
+        fundAdvice,
       });
       const result = await askClaude(
-        'ספק ניתוח קצר של מצב הפנסיה, דירוג מול השוק, ושורה תחתונה ב-3-4 משפטים בעברית.',
+        'ספק ניתוח אקטוארי קצר: השוואה מול data.gov.il, פסק דין (LEAVE/NEGOTIATE/SWITCH), והשפעה כספית עד פרישה — 4-5 משפטים בעברית.',
         systemPrompt,
         [],
       );
@@ -73,6 +74,20 @@ async function runPensionAgent(userId, { skipLLM = false } = {}) {
         scenarios: projection.scenarios,
         mgmtFeeSavings: projection.mgmtFeeSavings,
       } : null,
+      fundAdvice: fundAdvice?.hasData
+        ? {
+          overallVerdict: fundAdvice.overallVerdict,
+          overallVerdictLabelHe: fundAdvice.overallVerdictLabelHe,
+          dataSource: fundAdvice.dataSource,
+          funds: fundAdvice.funds?.map(f => ({
+            fundName: f.fundName,
+            verdict: f.verdict,
+            verdictLabelHe: f.verdictLabelHe,
+            gainIfSwitch: f.financialImpact?.gainIfSwitch,
+            returnPercentile: f.marketComparison?.returnPercentile,
+          })),
+        }
+        : null,
     },
     recommendations,
     llmExplanation,

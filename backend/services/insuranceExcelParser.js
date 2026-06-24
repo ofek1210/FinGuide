@@ -1,6 +1,7 @@
 'use strict';
 
 const XLSX = require('xlsx');
+const { parseHarHaBituachBuffer, isHarHaBituachBuffer } = require('./harHaBituachService');
 
 const TYPE_KEYWORDS = {
   life:             ['חיים', 'life', 'ריסק'],
@@ -10,6 +11,16 @@ const TYPE_KEYWORDS = {
   car:              ['רכב', 'car', 'חובה', 'מקיף'],
   mortgage:         ['משכנתא', 'mortgage'],
   critical_illness: ['מחלות קשות', 'critical', 'סיעודי', 'סיעוד'],
+};
+
+const BRANCH_TO_POLICY_TYPE = {
+  health: 'health',
+  life: 'life',
+  car: 'car',
+  apartment: 'apartment',
+  disability: 'disability',
+  mortgage: 'mortgage',
+  critical_illness: 'critical_illness',
 };
 
 function detectPolicyType(text) {
@@ -36,7 +47,58 @@ function safeDate(val) {
   return s || null;
 }
 
-function parseInsuranceExcel(buffer, originalName) {
+function mapHarPolicyToImport(policy, originalName) {
+  const isMonthly = (policy.premiumType || '').includes('חודשי');
+  const isAnnual = (policy.premiumType || '').includes('שנתי');
+  let monthlyPremium = null;
+  let annualPremium = null;
+
+  if (policy.premium != null) {
+    if (isAnnual) {
+      annualPremium = policy.premium;
+      monthlyPremium = Math.round((policy.premium / 12) * 100) / 100;
+    } else {
+      monthlyPremium = policy.premium;
+      if (isMonthly) {
+        annualPremium = Math.round(policy.premium * 12 * 100) / 100;
+      }
+    }
+  }
+
+  const contextText = [
+    policy.mainBranch,
+    policy.subBranch,
+    policy.productType,
+    policy.planClass,
+    policy.extra,
+  ].join(' ');
+
+  const type = BRANCH_TO_POLICY_TYPE[policy.branchType]
+    || detectPolicyType(contextText);
+
+  return {
+    type,
+    provider: policy.company || null,
+    policyNumber: policy.policyNumber || null,
+    monthlyPremium,
+    annualPremium,
+    coverageAmount: null,
+    startDate: policy.period?.from || null,
+    endDate: policy.period?.to || null,
+    status: 'active',
+    sourceFile: originalName,
+    rawData: policy,
+  };
+}
+
+function parseHarHaBituachImport(buffer, originalName) {
+  const parsed = parseHarHaBituachBuffer(buffer);
+  return (parsed.policies || [])
+    .filter(p => p.company || p.policyNumber)
+    .map(p => mapHarPolicyToImport(p, originalName));
+}
+
+function parseGenericInsuranceExcel(buffer, originalName) {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];
@@ -82,4 +144,17 @@ function parseInsuranceExcel(buffer, originalName) {
   return policies;
 }
 
-module.exports = { parseInsuranceExcel };
+function parseInsuranceExcel(buffer, originalName) {
+  if (isHarHaBituachBuffer(buffer)) {
+    const harPolicies = parseHarHaBituachImport(buffer, originalName);
+    if (harPolicies.length > 0) return harPolicies;
+  }
+
+  return parseGenericInsuranceExcel(buffer, originalName);
+}
+
+module.exports = {
+  parseInsuranceExcel,
+  detectPolicyType,
+  mapHarPolicyToImport,
+};
