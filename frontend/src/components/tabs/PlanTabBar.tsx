@@ -11,7 +11,7 @@ export default function PlanTabBar() {
       <button
         type="button"
         className={`page-tab-btn${!isChat ? " is-active" : ""}`}
-        onClick={() => navigate(APP_ROUTES.copilot)}
+        onClick={() => navigate(APP_ROUTES.planning)}
       >
         ✦ תכנון פיננסי
       </button>

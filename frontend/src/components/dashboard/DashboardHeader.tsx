@@ -126,7 +126,7 @@ export default function DashboardHeader({
         <button
           className="dashboard-nav-link"
           type="button"
-          onClick={() => navigate(APP_ROUTES.copilot)}
+          onClick={() => navigate(APP_ROUTES.planning)}
         >
           ✦ תכנון ותקציב
         </button>

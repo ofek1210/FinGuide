@@ -20,7 +20,6 @@ import AIAgentsPage from "./pages/AIAgentsPage";
 import FindingsPage from "./pages/FindingsPage";
 import TaxAssistantPage from "./pages/TaxAssistantPage";
 import FinancialHealthPage from "./pages/FinancialHealthPage";
-import FinancialCopilotPage from "./pages/FinancialCopilotPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
 import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
@@ -142,7 +141,7 @@ export default function App() {
           path={APP_ROUTES.copilot}
           element={
             <RequireAuth>
-              <FinancialCopilotPage />
+              <Navigate to={APP_ROUTES.planning} replace />
             </RequireAuth>
           }
         />
