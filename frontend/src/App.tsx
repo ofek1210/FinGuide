@@ -13,6 +13,7 @@ import PayslipHistoryPage from "./pages/PayslipHistoryPage";
 import PayslipDetailPage from "./pages/PayslipDetailPage";
 import PayslipMissingFieldsPage from "./pages/PayslipMissingFieldsPage";
 import InsightsPage from "./pages/InsightsPage";
+import FinancialPlanningPage from "./pages/FinancialPlanningPage";
 import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AIAgentsPage from "./pages/AIAgentsPage";
@@ -150,6 +151,14 @@ export default function App() {
           element={
             <RequireAuth>
               <InsightsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.planning}
+          element={
+            <RequireAuth>
+              <FinancialPlanningPage />
             </RequireAuth>
           }
         />

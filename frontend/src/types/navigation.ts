@@ -15,6 +15,7 @@ export const APP_ROUTES = {
   financialHealth: "/financial-health",
   copilot: "/copilot",
   insights: "/insights",
+  planning: "/planning",
   insurance: "/insurance",
   pension: "/pension",
   notifications: "/notifications",
