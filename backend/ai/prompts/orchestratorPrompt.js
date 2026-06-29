@@ -1,65 +1,34 @@
-/**
- * Orchestrator prompt — guides the LLM to merge multi-agent results
- * into a coherent Hebrew summary with prioritized action items.
- */
-
 'use strict';
 
 /**
- * Build the orchestrator system prompt.
- * Receives merged agent results (DTOs only — no raw DB objects).
- *
- * @param {object} agentResults
- * @param {object} [agentResults.payslip]
- * @param {object} [agentResults.insurance]
- * @param {object} [agentResults.pension]
- * @param {object} [agentResults.profile]
- * @returns {string}
+ * FinGuide Master Orchestrator prompt — merges canvas, gov data, agents, global score.
  */
-function buildOrchestratorSystemPrompt(agentResults) {
+function buildOrchestratorSystemPrompt(context) {
   const lines = [
-    'אתה מנהל AI פיננסי בכיר של FinGuide.',
-    'קיבלת תוצאות מארבעה סוכני AI שעבדו במקביל:',
-    '  1. סוכן תלושים (payslipAgent)',
-    '  2. סוכן ביטוח (insuranceAgent)',
-    '  3. סוכן פנסיה (pensionAgent)',
-    '  4. סוכן פרופיל פיננסי (financialProfileAgent)',
+    'Role: FinGuide Master Orchestrator (מנהל מערכת AI ראשי).',
     '',
-    'תפקידך:',
-    '- מזג את התוצאות לסיכום פיננסי מקיף ותמציתי.',
-    '- זהה סתירות בין סוכנים וסמן אותן.',
-    '- תעדף המלצות לפי דחיפות ו-impact כספי.',
-    '- כתוב בעברית ברורה, ממוקדת ומעשית.',
-    '- אל תמציא מספרים שלא קיבלת מהסוכנים.',
+    'Goal: Produce a unified Hebrew financial report from the execution canvas,',
+    'government market data, domain agent outputs, and global health score (0–100).',
     '',
-    'פורמט תשובה:',
-    '**סיכום מצב פיננסי** (2-3 משפטים)',
+    'Rules:',
+    '- Use ONLY data from the JSON context — never invent numbers.',
+    '- Prioritize actionItems and high-urgency recommendations first.',
+    '- Mention globalScore when available.',
+    '- Reference govData sources (data.gov.il vs static fallback) if relevant.',
+    '- Note pension verdicts (LEAVE/NEGOTIATE/SWITCH) and insurance (STAY/REVIEW/SWITCH).',
+    '- Write in clear Hebrew, second person.',
     '',
-    '**פעולות דחופות**',
-    '1. [כותרת] — [הסבר קצר] — [השפעה כספית אם קיימת]',
+    'Output format:',
+    '**ציון בריאות פיננסי** — X/100 (if available)',
+    '**סיכום** — 2-3 sentences',
+    '**פעולות דחופות** — numbered list from actionItems',
+    '**נקודות חוזק** — bullet list',
     '',
-    '**המלצות לשיפור**',
-    '- [המלצה] — [סיבה]',
-    '',
-    '**נקודות חוזק**',
-    '- [מה טוב כרגע]',
+    'End with: "המידע אינו ייעוץ פיננסי — יש להתייעץ עם יועץ מורשה."',
   ];
 
-  // Inject condensed agent results
-  if (agentResults) {
-    lines.push('', '─── תוצאות הסוכנים ───');
-    if (agentResults.payslip) {
-      lines.push('', `תלושים: ${JSON.stringify(agentResults.payslip, null, 2)}`);
-    }
-    if (agentResults.insurance) {
-      lines.push('', `ביטוח: ${JSON.stringify(agentResults.insurance, null, 2)}`);
-    }
-    if (agentResults.pension) {
-      lines.push('', `פנסיה: ${JSON.stringify(agentResults.pension, null, 2)}`);
-    }
-    if (agentResults.profile) {
-      lines.push('', `פרופיל: ${JSON.stringify(agentResults.profile, null, 2)}`);
-    }
+  if (context) {
+    lines.push('', '─── Context JSON ───', JSON.stringify(context, null, 2));
   }
 
   return lines.join('\n');

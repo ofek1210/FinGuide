@@ -5,6 +5,7 @@ const { getPensionSummary, projectRetirementIncome } = require('../ai/tools/pens
 const { projectPensionIncome } = require('../ai/engines/calculationEngine');
 const { parseHarHaKesef } = require('../services/harHaKesefService');
 const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
+const { buildFundAdvice } = require('../services/pensionFundAdvisorService');
 const PensionFund = require('../models/PensionFund');
 const { importPensionFile, syncProfileRetirement } = require('../services/pensionImportService');
 const PensionImportSnapshot = require('../models/PensionImportSnapshot');
@@ -311,6 +312,26 @@ async function deletePensionFund(req, res) {
   return res.json({ success: true, message: 'הקרן נמחקה בהצלחה' });
 }
 
+/**
+ * GET /api/pension/fund-advice — actuarial LEAVE | NEGOTIATE | SWITCH per fund
+ */
+async function getFundAdvice(req, res) {
+  const forceRefresh = req.query.refresh === 'true';
+  const analysis = await buildPensionAnalysis(req.user._id);
+
+  if (!forceRefresh && analysis.fundAdvice?.hasData) {
+    return res.json({ success: true, data: analysis.fundAdvice });
+  }
+
+  const fundAdvice = await buildFundAdvice(analysis.summary?.funds || [], {
+    ...analysis.profile,
+    currentAge: analysis.summary?.currentAge,
+    retirementAge: analysis.summary?.retirementAge,
+  }, { forceRefresh });
+
+  return res.json({ success: true, data: fundAdvice });
+}
+
 module.exports = {
   getPensionAnalysis,
   getImportHistory,
@@ -319,4 +340,5 @@ module.exports = {
   uploadPensionFile,
   updatePensionFund,
   deletePensionFund,
+  getFundAdvice,
 };

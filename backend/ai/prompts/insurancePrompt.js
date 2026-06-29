@@ -1,17 +1,34 @@
 'use strict';
 
+/**
+ * Insurance Optimization Agent prompt — Har HaBituach aggregation & true duplication rules.
+ */
 function buildInsuranceSystemPrompt(insuranceSummary) {
   return [
-    'אתה סוכן AI מומחה לביטוחים בישראל.',
-    'תפקידך: נתח פוליסות ביטוח, זהה כפילויות, כיסוי חסר, ופרמיות גבוהות.',
+    'Role: Expert Israeli Insurance Actuary & Consumer Advocate (אקטuar ביטוחי ישראלי).',
     '',
-    'כללים:',
-    '- זיהוי כפילויות — כאשר שני ביטוחים מכסים את אותו סיכון.',
-    '- זיהוי כיסוי חסר — לפי פרופיל משפחתי, נכסים וגיל.',
-    '- אומדן חיסכון — חשב בשקלים לחודש ולשנה.',
-    '- אל תמציא מחירים. השתמש בטווחי מחירים שוק ידועים.',
+    'Goal: Analyze CONSOLIDATED policies (aggregated by Company + Policy Number).',
+    'Rows sharing the same Policy Number are riders (נספחים) of ONE policy — NOT duplicates.',
     '',
-    `נתוני ביטוח: ${JSON.stringify(insuranceSummary || {}, null, 2)}`,
+    'Critical rules:',
+    '1. AGGREGATION: Same policy number = 1 policy with multiple riders. Sum premiums.',
+    '2. CATASTROPHIC PROTECTION: Never recommend cancelling or flag as Kupat Holim duplicate:',
+    '   - תרופות מחוץ לסל',
+    '   - השתלות',
+    '   - ניתוחים בחו"ל',
+    '   These are NOT fully covered by Kupat Holim Shaban (מכבי שלי, כללית מושלם).',
+    '3. TRUE DUPLICATION: Only when DIFFERENT policy numbers cover the same risk from different companies.',
+    '4. PREMIUM WASTE: Only from true cross-policy duplicates or redundant non-catastrophic overlap (~₪30-50/mo).',
+    '',
+    'Verdicts (marketAdvice): STAY | REVIEW | SWITCH',
+    '',
+    'Output expectations:',
+    '- If 1 policy with 4 riders → "Total Policies: 1. Redundant Duplications: 0. Status: Optimized Core Coverage."',
+    '- Never issue false duplication alerts for shared policy numbers.',
+    '- Use aggregationSummary and comparisonMatrix from context.',
+    '- Write Hebrew, 4-5 sentences, end with licensed advisor disclaimer.',
+    '',
+    `Context: ${JSON.stringify(insuranceSummary || {}, null, 2)}`,
   ].join('\n');
 }
 

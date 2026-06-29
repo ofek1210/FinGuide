@@ -19,6 +19,10 @@ function fakeAnalysis() {
     summary: 'סיכום',
     summarySource: 'rule',
     recommendations: [{ type: 'pension_low' }],
+    canvas: { focus: 'all', summaryHe: '2 תלושים' },
+    govData: { ready: true, pension: { trackCount: 10 }, insurance: { providerCount: 5 } },
+    globalScore: { year: 2026, score: 72, level: 'good', label: 'טוב' },
+    actionItems: [{ priority: 'high', title: 'פעולה', domain: 'pension' }],
     agents: {
       payslip: {
         status: 'success',
@@ -40,14 +44,18 @@ describe('runParallelAnalysis', () => {
 
   it('passes a valid focus straight through to the orchestrator', async () => {
     runFullAnalysis.mockResolvedValue(fakeAnalysis());
-    await runParallelAnalysis('user-1', { focus: 'pension', skipLLM: true });
-    expect(runFullAnalysis).toHaveBeenCalledWith('user-1', { skipLLM: true, focus: 'pension' });
+    await runParallelAnalysis('user-1', { focus: 'pension', skipLLM: true, refreshGovData: true });
+    expect(runFullAnalysis).toHaveBeenCalledWith('user-1', {
+      skipLLM: true,
+      focus: 'pension',
+      refreshGovData: true,
+    });
   });
 
   it('falls back to "all" for an invalid focus value', async () => {
     runFullAnalysis.mockResolvedValue(fakeAnalysis());
     await runParallelAnalysis('user-1', { focus: 'bogus' });
-    expect(runFullAnalysis).toHaveBeenCalledWith('user-1', { skipLLM: false, focus: 'all' });
+    expect(runFullAnalysis).toHaveBeenCalledWith('user-1', { skipLLM: false, focus: 'all', refreshGovData: false });
   });
 
   it('sanitizes the orchestrator result into a stable DTO', async () => {
@@ -65,11 +73,14 @@ describe('runParallelAnalysis', () => {
       durationMs: 12,
       explanation: 'הסבר',
     });
+    expect(result.canvas?.summaryHe).toBe('2 תלושים');
+    expect(result.globalScore?.score).toBe(72);
+    expect(result.actionItems).toHaveLength(1);
   });
 
   it('coerces a non-string userId via toString()', async () => {
     runFullAnalysis.mockResolvedValue(fakeAnalysis());
     await runParallelAnalysis({ toString: () => 'oid-123' }, {});
-    expect(runFullAnalysis).toHaveBeenCalledWith('oid-123', { skipLLM: false, focus: 'all' });
+    expect(runFullAnalysis).toHaveBeenCalledWith('oid-123', { skipLLM: false, focus: 'all', refreshGovData: false });
   });
 });

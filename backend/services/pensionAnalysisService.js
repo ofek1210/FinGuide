@@ -11,6 +11,7 @@ const {
 } = require('../ai/tools/pensionTools');
 const { benchmarkPortfolio } = require('./pensionBenchmarkService');
 const { runPensionHealthCheck } = require('./pensionHealthCheckService');
+const { buildFundAdvice } = require('./pensionFundAdvisorService');
 
 const EMPTY_BENCHMARK = {
   funds: [],
@@ -50,12 +51,19 @@ async function buildPensionAnalysis(userId) {
     benchmark,
   });
 
+  const fundAdvice = await buildFundAdvice(summary.funds || [], {
+    ...profile,
+    currentAge: summary.currentAge,
+    retirementAge: summary.retirementAge,
+  });
+
   return {
     summary,
     projection: projection.available ? projection : null,
     benchmark,
     healthCheck,
     recommendations,
+    fundAdvice,
     profile,
   };
 }

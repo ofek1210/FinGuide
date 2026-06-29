@@ -11,6 +11,7 @@ const {
   getInsurancePolicies,
   getInsuranceImportHistory,
   deleteInsurancePolicy,
+  getMarketAdvice,
 } = require('../controllers/insuranceController');
 const { getInsuranceInsights } = require('../services/insuranceProfileAnalyzer');
 
@@ -60,6 +61,10 @@ router.get('/profile-insights', async (req, res, next) => {
     const result = await getInsuranceInsights(req.user._id);
     return res.json({ success: true, data: result });
   } catch (err) { next(err); }
+});
+
+router.get('/market-advice', (req, res, next) => {
+  Promise.resolve(getMarketAdvice(req, res)).catch(next);
 });
 
 // DELETE /api/insurance/data — delete ALL insurance policies for the user

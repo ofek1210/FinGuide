@@ -6,8 +6,9 @@
 'use strict';
 
 const UserProfile = require('../../models/UserProfile');
-const { runInsuranceDuplicateRules, runMissingCoverageRules } = require('../engines/ruleEngine');
+const { runMissingCoverageRules } = require('../engines/ruleEngine');
 const { estimateInsuranceSavings } = require('../engines/calculationEngine');
+const { analyzeAggregatedInsurance } = require('../../services/insurancePolicyAggregationService');
 
 // ── Tool: getInsuranceProfile ─────────────────────────────────────────────────
 
@@ -56,8 +57,15 @@ async function getInsuranceProfile(userId) {
 function analyzeInsuranceCoverage(insuranceProfile) {
   const { policies = [], profile, personal, assets } = insuranceProfile;
 
-  const duplicateResult = runInsuranceDuplicateRules(policies);
-  const missingResult = runMissingCoverageRules({ insurance: profile, personal, assets }, policies);
+  const hasKupatHolimSupplement = profile?.hasHealthInsurance !== false;
+  const aggResult = analyzeAggregatedInsurance(policies, { hasKupatHolimSupplement });
+  const aggregatedPolicies = aggResult.aggregatedPolicies;
+  const duplicateResult = {
+    duplicates: aggResult.duplicates,
+    totalWaste: aggResult.totalMonthlyWaste,
+  };
+
+  const missingResult = runMissingCoverageRules({ insurance: profile, personal, assets }, aggregatedPolicies);
   const savingsResult = estimateInsuranceSavings(duplicateResult.duplicates);
 
   // Build profile-based flags
@@ -70,6 +78,8 @@ function analyzeInsuranceCoverage(insuranceProfile) {
   }
 
   return {
+    aggregatedPolicies,
+    aggregationSummary: aggResult.aggregationSummary,
     duplicates: duplicateResult.duplicates,
     duplicateCount: duplicateResult.duplicates.length,
     totalMonthlyWaste: duplicateResult.totalWaste,
@@ -77,7 +87,7 @@ function analyzeInsuranceCoverage(insuranceProfile) {
     missingUrgency: missingResult.urgency,
     flags,
     savings: savingsResult,
-    hasCriticalGap: missingResult.urgency === 'high' || duplicateResult.duplicates.length > 0,
+    hasCriticalGap: missingResult.urgency === 'high' || duplicateResult.duplicates.some(d => d.recommendCancellation),
   };
 }
 
@@ -91,12 +101,30 @@ function generateInsuranceRecommendations(analysisResult) {
   const recs = [];
 
   for (const dup of analysisResult.duplicates || []) {
+    if (dup.recommendCancellation === false) {
+      recs.push({
+        type: 'insurance_cross_company_overlap',
+        title: `חפיפת כיסוי — ${dup.typeLabelHe || dup.type}`,
+        reason: dup.reasonHe || `יש ${dup.policyCount} פוליסות נפרדות לאותו סיכון.`,
+        urgency: 'medium',
+        financialImpact: dup.isCatastrophic
+          ? null
+          : dup.estimatedMonthlyWaste
+            ? `₪${dup.estimatedMonthlyWaste}/חודש — בדוק לפני ביטול`
+            : null,
+        confidenceScore: 85,
+      });
+      continue;
+    }
+
     recs.push({
       type: 'duplicate_insurance',
-      title: `ביטוח כפול — ${dup.type}`,
-      reason: `יש לך ${dup.policies.length} פוליסות לאותו סיכון.`,
+      title: `ביטוח כפול — ${dup.typeLabelHe || dup.type}`,
+      reason: dup.reasonHe || `יש ${dup.policyCount} פוליסות נפרדות לאותו סיכון.`,
       urgency: 'high',
-      financialImpact: `₪${dup.estimatedMonthlyWaste}/חודש אפשרי לחסוך`,
+      financialImpact: dup.estimatedMonthlyWaste
+        ? `₪${dup.estimatedMonthlyWaste}/חודש אפשרי לחסוך`
+        : null,
       confidenceScore: 90,
     });
   }

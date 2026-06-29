@@ -6,10 +6,10 @@
  * Delegates to parallelAnalysisService — never accesses DB directly.
  *
  * Request body (all optional):
- *   { focus: 'all' | 'payslip' | 'insurance' | 'pension', skipLLM: boolean }
+ *   { focus, skipLLM, refreshGovData }
  *
  * Response:
- *   { success, runId, summary, summarySource, recommendations, agents, meta }
+ *   { success, runId, summary, canvas, govData, globalScore, actionItems, agents, meta }
  */
 
 'use strict';
@@ -19,7 +19,7 @@ const { MOCK_FULL_ANALYSIS_RESULT } = require('../ai/mock/mockData');
 
 async function runFullAnalysisHandler(req, res) {
   const userId = req.user._id;
-  const { focus = 'all', skipLLM = false, demo = false } = req.body || {};
+  const { focus = 'all', skipLLM = false, refreshGovData = false, demo = false } = req.body || {};
 
   if (demo === true || req.query.demo === 'true') {
     return res.json({ success: true, ...MOCK_FULL_ANALYSIS_RESULT });
@@ -28,6 +28,7 @@ async function runFullAnalysisHandler(req, res) {
   const result = await runParallelAnalysis(userId, {
     focus: typeof focus === 'string' ? focus : 'all',
     skipLLM: skipLLM === true,
+    refreshGovData: refreshGovData === true,
   });
 
   return res.json(result);

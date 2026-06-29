@@ -134,18 +134,39 @@ function buildInsights(profile, policies) {
   }
 
   if (hasHealthInsurance) {
-    const healthPolicies = activeByType.health || [];
-    if (healthPolicies.length >= 2) {
-      const annualDouble = healthPolicies.slice(1).reduce((sum, pol) => sum + getAnnual(pol), 0);
+    const { analyzeAggregatedInsurance } = require('./insurancePolicyAggregationService');
+    const { aggregatedPolicies, duplicates } = analyzeAggregatedInsurance(policies);
+    const healthDup = duplicates.find(d =>
+      (d.type === 'health' || d.type === 'surgery_israel') && d.recommendCancellation,
+    );
+    if (healthDup) {
+      const annualDouble = healthDup.estimatedMonthlyWaste * 12;
       insights.push({
         id: 'health_insurance_duplicate',
         severity: 'warning',
         category: 'insurance',
         title: 'כפילות בביטוח בריאות',
-        description: `נמצאו ${healthPolicies.length} פוליסות ביטוח בריאות פעילות. קופת החולים כוללת ביטוח מושלם — בדוק חפיפה עם הפוליסות הפרטיות.`,
-        recommendation: `ייתכן חיסכון של ~₪${Math.round(annualDouble / 12).toLocaleString('he-IL')}/חודש בביטול כיסויים כפולים.`,
-        financialImpact: Math.round(annualDouble),
-        financialImpactLabel: `₪${Math.round(annualDouble).toLocaleString('he-IL')}/שנה בביטול כפילויות`,
+        description: healthDup.reasonHe || `נמצאו ${healthDup.policyCount} פוליסות נפרדות עם חפיפה לקופ"ח.`,
+        recommendation: healthDup.isCatastrophic
+          ? 'כיסוי קטסטרופי — אל תבטל ללא ייעוץ מקצועי.'
+          : `ייתכן חיסכון של ~₪${Math.round(healthDup.estimatedMonthlyWaste).toLocaleString('he-IL')}/חודש בביטול כיסויים כפולים.`,
+        financialImpact: healthDup.isCatastrophic ? null : Math.round(annualDouble),
+        financialImpactLabel: healthDup.isCatastrophic
+          ? null
+          : `₪${Math.round(annualDouble).toLocaleString('he-IL')}/שנה בביטול כפילויות`,
+      });
+    } else if (aggregatedPolicies.filter(p => p.type === 'health').length >= 2) {
+      // Multiple distinct health policies but no true duplicate detected — informational only
+      const healthPolicies = aggregatedPolicies.filter(p => p.type === 'health');
+      insights.push({
+        id: 'health_policies_review',
+        severity: 'info',
+        category: 'insurance',
+        title: 'מספר פוליסות בריאות',
+        description: `יש ${healthPolicies.length} פוליסות בריאות נפרדות (${healthPolicies.map(p => p.policyNumber || p.provider).join(', ')}). נספחים באותה פוליסה אינם נספרים ככפילות.`,
+        recommendation: 'ודא שכל נספח (תרופות מחוץ לסל, השתלות, ניתוחים בחו"ל) נשאר — אל תבטל כיסוי קטסטרופי.',
+        financialImpact: null,
+        financialImpactLabel: null,
       });
     }
   }

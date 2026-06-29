@@ -20,7 +20,7 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
   const startedAt = Date.now();
 
   const analysis = await buildInsuranceAnalysis(userId);
-  const { profile, personal, assets, policies, analysis: coverage, healthCheck, recommendations } = analysis;
+  const { profile, personal, assets, policies, analysis: coverage, healthCheck, recommendations, marketAdvice } = analysis;
 
   const hasData = analysis.hasImportedPolicies || analysis.summary?.hasData;
   if (!hasData && !profile) {
@@ -42,13 +42,17 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
         profile,
         personal,
         assets,
+        policies,
+        aggregationSummary: coverage?.aggregationSummary,
+        aggregatedPolicies: coverage?.aggregatedPolicies,
         duplicates: coverage?.duplicates,
         missingCoverage: coverage?.missingCoverage,
         savings: coverage?.savings,
         healthCheck: healthCheck ? { score: healthCheck.score, level: healthCheck.level?.label } : null,
+        marketAdvice,
       });
       const result = await askClaude(
-        'ספק סיכום קצר של מצב הביטוח וההמלצות ב-3-4 משפטים בעברית.',
+        'ספק ניתוח ביטוח: מטריצת עלות/שירות/מדד תביעות, כפילויות, ופסק דין STAY/REVIEW/SWITCH — 4-5 משפטים בעברית.',
         systemPrompt,
         [],
       );
@@ -63,6 +67,7 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
     status: 'success',
     data: {
       policyCount: policies?.length ?? 0,
+      aggregation: coverage?.aggregationSummary ?? null,
       duplicateCount: coverage?.duplicateCount ?? 0,
       totalMonthlyWaste: coverage?.totalMonthlyWaste ?? 0,
       missingCoverage: coverage?.missingCoverage ?? [],
@@ -71,6 +76,15 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
       savings: coverage?.savings,
       hasCriticalGap: coverage?.hasCriticalGap ?? false,
       healthCheck: healthCheck ? { score: healthCheck.score, level: healthCheck.level } : null,
+      marketAdvice: marketAdvice?.hasData
+        ? {
+          overallVerdict: marketAdvice.overallVerdict,
+          overallVerdictLabelHe: marketAdvice.overallVerdictLabelHe,
+          comparisonMatrix: marketAdvice.comparisonMatrix,
+          duplicateCount: marketAdvice.duplicateCount,
+          dataSource: marketAdvice.dataSource,
+        }
+        : null,
     },
     recommendations,
     llmExplanation,
