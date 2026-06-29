@@ -362,8 +362,8 @@ function PrimaryButton({ children, disabled, onClick }: { children: React.ReactN
       style={{
         width: "100%", padding: "15px 24px", borderRadius: "var(--r-btn)", border: "none",
         cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16,
-        color: "#fff", background: disabled ? "var(--lav-300)" : "var(--grad-brand)",
-        opacity: disabled ? 0.7 : 1, boxShadow: disabled ? "none" : "var(--shadow-lav)",
+        color: "#fff", background: disabled ? "var(--lav-300)" : "var(--ink)",
+        opacity: disabled ? 0.7 : 1, boxShadow: disabled ? "none" : "var(--shadow-ink)",
         transition: "opacity var(--dur-fast) var(--ease)",
       }}>
       {children}
@@ -526,7 +526,7 @@ function Intro({ onStart }: { onStart: () => void }) {
       </span>
       <h1 style={{ fontSize: "clamp(30px,4vw,46px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.08, margin: "0 0 18px", color: "var(--ink)" }}>בוא נכיר אותך.<br />ואת הכסף שלך.</h1>
       <p style={{ fontSize: 18, color: "var(--text-muted)", lineHeight: 1.6, fontWeight: 500, margin: "0 0 34px" }}>כמה שאלות קצרות שיעזרו ל‑AI לבנות לך תמונה פיננסית מדויקת — תלוש, פנסיה, ביטוח וזכויות. אפשר לעצור ולחזור בכל רגע.</p>
-      <button type="button" onClick={onStart} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "15px 30px", borderRadius: "var(--r-btn)", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16, color: "#fff", background: "var(--grad-brand)", boxShadow: "var(--shadow-lav)" }}>
+      <button type="button" onClick={onStart} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "15px 30px", borderRadius: "var(--r-btn)", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16, color: "#fff", background: "var(--ink)", boxShadow: "var(--shadow-ink)" }}>
         בוא נתחיל <ArrowLeft size={18} strokeWidth={2.4} />
       </button>
     </div>
@@ -540,7 +540,7 @@ function Done({ busy, error, onFinish }: { busy: boolean; error: string | null; 
       <div style={{ width: 92, height: 92, borderRadius: "50%", margin: "0 auto 28px", display: "grid", placeItems: "center", background: "var(--grad-prism)", color: "var(--ink)", boxShadow: "var(--shadow-card)" }}><Check size={44} strokeWidth={3} /></div>
       <h1 style={{ fontSize: "clamp(28px,3.6vw,42px)", fontWeight: 900, letterSpacing: "-.03em", lineHeight: 1.1, margin: "0 0 16px", color: "var(--ink)" }}>הכל מוכן.</h1>
       <p style={{ fontSize: 18, color: "var(--text-muted)", lineHeight: 1.6, fontWeight: 500, margin: "0 0 34px" }}>בנינו את הפרופיל הפיננסי שלך. עכשיו ה‑AI מנתח ומחפש בדיוק איפה מגיע לך יותר.</p>
-      <button type="button" onClick={onFinish} disabled={busy} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "15px 30px", borderRadius: "var(--r-btn)", border: "none", cursor: busy ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16, color: "#fff", background: "var(--grad-brand)", boxShadow: "var(--shadow-lav)", opacity: busy ? 0.75 : 1 }}>
+      <button type="button" onClick={onFinish} disabled={busy} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "15px 30px", borderRadius: "var(--r-btn)", border: "none", cursor: busy ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16, color: "#fff", background: "var(--ink)", boxShadow: "var(--shadow-ink)", opacity: busy ? 0.75 : 1 }}>
         {busy ? "רגע..." : "לתפריט העוזר האישי"} {!busy && <ArrowLeft size={18} strokeWidth={2.4} />}
       </button>
       {error && <div style={{ marginTop: 18, color: "var(--danger)", fontWeight: 600, fontSize: 14 }}>{error}</div>}
