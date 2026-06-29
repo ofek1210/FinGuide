@@ -11,6 +11,8 @@ import { useNavigate } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import InsuranceRibbonWave from "../components/insurance/InsuranceRibbonWave";
+import InsuranceImportGuide from "../components/insurance/InsuranceImportGuide";
+import InsuranceUpload from "../components/insurance/InsuranceUpload";
 import AIInsightsLoadingState from "../components/ai/AIInsightsLoadingState";
 import { PrivateDomainPageLayout } from "../components/layout/PrivateDomainPageLayout";
 import GlassCard from "../components/ui/GlassCard";
@@ -33,7 +35,6 @@ import {
 import { formatCurrencyOrDash } from "../utils/formatters";
 import { POLICY_TYPE_LABELS, UPLOAD_PROGRESS_STEPS } from "../utils/insuranceDisplay";
 import { HealthCheckPanel, SavingsDeltaCard } from "../components/import/HealthCheckPanel";
-import { GovReportImportFlow } from "../components/import/GovReportImportFlow";
 import { INSURANCE_IMPORT_CONFIG } from "../config/govReportImportConfig";
 import { DomainResultsHeader } from "../components/import/DomainResultsHeader";
 import { DomainRecommendationsSection } from "../components/import/DomainRecommendationsSection";
@@ -53,6 +54,7 @@ export default function InsurancePage() {
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [importHistory, setImportHistory] = useState<InsuranceImportHistoryItem[]>([]);
+  const [lastImported, setLastImported] = useState<number | null>(null);
 
   const loadImportHistory = useCallback(async () => {
     const res = await getInsuranceImportHistory();
@@ -83,14 +85,18 @@ export default function InsurancePage() {
     sizeErrorMessage: "הקובץ גדול מדי. מקסימום 5MB.",
     uploadFile: uploadInsuranceExcel,
     extractSavingsDelta: res => res.data?.savingsDelta ?? null,
+    onUploadSuccess: res => setLastImported(res.data?.imported ?? null),
     uploadSuccessMessage: res => `יובאו ${res.data?.imported ?? 0} פוליסות בהצלחה — הסוכן מנתח...`,
     reloadAfterUpload: load,
     reloadImportHistory: loadImportHistory,
+    // keep the redesigned success state visible; the user advances via the
+    // "צפה בתובנות הסוכן" button rather than an automatic timeout.
+    autoAdvanceOnSuccess: false,
   });
 
   const {
-    step, setStep, fileInputRef, uploading, uploadMsg, uploadProgressStep,
-    isDragging, setIsDragging, visitedSite, setVisitedSite,
+    step, setStep, uploading, uploadMsg, uploadProgressStep,
+    isDragging, setIsDragging, setVisitedSite,
     lastSavingsDelta, handleUpload,
   } = flow;
 
@@ -99,11 +105,13 @@ export default function InsurancePage() {
     void loadImportHistory();
   }, [load, loadImportHistory]);
 
+  // On first load, if the user already has policies, jump straight to results.
+  // Gated to the landing step so it never skips the upload success screen mid-flow.
   useEffect(() => {
-    if ((data?.policies ?? []).length > 0) {
+    if (step === "landing" && (data?.policies ?? []).length > 0) {
       setStep("results");
     }
-  }, [data, setStep]);
+  }, [data, step, setStep]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("למחוק פוליסה זו?")) return;
@@ -124,31 +132,48 @@ export default function InsurancePage() {
     return <InsuranceLandingScreen loading={loading} onImport={() => setStep("guide")} />;
   }
 
+  // Import guide — interactive stepper with a pouring progress spine (design-system).
+  if (step === "guide") {
+    return (
+      <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
+        <PrivateTopbar />
+        <InsuranceImportGuide
+          onBack={() => setStep("landing")}
+          onContinue={() => setStep("upload")}
+          onVisitSite={() => {
+            window.open(HAR_HABITUACH_URL, "_blank", "noopener,noreferrer");
+            setVisitedSite(true);
+          }}
+        />
+        <AppFooter variant="private" />
+      </div>
+    );
+  }
+
+  // Upload — step 2/2 redesign: real dropzone wired to uploadInsuranceExcel.
+  if (step === "upload") {
+    return (
+      <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
+        <PrivateTopbar />
+        <InsuranceUpload
+          onBack={() => setStep("guide")}
+          onContinue={() => setStep("results")}
+          onUpload={handleUpload}
+          uploading={uploading}
+          uploadMsg={uploadMsg}
+          uploadProgressStep={uploadProgressStep}
+          progressSteps={UPLOAD_PROGRESS_STEPS}
+          isDragging={isDragging}
+          setIsDragging={setIsDragging}
+          importedCount={lastImported}
+        />
+        <AppFooter variant="private" />
+      </div>
+    );
+  }
+
   return (
     <PrivateDomainPageLayout>
-
-        {(step === "guide" || step === "upload") && (
-          <GovReportImportFlow
-            domain="insurance"
-            step={step}
-            progressSteps={UPLOAD_PROGRESS_STEPS}
-            onImport={() => setStep("guide")}
-            visitedSite={visitedSite}
-            onVisitSite={() => {
-              window.open(HAR_HABITUACH_URL, "_blank", "noopener,noreferrer");
-              setVisitedSite(true);
-            }}
-            onContinue={() => setStep("upload")}
-            onBack={() => setStep(step === "upload" ? "guide" : "landing")}
-            fileInputRef={fileInputRef}
-            uploading={uploading}
-            uploadMsg={uploadMsg}
-            uploadProgressStep={uploadProgressStep}
-            isDragging={isDragging}
-            setIsDragging={setIsDragging}
-            onUpload={handleUpload}
-          />
-        )}
 
         {step === "results" && (
           <ResultsStep

@@ -18,6 +18,12 @@ type UseGovReportDomainPageOptions<TUploadResult> = {
   reloadAfterUpload: () => Promise<void>;
   reloadImportHistory?: () => Promise<void>;
   resultsTransitionDelay?: number;
+  /**
+   * When true (default) the flow auto-advances to the results step shortly after
+   * a successful upload. Set false to keep the success state visible and let the
+   * caller drive the transition (e.g. via a "view insights" button).
+   */
+  autoAdvanceOnSuccess?: boolean;
 };
 
 export function useGovReportDomainPage<TUploadResult extends { success?: boolean; message?: string }>({
@@ -33,6 +39,7 @@ export function useGovReportDomainPage<TUploadResult extends { success?: boolean
   reloadAfterUpload,
   reloadImportHistory,
   resultsTransitionDelay = 1400,
+  autoAdvanceOnSuccess = true,
 }: UseGovReportDomainPageOptions<TUploadResult>) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadProgressStep, start: startProgress, stop: stopProgress } =
@@ -72,7 +79,7 @@ export function useGovReportDomainPage<TUploadResult extends { success?: boolean
       setUploadMsg({ type: "success", text: uploadSuccessMessage(res) });
       await reloadAfterUpload();
       if (reloadImportHistory) await reloadImportHistory();
-      setTimeout(() => setStep("results"), resultsTransitionDelay);
+      if (autoAdvanceOnSuccess) setTimeout(() => setStep("results"), resultsTransitionDelay);
     } else {
       setUploadMsg({ type: "error", text: res.message ?? "שגיאה בייבוא הקובץ" });
     }
@@ -80,8 +87,13 @@ export function useGovReportDomainPage<TUploadResult extends { success?: boolean
     allowedExts, extErrorMessage, maxFileBytes, sizeErrorMessage,
     uploadFile, extractSavingsDelta, onUploadSuccess, uploadSuccessMessage,
     reloadAfterUpload, reloadImportHistory, resultsTransitionDelay,
-    startProgress, stopProgress,
+    autoAdvanceOnSuccess, startProgress, stopProgress,
   ]);
+
+  const resetUpload = useCallback(() => {
+    setUploadMsg(null);
+    setUploading(false);
+  }, []);
 
   return {
     fileInputRef,
@@ -97,5 +109,6 @@ export function useGovReportDomainPage<TUploadResult extends { success?: boolean
     lastSavingsDelta,
     setLastSavingsDelta,
     handleUpload,
+    resetUpload,
   };
 }
