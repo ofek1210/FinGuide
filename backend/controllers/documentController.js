@@ -321,6 +321,26 @@ exports.deleteDocument = async (req, res, next) => {
   }
 };
 
+// DELETE /api/documents/all — remove every document (and file) for the user
+exports.deleteAllDocuments = async (req, res, next) => {
+  try {
+    const documents = await Document.find({ user: req.user.id });
+    await Promise.all(
+      documents.map(doc =>
+        unlink(doc.filePath).catch(err => console.error('שגיאה במחיקת קובץ:', err)),
+      ),
+    );
+    const result = await Document.deleteMany({ user: req.user.id });
+    res.status(200).json({
+      success: true,
+      message: 'כל המסמכים נמחקו בהצלחה',
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 exports.downloadDocument = async (req, res, next) => {
   try {
     const document = await Document.findOne({

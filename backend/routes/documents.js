@@ -8,6 +8,7 @@ const {
   getRecentPayslips,
   getDocument,
   deleteDocument,
+  deleteAllDocuments,
   downloadDocument,
   reprocessDocument,
   unlockDocument,
@@ -59,6 +60,9 @@ router.post('/:id/unlock', unlockDocument);
 
 // PATCH /api/documents/:id/fields - השלמה ידנית של שדות שה-OCR לא חילץ
 router.patch('/:id/fields', updateDocumentFields);
+
+// DELETE /api/documents/all - מחיקת כל המסמכים (לפני /:id כדי ש"all" לא ייתפס כ-id)
+router.delete('/all', deleteAllDocuments);
 
 // GET /api/documents/:id - קבלת מסמך בודד
 router.get('/:id', getDocument);

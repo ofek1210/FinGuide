@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Check, FileText, Sparkles } from "lucide-react";
 import Loader from "../components/ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
@@ -124,6 +124,8 @@ function buildSectionPatch(section: Section, d: FlowData): OnboardingPatch {
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editMode = searchParams.get("edit") === "1";
   const { refresh } = useAuth();
 
   const [i, setI] = useState(0);
@@ -153,7 +155,8 @@ export default function OnboardingPage() {
       if (!alive) return;
       setLoading(false);
       if (!res.success) { setError(res.message ?? "לא הצלחנו לטעון."); return; }
-      if (res.data?.completed) { await refresh(); navigate(APP_ROUTES.hub, { replace: true }); return; }
+      // first-time flow redirects completed users out; edit mode stays to update.
+      if (res.data?.completed && !editMode) { await refresh(); navigate(APP_ROUTES.hub, { replace: true }); return; }
       const p = res.data?.data;
       if (p) {
         const ins: string[] = [];
@@ -184,7 +187,7 @@ export default function OnboardingPage() {
       }
     })();
     return () => { alive = false; };
-  }, [navigate, refresh]);
+  }, [navigate, refresh, editMode]);
 
   const set = useCallback((patch: Partial<FlowData>) => {
     setData(d => ({ ...d, ...patch }));
@@ -232,8 +235,8 @@ export default function OnboardingPage() {
       return;
     }
     await refresh();
-    navigate(APP_ROUTES.hub, { replace: true });
-  }, [busy, navigate, refresh]);
+    navigate(editMode ? APP_ROUTES.settings : APP_ROUTES.hub, { replace: true });
+  }, [busy, navigate, refresh, editMode]);
 
   if (loading) {
     return (
@@ -257,7 +260,7 @@ export default function OnboardingPage() {
 
       {/* header */}
       <header style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", gap: 16 }}>
-        <button type="button" onClick={() => navigate(APP_ROUTES.hub)} style={{ padding: "9px 18px", borderRadius: "var(--r-btn)", border: "1.5px solid var(--border-soft)", background: "var(--card)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, color: "var(--text-body)", whiteSpace: "nowrap" }}>שמירה ויציאה</button>
+        <button type="button" onClick={() => navigate(editMode ? APP_ROUTES.settings : APP_ROUTES.hub)} style={{ padding: "9px 18px", borderRadius: "var(--r-btn)", border: "1.5px solid var(--border-soft)", background: "var(--card)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, color: "var(--text-body)", whiteSpace: "nowrap" }}>שמירה ויציאה</button>
 
         {!isIntro && !isDone && curSection && <ProgressBar value={overall} label={SECTION_LABEL[curSection]} />}
 
