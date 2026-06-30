@@ -1,0 +1,463 @@
+/* ============================================================
+   MARKETING & LEGAL — unified pastel theme
+   Restyles the public pages (FAQ / Privacy / Terms / Contact /
+   Careers / Team / JobDetails) onto the FinGuide design system:
+   near-white surfaces, lavender/mint/butter/peach accents, white
+   floating cards with purple-cast shadows, Heebo, gradient-text
+   headlines, pill buttons. Loads after App.css so it wins over the
+   legacy dark `.landing-*` base — those classes are used only by
+   these marketing pages.
+   ============================================================ */
+
+/* ---- Page shells: reset the legacy dark base to pastel ---- */
+.legal-page,
+.contact-page,
+.careers-page,
+.team-page,
+.job-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  gap: clamp(48px, 7vw, 84px);
+  padding: 20px clamp(16px, 4vw, 40px) 40px;
+  background:
+    radial-gradient(120% 80% at 12% 0%, var(--lav-50) 0%, transparent 55%),
+    radial-gradient(90% 70% at 100% 8%, var(--peach-soft) 0%, transparent 50%),
+    var(--surface-page);
+  color: var(--text-body);
+  font-family: var(--font-body);
+  overflow-x: clip;
+}
+
+/* Soft drifting blobs behind the content (skip if reduced-motion drift, but keep static) */
+.legal-page::before,
+.contact-page::before,
+.team-page::before,
+.job-page::before {
+  content: "";
+  position: absolute;
+  inset-block-start: -120px;
+  inset-inline-end: -100px;
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle, var(--lav-200), transparent 68%);
+  opacity: 0.5;
+  filter: blur(8px);
+  z-index: -1;
+  pointer-events: none;
+}
+.legal-page::after,
+.contact-page::after {
+  content: "";
+  position: absolute;
+  inset-block-start: 320px;
+  inset-inline-start: -140px;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, var(--mint-soft), transparent 70%);
+  opacity: 0.55;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ---- Shared nav (light) ---- */
+.legal-page .landing-nav,
+.contact-page .landing-nav,
+.careers-page .landing-nav,
+.team-page .landing-nav,
+.job-page .landing-nav {
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  padding: 10px 18px;
+  border-radius: var(--r-pill);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+  backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+}
+
+:is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-logo {
+  font-family: var(--font-display);
+  font-weight: var(--fw-extrabold);
+  font-size: 20px;
+  letter-spacing: var(--tracking-tight);
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  cursor: pointer;
+  border: none;
+}
+
+/* Buttons → pills (ink primary, white secondary) */
+:is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-primary {
+  background: var(--surface-ink);
+  color: var(--text-on-ink);
+  border: none;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-ink);
+  font-weight: var(--fw-bold);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
+}
+:is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 44px -18px rgba(18, 17, 24, 0.6);
+}
+:is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-secondary {
+  background: var(--surface-card);
+  color: var(--text-strong);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-pill);
+  font-weight: var(--fw-semibold);
+  box-shadow: var(--shadow-soft);
+}
+:is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-secondary:hover {
+  border-color: var(--lav-300);
+  color: var(--accent-strong);
+}
+
+/* ---- Tone accent families (legacy names → new palette) ---- */
+.tone-yellow { --tone: var(--butter-ink); --tone-soft: var(--butter-soft); --tone-bar: var(--butter); }
+.tone-pink   { --tone: var(--peach-ink);  --tone-soft: var(--peach-soft);  --tone-bar: var(--peach); }
+.tone-mint   { --tone: var(--mint-ink);   --tone-soft: var(--mint-soft);   --tone-bar: var(--mint); }
+.tone-purple { --tone: var(--lav-600);    --tone-soft: var(--lav-100);     --tone-bar: var(--lav-300); }
+
+/* ---- Hero (legal / contact share the pattern) ---- */
+.legal-hero-inner,
+.contact-hero-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+  padding-block: clamp(40px, 7vw, 88px) clamp(8px, 2vw, 20px);
+}
+
+.legal-hero-eyebrow,
+.contact-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.legal-hero-title,
+.contact-hero-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  font-size: var(--fs-h1);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-display);
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.legal-hero-subtitle,
+.contact-hero-subtitle {
+  margin: 0;
+  max-width: 56ch;
+  color: var(--text-muted);
+  font-size: var(--fs-lg);
+  line-height: var(--lh-relaxed);
+}
+
+.legal-hero-meta {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+}
+.legal-hero-meta-label {
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
+
+/* ---- Legal blocks (Privacy / Terms) ---- */
+.legal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 16px;
+  max-width: 820px;
+  margin-inline: auto;
+}
+
+.legal-block {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 18px;
+  padding: clamp(20px, 3vw, 28px);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-inline-start: 4px solid var(--tone-bar, var(--lav-300));
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-soft);
+  transition: transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
+}
+.legal-block:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card);
+}
+
+.legal-block-num {
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--tone, var(--accent));
+  opacity: 0.9;
+}
+
+.legal-block-title {
+  margin: 0 0 8px;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: var(--text-strong);
+}
+
+.legal-block-paragraph {
+  margin: 0 0 8px;
+  color: var(--text-body);
+  line-height: var(--lh-relaxed);
+}
+
+.legal-block-bullets {
+  margin: 8px 0 0;
+  padding-inline-start: 20px;
+  display: grid;
+  gap: 6px;
+  color: var(--text-body);
+}
+.legal-block-bullets li::marker { color: var(--tone, var(--accent)); }
+
+/* ---- FAQ accordion ---- */
+.faq-list {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+  max-width: 820px;
+}
+
+.faq-item {
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  transition: box-shadow var(--dur-base) var(--ease), border-color var(--dur-base) var(--ease);
+}
+.faq-item:hover { box-shadow: var(--shadow-card); }
+.faq-item:has(.faq-details[open]) { border-color: var(--tone-bar, var(--lav-300)); }
+
+.faq-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px clamp(18px, 3vw, 26px);
+  cursor: pointer;
+  list-style: none;
+  font-weight: var(--fw-semibold);
+}
+.faq-summary::-webkit-details-marker { display: none; }
+
+.faq-index {
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  font-size: var(--fs-sm);
+  color: var(--tone, var(--accent));
+  background: var(--tone-soft, var(--accent-soft));
+  padding: 4px 9px;
+  border-radius: var(--r-sm);
+  min-width: 34px;
+  text-align: center;
+}
+
+.faq-question {
+  flex: 1;
+  font-size: var(--fs-lg);
+  color: var(--text-strong);
+}
+
+.faq-chevron {
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  transition: transform var(--dur-base) var(--ease);
+  flex-shrink: 0;
+}
+.faq-details[open] .faq-chevron { transform: rotate(180deg); }
+
+.faq-answer {
+  padding: 0 clamp(18px, 3vw, 26px) 22px calc(34px + 14px + clamp(18px, 3vw, 26px));
+}
+.faq-answer p {
+  margin: 0;
+  color: var(--text-muted);
+  line-height: var(--lh-relaxed);
+}
+
+/* ---- Contact grid ---- */
+.contact-grid {
+  list-style: none;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 980px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.contact-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: clamp(22px, 3vw, 30px);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-soft);
+  transition: transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
+}
+.contact-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card);
+}
+
+.contact-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 6px;
+  border-radius: 14px;
+  background: var(--tone-soft, var(--accent-soft));
+  color: var(--tone, var(--accent));
+}
+.contact-card-icon svg { width: 24px; height: 24px; }
+
+.contact-card-label {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.contact-card-value {
+  margin: 0;
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-lg);
+  color: var(--text-strong);
+  direction: ltr;
+  unicode-bidi: plaintext;
+}
+
+.contact-card-cta {
+  margin-top: auto;
+  padding-top: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: var(--fw-semibold);
+  color: var(--tone, var(--accent));
+  text-decoration: none;
+}
+.contact-card-cta svg {
+  width: 16px;
+  height: 16px;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.contact-card-cta:hover svg { transform: translate(3px, -3px); }
+
+/* ---- CTA cards (legal + contact) — premium ink panel ---- */
+.legal-cta,
+.contact-cta {
+  display: flex;
+  justify-content: center;
+}
+.legal-cta-card,
+.contact-cta-card {
+  position: relative;
+  overflow: hidden;
+  width: min(820px, 100%);
+  text-align: center;
+  padding: clamp(32px, 5vw, 56px);
+  border-radius: var(--r-card);
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(155, 127, 232, 0.5), transparent 55%),
+    var(--surface-ink);
+  color: var(--text-on-ink);
+  box-shadow: var(--shadow-xl);
+}
+.legal-cta-card h2,
+.contact-cta-card h2 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-weight: var(--fw-extrabold);
+  font-size: var(--fs-h2);
+  letter-spacing: var(--tracking-tight);
+}
+.legal-cta-card p,
+.contact-cta-card p {
+  margin: 0 auto 24px;
+  max-width: 52ch;
+  color: rgba(255, 255, 255, 0.74);
+  line-height: var(--lh-relaxed);
+}
+.contact-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+/* On the ink CTA, make the primary stand out as a light pill */
+.legal-cta-card .landing-primary,
+.contact-cta-card .landing-primary {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.5);
+}
+.legal-cta-card .landing-primary:hover,
+.contact-cta-card .landing-primary:hover {
+  background: var(--lav-50);
+}
+.contact-cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  min-height: 46px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  color: var(--text-on-ink);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease);
+}
+.contact-cta-secondary:hover { background: rgba(255, 255, 255, 0.2); }
+.contact-cta-secondary svg,
+.legal-cta-btn svg,
+.contact-cta-btn svg { width: 18px; height: 18px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .legal-block,
+  .faq-item,
+  .contact-card,
+  :is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-primary {
+    transition: none;
+  }
+}

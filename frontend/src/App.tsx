@@ -42,6 +42,10 @@ import Error500 from "./pages/errors/Error500";
 import { APP_ROUTES } from "./types/navigation";
 import "./App.css";
 import "./theme/overrides.css";
+import "./theme/marketing.css";
+import "./theme/marketing-team.css";
+import "./theme/marketing-careers.css";
+import "./theme/marketing-job.css";
 
 export default function App() {
   return (

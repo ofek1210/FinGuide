@@ -1,0 +1,771 @@
+/* ============================================================
+   MARKETING — TEAM PAGE
+   Editorial team page on the FinGuide pastel-premium system.
+   Builds on marketing.css (the foundation already styles
+   `.team-page` shell + soft blobs, the glass sticky nav, the
+   `.landing-primary/secondary` pills, and the `.tone-*`
+   accent families). This file adds ONLY the `team-*` specifics:
+   a gradient hero, a founder manifesto with quote + signature
+   (the emotional centerpiece, on a premium ink panel), chapter
+   headers with eyebrow + rule, a portrait-card team grid, and an
+   ink CTA matching the foundation. Tokens only — RTL-safe.
+   ============================================================ */
+
+/* ---- Main column rhythm ---- */
+.team-main {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(56px, 8vw, 110px);
+}
+
+.team-logo-btn {
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* ============================================================
+   HERO — gradient-text headline on the pastel shell
+   ============================================================ */
+.team-hero {
+  position: relative;
+}
+
+.team-hero-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 18px;
+  padding-block: clamp(44px, 7vw, 96px) clamp(8px, 2vw, 24px);
+}
+
+.team-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.team-hero-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  font-size: var(--fs-display);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-display);
+  color: var(--text-strong);
+  max-width: 18ch;
+}
+.team-hero-title strong {
+  font-weight: inherit;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.team-hero-subtitle {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--text-muted);
+  font-size: var(--fs-lg);
+  line-height: var(--lh-relaxed);
+}
+
+/* ============================================================
+   FOUNDER MANIFESTO — the emotional centerpiece.
+   A premium ink panel with a gradient cast, holding a portrait
+   rail, a long-form letter, pull-quote, belief grid, sticker
+   accents, and a signature block.
+   ============================================================ */
+.team-founder {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(28px, 5vw, 64px);
+  border-radius: var(--r-card);
+  background:
+    radial-gradient(120% 120% at 100% 0%, rgba(155, 127, 232, 0.42), transparent 55%),
+    radial-gradient(90% 90% at 0% 100%, rgba(218, 111, 68, 0.22), transparent 52%),
+    var(--surface-ink);
+  color: var(--text-on-ink);
+  box-shadow: var(--shadow-xl);
+}
+
+.team-founder-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  margin-block-end: clamp(28px, 4vw, 48px);
+}
+
+.team-founder-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: var(--text-on-ink);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-wide);
+}
+
+.team-founder-subtitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-extrabold);
+  font-size: var(--fs-h2);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-on-ink);
+}
+.team-founder-subtitle strong {
+  font-weight: inherit;
+  background: var(--grad-prism);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Portrait rail + letter */
+.team-founder-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  gap: clamp(24px, 4vw, 56px);
+  align-items: start;
+}
+
+.team-founder-portrait {
+  margin: 0;
+  position: sticky;
+  inset-block-start: clamp(24px, 6vw, 96px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+.team-founder-portrait-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 22px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 0 0 6px rgba(255, 255, 255, 0.06),
+    var(--shadow-ink);
+}
+.team-founder-portrait-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.team-founder-portrait-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.team-founder-portrait-name {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-lg);
+  color: var(--text-on-ink);
+}
+.team-founder-portrait-role {
+  font-size: var(--fs-sm);
+  color: rgba(255, 255, 255, 0.66);
+}
+
+/* Letter body — readable inverse prose */
+.team-founder-content {
+  min-width: 0;
+}
+.team-founder-content > p {
+  margin: 0 0 16px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: var(--fs-body);
+  line-height: var(--lh-relaxed);
+}
+.team-founder-content strong {
+  color: var(--text-on-ink);
+  font-weight: var(--fw-bold);
+}
+
+.team-founder-lead {
+  font-size: var(--fs-lg) !important;
+  color: var(--text-on-ink) !important;
+  line-height: var(--lh-relaxed);
+}
+
+.team-founder-issues {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.team-founder-issues li {
+  position: relative;
+  padding-inline-start: 22px;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: var(--lh-normal);
+}
+.team-founder-issues li::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 4px;
+  inset-block-start: 0.65em;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--r-pill);
+  background: var(--grad-prism);
+}
+
+/* Pull-quote — large editorial moment */
+.team-founder-quote {
+  position: relative;
+  margin: 24px 0;
+  padding: clamp(20px, 3vw, 32px) clamp(24px, 4vw, 44px);
+  border-radius: var(--r-card);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-inline-start: 4px solid var(--lav-300);
+}
+.team-founder-quote p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-h3);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-on-ink);
+}
+.team-founder-quote-mark {
+  position: absolute;
+  inset-block-start: -18px;
+  inset-inline-start: 14px;
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  font-size: 84px;
+  line-height: 1;
+  background: var(--grad-prism);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  opacity: 0.55;
+  pointer-events: none;
+  user-select: none;
+}
+
+.team-founder-pivot {
+  font-size: var(--fs-lg) !important;
+  color: var(--text-on-ink) !important;
+}
+
+/* Manifesto principle card */
+.team-founder-manifesto {
+  margin: 24px 0;
+  padding: clamp(20px, 3vw, 28px);
+  border-radius: var(--r-card);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.team-founder-manifesto p {
+  margin: 0 0 12px;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: var(--lh-relaxed);
+}
+.team-founder-manifesto ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.team-founder-manifesto li {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--text-on-ink);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+}
+
+/* Mini section headings inside the letter */
+.team-founder-mini-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 32px 0 14px;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-h3);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-on-ink);
+}
+.team-founder-mini-emoji {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+/* Sticker accents — playful tonal pills */
+.team-founder-stickers {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+/* Belief grid */
+.team-founder-beliefs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 14px;
+  margin-block: 8px;
+}
+.team-belief {
+  position: relative;
+  padding: clamp(18px, 2.4vw, 24px);
+  border-radius: var(--r-card);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-inline-start: 4px solid var(--tone-bar, var(--lav-300));
+  transition: transform var(--dur-base) var(--ease), background var(--dur-base) var(--ease);
+}
+.team-belief:hover {
+  transform: translateY(-3px);
+  background: rgba(255, 255, 255, 0.08);
+}
+.team-belief-num {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  font-size: 24px;
+  line-height: 1;
+  margin-block-end: 10px;
+  color: var(--tone-bar, var(--lav-300));
+}
+.team-belief h4 {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-lg);
+  color: var(--text-on-ink);
+}
+.team-belief p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.74);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-normal);
+}
+
+.team-founder-closing {
+  font-style: italic;
+  color: var(--text-on-ink) !important;
+}
+
+/* Signature block — closes the letter */
+.team-founder-signature {
+  margin-block-start: clamp(28px, 4vw, 44px);
+  padding-block-start: clamp(20px, 3vw, 28px);
+  border-block-start: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.team-founder-signature-id {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.team-founder-signature-name {
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  font-size: var(--fs-h3);
+  letter-spacing: var(--tracking-tight);
+  background: var(--grad-prism);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.team-founder-signature-role {
+  font-size: var(--fs-sm);
+  color: rgba(255, 255, 255, 0.66);
+}
+.team-founder-signature-tagline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: var(--text-on-ink);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+}
+
+/* ============================================================
+   CHAPTER HEADER — eyebrow + title + sub + gradient rule
+   ============================================================ */
+.team-chapter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 14px;
+}
+.team-chapter-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+.team-chapter-title {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: var(--fw-black);
+  font-size: var(--fs-h1);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--tracking-display);
+}
+.team-chapter-title span {
+  color: var(--text-strong);
+}
+.team-chapter-title strong {
+  font-weight: inherit;
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.team-chapter-sub {
+  margin: 0;
+  max-width: 50ch;
+  color: var(--text-muted);
+  font-size: var(--fs-lg);
+  line-height: var(--lh-relaxed);
+}
+.team-chapter-rule {
+  display: block;
+  width: 88px;
+  height: 4px;
+  margin-block-start: 8px;
+  border-radius: var(--r-pill);
+  background: var(--grad-text);
+}
+
+/* ============================================================
+   TEAM BANNER — wide group photo with corner tags
+   ============================================================ */
+.team-banner {
+  display: flex;
+  justify-content: center;
+}
+.team-banner-frame {
+  position: relative;
+  width: 100%;
+  border-radius: var(--r-card);
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-card);
+}
+.team-banner-frame img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.team-banner-tag {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 16px;
+  border-radius: var(--r-pill);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+  backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-weight: var(--fw-extrabold);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-wide);
+}
+.team-banner-tag-tl {
+  inset-block-start: 16px;
+  inset-inline-start: 16px;
+}
+.team-banner-tag-br {
+  inset-block-end: 16px;
+  inset-inline-end: 16px;
+}
+
+/* ============================================================
+   TEAM GRID — portrait member cards, role accents via tone
+   ============================================================ */
+.team-grid-section {
+  display: block;
+}
+.team-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: clamp(16px, 2.4vw, 24px);
+}
+
+.team-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+  transition: transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
+}
+.team-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-card);
+}
+
+/* Portrait — soft tonal ring on a rounded frame */
+.team-card-portrait {
+  margin: 0;
+  padding: clamp(18px, 2.4vw, 24px) clamp(18px, 2.4vw, 24px) 0;
+  display: flex;
+  justify-content: center;
+}
+.team-card-portrait img {
+  width: 116px;
+  height: 116px;
+  border-radius: var(--r-pill);
+  object-fit: cover;
+  background: var(--tone-soft, var(--accent-soft));
+  box-shadow: 0 0 0 4px var(--tone-soft, var(--accent-soft)), 0 0 0 5px var(--tone-bar, var(--lav-300));
+  transition: box-shadow var(--dur-base) var(--ease);
+}
+.team-card:hover .team-card-portrait img {
+  box-shadow: 0 0 0 4px var(--tone-soft, var(--accent-soft)), 0 0 0 6px var(--tone, var(--accent));
+}
+
+.team-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: clamp(16px, 2.4vw, 22px);
+  text-align: center;
+}
+.team-card-role {
+  margin: 0;
+  order: -1;
+  display: inline-flex;
+  align-self: center;
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+  background: var(--tone-soft, var(--accent-soft));
+  color: var(--tone, var(--accent));
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xs);
+  line-height: var(--lh-snug);
+}
+.team-card-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-extrabold);
+  font-size: var(--fs-h3);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-strong);
+}
+.team-card-description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-relaxed);
+}
+.team-card-linkedin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-block-start: 6px;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  background: var(--surface-card);
+  border: 1px solid var(--border-soft);
+  color: var(--text-strong);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+  transition: border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.team-card-linkedin svg {
+  width: 16px;
+  height: 16px;
+}
+.team-card-linkedin:hover {
+  border-color: var(--tone-bar, var(--lav-300));
+  color: var(--tone, var(--accent));
+}
+
+/* ============================================================
+   STICKER — shared tonal accent pill (founder letter + grid)
+   ============================================================ */
+.team-sticker {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-radius: var(--r-pill);
+  background: var(--tone-soft, var(--accent-soft));
+  color: var(--tone, var(--accent));
+  border: 1px solid var(--tone-bar, var(--lav-300));
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+  transform: rotate(-1.5deg);
+}
+.team-sticker:nth-child(even) {
+  transform: rotate(1.5deg);
+}
+
+/* ============================================================
+   CTA — premium ink panel, matches the foundation
+   ============================================================ */
+.team-cta {
+  display: flex;
+  justify-content: center;
+}
+.team-cta-card {
+  position: relative;
+  overflow: hidden;
+  width: min(820px, 100%);
+  text-align: center;
+  padding: clamp(32px, 5vw, 56px);
+  border-radius: var(--r-card);
+  background:
+    radial-gradient(120% 120% at 0% 0%, rgba(155, 127, 232, 0.5), transparent 55%),
+    var(--surface-ink);
+  color: var(--text-on-ink);
+  box-shadow: var(--shadow-xl);
+}
+.team-cta-card h2 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-weight: var(--fw-extrabold);
+  font-size: var(--fs-h2);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text-on-ink);
+}
+.team-cta-card p {
+  margin: 0 auto 24px;
+  max-width: 52ch;
+  color: rgba(255, 255, 255, 0.74);
+  line-height: var(--lh-relaxed);
+}
+
+/* Light pill on the ink panel, matching legal/contact CTA */
+.team-cta-card .landing-primary,
+.team-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 14px 30px -12px rgba(0, 0, 0, 0.5);
+}
+.team-cta-card .landing-primary:hover,
+.team-cta-btn:hover {
+  background: var(--lav-50);
+}
+.team-cta-btn svg {
+  width: 18px;
+  height: 18px;
+  transition: transform var(--dur-fast) var(--ease);
+}
+.team-cta-btn:hover svg {
+  transform: translate(2px, -2px);
+}
+
+/* ============================================================
+   RESPONSIVE — collapse founder rail on narrow viewports
+   ============================================================ */
+@media (max-width: 760px) {
+  .team-founder-grid {
+    grid-template-columns: 1fr;
+  }
+  .team-founder-portrait {
+    position: static;
+    max-width: 240px;
+    margin-inline: auto;
+  }
+  .team-founder-signature {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .team-card,
+  .team-card-portrait img,
+  .team-belief,
+  .team-cta-btn svg,
+  .team-cta-card .landing-primary,
+  .team-card-linkedin {
+    transition: none;
+  }
+  .team-card:hover,
+  .team-belief:hover {
+    transform: none;
+  }
+  .team-sticker,
+  .team-sticker:nth-child(even) {
+    transform: none;
+  }
+}
