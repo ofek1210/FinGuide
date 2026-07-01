@@ -13,13 +13,13 @@ import PayslipHistoryPage from "./pages/PayslipHistoryPage";
 import PayslipDetailPage from "./pages/PayslipDetailPage";
 import PayslipMissingFieldsPage from "./pages/PayslipMissingFieldsPage";
 import InsightsPage from "./pages/InsightsPage";
+import FinancialPlanningPage from "./pages/FinancialPlanningPage";
 import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AIAgentsPage from "./pages/AIAgentsPage";
 import FindingsPage from "./pages/FindingsPage";
 import TaxAssistantPage from "./pages/TaxAssistantPage";
 import FinancialHealthPage from "./pages/FinancialHealthPage";
-import FinancialCopilotPage from "./pages/FinancialCopilotPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
 import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
@@ -42,6 +42,10 @@ import Error500 from "./pages/errors/Error500";
 import { APP_ROUTES } from "./types/navigation";
 import "./App.css";
 import "./theme/overrides.css";
+import "./theme/marketing.css";
+import "./theme/marketing-team.css";
+import "./theme/marketing-careers.css";
+import "./theme/marketing-job.css";
 
 export default function App() {
   return (
@@ -141,7 +145,7 @@ export default function App() {
           path={APP_ROUTES.copilot}
           element={
             <RequireAuth>
-              <FinancialCopilotPage />
+              <Navigate to={APP_ROUTES.planning} replace />
             </RequireAuth>
           }
         />
@@ -150,6 +154,14 @@ export default function App() {
           element={
             <RequireAuth>
               <InsightsPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.planning}
+          element={
+            <RequireAuth>
+              <FinancialPlanningPage />
             </RequireAuth>
           }
         />

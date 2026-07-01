@@ -158,7 +158,7 @@ export default function PayslipDetailPage() {
     return (
       <Shell><main style={{ maxWidth: 600, margin: "0 auto", padding: "60px 24px", textAlign: "center" }}>
         <div style={{ color: "var(--danger)", fontWeight: 700, marginBottom: 14 }}>{error ?? "התלוש לא נמצא."}</div>
-        <button onClick={() => navigate(APP_ROUTES.payslipHistory)} style={{ padding: "11px 22px", borderRadius: "var(--r-btn)", background: "var(--grad-brand)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>חזרה להיסטוריה</button>
+        <button onClick={() => navigate(APP_ROUTES.payslipHistory)} style={{ padding: "11px 22px", borderRadius: "var(--r-btn)", background: "var(--ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>חזרה להיסטוריה</button>
       </main></Shell>
     );
   }
@@ -229,7 +229,7 @@ export default function PayslipDetailPage() {
             <button onClick={() => void handleReprocess()} disabled={reprocessing} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "11px 18px", borderRadius: "var(--r-btn)", border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--text-body)", cursor: reprocessing ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}>
               <RefreshCw size={16} style={{ animation: reprocessing ? "spin .8s linear infinite" : "none" }} /> ניתוח מחדש
             </button>
-            <button onClick={() => void handleDownload()} disabled={downloading} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 20px", borderRadius: "var(--r-btn)", border: "none", background: "var(--grad-brand)", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 14, boxShadow: "var(--shadow-lav)" }}>
+            <button onClick={() => void handleDownload()} disabled={downloading} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 20px", borderRadius: "var(--r-btn)", border: "none", background: "var(--ink)", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 14, boxShadow: "var(--shadow-ink)" }}>
               {downloading ? <Loader2 size={16} style={{ animation: "spin .8s linear infinite" }} /> : <Download size={16} />} הורדת PDF
             </button>
           </div>

@@ -22,7 +22,7 @@ export function DomainCopilotCTA({
   gradientFrom,
   gradientTo,
   onNavigate,
-  route = APP_ROUTES.copilot,
+  route = APP_ROUTES.planning,
 }: DomainCopilotCTAProps) {
   return (
     <GlassCard padding="lg" style={{ background: `linear-gradient(135deg, ${gradientFrom}14, rgba(155,127,232,0.14))`, border: "1px solid rgba(184,157,255,0.35)", textAlign: "center" }}>

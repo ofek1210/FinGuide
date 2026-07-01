@@ -206,9 +206,9 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
 
             <div style={{ borderTop: "1px solid var(--border-hair)", marginTop: 8, padding: "10px 14px 4px", display: "flex", gap: 8, flexWrap: "wrap" }}>
               {[
-                { label: "ממצאים", route: APP_ROUTES.findings },
                 { label: "מיסים", route: APP_ROUTES.taxAssistant },
                 { label: "תובנות", route: APP_ROUTES.insights },
+                { label: "תכנון פיננסי", route: APP_ROUTES.planning },
               ].map(link => (
                 <button
                   key={link.route}

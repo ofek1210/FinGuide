@@ -16,6 +16,7 @@ import {
 import { useNavigate, useSearchParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
+import DocumentsRibbonWave from "../components/documents/DocumentsRibbonWave";
 import Loader from "../components/ui/Loader";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
@@ -120,30 +121,33 @@ export default function PayslipsAgentPage() {
   }, []);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
-      <PrivateTopbar />
+    <div data-agent="payslips" style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl", position: "relative" }}>
+      {step === "upload" && <DocumentsRibbonWave />}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <PrivateTopbar />
 
-      {step === "upload" ? (
-        <UploadStep
-          intake={intake}
-          onComplete={(analyzableCount, uploadedDocs) => {
-            setResultsSeedDocs(analyzableCount > 0 ? uploadedDocs : null);
-            setResultsRefreshKey(k => k + 1);
-            setStep("results");
-          }}
-          onBack={() => navigate(APP_ROUTES.hub)}
-        />
-      ) : (
-        <ResultsStep
-          intake={intake}
-          refreshKey={resultsRefreshKey}
-          initialDocs={resultsSeedDocs}
-          onAddMore={() => { setResultsSeedDocs(null); setStep("upload"); }}
-          onEditProfile={() => navigate(APP_ROUTES.onboarding)}
-        />
-      )}
+        {step === "upload" ? (
+          <UploadStep
+            intake={intake}
+            onComplete={(analyzableCount, uploadedDocs) => {
+              setResultsSeedDocs(analyzableCount > 0 ? uploadedDocs : null);
+              setResultsRefreshKey(k => k + 1);
+              setStep("results");
+            }}
+            onBack={() => navigate(APP_ROUTES.hub)}
+          />
+        ) : (
+          <ResultsStep
+            intake={intake}
+            refreshKey={resultsRefreshKey}
+            initialDocs={resultsSeedDocs}
+            onAddMore={() => { setResultsSeedDocs(null); setStep("upload"); }}
+            onEditProfile={() => navigate(APP_ROUTES.onboarding)}
+          />
+        )}
 
-      <AppFooter variant="private" />
+        <AppFooter variant="private" />
+      </div>
     </div>
   );
 }
@@ -164,7 +168,7 @@ function StepIndicator({ step }: { step: WizardStep }) {
           <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
             <span style={{
               width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 13, flex: "none",
-              background: s.state === "active" ? "var(--grad-brand)" : s.state === "done" ? "var(--lav-100)" : "transparent",
+              background: s.state === "active" ? "var(--ink)" : s.state === "done" ? "var(--lav-100)" : "transparent",
               color: s.state === "active" ? "#fff" : s.state === "done" ? "var(--lav-600)" : "var(--text-faint)",
               border: s.state === "todo" ? "1.5px solid var(--border-soft)" : "none",
             }}>
@@ -538,7 +542,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
       {/* toolbar */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "12px 16px", background: "var(--card)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)", marginBottom: 36 }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 9, fontWeight: 800, fontSize: 14.5, color: "var(--text-strong)" }}>
-          <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--grad-brand)", color: "#fff", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 14 }}>{intake.firstName?.charAt(0)?.toUpperCase() ?? "✦"}</span>
+          <span style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--ink)", color: "#fff", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 14 }}>{intake.firstName?.charAt(0)?.toUpperCase() ?? "✦"}</span>
           {intake.firstName || "תוצאות ניתוח"}
         </span>
         <span style={{ marginInlineStart: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -668,10 +672,10 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
 
       {/* ask agent */}
       <div style={{ textAlign: "center", background: "radial-gradient(120% 100% at 50% 0%,var(--lav-100),var(--surface-card))", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "38px 28px", boxShadow: "var(--shadow-soft)" }}>
-        <span style={{ width: 54, height: 54, borderRadius: 15, background: "var(--grad-brand)", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px", boxShadow: "var(--shadow-lav)" }}><Sparkles size={26} /></span>
+        <span style={{ width: 54, height: 54, borderRadius: 15, background: "var(--ink)", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px", boxShadow: "var(--shadow-ink)" }}><Sparkles size={26} /></span>
         <h3 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שאל את הסוכן שאלות</h3>
         <p style={{ margin: "0 auto 22px", maxWidth: 420, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>"למה המשכורת ירדה?" · "כמה מס שילמתי?" · "האם מגיע לי החזר מס?"</p>
-        <PrimaryBtn size="lg" onClick={() => navigate(APP_ROUTES.copilot)} iconLeft={<Sparkles size={18} />}>פתח שיחה עם הסוכן</PrimaryBtn>
+        <PrimaryBtn size="lg" onClick={() => navigate(APP_ROUTES.planning)} iconLeft={<Sparkles size={18} />}>פתח שיחה עם הסוכן</PrimaryBtn>
         <div style={{ marginTop: 16 }}>
           <button onClick={onEditProfile} style={{ background: "none", border: "none", color: "var(--text-faint)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>עדכן פרטים אישיים</button>
         </div>
@@ -735,7 +739,7 @@ function PrimaryBtn({ children, onClick, disabled, fullWidth, size = "md", iconL
   const fs = size === "lg" ? 16 : size === "sm" ? 13.5 : 15;
   return (
     <button type="button" onClick={onClick} disabled={disabled}
-      style={{ width: fullWidth ? "100%" : undefined, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: pad, borderRadius: "var(--r-btn)", border: "none", cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: fs, color: "#fff", background: disabled ? "var(--lav-300)" : "var(--grad-brand)", opacity: disabled ? 0.7 : 1, boxShadow: disabled ? "none" : "var(--shadow-lav)", transition: "opacity var(--dur-fast) var(--ease)" }}>
+      style={{ width: fullWidth ? "100%" : undefined, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: pad, borderRadius: "var(--r-btn)", border: "none", cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: fs, color: "#fff", background: disabled ? "var(--lav-300)" : "var(--ink)", opacity: disabled ? 0.7 : 1, boxShadow: disabled ? "none" : "var(--shadow-ink)", transition: "opacity var(--dur-fast) var(--ease)" }}>
       {iconLeft}{children}{iconRight}
     </button>
   );

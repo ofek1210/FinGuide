@@ -153,7 +153,7 @@ export default function MissingFieldsModal({
                   <span style={{ width: 54, height: 54, borderRadius: "50%", background: "var(--mint-soft)", color: "var(--mint-ink)", display: "grid", placeItems: "center", margin: "0 auto 14px" }}><Check size={26} strokeWidth={3} /></span>
                   <div style={{ fontSize: 16, fontWeight: 900, color: "var(--text-strong)", marginBottom: 6 }}>הפרטים נשמרו!</div>
                   <p style={{ fontSize: 13.5, color: "var(--text-muted)", margin: "0 0 16px" }}>הניתוח יתעדכן בהתאם.</p>
-                  <button onClick={onClose} style={{ padding: "11px 24px", borderRadius: "var(--r-btn)", background: "var(--grad-brand)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 14 }}>סגירה</button>
+                  <button onClick={onClose} style={{ padding: "11px 24px", borderRadius: "var(--r-btn)", background: "var(--ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 14 }}>סגירה</button>
                 </div>
               ) : (
                 <>
@@ -179,7 +179,7 @@ export default function MissingFieldsModal({
                   </div>
                   {saveError && <div style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: "var(--danger)" }}>{saveError}</div>}
                   <button onClick={() => void handleSave()} disabled={saving || filledCount === 0}
-                    style={{ marginTop: 18, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "13px", borderRadius: "var(--r-btn)", border: "none", cursor: saving || filledCount === 0 ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, color: "#fff", background: filledCount === 0 ? "var(--lav-300)" : "var(--grad-brand)", opacity: saving ? 0.8 : 1, boxShadow: filledCount === 0 ? "none" : "var(--shadow-lav)" }}>
+                    style={{ marginTop: 18, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "13px", borderRadius: "var(--r-btn)", border: "none", cursor: saving || filledCount === 0 ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, color: "#fff", background: filledCount === 0 ? "var(--lav-300)" : "var(--ink)", opacity: saving ? 0.8 : 1, boxShadow: filledCount === 0 ? "none" : "var(--shadow-ink)" }}>
                     {saving ? <Loader2 size={16} style={{ animation: "spin .8s linear infinite" }} /> : <Save size={16} />}
                     {saving ? "שומר..." : "שמירת הפרטים"}
                   </button>

@@ -118,7 +118,7 @@ export default function PayslipHistoryPage() {
     return (
       <Shell><main style={{ maxWidth: 920, margin: "0 auto", padding: "60px 24px", textAlign: "center" }}>
         <div style={{ color: "var(--danger)", fontWeight: 700, marginBottom: 14 }}>{error}</div>
-        <button onClick={reload} style={{ padding: "11px 22px", borderRadius: "var(--r-btn)", background: "var(--grad-brand)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>נסה שוב</button>
+        <button onClick={reload} style={{ padding: "11px 22px", borderRadius: "var(--r-btn)", background: "var(--ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>נסה שוב</button>
       </main></Shell>
     );
   }
@@ -128,7 +128,7 @@ export default function PayslipHistoryPage() {
         <span style={{ width: 60, height: 60, borderRadius: 16, background: "var(--lav-100)", color: "var(--lav-600)", display: "grid", placeItems: "center", margin: "0 auto 18px" }}><FileText size={28} strokeWidth={1.85} /></span>
         <h1 style={{ fontSize: 24, fontWeight: 900, color: "var(--text-strong)", margin: "0 0 10px", letterSpacing: "-.02em" }}>אין עדיין תלושים בארכיון</h1>
         <p style={{ fontSize: 15, color: "var(--text-muted)", margin: "0 0 22px" }}>העלה תלושי שכר כדי שהם יופיעו כאן.</p>
-        <button onClick={goUpload} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 26px", borderRadius: "var(--r-btn)", background: "var(--grad-brand)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, boxShadow: "var(--shadow-lav)" }}><Upload size={17} /> העלאת תלושים</button>
+        <button onClick={goUpload} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 26px", borderRadius: "var(--r-btn)", background: "var(--ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, boxShadow: "var(--shadow-ink)" }}><Upload size={17} /> העלאת תלושים</button>
       </main></Shell>
     );
   }
@@ -174,7 +174,7 @@ export default function PayslipHistoryPage() {
             <h1 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,42px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.05, color: "var(--text-strong)" }}>היסטוריית תלושים</h1>
             <p style={{ margin: "8px 0 0", fontSize: 15.5, color: "var(--text-muted)", fontWeight: 500 }}>כל התלושים שהעלית — מנותחים, מתויקים וזמינים בכל רגע.</p>
           </div>
-          <button onClick={goUpload} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 22px", borderRadius: "var(--r-btn)", background: "var(--grad-brand)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, boxShadow: "var(--shadow-lav)" }}><Upload size={17} /> העלאת תלושים</button>
+          <button onClick={goUpload} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 22px", borderRadius: "var(--r-btn)", background: "var(--ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, boxShadow: "var(--shadow-ink)" }}><Upload size={17} /> העלאת תלושים</button>
         </div>
 
         {downloadError && <div style={{ marginBottom: 16, padding: "11px 16px", borderRadius: "var(--r-btn)", background: "#FEF2F2", border: "1px solid rgba(220,38,38,.2)", color: "var(--danger)", fontWeight: 700, fontSize: 13.5 }}>{downloadError}</div>}

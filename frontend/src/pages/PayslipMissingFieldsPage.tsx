@@ -133,7 +133,7 @@ export default function PayslipMissingFieldsPage() {
     return (
       <Shell><main style={{ maxWidth: 600, margin: "0 auto", padding: "60px 24px", textAlign: "center" }}>
         <div style={{ color: "var(--danger)", fontWeight: 700, marginBottom: 14 }}>{error ?? "התלוש לא נמצא."}</div>
-        <button onClick={goHistory} style={{ padding: "11px 22px", borderRadius: "var(--r-btn)", background: "var(--grad-brand)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>חזרה להיסטוריה</button>
+        <button onClick={goHistory} style={{ padding: "11px 22px", borderRadius: "var(--r-btn)", background: "var(--ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800 }}>חזרה להיסטוריה</button>
       </main></Shell>
     );
   }
@@ -203,7 +203,7 @@ export default function PayslipMissingFieldsPage() {
                 <span style={{ width: 56, height: 56, borderRadius: "50%", background: "var(--mint-soft)", color: "var(--mint-ink)", display: "grid", placeItems: "center", margin: "0 auto 14px" }}><Check size={28} strokeWidth={3} /></span>
                 <div style={{ fontSize: 17, fontWeight: 900, color: "var(--text-strong)", marginBottom: 6 }}>הפרטים נשמרו!</div>
                 <p style={{ fontSize: 14, color: "var(--text-muted)", margin: "0 0 18px" }}>עדכנו את התלוש — הניתוח והממצאים ישתקפו בהתאם.</p>
-                <button onClick={goDetail} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: "var(--r-btn)", background: "var(--grad-brand)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, boxShadow: "var(--shadow-lav)" }}>לדוח התלוש</button>
+                <button onClick={goDetail} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: "var(--r-btn)", background: "var(--ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, boxShadow: "var(--shadow-ink)" }}>לדוח התלוש</button>
               </div>
             ) : (
               <>
@@ -232,7 +232,7 @@ export default function PayslipMissingFieldsPage() {
                 {saveError && <div style={{ marginTop: 14, fontSize: 13, fontWeight: 600, color: "var(--danger)" }}>{saveError}</div>}
 
                 <button onClick={() => void handleSave()} disabled={saving || filledCount === 0}
-                  style={{ marginTop: 20, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "14px", borderRadius: "var(--r-btn)", border: "none", cursor: saving || filledCount === 0 ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, color: "#fff", background: filledCount === 0 ? "var(--lav-300)" : "var(--grad-brand)", opacity: saving ? 0.8 : 1, boxShadow: filledCount === 0 ? "none" : "var(--shadow-lav)" }}>
+                  style={{ marginTop: 20, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "14px", borderRadius: "var(--r-btn)", border: "none", cursor: saving || filledCount === 0 ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, color: "#fff", background: filledCount === 0 ? "var(--lav-300)" : "var(--ink)", opacity: saving ? 0.8 : 1, boxShadow: filledCount === 0 ? "none" : "var(--shadow-ink)" }}>
                   {saving ? <Loader2 size={17} style={{ animation: "spin .8s linear infinite" }} /> : <Save size={17} />}
                   {saving ? "שומר..." : "שמירת הפרטים"}
                 </button>

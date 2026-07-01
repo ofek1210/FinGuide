@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ChevronRight, Check, FileText, Sparkles } from "lucide-react";
 import Loader from "../components/ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
@@ -124,6 +124,8 @@ function buildSectionPatch(section: Section, d: FlowData): OnboardingPatch {
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editMode = searchParams.get("edit") === "1";
   const { refresh } = useAuth();
 
   const [i, setI] = useState(0);
@@ -153,7 +155,8 @@ export default function OnboardingPage() {
       if (!alive) return;
       setLoading(false);
       if (!res.success) { setError(res.message ?? "לא הצלחנו לטעון."); return; }
-      if (res.data?.completed) { await refresh(); navigate(APP_ROUTES.hub, { replace: true }); return; }
+      // first-time flow redirects completed users out; edit mode stays to update.
+      if (res.data?.completed && !editMode) { await refresh(); navigate(APP_ROUTES.hub, { replace: true }); return; }
       const p = res.data?.data;
       if (p) {
         const ins: string[] = [];
@@ -184,7 +187,7 @@ export default function OnboardingPage() {
       }
     })();
     return () => { alive = false; };
-  }, [navigate, refresh]);
+  }, [navigate, refresh, editMode]);
 
   const set = useCallback((patch: Partial<FlowData>) => {
     setData(d => ({ ...d, ...patch }));
@@ -232,8 +235,8 @@ export default function OnboardingPage() {
       return;
     }
     await refresh();
-    navigate(APP_ROUTES.hub, { replace: true });
-  }, [busy, navigate, refresh]);
+    navigate(editMode ? APP_ROUTES.settings : APP_ROUTES.hub, { replace: true });
+  }, [busy, navigate, refresh, editMode]);
 
   if (loading) {
     return (
@@ -257,7 +260,7 @@ export default function OnboardingPage() {
 
       {/* header */}
       <header style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", gap: 16 }}>
-        <button type="button" onClick={() => navigate(APP_ROUTES.hub)} style={{ padding: "9px 18px", borderRadius: "var(--r-btn)", border: "1.5px solid var(--border-soft)", background: "var(--card)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, color: "var(--text-body)", whiteSpace: "nowrap" }}>שמירה ויציאה</button>
+        <button type="button" onClick={() => navigate(editMode ? APP_ROUTES.settings : APP_ROUTES.hub)} style={{ padding: "9px 18px", borderRadius: "var(--r-btn)", border: "1.5px solid var(--border-soft)", background: "var(--card)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14, color: "var(--text-body)", whiteSpace: "nowrap" }}>שמירה ויציאה</button>
 
         {!isIntro && !isDone && curSection && <ProgressBar value={overall} label={SECTION_LABEL[curSection]} />}
 
@@ -362,8 +365,8 @@ function PrimaryButton({ children, disabled, onClick }: { children: React.ReactN
       style={{
         width: "100%", padding: "15px 24px", borderRadius: "var(--r-btn)", border: "none",
         cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16,
-        color: "#fff", background: disabled ? "var(--lav-300)" : "var(--grad-brand)",
-        opacity: disabled ? 0.7 : 1, boxShadow: disabled ? "none" : "var(--shadow-lav)",
+        color: "#fff", background: disabled ? "var(--lav-300)" : "var(--ink)",
+        opacity: disabled ? 0.7 : 1, boxShadow: disabled ? "none" : "var(--shadow-ink)",
         transition: "opacity var(--dur-fast) var(--ease)",
       }}>
       {children}
@@ -526,7 +529,7 @@ function Intro({ onStart }: { onStart: () => void }) {
       </span>
       <h1 style={{ fontSize: "clamp(30px,4vw,46px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.08, margin: "0 0 18px", color: "var(--ink)" }}>בוא נכיר אותך.<br />ואת הכסף שלך.</h1>
       <p style={{ fontSize: 18, color: "var(--text-muted)", lineHeight: 1.6, fontWeight: 500, margin: "0 0 34px" }}>כמה שאלות קצרות שיעזרו ל‑AI לבנות לך תמונה פיננסית מדויקת — תלוש, פנסיה, ביטוח וזכויות. אפשר לעצור ולחזור בכל רגע.</p>
-      <button type="button" onClick={onStart} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "15px 30px", borderRadius: "var(--r-btn)", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16, color: "#fff", background: "var(--grad-brand)", boxShadow: "var(--shadow-lav)" }}>
+      <button type="button" onClick={onStart} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "15px 30px", borderRadius: "var(--r-btn)", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16, color: "#fff", background: "var(--ink)", boxShadow: "var(--shadow-ink)" }}>
         בוא נתחיל <ArrowLeft size={18} strokeWidth={2.4} />
       </button>
     </div>
@@ -540,7 +543,7 @@ function Done({ busy, error, onFinish }: { busy: boolean; error: string | null; 
       <div style={{ width: 92, height: 92, borderRadius: "50%", margin: "0 auto 28px", display: "grid", placeItems: "center", background: "var(--grad-prism)", color: "var(--ink)", boxShadow: "var(--shadow-card)" }}><Check size={44} strokeWidth={3} /></div>
       <h1 style={{ fontSize: "clamp(28px,3.6vw,42px)", fontWeight: 900, letterSpacing: "-.03em", lineHeight: 1.1, margin: "0 0 16px", color: "var(--ink)" }}>הכל מוכן.</h1>
       <p style={{ fontSize: 18, color: "var(--text-muted)", lineHeight: 1.6, fontWeight: 500, margin: "0 0 34px" }}>בנינו את הפרופיל הפיננסי שלך. עכשיו ה‑AI מנתח ומחפש בדיוק איפה מגיע לך יותר.</p>
-      <button type="button" onClick={onFinish} disabled={busy} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "15px 30px", borderRadius: "var(--r-btn)", border: "none", cursor: busy ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16, color: "#fff", background: "var(--grad-brand)", boxShadow: "var(--shadow-lav)", opacity: busy ? 0.75 : 1 }}>
+      <button type="button" onClick={onFinish} disabled={busy} style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "15px 30px", borderRadius: "var(--r-btn)", border: "none", cursor: busy ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16, color: "#fff", background: "var(--ink)", boxShadow: "var(--shadow-ink)", opacity: busy ? 0.75 : 1 }}>
         {busy ? "רגע..." : "לתפריט העוזר האישי"} {!busy && <ArrowLeft size={18} strokeWidth={2.4} />}
       </button>
       {error && <div style={{ marginTop: 18, color: "var(--danger)", fontWeight: 600, fontSize: 14 }}>{error}</div>}
