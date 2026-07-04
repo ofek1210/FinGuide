@@ -4,8 +4,10 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
+import MasterAgentPanel from "../components/hub/MasterAgentPanel";
 import { APP_ROUTES } from "../types/navigation";
 import { AGENTS, type AgentId } from "../theme/agents";
+import type { FullAnalysisGlobalScore } from "../api/fullAnalysis.api";
 
 /* ============================================================
    Hub — editorial command center in the FinGuide design language:
@@ -214,11 +216,52 @@ const FINDINGS = [
 
 const DOT = "radial-gradient(rgba(123,95,214,.10) 1px,transparent 1px)";
 
+/* Live financial-health card wiring. Category ids/tones come from
+   financialHealthScoreService (documentCompleteness, salaryStability,
+   taxReadiness, pensionConsistency, riskInsurance). We surface the
+   three that mirror the original card: tax · pension · insurance. */
+const CATEGORY_TONE: Record<string, string> = {
+  taxReadiness: "var(--mint-ink)",
+  pensionConsistency: "var(--lav-300)",
+  riskInsurance: "var(--peach)",
+  documentCompleteness: "var(--lav-300)",
+  salaryStability: "var(--mint-ink)",
+};
+const HEALTH_CARD_KEYS = ["taxReadiness", "pensionConsistency", "riskInsurance"];
+
+const STATIC_HEALTH_CATEGORIES = [
+  { k: "ניצול הטבות מס", v: "82%", c: "var(--mint-ink)" },
+  { k: "יעילות פנסיה", v: "71%", c: "var(--lav-300)" },
+  { k: "כיסוי ביטוחי", v: "68%", c: "var(--peach)" },
+];
+
 export default function HubPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [heroRef, heroSeen] = useInView<HTMLDivElement>();
   const total = useCountUp(21830, heroSeen, 1300);
+
+  // Live financial-health score produced by the master agent panel.
+  // When present it drives the opportunity band's health card (merged view).
+  const [liveScore, setLiveScore] = useState<FullAnalysisGlobalScore | null>(null);
+
+  const healthValue = liveScore?.score ?? 78;
+  const healthLabel = liveScore?.label ?? "מצב טוב";
+  const healthCategories = (() => {
+    const cats = liveScore?.categories ?? [];
+    if (cats.length === 0) return STATIC_HEALTH_CATEGORIES;
+    // Prefer tax · pension · insurance (mirrors the original card); else first 3.
+    const preferred = HEALTH_CARD_KEYS.flatMap(key => {
+      const found = cats.find(c => c.id === key);
+      return found ? [found] : [];
+    });
+    const chosen = (preferred.length > 0 ? preferred : cats).slice(0, 3);
+    return chosen.map(c => ({
+      k: c.label ?? "קטגוריה",
+      v: `${Math.round((c.score / (c.maxScore || 100)) * 100)}%`,
+      c: (c.id && CATEGORY_TONE[c.id]) || "var(--lav-300)",
+    }));
+  })();
 
   const base = [697, 760, 880, 1020, 1240, 1560, 1980, 2410, 2610];
   const opt = [697, 800, 980, 1230, 1580, 2080, 2680, 3260, 3654];
@@ -266,16 +309,18 @@ export default function HubPage() {
                 ממש את ההזדמנויות <ArrowLeft size={17} strokeWidth={2.4} />
               </button>
             </div>
-            {/* floating health card */}
+            {/* floating health card — fed live by the master agent panel */}
             <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "var(--r-md)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
               <div style={{ alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 13.5, fontWeight: 800 }}>בריאות פיננסית</span>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: "rgba(255,255,255,.14)", borderRadius: 999, padding: "3px 10px" }}>6+ החודש</span>
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: liveScore ? "rgba(72,201,139,.28)" : "rgba(255,255,255,.14)", borderRadius: 999, padding: "3px 10px" }}>
+                  {liveScore ? "מעודכן · הסוכן הראשי" : "6+ החודש"}
+                </span>
               </div>
-              <RadialGauge value={78} sub="מצב טוב" tone="lavender" size={148} onDark />
+              <RadialGauge value={healthValue} sub={healthLabel} tone="lavender" size={148} onDark />
               <div style={{ alignSelf: "stretch", display: "flex", flexDirection: "column", gap: 9, marginTop: 4 }}>
-                {([["ניצול הטבות מס", "82%", "var(--mint-ink)"], ["יעילות פנסיה", "71%", "var(--lav-300)"], ["כיסוי ביטוחי", "68%", "var(--peach)"]] as const).map(([k, v, c]) => (
-                  <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
+                {healthCategories.map(({ k, v, c }, i) => (
+                  <div key={`${k}-${i}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
                     <span style={{ color: "rgba(255,255,255,.62)", fontWeight: 500 }}>{k}</span>
                     <span style={{ fontWeight: 800, color: c, fontVariantNumeric: "tabular-nums" }}>{v}</span>
                   </div>
@@ -285,14 +330,19 @@ export default function HubPage() {
           </div>
         </div>
 
-        {/* AGENTS — centered headline + showcase cards */}
-        <div style={{ textAlign: "center", marginBottom: 26 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 800, letterSpacing: ".12em", color: "var(--lav-600)" }}>
-            <Sparkles size={18} color="var(--lav-500)" />
-            שלושה סוכני AI
-          </span>
-          <h2 style={{ margin: "10px 0 0", fontSize: "clamp(26px,3vw,36px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שלושה סוכנים. כל אחד מומחה בתחומו.</h2>
-          <p style={{ margin: "12px auto 0", maxWidth: 480, fontSize: 16, color: "var(--text-muted)", fontWeight: 500, lineHeight: 1.55 }}>תלושים · ביטוח · פנסיה — שלושה סוכני AI שעובדים עליך במקביל, מסביב לשעון.</p>
+        {/* MASTER AGENT PANEL — live orchestrator console */}
+        <MasterAgentPanel onResult={r => setLiveScore(r.globalScore ?? null)} />
+
+        {/* AGENTS — enter each specialist */}
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
+          <div>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 800, letterSpacing: ".12em", color: "var(--lav-600)" }}>
+              <Sparkles size={17} color="var(--lav-500)" />
+              מרכז הסוכנים
+            </span>
+            <h2 style={{ margin: "8px 0 0", fontSize: "clamp(24px,2.6vw,32px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>היכנס לכל סוכן בנפרד.</h2>
+          </div>
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 15, fontWeight: 500, maxWidth: 300, textWrap: "balance" }}>כל סוכן מנהל את התחום שלו — לחץ כדי לצלול פנימה.</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20, marginBottom: 46 }}>
           {AGENTS.map(a => {
