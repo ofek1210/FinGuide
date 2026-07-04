@@ -11,8 +11,9 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { retrieveContext } = require('../embeddings/ragService');
+const llmBudget = require('../llmBudget');
 
-const CHAT_MODEL = process.env.CHAT_MODEL || 'claude-sonnet-4-20250514';
+const CHAT_MODEL = process.env.CHAT_MODEL || 'claude-haiku-4-5';
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1:8b';
 
@@ -110,15 +111,17 @@ class BaseAgent {
       .map(m => ({ role: m.role, content: String(m.content || '').slice(0, 1500) }));
 
     // Try Claude first
-    if (client) {
+    if (client && llmBudget.canSpend()) {
       try {
         const response = await client.messages.create({
           model: CHAT_MODEL,
-          max_tokens: 1200,
+          max_tokens: llmBudget.cap(1200),
           temperature: 0.3,
           system: fullSystemPrompt,
           messages: [...historyMessages, { role: 'user', content: query }],
         });
+
+        llmBudget.record(response.usage);
 
         const text = response.content
           ?.filter(block => block.type === 'text')
