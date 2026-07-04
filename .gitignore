@@ -47,6 +47,11 @@ tmp/
 temp/
 backend/.work/
 
+# Local pension upload parse previews (user clearinghouse data — never commit)
+/products.json
+/products-parsed.json
+/products-*.json
+
 # Claude Code workspace artifacts
 .claude/agent-memory/
 .claude/projects/
