@@ -15,6 +15,7 @@ import GlassCard from "../components/ui/GlassCard";
 import PensionAdvisor from "../components/pension/PensionAdvisor";
 import PensionImportGuide from "../components/pension/PensionImportGuide";
 import PensionUpload from "../components/pension/PensionUpload";
+import PensionOnboardingWizard from "../components/pension/PensionOnboardingWizard";
 import {
   getPensionAnalysis,
   simulatePensionScenario,
@@ -41,7 +42,7 @@ const EMPTY_FORM: UploadPensionBody = {
   managementFeeAccumulation: 0.003, managementFeeDeposit: 0.001,
 };
 
-type FlowStep = "landing" | "guide" | "upload" | "results";
+type FlowStep = "landing" | "onboarding" | "guide" | "upload" | "results";
 
 export default function PensionPage() {
   const navigate = useNavigate();
@@ -176,7 +177,21 @@ export default function PensionPage() {
     </div>
   );
 
-  // Step 1/2 — green zigzag guide
+  // 2-option onboarding wizard (free manual vs paid clearinghouse)
+  if (step === "onboarding") {
+    return shell(
+      <PensionOnboardingWizard
+        onBack={() => setStep("landing")}
+        onComplete={async () => {
+          await loadFunds();
+          await loadAnalysis();
+          setStep("results");
+        }}
+      />,
+    );
+  }
+
+  // Step 1/2 — green zigzag guide (legacy path)
   if (step === "guide") {
     return shell(
       <PensionImportGuide
@@ -250,7 +265,7 @@ export default function PensionPage() {
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
             onSimulate={handleSimulate}
-            onReimport={() => setStep("guide")}
+            onReimport={() => setStep("onboarding")}
             onOpenChat={() => navigate(APP_ROUTES.assistant)}
           />
         </div>
@@ -271,7 +286,7 @@ export default function PensionPage() {
           domain="pension"
           step="landing"
           progressSteps={UPLOAD_PROGRESS_STEPS}
-          onImport={() => setStep("guide")}
+          onImport={() => setStep("onboarding")}
           onManual={() => { setStep("results"); setShowAddForm(true); }}
           visitedSite={visitedSite}
           onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); setVisitedSite(true); }}

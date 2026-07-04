@@ -12,7 +12,7 @@ const pensionImportSnapshotSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['har_hakesef', 'quarterly_report'],
+      enum: ['har_hakesef', 'quarterly_report', 'clearinghouse', 'free_report'],
       required: true,
     },
     sourceFile: { type: String, default: null },
