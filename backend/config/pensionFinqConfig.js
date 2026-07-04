@@ -13,7 +13,15 @@ module.exports = {
   FINQ_LEADING_FUNDS_PATH: process.env.FINQ_LEADING_FUNDS_PATH || '/pensions/leadingfunds',
   FINQ_FUND_DETAIL_PATH: process.env.FINQ_FUND_DETAIL_PATH || '/pensions/funds',
   DEFAULT_CATEGORY: process.env.FINQ_PENSION_CATEGORY || 'COMPERHENSIVE',
-  DEFAULT_SORT: process.env.FINQ_PENSION_SORT || 'yield_3_years',
+  /** Finq enum — e.g. finqRank, yield36Months, yield12Months, avgAnnualManagementFee */
+  DEFAULT_SORT: process.env.FINQ_PENSION_SORT || 'yield36Months',
   RISK_LEVELS: ['LOW', 'MEDIUM', 'HIGH', 'INCREASED'],
   DEFAULT_RISK: 'MEDIUM',
+  /** UI risk cohort → Finq `riskLevel` query (smallint 1–4). */
+  RISK_TO_FINQ_LEVEL: {
+    LOW: 1,
+    MEDIUM: 2,
+    HIGH: 3,
+    INCREASED: 4,
+  },
 };
