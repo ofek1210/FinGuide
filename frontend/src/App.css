@@ -7771,6 +7771,54 @@
 
 .floating-assistant-messages .ai-message {
   max-width: 90%;
+  color: var(--text-body, #3A3947);
+  background: var(--card, #fff);
+  border: 1px solid var(--border-hair, rgba(22, 21, 28, .08));
+}
+
+.floating-assistant-messages .ai-message.user {
+  background: var(--lav-100, #F4EEFF);
+  border-color: var(--lav-200, #E4D7FF);
+  color: var(--ink, #16151C);
+}
+
+.floating-assistant-messages .ai-message.assistant {
+  background: var(--card, #fff);
+  border-color: var(--border-soft, rgba(22, 21, 28, .12));
+  color: var(--text-body, #3A3947);
+}
+
+.floating-assistant-panel .ai-copy-btn {
+  color: var(--lav-600, #7C5FD6);
+}
+
+.floating-assistant-panel .ai-suggestion {
+  background: var(--lav-100, #F4EEFF);
+  border: 1px solid var(--lav-200, #E4D7FF);
+  color: var(--lav-700, #5E45B0);
+}
+
+.floating-assistant-panel .ai-suggestion:hover:not(:disabled) {
+  background: var(--lav-200, #E4D7FF);
+}
+
+.floating-assistant-panel .ai-input input {
+  background: var(--surface-sunken, #F6F4FA);
+  border: 1px solid var(--border-soft, rgba(22, 21, 28, .12));
+  color: var(--ink, #16151C);
+}
+
+.floating-assistant-panel .ai-input input::placeholder {
+  color: var(--text-faint, #9B9AA6);
+}
+
+.floating-assistant-panel .ai-send {
+  background: var(--ink, #16151C);
+  color: #fff;
+}
+
+.floating-assistant-panel .ai-error {
+  color: var(--danger, #D64545);
 }
 
 .floating-assistant-suggestions {

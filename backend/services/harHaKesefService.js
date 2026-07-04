@@ -54,8 +54,42 @@ function resolveRiskLevel(track = '') {
 function resolveActive(status = '') {
   const s = String(status).trim();
   if (!s) return true;
-  if (/סגור|לא פעיל|מוקפ|inactive|closed/i.test(s)) return false;
+  if (/סגור|לא פעיל|מוקפ|inactive|closed|שבוטל/i.test(s)) return false;
   return /פעיל|active/i.test(s) ? true : true;
+}
+
+/**
+ * Parse combined product labels from Har HaKesef exports, e.g. "קרן פנסיה - לא פעילה".
+ * @param {string} productString
+ * @returns {{ rawName: string, cleanType: string, status: 'ACTIVE'|'INACTIVE'|'UNKNOWN' }}
+ */
+function parseProductType(productString) {
+  const rawName = String(productString ?? '').trim();
+  if (!rawName) {
+    return { rawName: '', cleanType: '', status: 'UNKNOWN' };
+  }
+
+  let status = 'UNKNOWN';
+  if (rawName.includes('לא פעילה') || rawName.includes('שבוטל')) {
+    status = 'INACTIVE';
+  } else if (rawName.includes('פעילה')) {
+    status = 'ACTIVE';
+  }
+
+  const cleanType = rawName
+    .replace(/\s*-\s*לא פעילה\s*/g, '')
+    .replace(/\s*-\s*פעילה\s*/g, '')
+    .replace(/\s*-\s*שבוטל[ה]?\s*/g, '')
+    .trim();
+
+  return { rawName, cleanType, status };
+}
+
+function resolveActiveFromProduct(parsed, statusRaw = '') {
+  if (String(statusRaw).trim()) return resolveActive(statusRaw);
+  if (parsed.status === 'ACTIVE') return true;
+  if (parsed.status === 'INACTIVE') return false;
+  return true;
 }
 
 function findColumnIndex(headers, ...candidates) {
@@ -81,7 +115,8 @@ function parseExportDate(rows) {
 function buildFundFromRow(row, colIdx, warnings) {
   const provider = String(row[colIdx.provider] ?? '').trim() || null;
   const fundName = String(row[colIdx.fundName] ?? '').trim();
-  const productType = String(row[colIdx.productType] ?? '').trim();
+  const productRaw = String(row[colIdx.productType] ?? '').trim();
+  const parsedProduct = parseProductType(productRaw);
   const accountNumber = String(row[colIdx.accountNumber] ?? '').trim() || null;
 
   if (!fundName && !provider) return null;
@@ -93,14 +128,15 @@ function buildFundFromRow(row, colIdx, warnings) {
   const managementFeeDeposit = normalizeFee(row[colIdx.mgmtFeeDeposit]);
   const investmentTrack = String(row[colIdx.track] ?? '').trim() || null;
   const statusRaw = String(row[colIdx.status] ?? '').trim();
+  const isActive = resolveActiveFromProduct(parsedProduct, statusRaw);
 
   if (currentBalance == null) {
     warnings.push(`חסרה יתרה עבור ${fundName || provider}`);
   }
 
   return {
-    fundName: fundName || `${provider} - ${productType || 'קרן'}`,
-    fundType: resolveFundType(productType || fundName),
+    fundName: fundName || `${provider} - ${parsedProduct.cleanType || productRaw || 'קרן'}`,
+    fundType: resolveFundType(parsedProduct.cleanType || productRaw || fundName),
     provider,
     accountNumber,
     currentBalance,
@@ -110,8 +146,10 @@ function buildFundFromRow(row, colIdx, warnings) {
     managementFeeDeposit,
     investmentTrack,
     riskLevel: resolveRiskLevel(investmentTrack),
-    isActive: resolveActive(statusRaw),
-    status: resolveActive(statusRaw) ? 'active' : 'closed',
+    isActive,
+    status: isActive ? 'active' : 'closed',
+    productRawName: parsedProduct.rawName || null,
+    productCleanType: parsedProduct.cleanType || null,
   };
 }
 
@@ -213,13 +251,16 @@ function parseHarHaKesefText(text) {
     const parts = line.split(/\s{2,}/).map(p => p.trim()).filter(Boolean);
     if (parts.length < 3) continue;
 
-    const [provider, fundName, productType, accountNumber, balanceStr, empDep, emplDep, feeStr, track, status] = parts;
+    const [provider, fundName, productTypeRaw, accountNumber, balanceStr, empDep, emplDep, feeStr, track, status] = parts;
 
     if (!provider || provider === 'חברה מנהלת') continue;
 
+    const parsedProduct = parseProductType(productTypeRaw || '');
+    const isActive = resolveActiveFromProduct(parsedProduct, status || '');
+
     const fund = {
-      fundName: fundName || `${provider} - ${productType || 'קרן'}`,
-      fundType: resolveFundType(productType || fundName || ''),
+      fundName: fundName || `${provider} - ${parsedProduct.cleanType || productTypeRaw || 'קרן'}`,
+      fundType: resolveFundType(parsedProduct.cleanType || productTypeRaw || fundName || ''),
       provider,
       accountNumber: accountNumber || null,
       currentBalance: safeNum(balanceStr),
@@ -229,8 +270,10 @@ function parseHarHaKesefText(text) {
       managementFeeDeposit: null,
       investmentTrack: track || null,
       riskLevel: resolveRiskLevel(track || ''),
-      isActive: resolveActive(status || ''),
-      status: resolveActive(status || '') ? 'active' : 'closed',
+      isActive,
+      status: isActive ? 'active' : 'closed',
+      productRawName: parsedProduct.rawName || null,
+      productCleanType: parsedProduct.cleanType || null,
       rawData: { line },
     };
 
@@ -349,4 +392,5 @@ module.exports = {
   parseHarHaKesefExcel,
   parseHarHaKesefText,
   resolveFundType,
+  parseProductType,
 };

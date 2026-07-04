@@ -7,9 +7,11 @@ const PensionFund = require('../models/PensionFund');
 const { norm, upsertImportedRecords } = require('./importMergeService');
 
 const SOURCE_PRIORITY = {
+  clearinghouse: 4,
   quarterly_report: 3,
   har_hakesef: 2,
-  manual: 1,
+  free_report: 1,
+  manual: 0,
 };
 
 function fundMergeKey(fund) {
@@ -56,8 +58,17 @@ function mergeFundRecord(existing, incoming, importSource) {
       importSource === 'quarterly_report' || preferIncoming,
     ),
     riskLevel: pickBetter(existing.riskLevel, incoming.riskLevel, preferIncoming),
-    status: incoming.status || existing.status || 'active',
-    isActive: incoming.isActive !== false,
+    ytdReturn: pickBetter(existing.ytdReturn, incoming.ytdReturn, preferIncoming),
+    activityStatus: pickBetter(existing.activityStatus, incoming.activityStatus, preferIncoming),
+    insuranceCoverages: incoming.insuranceCoverages?.length
+      ? incoming.insuranceCoverages
+      : (existing.insuranceCoverages || []),
+    status: preferIncoming
+      ? (incoming.status ?? existing.status ?? 'active')
+      : (existing.status ?? incoming.status ?? 'active'),
+    isActive: preferIncoming
+      ? incoming.isActive !== false
+      : existing.isActive !== false,
     source: existing.source === 'manual' && importSource !== 'manual' ? existing.source : importSource,
     sourceFile: incoming.sourceFile || existing.sourceFile,
     rawData: incoming.rawData || existing.rawData,

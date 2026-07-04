@@ -11,12 +11,13 @@
 import { useEffect, useState } from "react";
 import {
   PiggyBank, TrendingUp, Upload, Plus, X, Check, AlertTriangle,
-  BarChart3, Sparkles, Loader2, Trash2, type LucideIcon,
+  Sparkles, Loader2, Trash2, type LucideIcon,
 } from "lucide-react";
+import PensionLeadingFundsTable from "./PensionLeadingFundsTable";
 import { formatCurrencyOrDash } from "../../utils/formatters";
-import { FUND_TYPE_LABELS, RANK_BADGE } from "../../utils/pensionDisplay";
+import { FUND_TYPE_LABELS, RANK_BADGE, isPensionFundActive } from "../../utils/pensionDisplay";
 import type {
-  PensionAnalysisData, PensionFundDTO, SimulationResponse, UploadPensionBody,
+  PensionAnalysisData, PensionFundDTO, UploadPensionBody,
   PensionBenchmarkFundDTO, PensionRecommendationDTO, PensionHealthCategoryDTO,
 } from "../../api/pension.api";
 
@@ -71,22 +72,15 @@ type Props = {
   saving: boolean;
   saveMsg: { type: "success" | "error"; text: string } | null;
   deletingId: string | null;
-  simAge: string; setSimAge: (v: string) => void;
-  simExtra: string; setSimExtra: (v: string) => void;
-  simFee: string; setSimFee: (v: string) => void;
-  simResult: SimulationResponse["data"] | null;
-  simLoading: boolean;
   onSaveFund: () => void;
   onDeleteFund: (id: string) => void;
-  onSimulate: () => void;
   onReimport: () => void;
   onOpenChat: () => void;
 };
 
 export default function PensionAdvisor({
   data, funds, showAddForm, setShowAddForm, form, setForm, saving, saveMsg, deletingId,
-  simAge, setSimAge, simExtra, setSimExtra, simFee, setSimFee, simResult, simLoading,
-  onSaveFund, onDeleteFund, onSimulate, onReimport, onOpenChat,
+  onSaveFund, onDeleteFund, onReimport, onOpenChat,
 }: Props) {
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
@@ -121,16 +115,22 @@ export default function PensionAdvisor({
   (benchmark?.funds ?? []).forEach(b => { benchByFund.set(b.fundId, b); benchByFund.set(b.fundName, b); });
   const fundBench = (f: PensionFundDTO) => benchByFund.get(f.id) ?? benchByFund.get(f.fundName);
 
+  const activeFunds = funds.filter(isPensionFundActive);
+  const inactiveFunds = funds.filter(f => !isPensionFundActive(f));
+
   // empty state — no pension data yet
   if (!hasData && funds.length === 0 && !showAddForm) {
     return (
-      <main style={{ maxWidth: 720, margin: "0 auto", padding: "60px 24px", textAlign: "center" }}>
-        <span style={{ width: 64, height: 64, borderRadius: 18, margin: "0 auto 18px", background: "var(--mint-soft)", color: "var(--mint-ink)", display: "grid", placeItems: "center" }}><PiggyBank size={30} /></span>
-        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>אין עדיין נתוני פנסיה</h1>
-        <p style={{ margin: "10px 0 22px", fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>ייבא דוח מהר הכסף או הוסף קרן ידנית כדי לקבל ניתוח, תחזית והמלצות מותאמות.</p>
-        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={onReimport} style={btnPrimary}><Upload size={16} /> ייבוא מהר הכסף</button>
-          <button onClick={() => setShowAddForm(true)} style={btnGhost}><Plus size={16} /> הוסף קרן ידנית</button>
+      <main style={{ maxWidth: 1080, margin: "0 auto", padding: "8px 0 40px" }}>
+        <PensionLeadingFundsTable />
+        <div style={{ maxWidth: 720, margin: "32px auto 0", padding: "0 24px", textAlign: "center" }}>
+          <span style={{ width: 64, height: 64, borderRadius: 18, margin: "0 auto 18px", background: "var(--mint-soft)", color: "var(--mint-ink)", display: "grid", placeItems: "center" }}><PiggyBank size={30} /></span>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>אין עדיין נתוני פנסיה</h1>
+          <p style={{ margin: "10px 0 22px", fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>ייבא דוח מהר הכסף או הוסף קרן ידנית כדי לקבל ניתוח, תחזית והמלצות מותאמות.</p>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            <button onClick={onReimport} style={btnPrimary}><Upload size={16} /> ייבוא מהר הכסף</button>
+            <button onClick={() => setShowAddForm(true)} style={btnGhost}><Plus size={16} /> הוסף קרן ידנית</button>
+          </div>
         </div>
       </main>
     );
@@ -145,7 +145,12 @@ export default function PensionAdvisor({
             <PiggyBank size={14} /> סוכן עוזר פנסיוני
           </span>
           <h1 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,42px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.04, color: "var(--text-strong)" }}>ניתוח הפנסיה שלך</h1>
-          <p style={{ margin: "8px 0 0", fontSize: 15.5, color: "var(--text-muted)", fontWeight: 500 }}>{funds.length} קרנות פעילות · גיל פרישה {summary?.retirementAge ?? 67} · עודכן היום</p>
+          <p style={{ margin: "8px 0 0", fontSize: 15.5, color: "var(--text-muted)", fontWeight: 500 }}>
+            {activeFunds.length} פעילות
+            {inactiveFunds.length > 0 ? ` · ${inactiveFunds.length} לא פעילות` : ""}
+            {funds.length > 0 ? ` · ${funds.length} סה"כ` : ""}
+            {" · "}גיל פרישה {summary?.retirementAge ?? 67} · עודכן היום
+          </p>
         </div>
         <div style={{ display: "flex", gap: 9 }}>
           <button onClick={() => setShowAddForm(v => !v)} style={btnGhost}><Upload size={16} /> הוסף קרן</button>
@@ -241,6 +246,8 @@ export default function PensionAdvisor({
         </div>
       )}
 
+      <PensionLeadingFundsTable />
+
       {/* recommendations by impact */}
       {recs.length > 0 && (
         <div style={{ marginBottom: 18 }}>
@@ -272,46 +279,15 @@ export default function PensionAdvisor({
         </div>
       )}
 
-      {/* simulation + funds */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, marginBottom: 18 }}>
-        {/* simulation */}
-        <div style={cardBox}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 16 }}>
-            <span style={{ width: 30, height: 30, borderRadius: 8, background: "var(--mint-soft)", color: "var(--mint-ink)", display: "grid", placeItems: "center" }}><BarChart3 size={16} /></span>
-            <span style={{ fontSize: 15.5, fontWeight: 800, color: "var(--text-strong)" }}>סימולציית תרחישים</span>
-          </div>
-          {!hasData ? (
-            <div style={{ fontSize: 14, color: "var(--text-muted)", textAlign: "center", padding: "20px 0" }}>הוסף קרן פנסיה כדי להפעיל את הסימולציה</div>
-          ) : (
-            <>
-              <SimField label="גיל פרישה" value={simAge} set={setSimAge} placeholder={String(summary?.retirementAge ?? 67)} />
-              <SimField label="הפקדה נוספת (₪/חודש)" value={simExtra} set={setSimExtra} placeholder="0" suffix="₪" />
-              <SimField label="דמי ניהול יעד (%)" value={simFee} set={setSimFee} placeholder={((summary?.currentMgmtFee ?? 0.005) * 100).toFixed(2)} suffix="%" />
-              <button onClick={onSimulate} disabled={simLoading} style={{ ...btnPrimary, width: "100%", justifyContent: "center", marginTop: 4 }}>
-                {simLoading ? <Loader2 size={15} style={{ animation: "spin .8s linear infinite" }} /> : <TrendingUp size={15} />}
-                {simLoading ? "מחשב…" : "הרץ סימולציה"}
-              </button>
-              {simResult && (
-                <div style={{ marginTop: 14, padding: "14px 16px", borderRadius: "var(--r-sm)", background: "var(--mint-soft)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--ink-soft)" }}>צבירה משוערת</div>
-                    {simResult.delta.accumulationDiff !== 0 && (
-                      <div style={{ fontSize: 11.5, fontWeight: 700, color: simResult.delta.accumulationDiff > 0 ? "var(--mint-ink)" : "var(--danger)", marginTop: 2 }}>
-                        {simResult.delta.accumulationDiff > 0 ? "+" : ""}{fmt(simResult.delta.accumulationDiff)} מול הבסיס
-                      </div>
-                    )}
-                  </div>
-                  <span style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-.03em", color: "var(--mint-ink)" }}>{fmt(simResult.simulation.projectedAccumulation)}</span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* funds */}
-        <div style={cardBox}>
+      {/* funds */}
+      <div style={{ ...cardBox, marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <span style={{ fontSize: 15.5, fontWeight: 800, color: "var(--text-strong)" }}>קרנות פנסיה <span style={{ color: "var(--text-faint)", fontWeight: 700 }}>{funds.length} פעילות</span></span>
+            <span style={{ fontSize: 15.5, fontWeight: 800, color: "var(--text-strong)" }}>
+              קרנות ומוצרים{" "}
+              <span style={{ color: "var(--text-faint)", fontWeight: 700 }}>
+                {activeFunds.length} פעילות{inactiveFunds.length > 0 ? ` · ${inactiveFunds.length} ארכיון` : ""}
+              </span>
+            </span>
             <button onClick={() => setShowAddForm(v => !v)} style={{ ...btnGhost, padding: "7px 13px", fontSize: 13 }}>{showAddForm ? <X size={15} /> : <Upload size={15} />}{showAddForm ? "ביטול" : "הוסף קרן"}</button>
           </div>
 
@@ -335,31 +311,15 @@ export default function PensionAdvisor({
               <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-muted)" }}>אין קרנות עדיין. הוסף קרן ראשונה.</div>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {funds.map(f => {
-                const bf = fundBench(f);
-                const rank = bf ? RANK_BADGE[bf.rankLabel] ?? RANK_BADGE.unknown : null;
-                return (
-                  <div key={f.id} style={{ padding: "14px 15px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)", border: "1px solid var(--border-hair)" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: 14.5, color: "var(--text-strong)", marginBottom: 3 }}>{f.fundName}</div>
-                        <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{FUND_TYPE_LABELS[f.fundType] ?? f.fundType}{f.provider ? ` · ${f.provider}` : ""} · {(f.managementFeeAccumulation * 100).toFixed(2)}%</div>
-                      </div>
-                      <button onClick={() => onDeleteFund(f.id)} disabled={deletingId === f.id} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 4, display: "flex", flex: "none" }}>
-                        {deletingId === f.id ? <Loader2 size={14} style={{ animation: "spin .8s linear infinite" }} /> : <Trash2 size={14} />}
-                      </button>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 10 }}>
-                      <span style={{ fontWeight: 900, fontSize: 17, color: "var(--ink)" }}>{fmt(f.currentBalance)}</span>
-                      {rank && <span style={{ fontSize: 11.5, fontWeight: 800, color: rank.color, background: rank.bg, borderRadius: 999, padding: "2px 9px" }}>{bf && bf.matchConfidence < 60 ? "לא מזוהה" : rank.label}</span>}
-                    </div>
-                  </div>
-                );
-              })}
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {activeFunds.length > 0 && (
+                <FundGroup title="פעילות" funds={activeFunds} fundBench={fundBench} deletingId={deletingId} onDeleteFund={onDeleteFund} />
+              )}
+              {inactiveFunds.length > 0 && (
+                <FundGroup title="לא פעילות (ארכיון)" funds={inactiveFunds} fundBench={fundBench} deletingId={deletingId} onDeleteFund={onDeleteFund} archived />
+              )}
             </div>
           )}
-        </div>
       </div>
 
       {/* chat CTA */}
@@ -373,15 +333,76 @@ export default function PensionAdvisor({
   );
 }
 
-function SimField({ label, value, set, placeholder, suffix }: { label: string; value: string; set: (v: string) => void; placeholder: string; suffix?: string }) {
+function FundGroup({
+  title, funds, fundBench, deletingId, onDeleteFund, archived = false,
+}: {
+  title: string;
+  funds: PensionFundDTO[];
+  fundBench: (f: PensionFundDTO) => PensionBenchmarkFundDTO | undefined;
+  deletingId: string | null;
+  onDeleteFund: (id: string) => void;
+  archived?: boolean;
+}) {
   return (
-    <label style={{ display: "block", marginBottom: 12 }}>
-      <span style={{ display: "block", fontSize: 12.5, color: "var(--text-muted)", fontWeight: 700, marginBottom: 6 }}>{label}</span>
-      <div style={{ display: "flex", alignItems: "center", background: "var(--surface-sunken)", border: "1px solid var(--border-soft)", borderRadius: "var(--r-sm)", padding: "0 12px" }}>
-        <input type="number" value={value} placeholder={placeholder} onChange={e => set(e.target.value)} style={{ flex: 1, border: "none", background: "none", outline: "none", fontFamily: "var(--font-body)", fontSize: 15, fontWeight: 800, color: "var(--ink)", padding: "11px 0", width: "100%" }} />
-        {suffix && <span style={{ fontSize: 13, color: "var(--text-faint)", fontWeight: 700 }}>{suffix}</span>}
+    <div>
+      <div style={{ fontSize: 12, fontWeight: 800, color: archived ? "var(--text-faint)" : "var(--mint-ink)", marginBottom: 8, letterSpacing: ".04em" }}>{title}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {funds.map(f => {
+          const bf = fundBench(f);
+          const rank = bf ? RANK_BADGE[bf.rankLabel] ?? RANK_BADGE.unknown : null;
+          const active = isPensionFundActive(f);
+          return (
+            <div
+              key={f.id}
+              style={{
+                padding: "14px 15px",
+                borderRadius: "var(--r-md)",
+                background: archived ? "var(--surface-page)" : "var(--surface-sunken)",
+                border: `1px solid ${archived ? "var(--border-hair)" : "var(--border-hair)"}`,
+                opacity: archived ? 0.82 : 1,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14.5, color: "var(--text-strong)" }}>{f.fundName}</div>
+                    <span style={{
+                      padding: "2px 8px", borderRadius: 999, fontSize: 10.5, fontWeight: 800,
+                      background: active ? "rgba(47,156,98,0.12)" : "rgba(220,38,38,0.1)",
+                      color: active ? "var(--mint-ink)" : "#DC2626",
+                    }}>
+                      {active ? "פעיל" : "לא פעיל"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    {FUND_TYPE_LABELS[f.fundType] ?? f.fundType}
+                    {f.provider ? ` · ${f.provider}` : ""}
+                    {f.managementFeeAccumulation != null ? ` · ${(f.managementFeeAccumulation * 100).toFixed(2)}%` : ""}
+                    {f.ytdReturn != null ? ` · YTD ${f.ytdReturn.toFixed(2)}%` : ""}
+                  </div>
+                </div>
+                <button onClick={() => onDeleteFund(f.id)} disabled={deletingId === f.id} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", padding: 4, display: "flex", flex: "none" }}>
+                  {deletingId === f.id ? <Loader2 size={14} style={{ animation: "spin .8s linear infinite" }} /> : <Trash2 size={14} />}
+                </button>
+              </div>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginTop: 10, flexWrap: "wrap", gap: 8 }}>
+                <span style={{ fontWeight: 900, fontSize: 17, color: archived ? "var(--text-muted)" : "var(--ink)" }}>{fmt(f.currentBalance)}</span>
+                {active && rank && (
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: rank.color, background: rank.bg, borderRadius: 999, padding: "2px 9px" }}>
+                    {bf && bf.matchConfidence < 60 ? "לא מזוהה" : rank.label}
+                  </span>
+                )}
+              </div>
+              {active && (f.monthlyEmployeeDeposit > 0 || f.monthlyEmployerDeposit > 0) && (
+                <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 8, fontWeight: 600 }}>
+                  הפקדות: עובד {fmt(f.monthlyEmployeeDeposit)} · מעביד {fmt(f.monthlyEmployerDeposit)}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
-    </label>
+    </div>
   );
 }
 

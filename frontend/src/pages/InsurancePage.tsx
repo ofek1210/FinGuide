@@ -39,6 +39,16 @@ const HAR_HABITUACH_URL = INSURANCE_IMPORT_CONFIG.siteUrl;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const fmt = formatCurrencyOrDash;
 
+function insuranceShell(children: React.ReactNode) {
+  return (
+    <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
+      <PrivateTopbar />
+      {children}
+      <AppFooter variant="private" />
+    </div>
+  );
+}
+
 export default function InsurancePage() {
   const navigate = useNavigate();
 
@@ -127,66 +137,54 @@ export default function InsurancePage() {
 
   // Import guide — interactive stepper with a pouring progress spine (design-system).
   if (step === "guide") {
-    return (
-      <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
-        <PrivateTopbar />
-        <InsuranceImportGuide
-          onBack={() => setStep("landing")}
-          onContinue={() => setStep("upload")}
-          onVisitSite={() => {
-            window.open(HAR_HABITUACH_URL, "_blank", "noopener,noreferrer");
-            setVisitedSite(true);
-          }}
-        />
-        <AppFooter variant="private" />
-      </div>
+    return insuranceShell(
+      <InsuranceImportGuide
+        onBack={() => setStep("landing")}
+        onContinue={() => setStep("upload")}
+        onVisitSite={() => {
+          window.open(HAR_HABITUACH_URL, "_blank", "noopener,noreferrer");
+          setVisitedSite(true);
+        }}
+      />,
     );
   }
 
   // Upload — step 2/2 redesign: real dropzone wired to uploadInsuranceExcel.
   if (step === "upload") {
-    return (
-      <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
-        <PrivateTopbar />
-        <InsuranceUpload
-          onBack={() => setStep("guide")}
-          onContinue={() => setStep("results")}
-          onUpload={handleUpload}
-          uploading={uploading}
-          uploadMsg={uploadMsg}
-          uploadProgressStep={uploadProgressStep}
-          progressSteps={UPLOAD_PROGRESS_STEPS}
-          isDragging={isDragging}
-          setIsDragging={setIsDragging}
-          importedCount={lastImported}
-        />
-        <AppFooter variant="private" />
-      </div>
+    return insuranceShell(
+      <InsuranceUpload
+        onBack={() => setStep("guide")}
+        onContinue={() => setStep("results")}
+        onUpload={handleUpload}
+        uploading={uploading}
+        uploadMsg={uploadMsg}
+        uploadProgressStep={uploadProgressStep}
+        progressSteps={UPLOAD_PROGRESS_STEPS}
+        isDragging={isDragging}
+        setIsDragging={setIsDragging}
+        importedCount={lastImported}
+      />,
     );
   }
 
   // Results — insurance analysis (design-system, peach accent).
-  return (
-    <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
-      <PrivateTopbar />
-      <ResultsStep
-        loading={loading}
-        analysisError={analysisError}
-        onRetry={() => void load()}
-        analysis={analysis}
-        healthCheck={healthCheck}
-        importHistory={importHistory}
-        lastSavingsDelta={lastSavingsDelta}
-        policies={policies}
-        recs={recs}
-        totalPremium={totalPremium}
-        deletingId={deletingId}
-        onDelete={handleDelete}
-        onReimport={() => setStep("guide")}
-        navigate={navigate}
-      />
-      <AppFooter variant="private" />
-    </div>
+  return insuranceShell(
+    <ResultsStep
+      loading={loading}
+      analysisError={analysisError}
+      onRetry={() => void load()}
+      analysis={analysis}
+      healthCheck={healthCheck}
+      importHistory={importHistory}
+      lastSavingsDelta={lastSavingsDelta}
+      policies={policies}
+      recs={recs}
+      totalPremium={totalPremium}
+      deletingId={deletingId}
+      onDelete={handleDelete}
+      onReimport={() => setStep("guide")}
+      navigate={navigate}
+    />,
   );
 }
 
@@ -662,7 +660,7 @@ function ResultsStep({
         <h3 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שאל את סוכן הביטוח</h3>
         <p style={{ margin: "0 auto 22px", maxWidth: 440, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>"האם אני צריך ביטוח חיים?" · "כמה אני משלם יותר מהממוצע?" · "מה הסיכון הכי גדול שלי?"</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={() => navigate(APP_ROUTES.aiAgents)} style={inkBtn}><Sparkles size={17} /> פתח שיחה עם הסוכן</button>
+          <button onClick={() => navigate(APP_ROUTES.assistant)} style={inkBtn}><Sparkles size={17} /> פתח שיחה עם הסוכן</button>
           <button onClick={() => navigate(APP_ROUTES.insights)} style={secBtn}>תובנות AI</button>
         </div>
         <p style={{ margin: "20px 0 0", fontSize: 12, color: "var(--text-faint)" }}>הניתוח מבוסס על נתוני הדוח שיובא ואינו מהווה ייעוץ ביטוחי מקצועי.</p>
