@@ -248,7 +248,7 @@ export default function PensionPage() {
             onDeleteFund={handleDeleteFund}
             onSimulate={handleSimulate}
             onReimport={() => setStep("guide")}
-            onOpenChat={() => navigate(APP_ROUTES.aiAgents)}
+            onOpenChat={() => navigate(`${APP_ROUTES.hub}?chat=1`)}
           />
         </div>
       </>,

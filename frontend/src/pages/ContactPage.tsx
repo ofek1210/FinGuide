@@ -155,7 +155,7 @@ export default function ContactPage() {
                 type="button"
                 className="contact-cta-secondary"
                 onClick={() =>
-                  navigate(hasToken ? APP_ROUTES.dashboard : APP_ROUTES.register)
+                  navigate(hasToken ? APP_ROUTES.hub : APP_ROUTES.register)
                 }
               >
                 הצטרף עכשיו

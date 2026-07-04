@@ -675,7 +675,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
         <span style={{ width: 54, height: 54, borderRadius: 15, background: "var(--ink)", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px", boxShadow: "var(--shadow-ink)" }}><Sparkles size={26} /></span>
         <h3 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שאל את הסוכן שאלות</h3>
         <p style={{ margin: "0 auto 22px", maxWidth: 420, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>"למה המשכורת ירדה?" · "כמה מס שילמתי?" · "האם מגיע לי החזר מס?"</p>
-        <PrimaryBtn size="lg" onClick={() => navigate(APP_ROUTES.planning)} iconLeft={<Sparkles size={18} />}>פתח שיחה עם הסוכן</PrimaryBtn>
+        <PrimaryBtn size="lg" onClick={() => navigate(`${APP_ROUTES.hub}?chat=1`)} iconLeft={<Sparkles size={18} />}>פתח שיחה עם הסוכן</PrimaryBtn>
         <div style={{ marginTop: 16 }}>
           <button onClick={onEditProfile} style={{ background: "none", border: "none", color: "var(--text-faint)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>עדכן פרטים אישיים</button>
         </div>
