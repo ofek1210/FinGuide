@@ -4,6 +4,7 @@ import { ArrowLeft, Sparkles, Upload } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
+import MasterAgentPanel from "../components/hub/MasterAgentPanel";
 import { APP_ROUTES } from "../types/navigation";
 import { AGENTS, type AgentId } from "../theme/agents";
 import { getDashboardSummary, type DashboardSummaryData } from "../api/dashboard.api";
@@ -251,6 +252,25 @@ function netTrend(docs: DocumentItem[]): number[] {
   return points.length >= 2 ? points : [];
 }
 
+/* Live financial-health card wiring. Category ids/tones come from
+   financialHealthScoreService (documentCompleteness, salaryStability,
+   taxReadiness, pensionConsistency, riskInsurance). We surface the
+   three that mirror the original card: tax · pension · insurance. */
+const CATEGORY_TONE: Record<string, string> = {
+  taxReadiness: "var(--mint-ink)",
+  pensionConsistency: "var(--lav-300)",
+  riskInsurance: "var(--peach)",
+  documentCompleteness: "var(--lav-300)",
+  salaryStability: "var(--mint-ink)",
+};
+const HEALTH_CARD_KEYS = ["taxReadiness", "pensionConsistency", "riskInsurance"];
+
+const STATIC_HEALTH_CATEGORIES = [
+  { k: "ניצול הטבות מס", v: "82%", c: "var(--mint-ink)" },
+  { k: "יעילות פנסיה", v: "71%", c: "var(--lav-300)" },
+  { k: "כיסוי ביטוחי", v: "68%", c: "var(--peach)" },
+];
+
 export default function HubPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -431,7 +451,7 @@ export default function HubPage() {
                 ממש את ההזדמנויות <ArrowLeft size={17} strokeWidth={2.4} />
               </button>
             </div>
-            {/* floating health card */}
+            {/* floating health card — fed live by the master agent panel */}
             <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "var(--r-md)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
               <div style={{ alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 13.5, fontWeight: 800 }}>בריאות פיננסית</span>
@@ -458,14 +478,19 @@ export default function HubPage() {
           </div>
         </div>
 
-        {/* AGENTS — centered headline + showcase cards */}
-        <div style={{ textAlign: "center", marginBottom: 26 }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 800, letterSpacing: ".12em", color: "var(--lav-600)" }}>
-            <Sparkles size={18} color="var(--lav-500)" />
-            שלושה סוכני AI
-          </span>
-          <h2 style={{ margin: "10px 0 0", fontSize: "clamp(26px,3vw,36px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שלושה סוכנים. כל אחד מומחה בתחומו.</h2>
-          <p style={{ margin: "12px auto 0", maxWidth: 480, fontSize: 16, color: "var(--text-muted)", fontWeight: 500, lineHeight: 1.55 }}>תלושים · ביטוח · פנסיה — שלושה סוכני AI שעובדים עליך במקביל, מסביב לשעון.</p>
+        {/* MASTER AGENT PANEL — live orchestrator console */}
+        <MasterAgentPanel onResult={r => setLiveScore(r.globalScore ?? null)} />
+
+        {/* AGENTS — enter each specialist */}
+        <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
+          <div>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12.5, fontWeight: 800, letterSpacing: ".12em", color: "var(--lav-600)" }}>
+              <Sparkles size={17} color="var(--lav-500)" />
+              מרכז הסוכנים
+            </span>
+            <h2 style={{ margin: "8px 0 0", fontSize: "clamp(24px,2.6vw,32px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>היכנס לכל סוכן בנפרד.</h2>
+          </div>
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 15, fontWeight: 500, maxWidth: 300, textWrap: "balance" }}>כל סוכן מנהל את התחום שלו — לחץ כדי לצלול פנימה.</p>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20, marginBottom: 46 }}>
           {AGENTS.map(a => {

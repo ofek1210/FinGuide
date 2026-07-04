@@ -168,8 +168,8 @@ async function runFullAnalysis(userId, { skipLLM = false, focus = 'all', refresh
         level: globalScore.level,
         label: globalScore.label,
         categories: (globalScore.categories || []).map(c => ({
-          id: c.id,
-          label: c.label,
+          id: c.id ?? c.key ?? null,
+          label: c.label ?? c.name ?? null,
           score: c.score,
           maxScore: c.maxScore,
           status: c.status,

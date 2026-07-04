@@ -87,5 +87,5 @@ export const runFullAnalysis = (params?: {
   apiJson<FullAnalysisResponse>("/api/ai/full-analysis", {
     method: "POST",
     auth: true,
-    body: JSON.stringify(params || {}),
+    body: params || {},
   });
