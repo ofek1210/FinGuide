@@ -57,7 +57,6 @@ export const AGENTS: AgentDef[] = [
     routes: [
       APP_ROUTES.documents,
       APP_ROUTES.payslipHistory,
-      APP_ROUTES.findings,
       APP_ROUTES.taxAssistant,
       APP_ROUTES.documentsScan,
       APP_ROUTES.documentsScanComplete,

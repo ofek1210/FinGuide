@@ -260,7 +260,7 @@ export default function HubPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => navigate(APP_ROUTES.findings)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
+              <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
                 onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
                 onMouseLeave={e => e.currentTarget.style.transform = "none"}>
                 ממש את ההזדמנויות <ArrowLeft size={17} strokeWidth={2.4} />
@@ -355,7 +355,7 @@ export default function HubPage() {
           <div style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)", padding: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--text-strong)" }}>ממצאים אחרונים</h3>
-              <button onClick={() => navigate(APP_ROUTES.findings)} style={{ marginInlineStart: "auto", display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 700, color: "var(--accent)" }}>
+              <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ marginInlineStart: "auto", display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 700, color: "var(--accent)" }}>
                 הכל <ArrowLeft size={15} strokeWidth={2.4} />
               </button>
             </div>
@@ -363,7 +363,7 @@ export default function HubPage() {
               {FINDINGS.map(f => {
                 const top = f.rank === 1;
                 return (
-                  <button key={f.title} onClick={() => navigate(APP_ROUTES.findings)}
+                  <button key={f.title} onClick={() => navigate(APP_ROUTES.financialHealth)}
                     style={{ width: "100%", textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 13, padding: "13px 15px", borderRadius: "var(--r-md)", border: top ? "0" : "1px solid var(--border-hair)", background: top ? "linear-gradient(95deg,var(--peach) 0%,var(--lav-200) 55%,var(--mint) 100%)" : "var(--surface-sunken)" }}>
                     <span style={{ width: 30, height: 30, borderRadius: 9, flex: "none", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 13, background: top ? "rgba(255,255,255,.6)" : "var(--card)", color: "var(--ink)", boxShadow: "var(--shadow-soft)" }}>#{f.rank}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>

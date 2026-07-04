@@ -338,7 +338,7 @@ export default function TeamPage() {
               className="landing-primary team-cta-btn"
               type="button"
               onClick={() =>
-                navigate(hasToken ? APP_ROUTES.dashboard : APP_ROUTES.register)
+                navigate(hasToken ? APP_ROUTES.hub : APP_ROUTES.register)
               }
             >
               להצטרפות ל-FinGuide

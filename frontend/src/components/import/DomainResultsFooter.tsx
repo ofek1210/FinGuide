@@ -1,7 +1,5 @@
-import { ChevronLeft } from "lucide-react";
 import { DomainInsightsSection } from "./DomainInsightsSection";
 import { DomainCopilotCTA } from "./DomainCopilotCTA";
-import { APP_ROUTES } from "../../types/navigation";
 import type { AppRoute } from "../../types/navigation";
 
 type DomainResultsFooterProps = {
@@ -46,18 +44,6 @@ export function DomainResultsFooter({
         gradientTo={copilot.gradientTo}
         onNavigate={onNavigate}
       />
-
-      <button
-        type="button"
-        onClick={() => onNavigate(APP_ROUTES.findings)}
-        style={{
-          display: "flex", alignItems: "center", gap: 6, background: "none", border: "none",
-          color: "#9B7FE8", fontWeight: 600, fontSize: 13.5, cursor: "pointer",
-          fontFamily: "inherit", marginTop: 16,
-        }}
-      >
-        כל הממצאים וההתראות <ChevronLeft size={14} />
-      </button>
 
       <p style={{ fontSize: 11.5, color: "#A89CC8", textAlign: "center", margin: "24px 0 0", lineHeight: 1.6 }}>
         {disclaimer}
