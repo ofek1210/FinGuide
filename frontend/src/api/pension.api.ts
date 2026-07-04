@@ -213,6 +213,30 @@ export type UploadPensionBody = {
   managementFeeDeposit?: number;
 };
 
+export type PensionFreePreviewFund = {
+  previewKey: string;
+  fundName: string;
+  provider: string | null;
+  productType?: string;
+  accountNumber: string | null;
+  activityStatus: "ACTIVE" | "INACTIVE" | "UNKNOWN";
+  fundType: string;
+  status: string;
+  isActive: boolean;
+  requiresManualBalance?: boolean;
+};
+
+export type ManualFundEntry = {
+  previewKey?: string;
+  fundName: string;
+  provider?: string | null;
+  accountNumber?: string | null;
+  activityStatus?: "ACTIVE" | "INACTIVE" | "UNKNOWN";
+  fundType: string;
+  currentBalance: number | "";
+  investmentTrack?: string;
+};
+
 export type UploadPensionFileResponse = {
   success: boolean;
   message?: string;
@@ -276,6 +300,50 @@ export const uploadPensionFile = async (
   const result = await apiFormUpload<UploadPensionFileResponse>(`/api/pension/upload-file${qs}`, file);
   if (!result.ok) {
     return { success: false, message: result.error.message };
+  }
+  return result.data;
+};
+
+export const uploadPensionFreePreview = async (file: File) => {
+  const result = await apiFormUpload<{
+    success: boolean;
+    message?: string;
+    data?: {
+      sourceKind: string;
+      funds: PensionFreePreviewFund[];
+      narrative?: string;
+      summary?: { parseWarnings?: string[] };
+    };
+  }>("/api/pension/upload-free-preview", file);
+  if (!result.ok) {
+    return { success: false, message: result.error.message };
+  }
+  return result.data;
+};
+
+export const uploadPensionClearinghouse = async (file: File) => {
+  const result = await apiFormUpload<UploadPensionFileResponse & { message?: string }>(
+    "/api/pension/upload-clearinghouse",
+    file,
+  );
+  if (!result.ok) {
+    return { success: false, message: result.error.message };
+  }
+  return result.data;
+};
+
+export const completeManualPensionFunds = async (funds: ManualFundEntry[]) => {
+  const result = await apiJson<{
+    success: boolean;
+    message?: string;
+    data?: { imported: number; funds: PensionFundDTO[] };
+  }>("/api/pension/complete-manual-funds", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ funds }),
+  });
+  if (!result.ok) {
+    return { success: false as const, message: result.error.message };
   }
   return result.data;
 };

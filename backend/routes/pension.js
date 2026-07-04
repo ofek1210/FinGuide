@@ -11,6 +11,9 @@ const {
   simulateScenario,
   uploadPensionData,
   uploadPensionFile,
+  uploadFreePreview,
+  completeManualFunds,
+  uploadClearinghouse,
   updatePensionFund,
   deletePensionFund,
   getFundAdvice,
@@ -56,6 +59,18 @@ router.post('/upload', (req, res, next) => {
 
 router.post('/upload-file', fileUpload.single('file'), (req, res, next) => {
   Promise.resolve(uploadPensionFile(req, res)).catch(next);
+});
+
+router.post('/upload-free-preview', fileUpload.single('file'), (req, res, next) => {
+  Promise.resolve(uploadFreePreview(req, res)).catch(next);
+});
+
+router.post('/upload-clearinghouse', fileUpload.single('file'), (req, res, next) => {
+  Promise.resolve(uploadClearinghouse(req, res)).catch(next);
+});
+
+router.post('/complete-manual-funds', (req, res, next) => {
+  Promise.resolve(completeManualFunds(req, res)).catch(next);
 });
 
 router.get('/funds', (req, res, next) => {

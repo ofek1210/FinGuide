@@ -9,6 +9,12 @@ const { buildFundAdvice } = require('../services/pensionFundAdvisorService');
 const pensionFinqService = require('../services/PensionService');
 const PensionFund = require('../models/PensionFund');
 const { importPensionFile, syncProfileRetirement } = require('../services/pensionImportService');
+const { parseClearinghouseExcel } = require('../services/pensionClearinghouseParser');
+const { parsePensionFreeReport } = require('../services/pensionFreeReportParser');
+const {
+  importClearinghouseFile,
+  importManualFundsFromPreview,
+} = require('../services/pensionClearinghouseImportService');
 const PensionImportSnapshot = require('../models/PensionImportSnapshot');
 const path = require('path');
 
@@ -351,12 +357,159 @@ async function getMarketFundById(req, res) {
   return res.json({ success: true, data });
 }
 
+/**
+ * POST /api/pension/upload-free-preview — Option A: parse free report, no DB write.
+ */
+async function uploadFreePreview(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'לא קיבלנו קובץ' });
+  }
+
+  const ext = path.extname(req.file.originalname || '').toLowerCase();
+  let parsed;
+  try {
+    parsed = parsePensionFreeReport(req.file.buffer, {
+      ext,
+      originalName: req.file.originalname,
+    });
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message || 'שגיאה בפרסור הדוח החינמי',
+    });
+  }
+
+  if (!parsed.funds?.length) {
+    return res.status(400).json({
+      success: false,
+      message: 'לא זוהו מוצרים פנסיוניים בקובץ. ודא שזה דוח הר הביטוח או Excel תקין.',
+      warnings: parsed.summary?.parseWarnings || [],
+    });
+  }
+
+  const active = parsed.funds.filter(f => f.isActive);
+  const inactive = parsed.funds.filter(f => !f.isActive);
+
+  return res.json({
+    success: true,
+    data: {
+      sourceKind: parsed.sourceKind,
+      funds: parsed.funds,
+      summary: parsed.summary,
+      narrative: active.length
+        ? `לפי הממצאים: זוהו ${active.length} מוצרים פעילים${inactive.length ? ` ו-${inactive.length} לא פעילים` : ''}.`
+        : 'לא זוהו מוצרים פעילים — ניתן להזין ידנית.',
+    },
+  });
+}
+
+/**
+ * POST /api/pension/complete-manual-funds — Option A step 2: save manual balances.
+ */
+async function completeManualFunds(req, res) {
+  const userId = req.user._id;
+  const { funds } = req.body || {};
+
+  if (!Array.isArray(funds) || !funds.length) {
+    return res.status(400).json({ success: false, message: 'חסרים נתוני קרנות לשמירה' });
+  }
+
+  for (const f of funds) {
+    if (!f.fundName?.trim()) {
+      return res.status(400).json({ success: false, message: 'שם קרן חסר באחת הרשומות' });
+    }
+    if (f.currentBalance == null || Number.isNaN(Number(f.currentBalance))) {
+      return res.status(400).json({
+        success: false,
+        message: `חסר סכום צבירה עבור "${f.fundName}"`,
+      });
+    }
+  }
+
+  const result = await importManualFundsFromPreview(userId, funds, 'free_report_wizard');
+  const analysis = result.analysis;
+
+  return res.json({
+    success: true,
+    message: `נשמרו ${result.imported} קרנות בהצלחה`,
+    data: {
+      imported: result.imported,
+      funds: result.funds.map(f => mapPensionFundToDto(f)),
+      analysis: analysis ? {
+        summary: analysis.summary,
+        healthCheck: analysis.healthCheck,
+        benchmark: analysis.benchmark,
+      } : null,
+    },
+  });
+}
+
+/**
+ * POST /api/pension/upload-clearinghouse — Option B: full paid clearinghouse import.
+ */
+async function uploadClearinghouse(req, res) {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'לא קיבלנו קובץ' });
+  }
+
+  const ext = path.extname(req.file.originalname || '').toLowerCase();
+  if (!['.xlsx', '.xls'].includes(ext)) {
+    return res.status(400).json({ success: false, message: 'יש להעלות קובץ Excel (.xls / .xlsx) מהמסלקה הפנסיונית' });
+  }
+
+  const userId = req.user._id;
+  let parsed;
+  try {
+    parsed = parseClearinghouseExcel(req.file.buffer);
+  } catch (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message || 'שגיאה בפרסור קובץ המסלקה',
+    });
+  }
+
+  if (!parsed.funds?.length) {
+    return res.status(400).json({
+      success: false,
+      message: 'לא הצלחנו לפרסר את קובץ המסלקה. ודא שזהו דוח מסלקה פנסיונית (Excel) עם 3 גיליונות.',
+      warnings: parsed.summary?.parseWarnings || [],
+      sheetNames: parsed.summary?.sheetNames,
+    });
+  }
+
+  const result = await importClearinghouseFile(userId, parsed, req.file.originalname);
+  const analysis = result.analysis;
+
+  return res.json({
+    success: true,
+    message: `יובאו ${result.imported} קרנות מהמסלקה (${result.depositsSaved || 0} רשומות הפקדות)`,
+    data: {
+      imported: result.imported,
+      depositsSaved: result.depositsSaved || 0,
+      warnings: parsed.summary?.parseWarnings || [],
+      summary: parsed.summary,
+      savingsDelta: result.savingsDelta,
+      healthScore: result.healthScore,
+      analysis: analysis ? {
+        summary: analysis.summary,
+        benchmark: analysis.benchmark,
+        projection: analysis.projection,
+        healthCheck: analysis.healthCheck,
+      } : null,
+      funds: result.funds.map(f => mapPensionFundToDto(f)),
+    },
+  });
+}
+
 module.exports = {
   getPensionAnalysis,
   getImportHistory,
   simulateScenario,
   uploadPensionData,
   uploadPensionFile,
+  uploadFreePreview,
+  completeManualFunds,
+  uploadClearinghouse,
   updatePensionFund,
   deletePensionFund,
   getFundAdvice,
