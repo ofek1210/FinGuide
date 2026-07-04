@@ -280,7 +280,7 @@
 /* ---------- how it works ---------- */
 .fg-landing .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
 .fg-landing .step{background:var(--card);border-radius:var(--radius);padding:30px;box-shadow:var(--shadow-soft);border:1px solid var(--hair);position:relative;transition:transform .35s var(--ease),box-shadow .35s var(--ease);}
-.fg-landing .step:hover{transform:translateY(-6px);box-shadow:var(--shadow-card);}
+.fg-landing .step:hover{--clift:-6px;box-shadow:var(--shadow-card);}
 .fg-landing .step .si{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;margin-bottom:22px;}
 .fg-landing .step .si svg{width:26px;height:26px;}
 .fg-landing .step h3{font-size:21px;font-weight:800;margin:0 0 10px;letter-spacing:-.02em;}
@@ -294,7 +294,7 @@
   position:relative;overflow:hidden;min-height:300px;display:flex;align-items:stretch;
   background-image:radial-gradient(var(--texture-dot) 1px,transparent 1px);background-size:18px 18px;
   transition:transform .35s var(--ease),box-shadow .35s var(--ease);}
-.fg-landing .sc-item:hover .sc-card{transform:translateY(-5px);box-shadow:var(--shadow-card);}
+.fg-landing .sc-item:hover .sc-card{--clift:-6px;box-shadow:var(--shadow-card);}
 .fg-landing .sc-ui{flex:1;background:#fff;border:1px solid var(--border-hair);border-radius:var(--r-md);padding:16px 16px;
   box-shadow:var(--shadow-soft);display:flex;flex-direction:column;}
 .fg-landing .ui-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
@@ -593,6 +593,73 @@
   display:grid;place-items:center;
 }
 .fg-landing .cd-send svg{width:14px;height:14px;color:#fff;}
+
+/* ============================================================
+   3D DEPTH LAYER
+   True-perspective tilt: the hero stage rotates toward the cursor
+   (vars --srx/--sry set by useLandingAnimations) and its layers sit
+   at different translateZ depths, so the parallax is real 3D.
+   Section cards get an interactive tilt (--crx/--cry) + glare (--gx/--gy).
+   ============================================================ */
+.fg-landing .hero{perspective:1600px;}
+.fg-landing .stage{transform-style:preserve-3d;transform:rotateX(var(--srx,0deg)) rotateY(var(--sry,0deg));will-change:transform;}
+.fg-landing .stage-dots{transform:translateZ(-60px);}
+.fg-landing .ring{transform:translate(-50%,-50%) translateZ(8px) scale(1);}
+@keyframes fgRing{0%{opacity:.55;transform:translate(-50%,-50%) translateZ(8px) scale(1);}100%{opacity:0;transform:translate(-50%,-50%) translateZ(8px) scale(1.7);}}
+.fg-landing .doc{transform:translate(-50%,-50%) scale(.6) translateZ(26px);}
+.fg-landing .stage.entered .doc{transform:translate(-50%,-50%) scale(1) translateZ(26px);}
+.fg-landing .pcard{transform:translateZ(var(--pz,54px));}
+.fg-landing .pc-scan{--pz:78px;}
+.fg-landing .pc-fees{--pz:92px;}
+.fg-landing .pc-match{--pz:64px;}
+.fg-landing .pc-fetch{--pz:50px;}
+.fg-landing .pc-route{--pz:46px;transform:translateX(-50%) translateZ(46px);}
+.fg-landing .stage.entered .pc-route{transform:translateX(-50%) translateZ(46px);}
+.fg-landing .result{transform:translate(-50%,calc(-50% + 4px)) scale(.7) translateZ(120px);}
+.fg-landing .result.show{transform:translate(-50%,calc(-50% + 4px)) scale(1) translateZ(120px);}
+
+/* interactive tilt cards — sections */
+.fg-landing .step,
+.fg-landing .sc-card,
+.fg-landing .bcard,
+.fg-landing .cd-chat,
+.fg-landing .prob-card{
+  transform:perspective(var(--persp,1000px)) rotateX(var(--crx,0deg)) rotateY(var(--cry,0deg)) translateY(var(--clift,0px));
+  transform-style:preserve-3d;
+  transition:transform .18s var(--ease),box-shadow .35s var(--ease);
+}
+/* cursor glare */
+.fg-landing .step::after,
+.fg-landing .sc-card::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;z-index:3;
+  background:radial-gradient(420px circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.5),transparent 44%);
+  opacity:0;transition:opacity .3s ease;
+}
+.fg-landing .step:hover::after,
+.fg-landing .sc-item:hover .sc-card::after{opacity:1;}
+/* children float above the tilted plane (only where overflow allows) */
+.fg-landing .step .si{transform:translateZ(34px);}
+.fg-landing .step h3{transform:translateZ(26px);}
+.fg-landing .step p{transform:translateZ(18px);}
+.fg-landing .step .sn{transform:translateZ(20px);}
+.fg-landing .bcard .ui-head{transform:translateZ(16px);}
+.fg-landing .bcard .ui-hl{transform:translateZ(26px);}
+
+/* gold cards + CTA fan — lift & swing on hover */
+.fg-landing .golds{perspective:900px;transform-style:preserve-3d;}
+.fg-landing .gcard{transition:transform .45s var(--ease-back),box-shadow .45s var(--ease);}
+.fg-landing .gcard.g1:hover{transform:rotate(-8deg) translateX(18px) translateZ(46px) rotateY(10deg);z-index:3;box-shadow:var(--shadow-float,var(--shadow-xl));}
+.fg-landing .gcard.g2:hover{transform:rotate(7deg) translateX(-18px) translateZ(46px) rotateY(-10deg);z-index:3;box-shadow:var(--shadow-float,var(--shadow-xl));}
+.fg-landing .fan{perspective:1100px;transform-style:preserve-3d;}
+.fg-landing .fan .fcard{transition:transform .5s var(--ease-back),box-shadow .5s var(--ease);}
+.fg-landing .fan .f1:hover{transform:translateX(-50%) rotate(-13deg) translateX(-150px) translateZ(56px);}
+.fg-landing .fan .f2:hover{transform:translateX(-50%) translateZ(56px);}
+.fg-landing .fan .f3:hover{transform:translateX(-50%) rotate(13deg) translateX(150px) translateZ(56px);}
+
+@media (prefers-reduced-motion:reduce){
+  .fg-landing .stage,.fg-landing .step,.fg-landing .sc-card,.fg-landing .bcard,
+  .fg-landing .cd-chat,.fg-landing .prob-card{transform:none!important;}
+}
 
 /* ---------- responsive ---------- */
 @media (max-width:980px){
