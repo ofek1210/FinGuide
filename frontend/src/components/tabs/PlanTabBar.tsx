@@ -4,7 +4,7 @@ import { APP_ROUTES } from "../../types/navigation";
 export default function PlanTabBar() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const isChat = pathname.startsWith("/assistant");
+  const isChat = pathname.startsWith("/assistant") || pathname.startsWith("/ai-agents");
 
   return (
     <div className="page-tab-bar">

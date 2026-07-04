@@ -6,6 +6,7 @@ const { projectPensionIncome } = require('../ai/engines/calculationEngine');
 const { parseHarHaKesef } = require('../services/harHaKesefService');
 const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
 const { buildFundAdvice } = require('../services/pensionFundAdvisorService');
+const pensionFinqService = require('../services/PensionService');
 const PensionFund = require('../models/PensionFund');
 const { importPensionFile, syncProfileRetirement } = require('../services/pensionImportService');
 const PensionImportSnapshot = require('../models/PensionImportSnapshot');
@@ -332,6 +333,24 @@ async function getFundAdvice(req, res) {
   return res.json({ success: true, data: fundAdvice });
 }
 
+/**
+ * GET /api/pension/leading-funds?risk=LOW|MEDIUM|HIGH|INCREASED
+ * Leading comprehensive pension funds from Finq (cached per risk cohort).
+ */
+async function getLeadingFunds(req, res) {
+  const forceRefresh = req.query.refresh === 'true';
+  const data = await pensionFinqService.getLeadingFunds(req.query.risk, { forceRefresh });
+  return res.json({ success: true, data });
+}
+
+/**
+ * GET /api/pension/fund/:id — deep fund metrics (Finq + cache fallback).
+ */
+async function getMarketFundById(req, res) {
+  const data = await pensionFinqService.getFundById(req.params.id, { risk: req.query.risk });
+  return res.json({ success: true, data });
+}
+
 module.exports = {
   getPensionAnalysis,
   getImportHistory,
@@ -341,4 +360,6 @@ module.exports = {
   updatePensionFund,
   deletePensionFund,
   getFundAdvice,
+  getLeadingFunds,
+  getMarketFundById,
 };

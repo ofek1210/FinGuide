@@ -9,7 +9,6 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PrivateDomainPageLayout } from "../components/layout/PrivateDomainPageLayout";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import GlassCard from "../components/ui/GlassCard";
@@ -92,18 +91,22 @@ export default function PensionPage() {
   }, []);
 
   useEffect(() => {
-    void getPensionAnalysis().then(res => {
+    void (async () => {
+      const [analysisRes, fundsRes] = await Promise.all([getPensionAnalysis(), getPensionFunds()]);
       setLoading(false);
-      if (res.ok && res.data?.success && res.data.data) {
-        setData(res.data.data);
-        if (res.data.data.summary?.hasData) {
+      const fundList = fundsRes.ok && fundsRes.data?.data ? fundsRes.data.data : [];
+      setFunds(fundList);
+      if (analysisRes.ok && analysisRes.data?.success && analysisRes.data.data) {
+        setData(analysisRes.data.data);
+        if (analysisRes.data.data.summary?.hasData || fundList.length > 0) {
           setStep("results");
-          if (!res.data.data.summary.currentAge) setShowAgeModal(true);
+          if (!analysisRes.data.data.summary?.currentAge) setShowAgeModal(true);
         }
+      } else if (fundList.length > 0) {
+        setStep("results");
       }
-    });
-    void loadFunds();
-  }, [loadFunds]);
+    })();
+  }, []);
 
   const handleSaveFund = async () => {
     if (!form.fundName?.trim()) return;
@@ -248,22 +251,22 @@ export default function PensionPage() {
             onDeleteFund={handleDeleteFund}
             onSimulate={handleSimulate}
             onReimport={() => setStep("guide")}
-            onOpenChat={() => navigate(APP_ROUTES.aiAgents)}
+            onOpenChat={() => navigate(APP_ROUTES.assistant)}
           />
         </div>
       </>,
     );
   }
 
-  // Landing (+ initial loading)
-  return (
-    <PrivateDomainPageLayout maxWidth={900}>
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "80px 0", color: "var(--mint-ink)", fontSize: 14 }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
-          טוען נתוני פנסיה...
-        </div>
-      ) : (
+  // Landing (+ initial loading) — same mint shell as guide/upload/results
+  return shell(
+    loading ? (
+      <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--mint-ink)", fontSize: 14 }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+        טוען נתוני פנסיה...
+      </div>
+    ) : (
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 24px 40px" }}>
         <GovReportImportFlow
           domain="pension"
           step="landing"
@@ -282,7 +285,7 @@ export default function PensionPage() {
           setIsDragging={setIsDragging}
           onUpload={handleFileUpload}
         />
-      )}
-    </PrivateDomainPageLayout>
+      </div>
+    ),
   );
 }

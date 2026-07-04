@@ -179,7 +179,7 @@ export default function App() {
           path={APP_ROUTES.assistant}
           element={
             <RequireAuth>
-              <Navigate to={APP_ROUTES.aiAgents} replace />
+              <AIAgentsPage />
             </RequireAuth>
           }
         />
@@ -187,7 +187,7 @@ export default function App() {
           path={APP_ROUTES.aiAgents}
           element={
             <RequireAuth>
-              <AIAgentsPage />
+              <Navigate to={APP_ROUTES.assistant} replace />
             </RequireAuth>
           }
         />
