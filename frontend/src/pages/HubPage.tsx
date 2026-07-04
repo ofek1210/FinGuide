@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Play, Sparkles } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import MasterAgentPanel from "../components/hub/MasterAgentPanel";
+import MasterAgentPanel, { type MasterAgentPanelHandle } from "../components/hub/MasterAgentPanel";
 import { APP_ROUTES } from "../types/navigation";
 import { AGENTS, type AgentId } from "../theme/agents";
 import type { FullAnalysisGlobalScore } from "../api/fullAnalysis.api";
@@ -229,6 +229,50 @@ const CATEGORY_TONE: Record<string, string> = {
 };
 const HEALTH_CARD_KEYS = ["taxReadiness", "pensionConsistency", "riskInsurance"];
 
+/* ── Health-card call-to-action ──────────────────────────────────
+   Shown in place of the gauge until an analysis runs. An animated
+   "radar" placeholder + a button that kicks off the full run, so the
+   real financial-health numbers only appear once the agents computed
+   them from the user's own data (never fake defaults). */
+function HealthGateCTA({ onRun }: { onRun: () => void }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, minHeight: 250, textAlign: "center", padding: "6px 2px" }}>
+      {/* animated locked gauge */}
+      <div style={{ position: "relative", width: 118, height: 118, display: "grid", placeItems: "center" }}>
+        <span style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px dashed rgba(180,155,240,.5)", animation: "hcSpin 9s linear infinite" }} />
+        <span style={{ position: "absolute", inset: 14, borderRadius: "50%", background: "radial-gradient(circle, rgba(155,127,232,.4), transparent 70%)", animation: "hcGlow 2.4s ease-in-out infinite" }} />
+        <span style={{ position: "relative", width: 52, height: 52, borderRadius: 15, background: "linear-gradient(135deg,#9B7FE8,#6F8BE8)", display: "grid", placeItems: "center", color: "#fff", boxShadow: "0 6px 20px rgba(124,95,214,.5)", animation: "hcFloat 3s ease-in-out infinite" }}>
+          <Sparkles size={24} strokeWidth={1.9} />
+        </span>
+        {/* small "collecting" dots on the ring */}
+        {[0, 1, 2].map(i => {
+          const ang = (i * 120 - 90) * (Math.PI / 180);
+          return (
+            <span key={i} style={{ position: "absolute", left: `calc(50% + ${Math.cos(ang) * 59}px - 3px)`, top: `calc(50% + ${Math.sin(ang) * 59}px - 3px)`, width: 6, height: 6, borderRadius: "50%", background: "#B49BF0", boxShadow: "0 0 8px #B49BF0", animation: `hcDot 1.4s ${i * 0.3}s ease-in-out infinite` }} />
+          );
+        })}
+      </div>
+
+      <div>
+        <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: "-.02em" }}>גלה את הבריאות הפיננסית שלך</div>
+        <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.62)", fontWeight: 500, marginTop: 5, lineHeight: 1.5, maxWidth: 220 }}>
+          הפעל את הסוכנים והמספרים יחושבו מהנתונים האמיתיים שלך
+        </div>
+      </div>
+
+      <button
+        onClick={onRun}
+        style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "12px 22px", fontFamily: "inherit", fontWeight: 800, fontSize: 14.5, cursor: "pointer", animation: "hcBtnPulse 2.2s ease-out infinite", transition: "transform .2s var(--ease)" }}
+        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = "none"; }}
+      >
+        <Play size={16} strokeWidth={2.4} /> הרץ ניתוח מלא
+      </button>
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", fontWeight: 600 }}>או הפעל סוכן בודד מהפאנל למטה</div>
+    </div>
+  );
+}
+
 const STATIC_HEALTH_CATEGORIES = [
   { k: "ניצול הטבות מס", v: "82%", c: "var(--mint-ink)" },
   { k: "יעילות פנסיה", v: "71%", c: "var(--lav-300)" },
@@ -242,8 +286,22 @@ export default function HubPage() {
   const total = useCountUp(21830, heroSeen, 1300);
 
   // Live financial-health score produced by the master agent panel.
-  // When present it drives the opportunity band's health card (merged view).
+  // Null until an analysis runs — the health card shows a call-to-action
+  // until then, so no fake numbers are ever displayed.
   const [liveScore, setLiveScore] = useState<FullAnalysisGlobalScore | null>(null);
+  const panelRef = useRef<MasterAgentPanelHandle>(null);
+  const location = useLocation();
+
+  // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
+  // scroll to the master-agent chat and focus its input.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("chat") !== "1") return;
+    const t = setTimeout(() => {
+      document.getElementById("agent-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      (document.getElementById("agent-chat-input") as HTMLInputElement | null)?.focus({ preventScroll: true });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [location.search]);
 
   const healthValue = liveScore?.score ?? 78;
   const healthLabel = liveScore?.label ?? "מצב טוב";
@@ -271,6 +329,14 @@ export default function HubPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface-page)", direction: "rtl", fontFamily: "var(--font-body)" }}>
+      <style>{`
+        @keyframes hcReveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @keyframes hcSpin { to { transform: rotate(360deg); } }
+        @keyframes hcGlow { 0%,100% { opacity: .4; transform: scale(1); } 50% { opacity: .85; transform: scale(1.09); } }
+        @keyframes hcFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes hcBtnPulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.4); } 70% { box-shadow: 0 0 0 12px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+        @keyframes hcDot { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
+      `}</style>
       <PrivateTopbar />
 
       <main style={{ maxWidth: 1160, margin: "0 auto", padding: "44px 24px 80px" }}>
@@ -303,35 +369,37 @@ export default function HubPage() {
                   </div>
                 ))}
               </div>
-              <button onClick={() => navigate(APP_ROUTES.findings)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
-                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "none"}>
-                ממש את ההזדמנויות <ArrowLeft size={17} strokeWidth={2.4} />
-              </button>
             </div>
-            {/* floating health card — fed live by the master agent panel */}
+            {/* floating health card — gated: a call-to-action until an analysis
+                runs, then real numbers fed live by the master agent panel */}
             <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "var(--r-md)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
               <div style={{ alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 13.5, fontWeight: 800 }}>בריאות פיננסית</span>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: liveScore ? "rgba(72,201,139,.28)" : "rgba(255,255,255,.14)", borderRadius: 999, padding: "3px 10px" }}>
-                  {liveScore ? "מעודכן · הסוכן הראשי" : "6+ החודש"}
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: liveScore ? "rgba(72,201,139,.28)" : "rgba(255,255,255,.12)", borderRadius: 999, padding: "3px 10px" }}>
+                  {liveScore ? "מעודכן · הסוכן הראשי" : "ממתין לניתוח"}
                 </span>
               </div>
-              <RadialGauge value={healthValue} sub={healthLabel} tone="lavender" size={148} onDark />
-              <div style={{ alignSelf: "stretch", display: "flex", flexDirection: "column", gap: 9, marginTop: 4 }}>
-                {healthCategories.map(({ k, v, c }, i) => (
-                  <div key={`${k}-${i}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
-                    <span style={{ color: "rgba(255,255,255,.62)", fontWeight: 500 }}>{k}</span>
-                    <span style={{ fontWeight: 800, color: c, fontVariantNumeric: "tabular-nums" }}>{v}</span>
+              {liveScore ? (
+                <>
+                  <RadialGauge value={healthValue} sub={healthLabel} tone="lavender" size={148} onDark />
+                  <div style={{ alignSelf: "stretch", display: "flex", flexDirection: "column", gap: 9, marginTop: 4, animation: "hcReveal .6s var(--ease) both" }}>
+                    {healthCategories.map(({ k, v, c }, i) => (
+                      <div key={`${k}-${i}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13, animation: `hcReveal .5s ${0.1 + i * 0.09}s var(--ease) both` }}>
+                        <span style={{ color: "rgba(255,255,255,.62)", fontWeight: 500 }}>{k}</span>
+                        <span style={{ fontWeight: 800, color: c, fontVariantNumeric: "tabular-nums" }}>{v}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <HealthGateCTA onRun={() => panelRef.current?.runFull()} />
+              )}
             </div>
           </div>
         </div>
 
         {/* MASTER AGENT PANEL — live orchestrator console */}
-        <MasterAgentPanel onResult={r => setLiveScore(r.globalScore ?? null)} />
+        <MasterAgentPanel ref={panelRef} onResult={r => setLiveScore(r.globalScore ?? null)} />
 
         {/* AGENTS — enter each specialist */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
