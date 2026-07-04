@@ -63,8 +63,12 @@ function mergeFundRecord(existing, incoming, importSource) {
     insuranceCoverages: incoming.insuranceCoverages?.length
       ? incoming.insuranceCoverages
       : (existing.insuranceCoverages || []),
-    status: incoming.status || existing.status || 'active',
-    isActive: incoming.isActive !== false,
+    status: preferIncoming
+      ? (incoming.status ?? existing.status ?? 'active')
+      : (existing.status ?? incoming.status ?? 'active'),
+    isActive: preferIncoming
+      ? incoming.isActive !== false
+      : existing.isActive !== false,
     source: existing.source === 'manual' && importSource !== 'manual' ? existing.source : importSource,
     sourceFile: incoming.sourceFile || existing.sourceFile,
     rawData: incoming.rawData || existing.rawData,

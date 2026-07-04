@@ -5,7 +5,7 @@
  * Step "guide"    — step-by-step instructions + direct link to הר הכסף
  * Step "upload"   — PDF / Excel upload
  * Step "results"  — flagship pension advisor (PensionAdvisor.jsx design),
- *                   wired to /api/pension/* (analysis, simulation, funds).
+ *                   wired to /api/pension/* (analysis, funds).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -18,13 +18,11 @@ import PensionUpload from "../components/pension/PensionUpload";
 import PensionOnboardingWizard from "../components/pension/PensionOnboardingWizard";
 import {
   getPensionAnalysis,
-  simulatePensionScenario,
   getPensionFunds,
   uploadPensionFund,
   uploadPensionFile,
   deletePensionFund,
   type PensionAnalysisData,
-  type SimulationResponse,
   type PensionFundDTO,
   type UploadPensionBody,
 } from "../api/pension.api";
@@ -67,13 +65,6 @@ export default function PensionPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  // Simulation
-  const [simAge, setSimAge] = useState("");
-  const [simExtra, setSimExtra] = useState("");
-  const [simFee, setSimFee] = useState("");
-  const [simResult, setSimResult] = useState<SimulationResponse["data"] | null>(null);
-  const [simLoading, setSimLoading] = useState(false);
   const [lastImported, setLastImported] = useState<number | null>(null);
 
   const [showAgeModal, setShowAgeModal] = useState(false);
@@ -130,17 +121,6 @@ export default function PensionPage() {
     await deletePensionFund(id);
     setDeletingId(null);
     void loadFunds(); void loadAnalysis();
-  };
-
-  const handleSimulate = async () => {
-    setSimLoading(true); setSimResult(null);
-    const res = await simulatePensionScenario({
-      retirementAge: simAge ? Number(simAge) : undefined,
-      additionalMonthlyContribution: simExtra ? Number(simExtra) : undefined,
-      targetMgmtFee: simFee ? Number(simFee) / 100 : undefined,
-    });
-    setSimLoading(false);
-    if (res.ok && res.data?.success && res.data.data) setSimResult(res.data.data);
   };
 
   const handleFileUpload = async (file: File) => {
@@ -257,14 +237,8 @@ export default function PensionPage() {
             saving={saving}
             saveMsg={saveMsg}
             deletingId={deletingId}
-            simAge={simAge} setSimAge={setSimAge}
-            simExtra={simExtra} setSimExtra={setSimExtra}
-            simFee={simFee} setSimFee={setSimFee}
-            simResult={simResult}
-            simLoading={simLoading}
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
-            onSimulate={handleSimulate}
             onReimport={() => setStep("onboarding")}
             onOpenChat={() => navigate(APP_ROUTES.assistant)}
           />

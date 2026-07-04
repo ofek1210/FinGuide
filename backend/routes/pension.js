@@ -4,7 +4,9 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const { body } = require('express-validator');
 const { protect } = require('../middleware/auth');
+const validate = require('../middleware/validate');
 const {
   getPensionAnalysis,
   getImportHistory,
@@ -19,6 +21,9 @@ const {
   getFundAdvice,
   getLeadingFunds,
   getMarketFundById,
+  getPensionRecommendations,
+  deleteAllPensionData,
+  analyzePensionOnly,
 } = require('../controllers/pensionController');
 const { getPensionInsights } = require('../services/pensionRiskAdvisor');
 
@@ -85,12 +90,8 @@ router.patch('/funds/:id', (req, res, next) => {
   Promise.resolve(updatePensionFund(req, res)).catch(next);
 });
 
-router.delete('/funds', async (req, res, next) => {
-  try {
-    const PensionFund = require('../models/PensionFund');
-    await PensionFund.deleteMany({ user: req.user._id, source: 'manual' });
-    return res.json({ success: true, message: 'כל נתוני הפנסיה הידניים נמחקו' });
-  } catch (err) { next(err); }
+router.delete('/funds', (req, res, next) => {
+  Promise.resolve(deleteAllPensionData(req, res)).catch(next);
 });
 
 router.get('/risk-advice', async (req, res, next) => {
@@ -103,6 +104,39 @@ router.get('/risk-advice', async (req, res, next) => {
 router.get('/fund-advice', (req, res, next) => {
   Promise.resolve(getFundAdvice(req, res)).catch(next);
 });
+
+router.post(
+  '/analyze-pension-only',
+  [
+    body('products')
+      .isArray({ min: 1 })
+      .withMessage('products חייב להיות מערך עם לפחות מוצר אחד'),
+  ],
+  validate,
+  (req, res, next) => {
+    Promise.resolve(analyzePensionOnly(req, res)).catch(next);
+  },
+);
+
+router.post(
+  '/recommendations',
+  [
+    body('currentFundId')
+      .trim()
+      .notEmpty()
+      .withMessage('currentFundId הוא שדה חובה'),
+    body('userManagementFee')
+      .isFloat({ min: 0, max: 10 })
+      .withMessage('userManagementFee חייב להיות אחוז בין 0 ל-10'),
+    body('riskPreference')
+      .isIn(['low', 'medium', 'high'])
+      .withMessage('riskPreference חייב להיות low, medium או high'),
+  ],
+  validate,
+  (req, res, next) => {
+    Promise.resolve(getPensionRecommendations(req, res)).catch(next);
+  },
+);
 
 router.get('/leading-funds', (req, res, next) => {
   Promise.resolve(getLeadingFunds(req, res)).catch(next);

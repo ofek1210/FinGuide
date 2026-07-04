@@ -7,6 +7,8 @@ const { parseHarHaKesef } = require('../services/harHaKesefService');
 const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
 const { buildFundAdvice } = require('../services/pensionFundAdvisorService');
 const pensionFinqService = require('../services/PensionService');
+const { buildPensionRecommendations } = require('../services/pensionRecommendationService');
+const { comparePensionProducts } = require('../services/pensionComparisonEngine');
 const PensionFund = require('../models/PensionFund');
 const { importPensionFile, syncProfileRetirement } = require('../services/pensionImportService');
 const { parseClearinghouseExcel } = require('../services/pensionClearinghouseParser');
@@ -27,15 +29,18 @@ function mapPensionFundToDto(f, { idField = '_id' } = {}) {
     fundName: f.fundName,
     fundType: f.fundType,
     provider: f.provider,
+    accountNumber: f.accountNumber ?? null,
     currentBalance: f.currentBalance,
     monthlyEmployeeDeposit: f.monthlyEmployeeDeposit,
     monthlyEmployerDeposit: f.monthlyEmployerDeposit,
     managementFeeAccumulation: f.managementFeeAccumulation,
     managementFeeDeposit: f.managementFeeDeposit,
     investmentTrack: f.investmentTrack,
+    ytdReturn: f.ytdReturn ?? null,
+    activityStatus: f.activityStatus ?? null,
+    status: f.status ?? 'active',
+    isActive: f.isActive !== false && f.status !== 'closed',
     source: f.source,
-    status: f.status,
-    isActive: f.isActive,
   };
 }
 
@@ -303,6 +308,34 @@ async function updatePensionFund(req, res) {
 }
 
 /**
+ * DELETE /api/pension/funds — delete ALL pension data for the user (settings privacy zone).
+ */
+async function deleteAllPensionData(req, res) {
+  const userId = req.user._id;
+  const PensionDeposit = require('../models/PensionDeposit');
+  const UserProfile = require('../models/UserProfile');
+
+  await Promise.all([
+    PensionFund.deleteMany({ user: userId }),
+    PensionDeposit.deleteMany({ user: userId }),
+    PensionImportSnapshot.deleteMany({ user: userId }),
+  ]);
+
+  await UserProfile.findOneAndUpdate(
+    { user: userId },
+    {
+      $set: {
+        'retirement.currentPensionAccumulation': 0,
+        'retirement.hasPension': false,
+        'retirement.hasStudyFund': false,
+      },
+    },
+  );
+
+  return res.json({ success: true, message: 'כל נתוני הפנסיה נמחקו' });
+}
+
+/**
  * DELETE /api/pension/funds/:id
  */
 async function deletePensionFund(req, res) {
@@ -337,6 +370,48 @@ async function getFundAdvice(req, res) {
   }, { forceRefresh });
 
   return res.json({ success: true, data: fundAdvice });
+}
+
+/**
+ * POST /api/pension/analyze-pension-only — compare uploaded pension products vs Pensia-Net.
+ * Body: { products: [...] } — rows from "פרטי המוצרים שלי" (Hebrew or English keys).
+ */
+async function analyzePensionOnly(req, res) {
+  const { products } = req.body || {};
+
+  if (!Array.isArray(products) || !products.length) {
+    return res.status(400).json({
+      success: false,
+      message: 'חסר מערך products עם נתוני המוצרים מהדוח',
+    });
+  }
+
+  const result = await comparePensionProducts(products);
+
+  return res.json({
+    success: true,
+    totalPensionSavings: result.totalPensionSavings,
+    pensionInsights: result.pensionInsights,
+  });
+}
+
+/**
+ * POST /api/pension/recommendations — Pensia-Net fee + performance + actuarial engines.
+ */
+async function getPensionRecommendations(req, res) {
+  const { currentFundId, userManagementFee, riskPreference } = req.body || {};
+
+  const result = await buildPensionRecommendations({
+    currentFundId: String(currentFundId).trim(),
+    userManagementFee: Number(userManagementFee),
+    riskPreference,
+  });
+
+  return res.json({
+    success: true,
+    feeAnalysis: result.feeAnalysis,
+    recommendedFunds: result.recommendedFunds,
+  });
 }
 
 /**
@@ -515,4 +590,7 @@ module.exports = {
   getFundAdvice,
   getLeadingFunds,
   getMarketFundById,
+  getPensionRecommendations,
+  deleteAllPensionData,
+  analyzePensionOnly,
 };
