@@ -1,7 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   BrainCircuit,
   Calculator,
   CheckCircle2,
@@ -615,9 +614,7 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 900, fontSize: 15 }}>
                         <Zap size={15} color="#F4A87E" /> פעולות דחופות
                       </span>
-                      <button onClick={() => navigate(APP_ROUTES.findings)} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, color: "rgba(255,255,255,.65)" }}>
-                        לכל הממצאים <ArrowLeft size={14} strokeWidth={2.4} />
-                      </button>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgba(255,255,255,.5)" }}>{actionItems.length}</span>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                       {actionItems.slice(0, 4).map((item, i) => {

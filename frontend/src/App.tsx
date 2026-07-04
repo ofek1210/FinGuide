@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
-import DashboardPage from "./pages/DashboardPage";
 import HubPage from "./pages/HubPage";
 import AuthScreen from "./components/AuthScreen";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
@@ -17,7 +16,6 @@ import FinancialPlanningPage from "./pages/FinancialPlanningPage";
 import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AIAgentsPage from "./pages/AIAgentsPage";
-import FindingsPage from "./pages/FindingsPage";
 import TaxAssistantPage from "./pages/TaxAssistantPage";
 import FinancialHealthPage from "./pages/FinancialHealthPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -85,14 +83,8 @@ export default function App() {
             </RequireAuth>
           }
         />
-        <Route
-          path={APP_ROUTES.dashboard}
-          element={
-            <RequireAuth>
-              <DashboardPage />
-            </RequireAuth>
-          }
-        />
+        {/* legacy — the dashboard page was removed; keep old URLs working */}
+        <Route path="/dashboard" element={<Navigate to={APP_ROUTES.hub} replace />} />
         <Route
           path={APP_ROUTES.onboarding}
           element={
@@ -117,14 +109,8 @@ export default function App() {
             </RequireAuth>
           }
         />
-        <Route
-          path={APP_ROUTES.findings}
-          element={
-            <RequireAuth>
-              <FindingsPage />
-            </RequireAuth>
-          }
-        />
+        {/* legacy — the findings page was removed; keep old URLs working */}
+        <Route path="/findings" element={<Navigate to={APP_ROUTES.hub} replace />} />
         <Route
           path={APP_ROUTES.taxAssistant}
           element={
@@ -193,7 +179,7 @@ export default function App() {
           path={APP_ROUTES.assistant}
           element={
             <RequireAuth>
-              <Navigate to={APP_ROUTES.aiAgents} replace />
+              <AIAgentsPage />
             </RequireAuth>
           }
         />
@@ -201,7 +187,7 @@ export default function App() {
           path={APP_ROUTES.aiAgents}
           element={
             <RequireAuth>
-              <AIAgentsPage />
+              <Navigate to={APP_ROUTES.assistant} replace />
             </RequireAuth>
           }
         />

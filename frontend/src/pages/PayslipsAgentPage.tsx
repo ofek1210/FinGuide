@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Mail, Upload, FileText, RefreshCw, Sparkles, Check, ArrowLeft, ChevronRight,
-  Search, History, Plus, Lock, Wallet, TrendingUp, Landmark, ShieldCheck,
+  History, Plus, Lock, Wallet, TrendingUp, Landmark, ShieldCheck,
   PiggyBank, GraduationCap, CalendarDays, HeartPulse, type LucideIcon,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -546,7 +546,6 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
           {intake.firstName || "תוצאות ניתוח"}
         </span>
         <span style={{ marginInlineStart: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <ToolBtn icon={<Search size={15} />} onClick={() => navigate(APP_ROUTES.findings)}>ממצאים</ToolBtn>
           <ToolBtn icon={<History size={15} />} onClick={() => navigate(APP_ROUTES.payslipHistory)}>היסטוריית תלושים</ToolBtn>
           <PrimaryBtn size="sm" onClick={onAddMore} iconLeft={<Plus size={15} strokeWidth={2.4} />}>הוסף תלושים</PrimaryBtn>
         </span>

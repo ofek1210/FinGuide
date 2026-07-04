@@ -134,12 +134,17 @@ export type PensionFundDTO = {
   fundName: string;
   fundType: string;
   provider: string | null;
+  accountNumber?: string | null;
   currentBalance: number;
   monthlyEmployeeDeposit: number;
   monthlyEmployerDeposit: number;
   managementFeeAccumulation: number;
   managementFeeDeposit: number;
   investmentTrack?: string | null;
+  ytdReturn?: number | null;
+  activityStatus?: "ACTIVE" | "INACTIVE" | "UNKNOWN" | null;
+  status?: "active" | "closed";
+  isActive?: boolean;
   source?: string;
 };
 
@@ -153,6 +158,41 @@ export type PensionImportSnapshotDTO = {
   healthScore: number | null;
   avgRankPercentile: number | null;
   fundsAboveMarketFee: number;
+};
+
+export type PensionRiskLevel = "LOW" | "MEDIUM" | "HIGH" | "INCREASED";
+
+export type PensionLeadingFundDTO = {
+  id: string;
+  fundName: string;
+  managingBody: string;
+  yield3Years: number | null;
+  managementFeeAccumulation: number | null;
+  managementFeeDeposit: number | null;
+  sharpeRatio: number | null;
+  riskCategory?: string;
+};
+
+export type PensionLeadingFundsResponse = {
+  success: boolean;
+  data?: {
+    riskCategory: PensionRiskLevel;
+    funds: PensionLeadingFundDTO[];
+    source: "finq" | "cache" | "cache_fallback";
+    updatedAt?: string;
+    cached?: boolean;
+    warning?: string;
+  };
+};
+
+export type PensionMarketFundResponse = {
+  success: boolean;
+  data?: {
+    fund: PensionLeadingFundDTO;
+    source: "finq" | "cache_fallback";
+    riskCategory?: string;
+    updatedAt?: string;
+  };
 };
 
 export type UpdatePensionFundBody = Partial<{
@@ -176,6 +216,30 @@ export type UploadPensionBody = {
   monthlyEmployerDeposit?: number;
   managementFeeAccumulation?: number;
   managementFeeDeposit?: number;
+};
+
+export type PensionFreePreviewFund = {
+  previewKey: string;
+  fundName: string;
+  provider: string | null;
+  productType?: string;
+  accountNumber: string | null;
+  activityStatus: "ACTIVE" | "INACTIVE" | "UNKNOWN";
+  fundType: string;
+  status: string;
+  isActive: boolean;
+  requiresManualBalance?: boolean;
+};
+
+export type ManualFundEntry = {
+  previewKey?: string;
+  fundName: string;
+  provider?: string | null;
+  accountNumber?: string | null;
+  activityStatus?: "ACTIVE" | "INACTIVE" | "UNKNOWN";
+  fundType: string;
+  currentBalance: number | "";
+  investmentTrack?: string;
 };
 
 export type UploadPensionFileResponse = {
@@ -243,4 +307,59 @@ export const uploadPensionFile = async (
     return { success: false, message: result.error.message };
   }
   return result.data;
+};
+
+export const uploadPensionFreePreview = async (file: File) => {
+  const result = await apiFormUpload<{
+    success: boolean;
+    message?: string;
+    data?: {
+      sourceKind: string;
+      funds: PensionFreePreviewFund[];
+      narrative?: string;
+      summary?: { parseWarnings?: string[] };
+    };
+  }>("/api/pension/upload-free-preview", file);
+  if (!result.ok) {
+    return { success: false, message: result.error.message };
+  }
+  return result.data;
+};
+
+export const uploadPensionClearinghouse = async (file: File) => {
+  const result = await apiFormUpload<UploadPensionFileResponse & { message?: string }>(
+    "/api/pension/upload-clearinghouse",
+    file,
+  );
+  if (!result.ok) {
+    return { success: false, message: result.error.message };
+  }
+  return result.data;
+};
+
+export const completeManualPensionFunds = async (funds: ManualFundEntry[]) => {
+  const result = await apiJson<{
+    success: boolean;
+    message?: string;
+    data?: { imported: number; funds: PensionFundDTO[] };
+  }>("/api/pension/complete-manual-funds", {
+    method: "POST",
+    auth: true,
+    body: JSON.stringify({ funds }),
+  });
+  if (!result.ok) {
+    return { success: false as const, message: result.error.message };
+  }
+  return result.data;
+};
+
+export const getPensionLeadingFunds = (risk: PensionRiskLevel, refresh = false) => {
+  const qs = new URLSearchParams({ risk });
+  if (refresh) qs.set("refresh", "true");
+  return apiJson<PensionLeadingFundsResponse>(`/api/pension/leading-funds?${qs.toString()}`, { auth: true });
+};
+
+export const getPensionMarketFund = (id: string, risk?: PensionRiskLevel) => {
+  const qs = risk ? `?risk=${risk}` : "";
+  return apiJson<PensionMarketFundResponse>(`/api/pension/fund/${encodeURIComponent(id)}${qs}`, { auth: true });
 };

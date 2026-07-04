@@ -5,26 +5,24 @@
  * Step "guide"    — step-by-step instructions + direct link to הר הכסף
  * Step "upload"   — PDF / Excel upload
  * Step "results"  — flagship pension advisor (PensionAdvisor.jsx design),
- *                   wired to /api/pension/* (analysis, simulation, funds).
+ *                   wired to /api/pension/* (analysis, funds).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PrivateDomainPageLayout } from "../components/layout/PrivateDomainPageLayout";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import GlassCard from "../components/ui/GlassCard";
 import PensionAdvisor from "../components/pension/PensionAdvisor";
 import PensionImportGuide from "../components/pension/PensionImportGuide";
 import PensionUpload from "../components/pension/PensionUpload";
+import PensionOnboardingWizard from "../components/pension/PensionOnboardingWizard";
 import {
   getPensionAnalysis,
-  simulatePensionScenario,
   getPensionFunds,
   uploadPensionFund,
   uploadPensionFile,
   deletePensionFund,
   type PensionAnalysisData,
-  type SimulationResponse,
   type PensionFundDTO,
   type UploadPensionBody,
 } from "../api/pension.api";
@@ -42,7 +40,7 @@ const EMPTY_FORM: UploadPensionBody = {
   managementFeeAccumulation: 0.003, managementFeeDeposit: 0.001,
 };
 
-type FlowStep = "landing" | "guide" | "upload" | "results";
+type FlowStep = "landing" | "onboarding" | "guide" | "upload" | "results";
 
 export default function PensionPage() {
   const navigate = useNavigate();
@@ -67,13 +65,6 @@ export default function PensionPage() {
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  // Simulation
-  const [simAge, setSimAge] = useState("");
-  const [simExtra, setSimExtra] = useState("");
-  const [simFee, setSimFee] = useState("");
-  const [simResult, setSimResult] = useState<SimulationResponse["data"] | null>(null);
-  const [simLoading, setSimLoading] = useState(false);
   const [lastImported, setLastImported] = useState<number | null>(null);
 
   const [showAgeModal, setShowAgeModal] = useState(false);
@@ -92,18 +83,22 @@ export default function PensionPage() {
   }, []);
 
   useEffect(() => {
-    void getPensionAnalysis().then(res => {
+    void (async () => {
+      const [analysisRes, fundsRes] = await Promise.all([getPensionAnalysis(), getPensionFunds()]);
       setLoading(false);
-      if (res.ok && res.data?.success && res.data.data) {
-        setData(res.data.data);
-        if (res.data.data.summary?.hasData) {
+      const fundList = fundsRes.ok && fundsRes.data?.data ? fundsRes.data.data : [];
+      setFunds(fundList);
+      if (analysisRes.ok && analysisRes.data?.success && analysisRes.data.data) {
+        setData(analysisRes.data.data);
+        if (analysisRes.data.data.summary?.hasData || fundList.length > 0) {
           setStep("results");
-          if (!res.data.data.summary.currentAge) setShowAgeModal(true);
+          if (!analysisRes.data.data.summary?.currentAge) setShowAgeModal(true);
         }
+      } else if (fundList.length > 0) {
+        setStep("results");
       }
-    });
-    void loadFunds();
-  }, [loadFunds]);
+    })();
+  }, []);
 
   const handleSaveFund = async () => {
     if (!form.fundName?.trim()) return;
@@ -126,17 +121,6 @@ export default function PensionPage() {
     await deletePensionFund(id);
     setDeletingId(null);
     void loadFunds(); void loadAnalysis();
-  };
-
-  const handleSimulate = async () => {
-    setSimLoading(true); setSimResult(null);
-    const res = await simulatePensionScenario({
-      retirementAge: simAge ? Number(simAge) : undefined,
-      additionalMonthlyContribution: simExtra ? Number(simExtra) : undefined,
-      targetMgmtFee: simFee ? Number(simFee) / 100 : undefined,
-    });
-    setSimLoading(false);
-    if (res.ok && res.data?.success && res.data.data) setSimResult(res.data.data);
   };
 
   const handleFileUpload = async (file: File) => {
@@ -173,7 +157,21 @@ export default function PensionPage() {
     </div>
   );
 
-  // Step 1/2 — green zigzag guide
+  // 2-option onboarding wizard (free manual vs paid clearinghouse)
+  if (step === "onboarding") {
+    return shell(
+      <PensionOnboardingWizard
+        onBack={() => setStep("landing")}
+        onComplete={async () => {
+          await loadFunds();
+          await loadAnalysis();
+          setStep("results");
+        }}
+      />,
+    );
+  }
+
+  // Step 1/2 — green zigzag guide (legacy path)
   if (step === "guide") {
     return shell(
       <PensionImportGuide
@@ -239,15 +237,9 @@ export default function PensionPage() {
             saving={saving}
             saveMsg={saveMsg}
             deletingId={deletingId}
-            simAge={simAge} setSimAge={setSimAge}
-            simExtra={simExtra} setSimExtra={setSimExtra}
-            simFee={simFee} setSimFee={setSimFee}
-            simResult={simResult}
-            simLoading={simLoading}
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
-            onSimulate={handleSimulate}
-            onReimport={() => setStep("guide")}
+            onReimport={() => setStep("onboarding")}
             onOpenChat={() => navigate(`${APP_ROUTES.hub}?chat=1`)}
           />
         </div>
@@ -255,20 +247,20 @@ export default function PensionPage() {
     );
   }
 
-  // Landing (+ initial loading)
-  return (
-    <PrivateDomainPageLayout maxWidth={900}>
-      {loading ? (
-        <div style={{ textAlign: "center", padding: "80px 0", color: "var(--mint-ink)", fontSize: 14 }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
-          טוען נתוני פנסיה...
-        </div>
-      ) : (
+  // Landing (+ initial loading) — same mint shell as guide/upload/results
+  return shell(
+    loading ? (
+      <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--mint-ink)", fontSize: 14 }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+        טוען נתוני פנסיה...
+      </div>
+    ) : (
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 24px 40px" }}>
         <GovReportImportFlow
           domain="pension"
           step="landing"
           progressSteps={UPLOAD_PROGRESS_STEPS}
-          onImport={() => setStep("guide")}
+          onImport={() => setStep("onboarding")}
           onManual={() => { setStep("results"); setShowAddForm(true); }}
           visitedSite={visitedSite}
           onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); setVisitedSite(true); }}
@@ -282,7 +274,7 @@ export default function PensionPage() {
           setIsDragging={setIsDragging}
           onUpload={handleFileUpload}
         />
-      )}
-    </PrivateDomainPageLayout>
+      </div>
+    ),
   );
 }

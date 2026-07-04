@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const connectDB = require('./config/db');
 const createApp = require('./app');
+const { startPensiaNetCron } = require('./jobs/pensiaNetMonthlySync');
 
 const DEFAULT_PORT = 5000;
 const MAX_PORT_ATTEMPTS = 10;
@@ -26,6 +27,7 @@ const startServer = async (port, attempt = 0) => {
     if (attempt === 0) {
       validateEnv();
       await connectDB();
+      startPensiaNetCron();
     }
 
     app = createApp();
