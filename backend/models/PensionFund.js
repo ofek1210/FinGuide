@@ -82,6 +82,25 @@ const pensionFundSchema = new mongoose.Schema(
       max: 5,
       default: null,
     },
+    ytdReturn: {
+      type: Number,
+      default: null,
+    },
+    activityStatus: {
+      type: String,
+      enum: ['ACTIVE', 'INACTIVE', 'UNKNOWN'],
+      default: 'UNKNOWN',
+    },
+    insuranceCoverages: {
+      type: [
+        {
+          coverageType: { type: String, default: null },
+          monthlyPension: { type: Number, default: null },
+          lumpSum: { type: Number, default: null },
+        },
+      ],
+      default: [],
+    },
     historicalReturn1Y: {
       type: Number,
       default: null,
@@ -110,7 +129,7 @@ const pensionFundSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['manual', 'har_hakesef', 'quarterly_report'],
+      enum: ['manual', 'har_hakesef', 'quarterly_report', 'clearinghouse', 'free_report'],
       default: 'manual',
     },
     sourceFile: {

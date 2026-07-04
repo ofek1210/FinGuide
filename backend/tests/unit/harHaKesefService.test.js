@@ -2,7 +2,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { parseHarHaKesefExcel, parseHarHaKesefText, resolveFundType } = require('../../services/harHaKesefService');
+const { parseHarHaKesefExcel, parseHarHaKesefText, resolveFundType, parseProductType } = require('../../services/harHaKesefService');
 
 const FIXTURE_DIR = path.join(__dirname, '../fixtures/har-hakesef');
 
@@ -50,6 +50,24 @@ describe('harHaKesefService', () => {
     expect(resolveFundType('קרן השתלמות')).toBe('study_fund');
     expect(resolveFundType('קופת גמל')).toBe('provident_fund');
     expect(resolveFundType('ביטוח מנהלים')).toBe('managers_insurance');
+  });
+
+  it('parseProductType splits embedded status from product label', () => {
+    expect(parseProductType('קרן פנסיה - פעילה')).toEqual({
+      rawName: 'קרן פנסיה - פעילה',
+      cleanType: 'קרן פנסיה',
+      status: 'ACTIVE',
+    });
+    expect(parseProductType('קופת גמל - לא פעילה')).toEqual({
+      rawName: 'קופת גמל - לא פעילה',
+      cleanType: 'קופת גמל',
+      status: 'INACTIVE',
+    });
+    expect(parseProductType('קרן השתלמות - שבוטל')).toEqual({
+      rawName: 'קרן השתלמות - שבוטל',
+      cleanType: 'קרן השתלמות',
+      status: 'INACTIVE',
+    });
   });
 
   it('returns empty funds with warning when headers missing', () => {

@@ -9,7 +9,7 @@ const { saveImportSnapshot } = require('./importSnapshotService');
 const { runDomainImport } = require('./domainImportService');
 
 async function syncProfileRetirement(userId) {
-  const funds = await PensionFund.find({ user: userId, status: { $ne: 'closed' } }).lean();
+  const funds = await PensionFund.find({ user: userId, status: { $ne: 'closed' }, isActive: { $ne: false } }).lean();
   const totalBalance = funds.reduce((s, f) => s + (f.currentBalance || 0), 0);
   const hasStudyFund = funds.some(f => f.fundType === 'study_fund');
   const hasPension = funds.some(f =>
@@ -54,6 +54,9 @@ async function importPensionFile(userId, parsedFunds, importSource, sourceFile) 
     managementFeeDeposit: f.managementFeeDeposit,
     investmentTrack: f.investmentTrack,
     riskLevel: f.riskLevel,
+    ytdReturn: f.ytdReturn,
+    activityStatus: f.activityStatus,
+    insuranceCoverages: f.insuranceCoverages,
     status: f.status || 'active',
     isActive: f.isActive !== false,
     source: importSource,

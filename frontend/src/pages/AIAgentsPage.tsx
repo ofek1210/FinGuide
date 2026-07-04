@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
+import PlanTabBar from "../components/tabs/PlanTabBar";
 import { askAgent } from "../api/agents.api";
 import { renderMarkdown } from "../utils/renderMarkdown";
 import "./AIAgentsPage.css";
@@ -83,9 +84,10 @@ export default function AIAgentsPage() {
     <div className="private-layout" dir="rtl">
       <PrivateTopbar />
       <main className="private-main ai-agents-page">
-        <h1 className="ai-agents-title">🤖 מערכת סוכני AI</h1>
+        <PlanTabBar />
+        <h1 className="ai-agents-title">עוזר AI פיננסי</h1>
         <p className="ai-agents-subtitle">
-          שאל שאלה — המערכת תבחר אוטומטית את הסוכן המתאים ביותר לענות
+          שאל/י כל שאלה פיננסית — המערכת תנתב אותך אוטומטית לסוכן המתאים
         </p>
 
         {/* Agent cards */}
