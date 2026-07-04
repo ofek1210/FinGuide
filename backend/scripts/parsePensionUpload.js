@@ -6,9 +6,11 @@
  *
  * Usage:
  *   node scripts/parsePensionUpload.js "<path-to.xls|.xlsx>"
- *   node scripts/parsePensionUpload.js "<path>" --out products-parsed.json
+ *   node scripts/parsePensionUpload.js "<path>" --out backend/.work/parse-preview.json
  *   node scripts/parsePensionUpload.js "<path>" --mode preview   # Option A free preview
  *   node scripts/parsePensionUpload.js "<path>" --mode clearinghouse (default)
+ *
+ * Write output under backend/.work/ (gitignored) — not repo root (may contain PII).
  */
 const fs = require('fs');
 const path = require('path');
