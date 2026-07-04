@@ -43,11 +43,14 @@ export function useLandingAnimations(rootRef: RefObject<HTMLElement | null>) {
         [320, 120, -14], // fetch (from bottom-right)
         [0, 240, 0], // route (from bottom)
       ];
+      // must match the --pz depths in landing.css (3D DEPTH LAYER)
+      const depths = [78, 92, 64, 50, 46];
       cards.forEach((card, i) => {
         if (!card) return;
         const o = offsets[i];
         const base = card.classList.contains("pc-route") ? "translateX(-50%) " : "";
-        card.style.transform = base + "translate(" + o[0] + "px," + o[1] + "px) rotate(" + o[2] + "deg)";
+        card.style.transform =
+          base + "translate(" + o[0] + "px," + o[1] + "px) rotate(" + o[2] + "deg) translateZ(" + depths[i] + "px)";
       });
 
       const activate = (i: number) => {
@@ -167,7 +170,8 @@ export function useLandingAnimations(rootRef: RefObject<HTMLElement | null>) {
         cards.forEach((card, i) => {
           if (!card) return;
           after(() => {
-            card.style.transform = card.classList.contains("pc-route") ? "translateX(-50%)" : "none";
+            // clear the inline fly-in transform so the stylesheet translateZ depth applies
+            card.style.transform = "";
           }, 120 + i * 120);
         });
         after(startLoop, 1500);
@@ -186,37 +190,22 @@ export function useLandingAnimations(rootRef: RefObject<HTMLElement | null>) {
       window.addEventListener("scroll", maybeStart, { passive: true });
       cleanups.push(() => window.removeEventListener("scroll", maybeStart));
 
-      /* pointer parallax (layered depth) */
+      /* pointer tilt — true 3D perspective rotation of the whole stage.
+         The stage rotates toward the cursor; its layers sit at different
+         translateZ depths (landing.css) so the parallax is real depth. */
       if (window.matchMedia("(pointer:fine)").matches && !reduce) {
-        const pl = [
-          { el: stage.querySelector<HTMLElement>(".doc"), d: 0.5, base: "translate(-50%,-50%)" },
-          { el: cards[0], d: 1.6 },
-          { el: cards[1], d: 2.0 },
-          { el: cards[2], d: 1.4 },
-          { el: cards[3], d: 1.1 },
-        ];
         let tx = 0,
           ty = 0,
           cx = 0,
           cy = 0,
           raf: number | null = null;
-        const ploop = () => {
-          cx += (tx - cx) * 0.07;
-          cy += (ty - cy) * 0.07;
-          pl.forEach((o) => {
-            if (!o.el) return;
-            const settledNow =
-              o.el.style.transform === "none" || o.el.style.transform.indexOf("rotate") === -1;
-            if (!settledNow && o.el !== pl[0].el) return;
-            const base = o.base
-              ? o.base + " "
-              : o.el.classList.contains("pc-route")
-                ? "translateX(-50%) "
-                : "";
-            o.el.style.transform = base + "translate(" + cx * o.d * 12 + "px," + cy * o.d * 12 + "px)";
-          });
+        const tloop = () => {
+          cx += (tx - cx) * 0.08;
+          cy += (ty - cy) * 0.08;
+          stage.style.setProperty("--sry", (cx * 7).toFixed(2) + "deg");
+          stage.style.setProperty("--srx", (-cy * 6).toFixed(2) + "deg");
           if (Math.abs(tx - cx) > 0.001 || Math.abs(ty - cy) > 0.001) {
-            raf = requestAnimationFrame(ploop);
+            raf = requestAnimationFrame(tloop);
           } else {
             raf = null;
           }
@@ -225,12 +214,12 @@ export function useLandingAnimations(rootRef: RefObject<HTMLElement | null>) {
           const r = stage.getBoundingClientRect();
           tx = (e.clientX - (r.left + r.width / 2)) / r.width;
           ty = (e.clientY - (r.top + r.height / 2)) / r.height;
-          if (!raf) raf = requestAnimationFrame(ploop);
+          if (!raf) raf = requestAnimationFrame(tloop);
         };
         const onLeave = () => {
           tx = 0;
           ty = 0;
-          if (!raf) raf = requestAnimationFrame(ploop);
+          if (!raf) raf = requestAnimationFrame(tloop);
         };
         stage.addEventListener("mousemove", onMove);
         stage.addEventListener("mouseleave", onLeave);
@@ -410,6 +399,37 @@ export function useLandingAnimations(rootRef: RefObject<HTMLElement | null>) {
         cdObs.observe(cdSection);
         observers.push(cdObs);
       }
+    }
+
+    /* ============ 3D tilt cards ============ */
+    /* Section cards tilt toward the cursor + a glare highlight follows it.
+       The transform lives in landing.css (3D DEPTH LAYER); JS only feeds vars. */
+    if (window.matchMedia("(pointer:fine)").matches && !reduce) {
+      const TILT_MAX = 7; // deg
+      const tiltEls = Array.from(
+        root.querySelectorAll<HTMLElement>(".step, .sc-card, .bcard, .cd-chat, .prob-card")
+      );
+      tiltEls.forEach((el) => {
+        const onMove = (e: MouseEvent) => {
+          const r = el.getBoundingClientRect();
+          const px = (e.clientX - r.left) / r.width;
+          const py = (e.clientY - r.top) / r.height;
+          el.style.setProperty("--cry", ((px - 0.5) * 2 * TILT_MAX).toFixed(2) + "deg");
+          el.style.setProperty("--crx", (-(py - 0.5) * 2 * TILT_MAX).toFixed(2) + "deg");
+          el.style.setProperty("--gx", (px * 100).toFixed(1) + "%");
+          el.style.setProperty("--gy", (py * 100).toFixed(1) + "%");
+        };
+        const onLeave = () => {
+          el.style.setProperty("--crx", "0deg");
+          el.style.setProperty("--cry", "0deg");
+        };
+        el.addEventListener("mousemove", onMove);
+        el.addEventListener("mouseleave", onLeave);
+        cleanups.push(() => {
+          el.removeEventListener("mousemove", onMove);
+          el.removeEventListener("mouseleave", onLeave);
+        });
+      });
     }
 
     /* ============ FAQ accordion ============ */

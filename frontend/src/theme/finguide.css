@@ -130,6 +130,12 @@
   --blur-glass: 20px;
   --glass-bg: rgba(255, 255, 255, .66);
   --glass-border: rgba(255, 255, 255, .9);
+
+  /* 3D depth */
+  --persp: 1400px;
+  --tilt-max: 9deg;
+  --depth-pop: 28px;
+  --shadow-float: 0 40px 80px -32px rgba(40, 20, 80, .35), 0 18px 40px -24px rgba(28, 26, 38, .22);
 }
 
 /* ---- Spacing ---- */
