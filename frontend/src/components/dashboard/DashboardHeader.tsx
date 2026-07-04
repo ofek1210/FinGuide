@@ -84,7 +84,7 @@ export default function DashboardHeader({
         <button
           className="dashboard-nav-link"
           type="button"
-          onClick={() => navigate(APP_ROUTES.aiAgents)}
+          onClick={() => navigate(APP_ROUTES.assistant)}
         >
           ✦ יועץ AI
         </button>

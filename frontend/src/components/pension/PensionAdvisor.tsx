@@ -13,6 +13,7 @@ import {
   PiggyBank, TrendingUp, Upload, Plus, X, Check, AlertTriangle,
   BarChart3, Sparkles, Loader2, Trash2, type LucideIcon,
 } from "lucide-react";
+import PensionLeadingFundsTable from "./PensionLeadingFundsTable";
 import { formatCurrencyOrDash } from "../../utils/formatters";
 import { FUND_TYPE_LABELS, RANK_BADGE } from "../../utils/pensionDisplay";
 import type {
@@ -124,13 +125,16 @@ export default function PensionAdvisor({
   // empty state — no pension data yet
   if (!hasData && funds.length === 0 && !showAddForm) {
     return (
-      <main style={{ maxWidth: 720, margin: "0 auto", padding: "60px 24px", textAlign: "center" }}>
-        <span style={{ width: 64, height: 64, borderRadius: 18, margin: "0 auto 18px", background: "var(--mint-soft)", color: "var(--mint-ink)", display: "grid", placeItems: "center" }}><PiggyBank size={30} /></span>
-        <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>אין עדיין נתוני פנסיה</h1>
-        <p style={{ margin: "10px 0 22px", fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>ייבא דוח מהר הכסף או הוסף קרן ידנית כדי לקבל ניתוח, תחזית והמלצות מותאמות.</p>
-        <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={onReimport} style={btnPrimary}><Upload size={16} /> ייבוא מהר הכסף</button>
-          <button onClick={() => setShowAddForm(true)} style={btnGhost}><Plus size={16} /> הוסף קרן ידנית</button>
+      <main style={{ maxWidth: 1080, margin: "0 auto", padding: "8px 0 40px" }}>
+        <PensionLeadingFundsTable />
+        <div style={{ maxWidth: 720, margin: "32px auto 0", padding: "0 24px", textAlign: "center" }}>
+          <span style={{ width: 64, height: 64, borderRadius: 18, margin: "0 auto 18px", background: "var(--mint-soft)", color: "var(--mint-ink)", display: "grid", placeItems: "center" }}><PiggyBank size={30} /></span>
+          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>אין עדיין נתוני פנסיה</h1>
+          <p style={{ margin: "10px 0 22px", fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>ייבא דוח מהר הכסף או הוסף קרן ידנית כדי לקבל ניתוח, תחזית והמלצות מותאמות.</p>
+          <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+            <button onClick={onReimport} style={btnPrimary}><Upload size={16} /> ייבוא מהר הכסף</button>
+            <button onClick={() => setShowAddForm(true)} style={btnGhost}><Plus size={16} /> הוסף קרן ידנית</button>
+          </div>
         </div>
       </main>
     );
@@ -240,6 +244,8 @@ export default function PensionAdvisor({
           </div>
         </div>
       )}
+
+      <PensionLeadingFundsTable />
 
       {/* recommendations by impact */}
       {recs.length > 0 && (

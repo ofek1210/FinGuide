@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./components/LandingPage";
-import DashboardPage from "./pages/DashboardPage";
 import HubPage from "./pages/HubPage";
 import AuthScreen from "./components/AuthScreen";
 import { RequireAuth, RequireGuest } from "./components/RouteGuards";
@@ -89,7 +88,7 @@ export default function App() {
           path={APP_ROUTES.dashboard}
           element={
             <RequireAuth>
-              <DashboardPage />
+              <Navigate to={APP_ROUTES.hub} replace />
             </RequireAuth>
           }
         />
@@ -193,7 +192,7 @@ export default function App() {
           path={APP_ROUTES.assistant}
           element={
             <RequireAuth>
-              <Navigate to={APP_ROUTES.aiAgents} replace />
+              <AIAgentsPage />
             </RequireAuth>
           }
         />
@@ -201,7 +200,7 @@ export default function App() {
           path={APP_ROUTES.aiAgents}
           element={
             <RequireAuth>
-              <AIAgentsPage />
+              <Navigate to={APP_ROUTES.assistant} replace />
             </RequireAuth>
           }
         />

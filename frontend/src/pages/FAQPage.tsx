@@ -128,7 +128,7 @@ export default function FAQPage() {
               type="button"
               className="landing-primary legal-cta-btn"
               onClick={() =>
-                navigate(hasToken ? APP_ROUTES.dashboard : APP_ROUTES.register)
+                navigate(hasToken ? APP_ROUTES.hub : APP_ROUTES.register)
               }
             >
               התחל עכשיו

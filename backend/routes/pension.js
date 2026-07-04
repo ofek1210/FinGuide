@@ -14,6 +14,8 @@ const {
   updatePensionFund,
   deletePensionFund,
   getFundAdvice,
+  getLeadingFunds,
+  getMarketFundById,
 } = require('../controllers/pensionController');
 const { getPensionInsights } = require('../services/pensionRiskAdvisor');
 
@@ -85,6 +87,14 @@ router.get('/risk-advice', async (req, res, next) => {
 
 router.get('/fund-advice', (req, res, next) => {
   Promise.resolve(getFundAdvice(req, res)).catch(next);
+});
+
+router.get('/leading-funds', (req, res, next) => {
+  Promise.resolve(getLeadingFunds(req, res)).catch(next);
+});
+
+router.get('/fund/:id', (req, res, next) => {
+  Promise.resolve(getMarketFundById(req, res)).catch(next);
 });
 
 module.exports = router;
