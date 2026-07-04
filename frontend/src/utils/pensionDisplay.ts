@@ -24,6 +24,11 @@ export const FEE_STATUS_BADGE: Record<string, { label: string; color: string }> 
 
 export { HEALTH_STATUS_ICON } from "./healthDisplay";
 
+export function isPensionFundActive(f: { isActive?: boolean; status?: string; activityStatus?: string | null }): boolean {
+  if (f.isActive === false || f.status === "closed" || f.activityStatus === "INACTIVE") return false;
+  return true;
+}
+
 export const UPLOAD_PROGRESS_STEPS = [
   "מפרסר דוח...",
   "מתאים מול השוק...",
