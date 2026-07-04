@@ -134,12 +134,17 @@ export type PensionFundDTO = {
   fundName: string;
   fundType: string;
   provider: string | null;
+  accountNumber?: string | null;
   currentBalance: number;
   monthlyEmployeeDeposit: number;
   monthlyEmployerDeposit: number;
   managementFeeAccumulation: number;
   managementFeeDeposit: number;
   investmentTrack?: string | null;
+  ytdReturn?: number | null;
+  activityStatus?: "ACTIVE" | "INACTIVE" | "UNKNOWN" | null;
+  status?: "active" | "closed";
+  isActive?: boolean;
   source?: string;
 };
 

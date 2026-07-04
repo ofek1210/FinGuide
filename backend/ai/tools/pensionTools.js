@@ -56,7 +56,11 @@ async function getPensionSummary(userId) {
     })
       .sort({ uploadedAt: -1 })
       .lean(),
-    PensionFund.find({ user: userId, status: { $ne: 'closed' } }).lean(),
+    PensionFund.find({
+      user: userId,
+      status: { $ne: 'closed' },
+      isActive: { $ne: false },
+    }).lean(),
   ]);
 
   const s = latestPayslip?.analysisData?.summary || {};

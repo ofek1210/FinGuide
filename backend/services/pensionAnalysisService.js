@@ -12,6 +12,7 @@ const {
 const { benchmarkPortfolio } = require('./pensionBenchmarkService');
 const { runPensionHealthCheck } = require('./pensionHealthCheckService');
 const { buildFundAdvice } = require('./pensionFundAdvisorService');
+const { generateClearinghouseInsightRecommendations } = require('./pensionClearinghouseInsights');
 
 const EMPTY_BENCHMARK = {
   funds: [],
@@ -46,10 +47,17 @@ async function buildPensionAnalysis(userId) {
     : EMPTY_BENCHMARK;
 
   const healthCheck = runPensionHealthCheck(summary, benchmark);
-  const recommendations = generatePensionRecommendations(summary, projection, {
+  const baseRecommendations = generatePensionRecommendations(summary, projection, {
     profile,
     benchmark,
   });
+
+  const clearinghouseRecs = await generateClearinghouseInsightRecommendations(userId);
+  const clearinghouseTypes = new Set(clearinghouseRecs.map(r => r.type));
+  const recommendations = [
+    ...clearinghouseRecs,
+    ...baseRecommendations.filter(r => !clearinghouseTypes.has(r.type)),
+  ].sort((a, b) => (b.impactAmount || 0) - (a.impactAmount || 0));
 
   const fundAdvice = await buildFundAdvice(summary.funds || [], {
     ...profile,
