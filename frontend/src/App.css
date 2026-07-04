@@ -7655,11 +7655,11 @@
 .floating-assistant-panel {
   width: min(390px, calc(100vw - 40px));
   height: min(580px, calc(100vh - 130px));
-  background: var(--dash-bg, #000);
-  color: var(--dash-text, #fff);
-  border: 3px solid var(--dash-border, #fff);
-  border-radius: 14px;
-  box-shadow: 8px 8px 0 var(--rapyd-purple, #5A26FF);
+  background: var(--surface-card, #fff);
+  color: var(--text-strong, #16151C);
+  border: 1px solid var(--border-hair, #ECECEF);
+  border-radius: var(--r-card, 14px);
+  box-shadow: var(--shadow-card, 0 26px 58px -28px rgba(28, 26, 38, .20));
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -7684,9 +7684,9 @@
   justify-content: space-between;
   gap: 10px;
   padding: 14px 16px;
-  background: var(--rapyd-yellow, #FAFF00);
-  color: var(--rapyd-black, #000);
-  border-bottom: 3px solid var(--rapyd-black, #000);
+  background: var(--accent-soft, #F4EEFF);
+  color: var(--text-strong, #16151C);
+  border-bottom: 1px solid var(--border-hair, #ECECEF);
 }
 
 .floating-assistant-title {
@@ -7704,9 +7704,9 @@
   justify-content: center;
   width: 26px;
   height: 26px;
-  border-radius: 8px;
-  background: var(--rapyd-black, #000);
-  color: var(--rapyd-yellow, #FAFF00);
+  border-radius: var(--r-sm, 8px);
+  background: var(--grad-brand, linear-gradient(150deg, #9B7FE8, #5E45B0));
+  color: #fff;
 }
 
 .floating-assistant-header-actions {
@@ -7716,24 +7716,25 @@
 }
 
 .floating-assistant-icon-btn {
-  border: 2px solid var(--rapyd-black, #000);
-  background: transparent;
-  color: var(--rapyd-black, #000);
+  border: 1px solid var(--border-soft, rgba(22, 21, 28, .09));
+  background: var(--surface-card, #fff);
+  color: var(--text-muted, #6B6A78);
   width: 30px;
   height: 30px;
-  border-radius: 8px;
+  border-radius: var(--r-sm, 8px);
   cursor: pointer;
   font-size: 0.95rem;
   font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.12s ease, color 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
 .floating-assistant-icon-btn:hover:not(:disabled) {
-  background: var(--rapyd-black, #000);
-  color: var(--rapyd-yellow, #FAFF00);
+  background: var(--accent-soft, #F4EEFF);
+  color: var(--accent-strong, #5E45B0);
+  border-color: var(--lav-200, #E4D7FF);
 }
 
 .floating-assistant-icon-btn:disabled {
@@ -7748,9 +7749,9 @@
   padding: 8px 16px;
   font-size: 0.78rem;
   font-weight: 700;
-  color: var(--dash-text, #fff);
-  background: var(--dash-surface, #111);
-  border-bottom: 2px solid var(--rapyd-black, #000);
+  color: var(--accent-strong, #5E45B0);
+  background: var(--lav-50, #FAF7FF);
+  border-bottom: 1px solid var(--border-hair, #ECECEF);
 }
 
 .floating-assistant-context > span:last-child {
@@ -7765,7 +7766,7 @@
   max-height: none;
   margin: 0;
   padding: 16px;
-  background: var(--dash-bg, #000);
+  background: var(--surface-page, #FBFBFC);
 }
 
 .floating-assistant-messages .ai-message {
@@ -7782,11 +7783,120 @@
 .floating-assistant-input {
   margin: 0;
   padding: 12px 16px 16px;
-  border-top: 2px solid var(--dash-border, rgba(255,255,255,0.15));
+  border-top: 1px solid var(--border-hair, #ECECEF);
+  background: var(--surface-card, #fff);
 }
 
 .floating-assistant-error {
   padding: 0 16px 12px;
+  background: var(--surface-card, #fff);
+}
+
+/* ── Panel-scoped overrides: pull the shared .ai-* chat UI onto the
+      FinGuide pastel palette (base rules target the old dark theme) ── */
+.floating-assistant-panel .ai-message {
+  background: var(--surface-card, #fff);
+  color: var(--text-body, #3A3947);
+  border: 1px solid var(--border-hair, #ECECEF);
+}
+
+.floating-assistant-panel .ai-message.user {
+  background: var(--lav-100, #F4EEFF);
+  border-color: var(--lav-200, #E4D7FF);
+  color: var(--lav-700, #5E45B0);
+}
+
+.floating-assistant-panel .ai-message.assistant {
+  background: var(--surface-card, #fff);
+  border-color: var(--border-hair, #ECECEF);
+  color: var(--text-body, #3A3947);
+}
+
+.floating-assistant-panel .ai-message .ai-heading {
+  color: var(--text-strong, #16151C);
+}
+
+.floating-assistant-panel .ai-message .ai-code {
+  background: var(--surface-sunken, #F5F5F4);
+  color: var(--accent-strong, #5E45B0);
+}
+
+.floating-assistant-panel .ai-copy-btn {
+  color: var(--accent, #7C5FD6);
+}
+
+.floating-assistant-panel .ai-model {
+  color: var(--text-muted, #6B6A78);
+  border-color: var(--border-soft, rgba(22, 21, 28, .09));
+  background: var(--surface-sunken, #F5F5F4);
+}
+
+.floating-assistant-panel .ai-model.source-claude {
+  color: var(--lav-700, #5E45B0);
+  border-color: var(--lav-200, #E4D7FF);
+  background: var(--lav-100, #F4EEFF);
+}
+
+.floating-assistant-panel .ai-model.source-rule {
+  color: var(--mint-ink, #2F9C62);
+  border-color: var(--mint, #C9ECD6);
+  background: var(--mint-soft, #E6F6EC);
+}
+
+.floating-assistant-panel .ai-suggestion {
+  border: 1px solid var(--lav-200, #E4D7FF);
+  background: var(--lav-100, #F4EEFF);
+  color: var(--lav-700, #5E45B0);
+}
+
+.floating-assistant-panel .ai-suggestion:hover:not(:disabled) {
+  background: var(--lav-200, #E4D7FF);
+}
+
+.floating-assistant-panel .ai-input input {
+  border: 1px solid var(--border-soft, rgba(22, 21, 28, .09));
+  background: var(--surface-card, #fff);
+  color: var(--text-strong, #16151C);
+  border-radius: var(--r-btn, 10px);
+}
+
+.floating-assistant-panel .ai-input input::placeholder {
+  color: var(--text-faint, #9B9AA6);
+}
+
+.floating-assistant-panel .ai-input input:focus {
+  outline: none;
+  border-color: var(--lav-400, #B49BF0);
+  box-shadow: 0 0 0 3px var(--accent-soft, #F4EEFF);
+}
+
+.floating-assistant-panel .ai-send {
+  background: var(--ink, #16151C);
+  color: var(--text-on-ink, #fff);
+  border-radius: var(--r-btn, 10px);
+  transition: background 0.15s var(--ease, ease);
+}
+
+.floating-assistant-panel .ai-send:hover:not(:disabled) {
+  background: var(--ink-soft, #3A3947);
+}
+
+.floating-assistant-panel .ai-voice-btn {
+  border: 1px solid var(--border-soft, rgba(22, 21, 28, .09));
+  background: var(--surface-card, #fff);
+  border-radius: var(--r-btn, 10px);
+}
+
+.floating-assistant-panel .ai-voice-btn:hover:not(:disabled) {
+  background: var(--surface-sunken, #F5F5F4);
+}
+
+.floating-assistant-panel .ai-cursor {
+  color: var(--accent, #7C5FD6);
+}
+
+.floating-assistant-panel .ai-error {
+  color: var(--peach-ink, #DA6F44);
 }
 
 @media (max-width: 480px) {
