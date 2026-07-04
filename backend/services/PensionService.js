@@ -4,7 +4,7 @@ const config = require('../config/pensionFinqConfig');
 const PensionLeadingFundCache = require('../models/PensionLeadingFundCache');
 const { AppError } = require('../utils/appErrors');
 
-const { RISK_LEVELS, DEFAULT_RISK } = config;
+const { RISK_LEVELS, DEFAULT_RISK, RISK_TO_FINQ_LEVEL } = config;
 
 /**
  * Normalize ?risk= query values to Finq risk enum.
@@ -57,12 +57,16 @@ function normalizeFinqFund(raw, riskCategory) {
   return {
     id,
     fundName:
+      raw.routeName ??
+      raw.routeShortName ??
+      raw.fundShortName ??
       raw.fundName ??
       raw.fund_name ??
       raw.name ??
       raw.title ??
       '',
     managingBody:
+      raw.shortText ??
       raw.managingBody ??
       raw.managing_body ??
       raw.manager ??
@@ -70,27 +74,39 @@ function normalizeFinqFund(raw, riskCategory) {
       raw.company ??
       '',
     yield3Years: parseNumber(
-      raw.yield3Years ??
+      raw.yield36Months ??
+        raw.yield3Years ??
         raw.yield_3_years ??
         raw.threeYearYield ??
         raw.return_3_years,
     ),
     managementFeeAccumulation: parseNumber(
-      raw.managementFeeAccumulation ??
+      raw.avgAnnualManagementFee ??
+        raw.managementFeeAccumulation ??
         raw.mgmt_fee_accumulation ??
         raw.accumulationFee ??
         raw.fee_from_accumulation,
     ),
     managementFeeDeposit: parseNumber(
-      raw.managementFeeDeposit ??
+      raw.avgDepositFee ??
+        raw.managementFeeDeposit ??
         raw.mgmt_fee_deposit ??
         raw.depositFee ??
         raw.fee_from_deposit,
     ),
-    sharpeRatio: parseNumber(raw.sharpeRatio ?? raw.sharpe_ratio ?? raw.sharpe),
-    riskCategory: raw.riskLevel ?? raw.risk_level ?? raw.risk ?? riskCategory,
+    sharpeRatio: parseNumber(raw.sharpeRatio ?? raw.sharpe_ratio ?? raw.sharpe ?? raw.eftAvgStd),
+    finqRank: parseNumber(raw.finqRank),
+    riskCategory: raw.riskLevel ?? raw.risk_level ?? raw.finqRiskLevel ?? raw.risk ?? riskCategory,
     raw,
   };
+}
+
+function finqRiskLevelFor(riskCategory) {
+  const level = RISK_TO_FINQ_LEVEL[riskCategory];
+  if (level == null) {
+    throw new AppError(`רמת סיכון לא תקינה. ערכים מותרים: ${RISK_LEVELS.join(', ')}`, 400);
+  }
+  return level;
 }
 
 function extractFundList(payload) {
@@ -106,7 +122,7 @@ function buildLeadingFundsUrl(riskCategory) {
   const params = new URLSearchParams({
     category: config.DEFAULT_CATEGORY,
     sortBy: config.DEFAULT_SORT,
-    risk_level: riskCategory,
+    riskLevel: String(finqRiskLevelFor(riskCategory)),
   });
   return `${config.FINQ_BASE_URL}${config.FINQ_LEADING_FUNDS_PATH}?${params.toString()}`;
 }
