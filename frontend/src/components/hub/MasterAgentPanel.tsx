@@ -24,6 +24,7 @@ import { askAgent } from "../../api/agents.api";
 import { AGENTS, type AgentId, type AgentDef } from "../../theme/agents";
 import { APP_ROUTES } from "../../types/navigation";
 import AgentSyncOverlay, { type SyncStage } from "./AgentSyncOverlay";
+import DebateArena from "./DebateArena";
 
 /* ============================================================
    Master Agent Panel — the Hub's mission-control console.
@@ -501,6 +502,8 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
               );
             })}
           </div>
+
+          <DebateArena disabled={busy} />
 
           {/* synthesis — the master agent's cross-referenced output */}
           {result && (
