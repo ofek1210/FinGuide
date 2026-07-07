@@ -11,13 +11,14 @@
  */
 
 const { getClient, callOllama } = require('./baseAgent');
+const llmBudget = require('../llmBudget');
 const payslipAgent = require('./payslipAgent');
 const pensionAgent = require('./pensionAgent');
 const financialAnalysisAgent = require('./financialAnalysisAgent');
 const financialPlanningAgent = require('./financialPlanningAgent');
 const insuranceAgent = require('./insuranceAgent');
 
-const CHAT_MODEL = process.env.CHAT_MODEL || 'claude-sonnet-4-20250514';
+const CHAT_MODEL = process.env.CHAT_MODEL || 'claude-haiku-4-5';
 
 // Agent registry
 const AGENTS = {
@@ -95,7 +96,7 @@ async function classifyIntent(query) {
 החזר רק את שם הקטגוריה, בלי הסבר.`;
 
   const client = getClient();
-  if (client) {
+  if (client && llmBudget.canSpend()) {
     try {
       const response = await client.messages.create({
         model: CHAT_MODEL,
@@ -104,6 +105,8 @@ async function classifyIntent(query) {
         system: classificationSystemPrompt,
         messages: [{ role: 'user', content: query }],
       });
+
+      llmBudget.record(response.usage);
 
       const classification = response.content?.[0]?.text?.trim().toLowerCase();
       if (classification && AGENTS[classification]) {
@@ -166,15 +169,17 @@ async function orchestrate(query, context = {}) {
 
   // Try Claude first
   const client = getClient();
-  if (client) {
+  if (client && llmBudget.canSpend()) {
     try {
       const response = await client.messages.create({
         model: CHAT_MODEL,
-        max_tokens: 1200,
+        max_tokens: llmBudget.cap(1200),
         temperature: 0.3,
         system: systemPrompt,
         messages: [...historyMessages, { role: 'user', content: query }],
       });
+
+      llmBudget.record(response.usage);
 
       const text = response.content
         ?.filter(block => block.type === 'text')

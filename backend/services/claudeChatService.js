@@ -1,8 +1,9 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const { askLLM: askOllama } = require('./aiService');
+const llmBudget = require('./llmBudget');
 
 const CHAT_PROVIDER = (process.env.CHAT_PROVIDER || 'claude').toLowerCase();
-const CHAT_MODEL = process.env.CHAT_MODEL || 'claude-sonnet-4-20250514';
+const CHAT_MODEL = process.env.CHAT_MODEL || 'claude-haiku-4-5';
 
 let anthropicClient = null;
 
@@ -119,6 +120,7 @@ function buildEnhancedSystemPrompt(userContext, profile, insights, recommendatio
 async function askClaude(userMessage, systemPrompt, history = []) {
   const client = getAnthropicClient();
   if (!client) return null;
+  if (!llmBudget.canSpend()) return null;
 
   const historyMessages = (history || [])
     .filter(m => m.role === 'user' || m.role === 'assistant')
@@ -128,11 +130,13 @@ async function askClaude(userMessage, systemPrompt, history = []) {
   try {
     const response = await client.messages.create({
       model: CHAT_MODEL,
-      max_tokens: 1500,
+      max_tokens: llmBudget.cap(1500),
       temperature: 0.3,
       system: systemPrompt,
       messages: [...historyMessages, { role: 'user', content: userMessage }],
     });
+
+    llmBudget.record(response.usage);
 
     const text = response.content
       ?.filter(block => block.type === 'text')
@@ -173,7 +177,7 @@ async function streamChat(userMessage, { userContext, profile, insights, recomme
   const systemPrompt = buildEnhancedSystemPrompt(userContext, profile, insights, recommendations, pageContext);
   const client = getAnthropicClient();
 
-  if (client && CHAT_PROVIDER !== 'ollama') {
+  if (client && CHAT_PROVIDER !== 'ollama' && llmBudget.canSpend()) {
     const historyMessages = (history || [])
       .filter(m => m.role === 'user' || m.role === 'assistant')
       .slice(-10)
@@ -185,7 +189,7 @@ async function streamChat(userMessage, { userContext, profile, insights, recomme
 
     const stream = client.messages.stream({
       model: CHAT_MODEL,
-      max_tokens: 1500,
+      max_tokens: llmBudget.cap(1500),
       temperature: 0.3,
       system: systemPrompt,
       messages: [...historyMessages, { role: 'user', content: userMessage }],
@@ -202,6 +206,7 @@ async function streamChat(userMessage, { userContext, profile, insights, recomme
       }
     }
 
+    llmBudget.record({ input_tokens: inputTokens, output_tokens: outputTokens });
     await onDone(fullText, inputTokens + outputTokens, { source: 'claude', model: CHAT_MODEL });
     return;
   }
