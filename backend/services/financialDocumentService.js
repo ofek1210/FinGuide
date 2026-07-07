@@ -58,7 +58,7 @@ const resolveDocumentMetadata = (source, metadata) => {
 
 const applyExtractionToDocument = async (document, { password, userId } = {}) => {
   try {
-    const { data } = await extractPayslipFile(document.filePath, { password });
+    const { data } = await extractPayslipFile(document.filePath, { password, userId });
 
     const fieldsMeta = buildFieldsMeta(data);
     if (fieldsMeta) {

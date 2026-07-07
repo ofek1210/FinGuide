@@ -9,23 +9,59 @@ import {
   documentToPayslipDetail,
   getPayslipHistoryFromIntelligence,
   getPayslipHistoryFromDocuments,
+  computePayslipStats,
 } from "../utils/documentToPayslip";
 
 export const fetchPayslipHistory = async (year?: number | "all"): Promise<PayslipHistoryResponse> => {
-  const intelligence = await getPayslipHistoryIntelligence(year);
+  const [intelligence, fallbackResponse] = await Promise.all([
+    getPayslipHistoryIntelligence(year),
+    listDocuments(),
+  ]);
+
+  const fromDocs = fallbackResponse.success && Array.isArray(fallbackResponse.data)
+    ? getPayslipHistoryFromDocuments(fallbackResponse.data)
+    : null;
+
   if (intelligence.success && intelligence.data) {
     const fromIntelligence = getPayslipHistoryFromIntelligence(intelligence.data);
-    if (fromIntelligence.items.length > 0) {
-      return fromIntelligence;
+    const seenIds = new Set(fromIntelligence.items.map((item) => item.id));
+    const mergedItems = [
+      ...fromIntelligence.items,
+      ...(fromDocs?.items.filter((item) => item.id && !seenIds.has(item.id)) ?? []),
+    ];
+
+    if (mergedItems.length > 0) {
+      const stats = fromIntelligence.items.length > 0
+        ? {
+            ...fromIntelligence.stats,
+            totalPayslips: mergedItems.length,
+          }
+        : computePayslipStats(mergedItems);
+
+      return {
+        ...fromIntelligence,
+        items: mergedItems,
+        stats,
+      };
     }
   }
 
-  const fallbackResponse = await listDocuments();
+  if (fromDocs && fromDocs.items.length > 0) {
+    return fromDocs;
+  }
+
   if (!fallbackResponse.success) {
     throw new Error(fallbackResponse.message ?? "לא הצלחנו לטעון את המסמכים.");
   }
-  const docs = fallbackResponse.data ?? [];
-  return getPayslipHistoryFromDocuments(docs);
+
+  return fromDocs ?? {
+    stats: computePayslipStats([]),
+    items: [],
+    years: [],
+    selectedYear: null,
+    taxAdjustment: null,
+    dataQualityWarnings: [],
+  };
 };
 
 export const fetchPayslipDetail = async (id: string): Promise<PayslipDetail | null> => {

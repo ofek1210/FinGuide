@@ -69,6 +69,36 @@ describe('payslipOcrLabelMap', () => {
       expect(result.gross_total).toBeUndefined();
     });
 
+    it('does not treat pension base (שכר לקצבה) as gross_total', () => {
+      const lines = [
+        'שכר לקצבה 26,000',
+        'סך כל התשלומים 32,500',
+        'נטו לתשלום 24,100',
+      ];
+      const result = extractFromLinesByLabelMap(lines);
+      expect(result.gross_total).toBe(32500);
+    });
+
+    it('extracts gross and net from IDF underscore labels', () => {
+      const lines = [
+        'סך_כל_התשלומים 12,500.00',
+        'נטו_לתשלום 10,020.00',
+      ];
+      const result = extractFromLinesByLabelMap(lines);
+      expect(result.gross_total).toBe(12500);
+      expect(result.net_payable).toBe(10020);
+    });
+
+    it('extracts gross and net from IDF header labels (שוטפים / שכר חודשי נטו)', () => {
+      const lines = [
+        'סה_כ_תשלומים_שוטפים 12,500.00',
+        'שכר_חודשי_נטו 10,020.00',
+      ];
+      const result = extractFromLinesByLabelMap(lines);
+      expect(result.gross_total).toBe(12500);
+      expect(result.net_payable).toBe(10020);
+    });
+
     it('extracts from table with header row (data line then header line)', () => {
       const dataLine = '3,666.51 231.66 0.00 173.88 4,072.05 0.00 4,072.05 0.00 211.05 0.00 0.00 3,861.00';
       const headerLine =

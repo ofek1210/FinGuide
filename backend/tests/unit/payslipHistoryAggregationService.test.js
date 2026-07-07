@@ -48,6 +48,28 @@ describe('payslip history aggregation service', () => {
     expect(result.selectedYearStats.netAverage).toBe(14750);
     expect(result.items).toHaveLength(2);
   });
+
+  it('includes payslips with incomplete period in history items', () => {
+    const docs = [
+      {
+        _id: 'no-period',
+        status: 'completed',
+        uploadedAt: '2026-05-10T10:00:00.000Z',
+        originalName: 'payslip.pdf',
+        analysisData: {
+          salary: { gross_total: 18000, net_payable: 13000 },
+        },
+      },
+    ];
+
+    const result = buildPayslipHistoryIntelligence(docs, { year: 'all' });
+
+    expect(result.items).toHaveLength(1);
+    expect(result.items[0].id).toBe('no-period');
+    expect(result.items[0].needsReview).toBe(true);
+    expect(result.items[0].missingCritical).toContain('period');
+    expect(result.incompletePeriods).toHaveLength(1);
+  });
 });
 
 describe('tax adjustment rules service', () => {

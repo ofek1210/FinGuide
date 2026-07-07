@@ -182,11 +182,87 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     });
 
     expect(result.period.month).toBe('2024-11');
-    expect(result.contributions.pension.employee).toBeUndefined();
-    expect(result.contributions.pension.employer).toBeUndefined();
-    expect(result.quality.warnings).toContain(
-      'Pension contribution lines found but employee/employer roles were ambiguous.',
-    );
+    expect(result.contributions.pension.employee).toBe(1500);
+    expect(result.contributions.pension.employer).toBe(2000);
+    expect(result.salary.gross_total).toBe(15000);
+  });
+
+  it('extracts explicit deduction labels for pension and study fund', async () => {
+    const text = readFixture('payslip-he-regression-explicit-deductions.txt');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2025-03.pdf',
+    });
+
+    expect(result.period.month).toBe('2025-03');
+    expect(result.contributions.pension.employee).toBe(1080);
+    expect(result.contributions.pension.employer).toBe(1170);
+    expect(result.contributions.study_fund.employee).toBe(360);
+    expect(result.contributions.study_fund.employer).toBe(1350);
+  });
+
+  it('extracts IDF-style June payslip with employer, ID, gross/net and voluntary insurance', async () => {
+    const text = readFixture('payslip-he-regression-idf-june.txt');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2026-06.pdf',
+      expectedEmployeeName: 'שגב פרטוש',
+    });
+
+    expect(result.period.month).toBe('2026-06');
+    expect(result.parties.employer_name).toBe('צבא הגנה לישראל');
+    expect(result.parties.employee_name).toBe('שגב פרטוש');
+    expect(result.parties.employee_id).toBe('205506975');
+    expect(result.salary.gross_total).toBe(30391.26);
+    expect(result.salary.net_payable).toBe(10020);
+    expect(result.deductions.voluntary.life_insurance).toBe(95);
+    expect(result.deductions.voluntary.health_insurance).toBe(120);
+    expect(result.deductions.voluntary.disability_insurance).toBe(65);
+    expect(result.contributions.pension.employee).toBe(2112.62);
+    expect(result.contributions.pension.participation_total).toBe(3176.41);
+    expect(result.contributions.pension.employer).toBe(1063.79);
+    expect(result.contributions.study_fund.employee).toBe(743.61);
+    expect(result.contributions.study_fund.participation_total).toBe(1744.17);
+    expect(result.contributions.study_fund.employer).toBe(1000.56);
+  });
+
+  it('extracts May 2026 IDF payslip: gross from שוטפים column, net separate, pension total from השתתפות', async () => {
+    const text = readFixture('payslip-he-regression-idf-may.txt');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2026-05.pdf',
+      expectedEmployeeName: 'שגב פרטוש',
+    });
+
+    expect(result.period.month).toBe('2026-05');
+    expect(result.salary.gross_total).toBe(30391.26);
+    expect(result.salary.net_payable).toBe(22847.5);
+    expect(result.salary.gross_total).not.toBe(result.salary.net_payable);
+    expect(result.contributions.pension.employee).toBe(2112.62);
+    expect(result.contributions.pension.participation_total).toBe(3176.41);
+    expect(result.contributions.pension.employer).toBe(1063.79);
+    expect(result.contributions.study_fund.employee).toBe(743.61);
+    expect(result.contributions.study_fund.participation_total).toBe(1744.17);
+    expect(result.contributions.study_fund.employer).toBe(1000.56);
+  });
+
+  it('extracts June gross when label and amount are on separate lines', async () => {
+    const text = [
+      'צבא הגנה לישראל',
+      'תלוש שכר לחודש 06/2026',
+      'סה_כ_תשלומים_שוטפים',
+      '30391.26',
+      'ניכוי_לקרן_הפנסיה 2112.62',
+      'השתתפות_בקרן_הפנסיה 3176.41',
+      'שכר_חודשי_נטו 10020.00',
+    ].join('\n');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'PaySlip2026-06.pdf',
+    });
+
+    expect(result.salary.gross_total).toBe(30391.26);
+    expect(result.salary.net_payable).toBe(10020);
   });
 
   it('resolves wrapped deduction labels from adjacent lines without corrupting salary fields', async () => {

@@ -31,6 +31,25 @@ const MONTH_NAME_HEADER_REGEX =
 const COMPANY_HINT_REGEX = /(?:בע["']{0,2}[י]{0,2}מ|Ltd|Inc|LLC|Corp|Company|Technologies|Solutions)/i;
 const EMPLOYER_CONTEXT_REGEX = /(?:שם\s+מעסיק|שם\s+מעביד|מעסיק|מעביד|Employer|Company|חברה)/i;
 
+/**
+ * Single normalization for Hebrew payslip lines (used by the label map, the
+ * IDF profile and the contributions extractor — keep only this copy):
+ * - underscores → spaces (IDF payslips use underscores instead of spaces)
+ * - "סה כ" → "סהכ", "נכוי ל" → "ניכוי ל" (common OCR splits/typos)
+ * - collapse whitespace, unify quote characters
+ */
+function normalizeHebrewLine(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  return raw
+    .replace(/_/g, ' ')
+    .replace(/סה\s+כ/g, 'סהכ')
+    .replace(/נכוי(\s+ל)/g, 'ניכוי$1')
+    .replace(/\s+/g, ' ')
+    .replace(/[’'`׳]/g, "'")
+    .replace(/[“”״]/g, '"')
+    .trim();
+}
+
 function parseMoney(value) {
   return parseOcrNumber(value);
 }
@@ -82,6 +101,11 @@ function extractMonthYYYYMM(text) {
   const monthSlashYear = value.match(/(\d{2})\/(20\d{2})/);
   if (monthSlashYear) return `${monthSlashYear[2]}-${monthSlashYear[1]}`;
 
+  const lekhodesh = value.match(/לחודש\s+(\d{1,2})\/(20\d{2})/i);
+  if (lekhodesh) {
+    return `${lekhodesh[2]}-${String(lekhodesh[1]).padStart(2, '0')}`;
+  }
+
   const dateRange = value.match(/מ-\d{2}\/(\d{2})\/(\d{2})\s+עד\s+\d{2}\/\1\/\2/);
   if (dateRange) return `20${dateRange[2]}-${dateRange[1]}`;
 
@@ -107,6 +131,27 @@ function extractHMO(text) {
 function translateHMO(hmo) {
   if (!hmo) return undefined;
   return HMO_MAP[hmo] || hmo;
+}
+
+/**
+ * Detect payslip text whose Hebrew came out garbled (mojibake / bad font
+ * decoding). Such text has unusable labels — numeric-layout rescue or OCR
+ * should be used instead of label matching.
+ */
+function isLikelyBrokenHebrew(text) {
+  if (!text) return false;
+  const value = String(text);
+  const hebrewCount = (value.match(/[\u0590-\u05FF]/g) || []).length;
+  const weirdLatinCount = (value.match(/[À-ÿ]/g) || []).length;
+  const modifierLetterCount = (value.match(/[\u02B0-\u02FF]/g) || []).length;
+  const replacementCount = (value.match(/\uFFFD/g) || []).length;
+
+  // Mojibake: PDF fonts decoded as replacement chars — labels unusable, prefer OCR/rescue
+  if (replacementCount > 15) return true;
+  // Long payslip text with almost no Hebrew is almost certainly broken encoding
+  if (value.length > 400 && hebrewCount < 8) return true;
+  if (hebrewCount < 5 && modifierLetterCount > 30) return true;
+  return hebrewCount < 5 && weirdLatinCount > 20;
 }
 
 function isLikelyTaxBaseNoiseLine(line) {
@@ -187,6 +232,30 @@ function dedupeStrings(values) {
   return [...new Set(values.filter(Boolean))];
 }
 
+const PAYSLIP_PERIOD_LINE_REGEX =
+  /(?:לחודש|חודש|תקופה|תלוש\s+שכר|שנת)\s*[^\n]{0,24}\d{1,2}\s*\/\s*20\d{2}|\d{1,2}\s*\/\s*20\d{2}/i;
+
+function isPayslipPeriodNoise(value, lineText) {
+  if (!Number.isFinite(value) || !lineText) {
+    return false;
+  }
+
+  const text = String(lineText);
+  if (!PAYSLIP_PERIOD_LINE_REGEX.test(text)) {
+    return false;
+  }
+
+  if (value >= 2000 && value <= 2099) {
+    return true;
+  }
+
+  if (value >= 1 && value <= 12) {
+    return true;
+  }
+
+  return false;
+}
+
 module.exports = {
   COMPANY_HINT_REGEX,
   EMPLOYER_CONTEXT_REGEX,
@@ -199,10 +268,13 @@ module.exports = {
   extractMonthFromFilename,
   extractMonthYYYYMM,
   isCumulativeLine,
+  isLikelyBrokenHebrew,
   isLikelyCumulativeZoneLine,
   isLikelyTaxBaseNoiseLine,
+  isPayslipPeriodNoise,
   linesOf,
   match1,
+  normalizeHebrewLine,
   matchAmountFlexible,
   parseDateDDMMYYYYorYY,
   parseMoney,

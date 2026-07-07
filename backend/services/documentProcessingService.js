@@ -28,7 +28,7 @@ const processDocumentNow = async documentId => {
   await document.save();
 
   try {
-    const { data } = await getPayslipExtractor()(document.filePath);
+    const { data } = await getPayslipExtractor()(document.filePath, { userId: document.user });
 
     const fieldsMeta = buildFieldsMeta(data);
     if (fieldsMeta) data.fields_meta = fieldsMeta;

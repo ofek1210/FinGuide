@@ -2,6 +2,7 @@ const {
   bestAmountByExpected,
   isCumulativeLine,
   isLikelyTaxBaseNoiseLine,
+  normalizeHebrewLine,
   pickReasonableAmount,
 } = require('./payslipOcrShared');
 const {
@@ -10,16 +11,104 @@ const {
 } = require('./payslipOcrNumbers');
 const { pushCandidate, resolveBestNumericCandidate } = require('./payslipOcrResolver');
 const { buildContributionDetection } = require('../utils/detectFundWithoutDeposit');
+const {
+  IDF_CONTRIBUTION_COLUMNS,
+  detectIdfPayslip,
+  findIdfColumnForLine,
+  pickIdfColumnAmount,
+} = require('./idfPayslipProfile');
 
-const STUDY_CONTEXT_REGEX = /קרן\s*השתלמות/i;
-const STUDY_BASE_REGEX = /שכר\s*לקרן\s*השתלמות/i;
+const STUDY_CONTEXT_REGEX = /קרן\s*השתלמות|קרן\s*ה+שתלמ/i;
+const STUDY_BASE_REGEX = /שכר\s*לקרן\s*השתלמות|שכר\s*לקרן\s*ה+שתלמ/i;
 const PENSION_CONTEXT_REGEX =
-  /(תגמול|תגמולים|פיצוי|פיצויים|פנסי|ביטוח\s*מנהלים|קופ["״]?ג|גמל)/i;
+  /(תגמול|תגמולים|פיצוי|פיצויים|פנסי|ביטוח\s*מנהלים|קופ["״]?ג|גמל|קרן\s*פנסיה|קרן\s*ה+פנסיה|הפנסיה)/i;
 const PENSION_BASE_REGEX = /שכר\s*לקצבה/i;
-const EMPLOYEE_ROLE_REGEX = /(עובד|תגמולי\s*עובד|ניכוי\s*עובד)/i;
-const EMPLOYER_ROLE_REGEX = /(מעביד|מעסיק|תגמולי\s*מעביד|הפרשת\s*מעסיק)/i;
 const SEVERANCE_ROLE_REGEX = /פיצוי|פיצויים/i;
 const IDENTITY_NOISE_REGEX = /(?:שם\s+עובד|שם\s+מעסיק|ת\.?\s*ז\.?|מספר\s+זהות)/i;
+
+function contributionLineText(raw) {
+  return normalizeHebrewLine(raw);
+}
+
+function matchesContributionLabel(raw, pattern) {
+  const normalized = contributionLineText(raw);
+  return pattern.test(normalized) || pattern.test(String(raw || ''));
+}
+
+// Standard payslip labels (Michpal, Malam, etc.) — keep explicit variants.
+const PENSION_EMPLOYEE_DEDUCTION_LABEL =
+  /ניכוי\s+(?:ל\s*)?(?:קרן\s*)?פנסיה|ניכוי\s+עובד\s+(?:ל\s*)?(?:קרן\s*)?פנסיה|ניכוי\s+(?:ל\s*)?(?:קרן\s*)?גמל|ניכוי\s+(?:ל\s*)?קופ["״']?ג/i;
+const STUDY_EMPLOYEE_DEDUCTION_LABEL =
+  /ניכוי\s+(?:ל\s*)?(?:קרן\s*)?השתלמות|ניכוי\s+עובד\s+(?:ל\s*)?(?:קרן\s*)?השתלמות/i;
+const PENSION_EMPLOYER_CONTRIBUTION_LABEL =
+  /הפרש(?:ה|ת)\s+(?:מעסיק|מעביד)\s+(?:ל\s*)?(?:קרן\s*)?פנסיה|הפקד(?:ה|ת)\s+(?:מעסיק|מעביד)\s+(?:ל\s*)?(?:קרן\s*)?פנסיה/i;
+const STUDY_EMPLOYER_CONTRIBUTION_LABEL =
+  /הפרש(?:ה|ת)\s+(?:מעסיק|מעביד)\s+(?:ל\s*)?(?:קרן\s*)?השתלמות|הפקד(?:ה|ת)\s+(?:מעסיק|מעביד)\s+(?:ל\s*)?(?:קרן\s*)?השתלמות/i;
+
+// IDF extensions — הפנסיה / ההשתלמו / השתתפות totals (underscores handled by normalizeHebrewLine).
+const PENSION_EMPLOYEE_DEDUCTION_LABEL_IDF =
+  /ניכוי\s+(?:ל\s*)?(?:קרן\s*)?ה+פנסיה/i;
+const STUDY_EMPLOYEE_DEDUCTION_LABEL_IDF =
+  /ניכוי\s+(?:ל\s*)?(?:קרן\s*)?ה+שתלמ/i;
+const PENSION_PARTICIPATION_LABEL =
+  /השתתפות\s+(?:ב\s*)?(?:קרן\s*)?ה*פנסיה/i;
+const STUDY_PARTICIPATION_LABEL =
+  /השתתפות\s+(?:ב\s*)?(?:קרן\s*)?ה*שתלמ/i;
+
+function isPensionEmployeeDeductionLabel(raw) {
+  return (
+    matchesContributionLabel(raw, PENSION_EMPLOYEE_DEDUCTION_LABEL) ||
+    matchesContributionLabel(raw, PENSION_EMPLOYEE_DEDUCTION_LABEL_IDF)
+  );
+}
+
+function isStudyEmployeeDeductionLabel(raw) {
+  return (
+    matchesContributionLabel(raw, STUDY_EMPLOYEE_DEDUCTION_LABEL) ||
+    matchesContributionLabel(raw, STUDY_EMPLOYEE_DEDUCTION_LABEL_IDF)
+  );
+}
+
+function isPensionParticipationLabel(raw) {
+  return matchesContributionLabel(raw, PENSION_PARTICIPATION_LABEL);
+}
+
+function isStudyParticipationLabel(raw) {
+  return matchesContributionLabel(raw, STUDY_PARTICIPATION_LABEL);
+}
+
+function isPensionEmployerContributionLabel(raw) {
+  return matchesContributionLabel(raw, PENSION_EMPLOYER_CONTRIBUTION_LABEL);
+}
+
+function isStudyEmployerContributionLabel(raw) {
+  return matchesContributionLabel(raw, STUDY_EMPLOYER_CONTRIBUTION_LABEL);
+}
+
+function isExplicitContributionLabelLine(raw) {
+  return (
+    isPensionEmployeeDeductionLabel(raw) ||
+    isStudyEmployeeDeductionLabel(raw) ||
+    isPensionParticipationLabel(raw) ||
+    isStudyParticipationLabel(raw) ||
+    isPensionEmployerContributionLabel(raw) ||
+    isStudyEmployerContributionLabel(raw)
+  );
+}
+
+function isAmountOnlyContributionNeighbor(raw) {
+  const text = contributionLineText(raw);
+  if (!text || !/\d/.test(text)) {
+    return false;
+  }
+  const withoutNumbers = text.replace(/[\d,.\s₪%-]/g, '').trim();
+  return withoutNumbers.length <= 2;
+}
+
+const EMPLOYEE_ROLE_REGEX =
+  /(עובד|תגמולי\s+עובד|ניכוי\s+עובד|ניכוי\s+(?:ל\s*)?(?:קרן\s*)?פנסיה|ניכוי\s+(?:ל\s*)?(?:קרן\s*)?השתלמות)/i;
+const EMPLOYER_ROLE_REGEX =
+  /(מעביד|מעסיק|תגמולי\s+מעביד|הפרשת\s+מעסיק|הפרשת\s+מעביד|הפרשה\s+מעסיק|הפרשה\s+מעביד|הפקדת\s+מעסיק|הפקדת\s+מעביד)/i;
 
 function singleAmountMatchesRates(amount, base, rates, tolerance) {
   if (amount === undefined) {
@@ -77,19 +166,175 @@ function determineContributionKind(entry, activeKind) {
     return activeKind;
   }
 
-  if (STUDY_BASE_REGEX.test(entry.raw) || STUDY_CONTEXT_REGEX.test(entry.raw)) {
+  if (STUDY_BASE_REGEX.test(contributionLineText(entry.raw)) || STUDY_CONTEXT_REGEX.test(contributionLineText(entry.raw))) {
     return 'study';
   }
 
-  if (PENSION_BASE_REGEX.test(entry.raw) || PENSION_CONTEXT_REGEX.test(entry.raw)) {
+  if (
+    isStudyEmployeeDeductionLabel(entry.raw) ||
+    isStudyEmployerContributionLabel(entry.raw) ||
+    isStudyParticipationLabel(entry.raw)
+  ) {
+    return 'study';
+  }
+
+  if (PENSION_BASE_REGEX.test(contributionLineText(entry.raw)) || PENSION_CONTEXT_REGEX.test(contributionLineText(entry.raw))) {
     return 'pension';
   }
 
-  if ((EMPLOYEE_ROLE_REGEX.test(entry.raw) || EMPLOYER_ROLE_REGEX.test(entry.raw)) && activeKind) {
+  if (
+    isPensionEmployeeDeductionLabel(entry.raw) ||
+    isPensionEmployerContributionLabel(entry.raw) ||
+    isPensionParticipationLabel(entry.raw)
+  ) {
+    return 'pension';
+  }
+
+  if (
+    (matchesContributionLabel(entry.raw, EMPLOYEE_ROLE_REGEX) ||
+      matchesContributionLabel(entry.raw, EMPLOYER_ROLE_REGEX)) &&
+    activeKind
+  ) {
     return activeKind;
   }
 
   return activeKind;
+}
+
+function pickContributionDeductionAmount(raw, nums, { min = 50, max = 60000 } = {}) {
+  const amounts = nums.filter(value => value >= min && value <= max);
+  if (!amounts.length) {
+    return undefined;
+  }
+
+  const rates = extractPercentTokens(raw);
+  const nonRateAmounts = amounts.filter(
+    value => !rates.some(rate => Math.abs(value - rate) < 0.5),
+  );
+
+  if (nonRateAmounts.length === 1) {
+    return nonRateAmounts[0];
+  }
+  if (nonRateAmounts.length > 1) {
+    return Math.max(...nonRateAmounts);
+  }
+  return amounts[amounts.length - 1];
+}
+
+function pickAmountForContributionEntry(entry, entries) {
+  const ownAmount = pickContributionDeductionAmount(entry.raw, extractAllNumericTokens(entry.raw));
+  if (ownAmount !== undefined) {
+    return { amount: ownAmount, lineIndex: entry.index, adjacent: false };
+  }
+
+  for (let offset = 1; offset <= 3; offset += 1) {
+    for (const sign of [1, -1]) {
+      const neighbor = entries[entry.index + sign * offset];
+      if (!neighbor || isContributionNoiseEntry(neighbor)) {
+        continue;
+      }
+      if (isExplicitContributionLabelLine(neighbor.raw)) {
+        continue;
+      }
+
+      const neighborTokens = extractAllNumericTokens(neighbor.raw);
+      const minAmount = isAmountOnlyContributionNeighbor(neighbor.raw) ? 1 : 50;
+      const neighborAmount = pickContributionDeductionAmount(neighbor.raw, neighborTokens, {
+        min: minAmount,
+      });
+      if (neighborAmount !== undefined) {
+        return {
+          amount: neighborAmount,
+          lineIndex: neighbor.index,
+          adjacent: true,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function extractExplicitContributionDeductions(entries, store) {
+  entries.forEach(entry => {
+    if (isContributionNoiseEntry(entry)) {
+      return;
+    }
+
+    if (!isExplicitContributionLabelLine(entry.raw)) {
+      return;
+    }
+
+    const resolvedAmount = pickAmountForContributionEntry(entry, entries);
+    if (!resolvedAmount) {
+      return;
+    }
+
+    const { amount, lineIndex, adjacent } = resolvedAmount;
+    const pushExplicit = (field, reason) => {
+      pushCandidate(store, field, amount, {
+        source: adjacent ? 'contribution_explicit_deduction_adjacent' : 'contribution_explicit_deduction',
+        lineIndex,
+        score: adjacent ? 0.9 : 0.93,
+        reason: adjacent ? `${reason} Amount taken from an adjacent line.` : reason,
+        section: 'contributions',
+        evidenceCategory: adjacent ? 'adjacent_line' : 'explicit_deduction_label',
+      });
+    };
+
+    if (isPensionEmployeeDeductionLabel(entry.raw)) {
+      pushExplicit('pension_employee', 'Matched explicit pension employee deduction label.');
+    }
+    if (isStudyEmployeeDeductionLabel(entry.raw)) {
+      pushExplicit('study_employee', 'Matched explicit study-fund employee deduction label.');
+    }
+    if (isPensionParticipationLabel(entry.raw)) {
+      pushExplicit('pension_participation_total', 'Matched total pension fund participation for the month.');
+    }
+    if (isStudyParticipationLabel(entry.raw)) {
+      pushExplicit('study_participation_total', 'Matched total study-fund participation for the month.');
+    }
+    if (isPensionEmployerContributionLabel(entry.raw)) {
+      pushExplicit('pension_employer', 'Matched explicit pension employer contribution label.');
+    }
+    if (isStudyEmployerContributionLabel(entry.raw)) {
+      pushExplicit('study_employer', 'Matched explicit study-fund employer contribution label.');
+    }
+  });
+}
+
+function extractIdfContributionColumns(entries, store) {
+  entries.forEach(entry => {
+    if (isContributionNoiseEntry(entry)) {
+      return;
+    }
+
+    const column = findIdfColumnForLine(entry.raw);
+    if (!column) {
+      return;
+    }
+
+    const resolvedAmount = pickIdfColumnAmount(entry, entries, column);
+    if (!resolvedAmount) {
+      return;
+    }
+
+    const { amount, lineIndex, adjacent } = resolvedAmount;
+    pushCandidate(store, column.field, amount, {
+      source: adjacent ? 'idf_column_profile_adjacent' : 'idf_column_profile',
+      lineIndex,
+      score: adjacent ? 0.98 : 0.99,
+      reason: `תלוש צה"ל — ${column.descriptionHe}`,
+      section: 'contributions',
+      evidenceCategory: 'idf_column',
+    });
+  });
+}
+
+function idfFundColumnDetected(store, fund) {
+  return IDF_CONTRIBUTION_COLUMNS.some(
+    column => column.fund === fund && Array.isArray(store[column.field]) && store[column.field].length > 0,
+  );
 }
 
 function collectContributionLines(entries) {
@@ -105,11 +350,15 @@ function collectContributionLines(entries) {
     activeKind = determineContributionKind(entry, activeKind);
 
     if (activeKind === 'study') {
+      const studyLine = contributionLineText(entry.raw);
       if (
-        STUDY_CONTEXT_REGEX.test(entry.raw) ||
-        STUDY_BASE_REGEX.test(entry.raw) ||
-        EMPLOYEE_ROLE_REGEX.test(entry.raw) ||
-        EMPLOYER_ROLE_REGEX.test(entry.raw)
+        STUDY_CONTEXT_REGEX.test(studyLine) ||
+        STUDY_BASE_REGEX.test(studyLine) ||
+        isStudyEmployeeDeductionLabel(entry.raw) ||
+        isStudyEmployerContributionLabel(entry.raw) ||
+        isStudyParticipationLabel(entry.raw) ||
+        matchesContributionLabel(entry.raw, EMPLOYEE_ROLE_REGEX) ||
+        matchesContributionLabel(entry.raw, EMPLOYER_ROLE_REGEX)
       ) {
         studyLines.push(entry);
       }
@@ -117,11 +366,15 @@ function collectContributionLines(entries) {
     }
 
     if (activeKind === 'pension') {
+      const pensionLine = contributionLineText(entry.raw);
       if (
-        PENSION_CONTEXT_REGEX.test(entry.raw) ||
-        PENSION_BASE_REGEX.test(entry.raw) ||
-        EMPLOYEE_ROLE_REGEX.test(entry.raw) ||
-        EMPLOYER_ROLE_REGEX.test(entry.raw) ||
+        PENSION_CONTEXT_REGEX.test(pensionLine) ||
+        PENSION_BASE_REGEX.test(pensionLine) ||
+        isPensionEmployeeDeductionLabel(entry.raw) ||
+        isPensionEmployerContributionLabel(entry.raw) ||
+        isPensionParticipationLabel(entry.raw) ||
+        matchesContributionLabel(entry.raw, EMPLOYEE_ROLE_REGEX) ||
+        matchesContributionLabel(entry.raw, EMPLOYER_ROLE_REGEX) ||
         SEVERANCE_ROLE_REGEX.test(entry.raw)
       ) {
         pensionLines.push(entry);
@@ -330,7 +583,20 @@ function collectContributionCandidates(input) {
   const store = {};
   const rateHints = {};
   const entries = normalizeContributionEntries(input);
-  const { studyLines, pensionLines } = collectContributionLines(entries);
+  const fullText =
+    (typeof input === 'object' && input?.fullText) ||
+    entries.map(entry => entry.raw).join('\n');
+  const idfPayslip = detectIdfPayslip(entries, fullText);
+
+  if (idfPayslip) {
+    extractIdfContributionColumns(entries, store);
+  } else {
+    extractExplicitContributionDeductions(entries, store);
+  }
+
+  const { studyLines, pensionLines } = idfPayslip
+    ? { studyLines: [], pensionLines: [] }
+    : collectContributionLines(entries);
 
   const studyBaseLine = entries.find(entry => STUDY_BASE_REGEX.test(entry.raw) && !isContributionNoiseEntry(entry));
   const pensionBaseLine = entries.find(entry => PENSION_BASE_REGEX.test(entry.raw) && !isContributionNoiseEntry(entry));
@@ -368,8 +634,8 @@ function collectContributionCandidates(input) {
       tolerance: 20,
     });
     const effectiveBase = studyBase ?? stats.lineBase;
-    const isEmployeeLine = EMPLOYEE_ROLE_REGEX.test(entry.raw);
-    const isEmployerLine = EMPLOYER_ROLE_REGEX.test(entry.raw);
+    const isEmployeeLine = matchesContributionLabel(entry.raw, EMPLOYEE_ROLE_REGEX);
+    const isEmployerLine = matchesContributionLabel(entry.raw, EMPLOYER_ROLE_REGEX);
 
     if (stats.lineBase !== undefined) {
       pushCandidate(store, 'study_base', stats.lineBase, {
@@ -439,8 +705,8 @@ function collectContributionCandidates(input) {
       tolerance: 25,
     });
     const effectiveBase = stats.lineBase ?? pensionBase;
-    const isEmployeeLine = EMPLOYEE_ROLE_REGEX.test(entry.raw);
-    const isEmployerLine = EMPLOYER_ROLE_REGEX.test(entry.raw);
+    const isEmployeeLine = matchesContributionLabel(entry.raw, EMPLOYEE_ROLE_REGEX);
+    const isEmployerLine = matchesContributionLabel(entry.raw, EMPLOYER_ROLE_REGEX);
     const isSeveranceLine = SEVERANCE_ROLE_REGEX.test(entry.raw);
     const roleCount = [isEmployeeLine, isEmployerLine, isSeveranceLine].filter(Boolean).length;
 
@@ -520,8 +786,9 @@ function collectContributionCandidates(input) {
   return {
     store,
     stats: {
-      studyLinesFound: studyLines.length,
-      pensionLinesFound: pensionLines.length,
+      idfProfileDetected: idfPayslip,
+      studyLinesFound: idfPayslip ? idfFundColumnDetected(store, 'study') : studyLines.length > 0,
+      pensionLinesFound: idfPayslip ? idfFundColumnDetected(store, 'pension') : pensionLines.length > 0,
       studyDebugLine: studyLines[0]?.raw,
       pensionDebugLines: pensionLines.slice(0, 8).map(entry => entry.raw),
       rateHints,
@@ -529,14 +796,79 @@ function collectContributionCandidates(input) {
   };
 }
 
+function deriveEmployerFromParticipation(employee, employer, participation, field, { idfProfile = false } = {}) {
+  if (participation?.value == null || employee?.value == null) {
+    return employer;
+  }
+
+  const derived = +(participation.value - employee.value).toFixed(2);
+  if (!Number.isFinite(derived) || derived < 0) {
+    return employer;
+  }
+
+  const limits = { pension_employer: 60000, study_employer: 30000 };
+  const max = limits[field] ?? 60000;
+  if (derived > max) {
+    return employer;
+  }
+
+  if (idfProfile) {
+    return {
+      value: derived,
+      score: 0.99,
+      source: 'idf_participation_derived',
+      reason: 'IDF payslip: employer share = השתתפות total minus employee ניכוי.',
+      section: 'contributions',
+      evidenceCategory: 'idf_participation_derived',
+    };
+  }
+
+  if (employer?.value != null) {
+    return employer;
+  }
+
+  return {
+    value: derived,
+    score: 0.86,
+    source: 'contribution_participation_derived',
+    reason: 'Derived employer contribution from total participation minus employee deduction.',
+    section: 'contributions',
+    evidenceCategory: 'participation_derived',
+  };
+}
+
 function resolveContributionCandidates(store, stats, warnings) {
   const studyBase = resolveBestNumericCandidate('study_base', store.study_base, { minScore: 0.45 });
   const studyEmployee = resolveBestNumericCandidate('study_employee', store.study_employee, { minScore: 0.5 });
-  const studyEmployer = resolveBestNumericCandidate('study_employer', store.study_employer, { minScore: 0.5 });
+  const studyParticipation = resolveBestNumericCandidate(
+    'study_participation_total',
+    store.study_participation_total,
+    { minScore: 0.5 },
+  );
+  let studyEmployer = resolveBestNumericCandidate('study_employer', store.study_employer, { minScore: 0.5 });
+  studyEmployer = deriveEmployerFromParticipation(
+    studyEmployee,
+    studyEmployer,
+    studyParticipation,
+    'study_employer',
+    { idfProfile: stats.idfProfileDetected },
+  );
 
   const pensionBase = resolveBestNumericCandidate('pension_base', store.pension_base, { minScore: 0.45 });
   const pensionEmployee = resolveBestNumericCandidate('pension_employee', store.pension_employee, { minScore: 0.5 });
-  const pensionEmployer = resolveBestNumericCandidate('pension_employer', store.pension_employer, { minScore: 0.5 });
+  const pensionParticipation = resolveBestNumericCandidate(
+    'pension_participation_total',
+    store.pension_participation_total,
+    { minScore: 0.5 },
+  );
+  let pensionEmployer = resolveBestNumericCandidate('pension_employer', store.pension_employer, { minScore: 0.5 });
+  pensionEmployer = deriveEmployerFromParticipation(
+    pensionEmployee,
+    pensionEmployer,
+    pensionParticipation,
+    'pension_employer',
+    { idfProfile: stats.idfProfileDetected },
+  );
   const pensionSeverance = resolveBestNumericCandidate('pension_severance', store.pension_severance, { minScore: 0.5 });
 
   if (!stats.studyLinesFound) {
@@ -579,6 +911,7 @@ function resolveContributionCandidates(store, stats, warnings) {
       base: studyBase?.value,
       employee: studyEmployee?.value,
       employer: studyEmployer?.value,
+      participation_total: studyParticipation?.value,
       employeeRate: studyRates.employeeRate,
       employerRate: studyRates.employerRate,
       debug_line: stats.studyDebugLine,
@@ -597,6 +930,7 @@ function resolveContributionCandidates(store, stats, warnings) {
       base: pensionBase?.value,
       employee: pensionEmployee?.value,
       employer: pensionEmployer?.value,
+      participation_total: pensionParticipation?.value,
       severance: pensionSeverance?.value,
       base_for_severance: pensionBase?.value,
       employeeRate: pensionRates.employeeRate,

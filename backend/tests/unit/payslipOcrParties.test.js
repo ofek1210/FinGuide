@@ -106,4 +106,28 @@ describe('payslipOcrParties — applyEmployeeIdConsistencyBoost', () => {
     applyEmployeeIdConsistencyBoost(single);
     expect(single[0].score).toBe(0.3);
   });
+
+  it('recognizes valid Israeli ID 205506975', () => {
+    expect(isLikelyIsraeliId('205506975')).toBe(true);
+  });
+});
+
+describe('payslipOcrParties — IDF header employer', () => {
+  it('detects צבא הגנה לישראל from payslip header', () => {
+    const context = buildNormalizedOcrDocument(readFixture('payslip-he-regression-idf-june.txt'));
+    const resolved = resolvePartyCandidates(collectPartyCandidates(context));
+
+    expect(resolved.employer_name).toEqual(
+      expect.objectContaining({
+        value: 'צבא הגנה לישראל',
+        source: 'employer_header_pattern',
+      }),
+    );
+    expect(resolved.employee_id).toEqual(
+      expect.objectContaining({
+        value: '205506975',
+        source: 'employee_id_label',
+      }),
+    );
+  });
 });
