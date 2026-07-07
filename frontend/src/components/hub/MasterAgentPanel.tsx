@@ -510,7 +510,7 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
                 <div style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.11)", borderRadius: "var(--r-md)", padding: 20 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
                     <span style={{ fontWeight: 900, fontSize: 15 }}>הצלבת הסוכן הראשי — פעולות מומלצות</span>
-                    <button onClick={() => navigate(APP_ROUTES.findings)} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, color: "rgba(255,255,255,.65)" }}>
+                    <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, color: "rgba(255,255,255,.65)" }}>
                       לכל הממצאים <ArrowLeft size={14} strokeWidth={2.4} />
                     </button>
                   </div>

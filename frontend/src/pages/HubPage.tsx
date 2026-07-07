@@ -11,6 +11,7 @@ import { getDashboardSummary, type DashboardSummaryData } from "../api/dashboard
 import { listFindings, type FindingItem } from "../api/findings.api";
 import { getPensionAnalysis, getPensionImportHistory, type PensionAnalysisData } from "../api/pension.api";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
+import { enrichPayslipFromDoc } from "../utils/payslipEnrichment";
 
 /* ============================================================
    Hub — editorial command center in the FinGuide design language:
@@ -86,7 +87,7 @@ const uid = () => "fg" + (++_uid);
 /* ── Area projection chart ───────────────────────────────────── */
 function AreaChart({ base, optimized, height = 210, gapLabel }: { base: number[]; optimized: number[]; height?: number; gapLabel?: boolean }) {
   const [ref, seen] = useInView<HTMLDivElement>();
-  const id = useRef(uid()).current;
+  const [id] = useState(uid);
   const W = 560, H = height, pad = { t: 26, r: 18, b: 24, l: 18 };
   const all = base.concat(optimized);
   const max = Math.max(...all) * 1.1, min = Math.min(...all) * 0.82;
@@ -144,7 +145,7 @@ function AreaChart({ base, optimized, height = 210, gapLabel }: { base: number[]
 /* ── Radial gauge ────────────────────────────────────────────── */
 function RadialGauge({ value, max = 100, sub, tone = "lavender", size = 148, onDark = false }: { value: number; max?: number; sub?: string; tone?: Tone; size?: number; onDark?: boolean }) {
   const [ref, seen] = useInView<HTMLDivElement>();
-  const id = useRef(uid()).current;
+  const [id] = useState(uid);
   const grads: Record<Tone, [string, string]> = {
     lavender: ["#9B7FE8", "#6F8BE8"], mint: ["#48C98B", "#2F9C62"], peach: ["#F4A87E", "#DA6F44"],
   };
@@ -185,7 +186,7 @@ function RadialGauge({ value, max = 100, sub, tone = "lavender", size = 148, onD
 
 /* ── Sparkline ───────────────────────────────────────────────── */
 function Sparkline({ points, tone = "mint", w = 78, h = 30 }: { points: number[]; tone?: Tone; w?: number; h?: number }) {
-  const id = useRef(uid()).current;
+  const [id] = useState(uid);
   const max = Math.max(...points), min = Math.min(...points);
   const pts = points.map((v, i) => [(i / (points.length - 1)) * w, h - ((v - min) / (max - min || 1)) * (h - 8) - 4]);
   const cols: Record<Tone, [string, string]> = { mint: ["#48C98B", "#2F9C62"], peach: ["#F4A87E", "#DA6F44"], lavender: ["#B49BF0", "#7C5FD6"] };
@@ -245,31 +246,13 @@ function periodKey(d: DocumentItem): number {
 /** net-salary trend across the user's completed payslips (last 6 with a net value) */
 function netTrend(docs: DocumentItem[]): number[] {
   const points = docs
-    .filter(d => (d.status === "completed" || d.status === "needs_review") && d.analysisData?.summary?.netSalary != null)
+    .filter(d => d.status === "completed" || d.status === "needs_review")
     .sort((a, b) => periodKey(a) - periodKey(b))
-    .map(d => d.analysisData!.summary!.netSalary as number)
+    .map(d => enrichPayslipFromDoc(d).netSalary)
+    .filter((n): n is number => n != null)
     .slice(-6);
   return points.length >= 2 ? points : [];
 }
-
-/* Live financial-health card wiring. Category ids/tones come from
-   financialHealthScoreService (documentCompleteness, salaryStability,
-   taxReadiness, pensionConsistency, riskInsurance). We surface the
-   three that mirror the original card: tax · pension · insurance. */
-const CATEGORY_TONE: Record<string, string> = {
-  taxReadiness: "var(--mint-ink)",
-  pensionConsistency: "var(--lav-300)",
-  riskInsurance: "var(--peach)",
-  documentCompleteness: "var(--lav-300)",
-  salaryStability: "var(--mint-ink)",
-};
-const HEALTH_CARD_KEYS = ["taxReadiness", "pensionConsistency", "riskInsurance"];
-
-const STATIC_HEALTH_CATEGORIES = [
-  { k: "ניצול הטבות מס", v: "82%", c: "var(--mint-ink)" },
-  { k: "יעילות פנסיה", v: "71%", c: "var(--lav-300)" },
-  { k: "כיסוי ביטוחי", v: "68%", c: "var(--peach)" },
-];
 
 export default function HubPage() {
   const navigate = useNavigate();
@@ -282,6 +265,9 @@ export default function HubPage() {
   const [pension, setPension] = useState<PensionAnalysisData | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [pensionScoreTrend, setPensionScoreTrend] = useState<number[]>([]);
+  // Overall score reported live by the master agent panel — overrides the
+  // dashboard summary score after a fresh full-analysis run.
+  const [liveScore, setLiveScore] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -445,12 +431,34 @@ export default function HubPage() {
                   <Upload size={17} strokeWidth={2.4} /> העלאת תלוש ראשון
                 </button>
               </div>
-              <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
-                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "none"}>
-                ממש את ההזדמנויות <ArrowLeft size={17} strokeWidth={2.4} />
-              </button>
-            </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 13.5, color: "rgba(255,255,255,.6)", fontWeight: 600, marginBottom: 12 }}>
+                  {heroMode === "money" ? "פוטנציאל חיסכון מצטבר עד הפרישה" : "הזדמנויות פתוחות לשיפור"}
+                </div>
+                <div style={{ fontSize: "clamp(38px,5vw,58px)", fontWeight: 900, letterSpacing: "-.04em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                  {heroMode === "money" ? nis(total) : bigOpportunities}
+                  {heroMode === "counts" && (
+                    <span style={{ fontSize: "clamp(18px,2vw,24px)", fontWeight: 800, marginInlineStart: 10, color: "rgba(255,255,255,.7)" }}>הזדמנויות</span>
+                  )}
+                </div>
+                {heroRows.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 18, maxWidth: 340 }}>
+                    {heroRows.map(([k, v]) => (
+                      <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13.5 }}>
+                        <span style={{ color: "rgba(255,255,255,.62)", fontWeight: 500 }}>{k}</span>
+                        <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{v}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
+                  onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                  onMouseLeave={e => e.currentTarget.style.transform = "none"}>
+                  ממש את ההזדמנויות <ArrowLeft size={17} strokeWidth={2.4} />
+                </button>
+              </div>
+            )}
             {/* floating health card — fed live by the master agent panel */}
             <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "var(--r-md)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
               <div style={{ alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -460,8 +468,12 @@ export default function HubPage() {
                 </span>
               </div>
               <RadialGauge
-                value={scores?.overall ?? 0}
-                sub={scores?.overall == null ? "טרם חושב" : scores.overall >= 75 ? "מצב טוב" : scores.overall >= 50 ? "מצב סביר" : "דורש טיפול"}
+                value={liveScore ?? scores?.overall ?? 0}
+                sub={(() => {
+                  const v = liveScore ?? scores?.overall;
+                  if (v == null) return "טרם חושב";
+                  return v >= 75 ? "מצב טוב" : v >= 50 ? "מצב סביר" : "דורש טיפול";
+                })()}
                 tone="lavender" size={148} onDark
               />
               <div style={{ alignSelf: "stretch", display: "flex", flexDirection: "column", gap: 9, marginTop: 4 }}>
@@ -479,7 +491,7 @@ export default function HubPage() {
         </div>
 
         {/* MASTER AGENT PANEL — live orchestrator console */}
-        <MasterAgentPanel onResult={r => setLiveScore(r.globalScore ?? null)} />
+        <MasterAgentPanel onResult={r => setLiveScore(r.globalScore?.score ?? null)} />
 
         {/* AGENTS — enter each specialist */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
@@ -574,17 +586,27 @@ export default function HubPage() {
               </button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {FINDINGS.map(f => {
-                const top = f.rank === 1;
+              {rankedFindings.length === 0 && (
+                <div style={{ display: "grid", placeItems: "center", padding: "36px 12px", textAlign: "center", color: "var(--text-muted)", fontSize: 14, fontWeight: 600 }}>
+                  {loading ? "טוענים ממצאים…" : "אין ממצאים פתוחים — הכל נראה תקין."}
+                </div>
+              )}
+              {rankedFindings.map((f, i) => {
+                const rank = i + 1;
+                const top = rank === 1;
                 return (
-                  <button key={f.title} onClick={() => navigate(APP_ROUTES.financialHealth)}
+                  <button key={f.id} onClick={() => navigate(APP_ROUTES.financialHealth)}
                     style={{ width: "100%", textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 13, padding: "13px 15px", borderRadius: "var(--r-md)", border: top ? "0" : "1px solid var(--border-hair)", background: top ? "linear-gradient(95deg,var(--peach) 0%,var(--lav-200) 55%,var(--mint) 100%)" : "var(--surface-sunken)" }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 9, flex: "none", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 13, background: top ? "rgba(255,255,255,.6)" : "var(--card)", color: "var(--ink)", boxShadow: "var(--shadow-soft)" }}>#{f.rank}</span>
+                    <span style={{ width: 30, height: 30, borderRadius: 9, flex: "none", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 13, background: top ? "rgba(255,255,255,.6)" : "var(--card)", color: "var(--ink)", boxShadow: "var(--shadow-soft)" }}>#{rank}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>{f.title}</div>
-                      <div style={{ fontSize: 12, color: top ? "var(--ink-soft)" : "var(--text-muted)" }}>{f.sub}</div>
+                      <div style={{ fontSize: 12, color: top ? "var(--ink-soft)" : "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {DOMAIN_LABEL[domainOf(f)]}{f.details ? ` · ${f.details}` : ""}
+                      </div>
                     </div>
-                    <span style={{ fontWeight: 900, fontSize: 15, color: top ? "var(--ink)" : "var(--mint-ink)", fontVariantNumeric: "tabular-nums" }}>{f.amt}</span>
+                    <span style={{ fontWeight: 900, fontSize: 12.5, color: top ? "var(--ink)" : f.severity === "warning" ? "var(--peach-ink, #DA6F44)" : "var(--mint-ink)", whiteSpace: "nowrap" }}>
+                      {f.severity === "warning" ? "לטיפול" : "מידע"}
+                    </span>
                   </button>
                 );
               })}

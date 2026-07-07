@@ -155,7 +155,6 @@ export function enrichPayslipFromAnalysis(analysis: AnalysisShape): EnrichedPays
   const summary = analysis.summary || {};
   const salary = analysis.salary || {};
   const deductions = analysis.deductions?.mandatory || {};
-  const contributions = analysis.contributions || {};
   const tax = analysis.tax || {};
 
   const rawGross = toPositiveSalary(summary.grossSalary) ?? toPositiveSalary(salary.gross_total);
