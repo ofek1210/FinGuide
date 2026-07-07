@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, Upload } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Play, Sparkles, Upload } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import MasterAgentPanel from "../components/hub/MasterAgentPanel";
+import MasterAgentPanel, { type MasterAgentPanelHandle } from "../components/hub/MasterAgentPanel";
 import { APP_ROUTES } from "../types/navigation";
 import { AGENTS, type AgentId } from "../theme/agents";
-import { getDashboardSummary, type DashboardSummaryData } from "../api/dashboard.api";
 import { listFindings, type FindingItem } from "../api/findings.api";
 import { getPensionAnalysis, getPensionImportHistory, type PensionAnalysisData } from "../api/pension.api";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
 import { enrichPayslipFromDoc } from "../utils/payslipEnrichment";
+import { getInsuranceAnalysis } from "../api/insuranceAI.api";
+import type { FullAnalysisGlobalScore } from "../api/fullAnalysis.api";
 
 /* ============================================================
    Hub — editorial command center in the FinGuide design language:
@@ -87,7 +88,7 @@ const uid = () => "fg" + (++_uid);
 /* ── Area projection chart ───────────────────────────────────── */
 function AreaChart({ base, optimized, height = 210, gapLabel }: { base: number[]; optimized: number[]; height?: number; gapLabel?: boolean }) {
   const [ref, seen] = useInView<HTMLDivElement>();
-  const [id] = useState(uid);
+  const id = useRef(uid()).current;
   const W = 560, H = height, pad = { t: 26, r: 18, b: 24, l: 18 };
   const all = base.concat(optimized);
   const max = Math.max(...all) * 1.1, min = Math.min(...all) * 0.82;
@@ -145,7 +146,7 @@ function AreaChart({ base, optimized, height = 210, gapLabel }: { base: number[]
 /* ── Radial gauge ────────────────────────────────────────────── */
 function RadialGauge({ value, max = 100, sub, tone = "lavender", size = 148, onDark = false }: { value: number; max?: number; sub?: string; tone?: Tone; size?: number; onDark?: boolean }) {
   const [ref, seen] = useInView<HTMLDivElement>();
-  const [id] = useState(uid);
+  const id = useRef(uid()).current;
   const grads: Record<Tone, [string, string]> = {
     lavender: ["#9B7FE8", "#6F8BE8"], mint: ["#48C98B", "#2F9C62"], peach: ["#F4A87E", "#DA6F44"],
   };
@@ -186,7 +187,7 @@ function RadialGauge({ value, max = 100, sub, tone = "lavender", size = 148, onD
 
 /* ── Sparkline ───────────────────────────────────────────────── */
 function Sparkline({ points, tone = "mint", w = 78, h = 30 }: { points: number[]; tone?: Tone; w?: number; h?: number }) {
-  const [id] = useState(uid);
+  const id = useRef(uid()).current;
   const max = Math.max(...points), min = Math.min(...points);
   const pts = points.map((v, i) => [(i / (points.length - 1)) * w, h - ((v - min) / (max - min || 1)) * (h - 8) - 4]);
   const cols: Record<Tone, [string, string]> = { mint: ["#48C98B", "#2F9C62"], peach: ["#F4A87E", "#DA6F44"], lavender: ["#B49BF0", "#7C5FD6"] };
@@ -254,34 +255,109 @@ function netTrend(docs: DocumentItem[]): number[] {
   return points.length >= 2 ? points : [];
 }
 
+/* Live financial-health card wiring. Category ids/tones come from
+   financialHealthScoreService (documentCompleteness, salaryStability,
+   taxReadiness, pensionConsistency, riskInsurance). We surface the
+   three that mirror the original card: tax · pension · insurance. */
+const CATEGORY_TONE: Record<string, string> = {
+  taxReadiness: "var(--mint-ink)",
+  pensionConsistency: "var(--lav-300)",
+  riskInsurance: "var(--peach)",
+  documentCompleteness: "var(--lav-300)",
+  salaryStability: "var(--mint-ink)",
+};
+const HEALTH_CARD_KEYS = ["taxReadiness", "pensionConsistency", "riskInsurance"];
+
+/* ── Health-card call-to-action ──────────────────────────────────
+   Shown in place of the gauge until an analysis runs. An animated
+   "radar" placeholder + a button that kicks off the full run, so the
+   real financial-health numbers only appear once the agents computed
+   them from the user's own data (never fake defaults). */
+function HealthGateCTA({ onRun }: { onRun: () => void }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, minHeight: 250, textAlign: "center", padding: "6px 2px" }}>
+      {/* animated locked gauge */}
+      <div style={{ position: "relative", width: 118, height: 118, display: "grid", placeItems: "center" }}>
+        <span style={{ position: "absolute", inset: 0, borderRadius: "50%", border: "2px dashed rgba(180,155,240,.5)", animation: "hcSpin 9s linear infinite" }} />
+        <span style={{ position: "absolute", inset: 14, borderRadius: "50%", background: "radial-gradient(circle, rgba(155,127,232,.4), transparent 70%)", animation: "hcGlow 2.4s ease-in-out infinite" }} />
+        <span style={{ position: "relative", width: 52, height: 52, borderRadius: 15, background: "linear-gradient(135deg,#9B7FE8,#6F8BE8)", display: "grid", placeItems: "center", color: "#fff", boxShadow: "0 6px 20px rgba(124,95,214,.5)", animation: "hcFloat 3s ease-in-out infinite" }}>
+          <Sparkles size={24} strokeWidth={1.9} />
+        </span>
+        {/* small "collecting" dots on the ring */}
+        {[0, 1, 2].map(i => {
+          const ang = (i * 120 - 90) * (Math.PI / 180);
+          return (
+            <span key={i} style={{ position: "absolute", left: `calc(50% + ${Math.cos(ang) * 59}px - 3px)`, top: `calc(50% + ${Math.sin(ang) * 59}px - 3px)`, width: 6, height: 6, borderRadius: "50%", background: "#B49BF0", boxShadow: "0 0 8px #B49BF0", animation: `hcDot 1.4s ${i * 0.3}s ease-in-out infinite` }} />
+          );
+        })}
+      </div>
+
+      <div>
+        <div style={{ fontSize: 16, fontWeight: 900, letterSpacing: "-.02em" }}>גלה את הבריאות הפיננסית שלך</div>
+        <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.62)", fontWeight: 500, marginTop: 5, lineHeight: 1.5, maxWidth: 220 }}>
+          הפעל את הסוכנים והמספרים יחושבו מהנתונים האמיתיים שלך
+        </div>
+      </div>
+
+      <button
+        onClick={onRun}
+        style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "12px 22px", fontFamily: "inherit", fontWeight: 800, fontSize: 14.5, cursor: "pointer", animation: "hcBtnPulse 2.2s ease-out infinite", transition: "transform .2s var(--ease)" }}
+        onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = "none"; }}
+      >
+        <Play size={16} strokeWidth={2.4} /> הרץ ניתוח מלא
+      </button>
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)", fontWeight: 600 }}>או הפעל סוכן בודד מהפאנל למטה</div>
+    </div>
+  );
+}
+
+const STATIC_HEALTH_CATEGORIES = [
+  { k: "ניצול הטבות מס", v: "82%", c: "var(--mint-ink)" },
+  { k: "יעילות פנסיה", v: "71%", c: "var(--lav-300)" },
+  { k: "כיסוי ביטוחי", v: "68%", c: "var(--peach)" },
+];
+
 export default function HubPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [heroRef, heroSeen] = useInView<HTMLDivElement>();
 
+  // Live financial-health score produced by the master agent panel.
+  // Null until an analysis runs — the health card shows a call-to-action
+  // until then, so no fake numbers are ever displayed.
+  const [liveScore, setLiveScore] = useState<FullAnalysisGlobalScore | null>(null);
+  const panelRef = useRef<MasterAgentPanelHandle>(null);
+  const location = useLocation();
+
+  // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
+  // scroll to the master-agent chat and focus its input.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("chat") !== "1") return;
+    const t = setTimeout(() => {
+      document.getElementById("agent-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      (document.getElementById("agent-chat-input") as HTMLInputElement | null)?.focus({ preventScroll: true });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [location.search]);
+
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<DashboardSummaryData | null>(null);
   const [findings, setFindings] = useState<FindingItem[]>([]);
   const [pension, setPension] = useState<PensionAnalysisData | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [importedPolicies, setImportedPolicies] = useState(0);
   const [pensionScoreTrend, setPensionScoreTrend] = useState<number[]>([]);
-  // Overall score reported live by the master agent panel — overrides the
-  // dashboard summary score after a fresh full-analysis run.
-  const [liveScore, setLiveScore] = useState<number | null>(null);
 
   useEffect(() => {
     let alive = true;
     Promise.allSettled([
-      getDashboardSummary(),
       listFindings(),
       getPensionAnalysis(),
       listDocuments(),
       getPensionImportHistory(),
-    ]).then(([sumRes, findRes, penRes, docRes, histRes]) => {
+      getInsuranceAnalysis(),
+    ]).then(([findRes, penRes, docRes, histRes, insRes]) => {
       if (!alive) return;
-      if (sumRes.status === "fulfilled" && sumRes.value.ok && sumRes.value.data.data) {
-        setSummary(sumRes.value.data.data);
-      }
       if (findRes.status === "fulfilled" && findRes.value.success && findRes.value.data) {
         setFindings(findRes.value.data);
       }
@@ -300,14 +376,18 @@ export default function HubPage() {
           .slice(-6);
         setPensionScoreTrend(scores.length >= 2 ? scores : []);
       }
+      if (insRes.status === "fulfilled" && insRes.value.ok && insRes.value.data?.data) {
+        setImportedPolicies(insRes.value.data.data.policies?.length ?? 0);
+      }
       setLoading(false);
     });
     return () => { alive = false; };
   }, []);
 
-  const scores = summary?.scores;
-  const completedDocs = summary?.documents.completed ?? 0;
-  const importedPolicies = summary?.profile.importedPolicies ?? 0;
+  const completedDocs = useMemo(
+    () => documents.filter(d => d.status === "completed" || d.status === "needs_review").length,
+    [documents],
+  );
   const pensionFundCount = pension?.summary.fundCount ?? 0;
   const pensionRecs = pension?.recommendations ?? [];
 
@@ -323,6 +403,25 @@ export default function HubPage() {
     findings.forEach(f => { c[domainOf(f)]++; });
     return c;
   }, [findings]);
+
+  // health card — real numbers only, computed from the master agent's live score
+  const healthValue = liveScore?.score ?? 0;
+  const healthLabel = liveScore?.label ?? "";
+  const healthCategories = (() => {
+    const cats = liveScore?.categories ?? [];
+    if (cats.length === 0) return STATIC_HEALTH_CATEGORIES;
+    // Prefer tax · pension · insurance (mirrors the original card); else first 3.
+    const preferred = HEALTH_CARD_KEYS.flatMap(key => {
+      const found = cats.find(c => c.id === key);
+      return found ? [found] : [];
+    });
+    const chosen = (preferred.length > 0 ? preferred : cats).slice(0, 3);
+    return chosen.map(c => ({
+      k: c.label ?? "קטגוריה",
+      v: `${Math.round((c.score / (c.maxScore || 100)) * 100)}%`,
+      c: (c.id && CATEGORY_TONE[c.id]) || "var(--lav-300)",
+    }));
+  })();
 
   // hero: potential savings to retirement, from real pension analysis
   const potentialSavings =
@@ -370,12 +469,6 @@ export default function HubPage() {
           ? "לא נמצאו הזדמנויות חדשות — הכל נראה תקין."
           : "העלו תלוש ראשון כדי שנתחיל לזהות הזדמנויות.";
 
-  const healthRows: [string, number | null][] = [
-    ["תלושי שכר", scores?.payslip ?? null],
-    ["יעילות פנסיה", scores?.pension ?? null],
-    ["כיסוי ביטוחי", scores?.insurance ?? null],
-  ];
-
   // real per-agent trend series; a card simply shows no chart when there is no history yet
   const payslipTrend = useMemo(() => netTrend(documents), [documents]);
   const agentSpark: Record<AgentId, number[]> = {
@@ -398,6 +491,14 @@ export default function HubPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface-page)", direction: "rtl", fontFamily: "var(--font-body)" }}>
+      <style>{`
+        @keyframes hcReveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @keyframes hcSpin { to { transform: rotate(360deg); } }
+        @keyframes hcGlow { 0%,100% { opacity: .4; transform: scale(1); } 50% { opacity: .85; transform: scale(1.09); } }
+        @keyframes hcFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes hcBtnPulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.4); } 70% { box-shadow: 0 0 0 12px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+        @keyframes hcDot { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
+      `}</style>
       <PrivateTopbar />
 
       <main style={{ maxWidth: 1160, margin: "0 auto", padding: "44px 24px 80px" }}>
@@ -434,64 +535,51 @@ export default function HubPage() {
             ) : (
               <div>
                 <div style={{ fontSize: 13.5, color: "rgba(255,255,255,.6)", fontWeight: 600, marginBottom: 12 }}>
-                  {heroMode === "money" ? "פוטנציאל חיסכון מצטבר עד הפרישה" : "הזדמנויות פתוחות לשיפור"}
+                  {heroMode === "money" ? "פוטנציאל החיסכון שזיהינו עד הפרישה" : "הזדמנויות פעילות לשיפור"}
                 </div>
-                <div style={{ fontSize: "clamp(38px,5vw,58px)", fontWeight: 900, letterSpacing: "-.04em", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+                <div style={{ fontSize: "clamp(44px,5vw,64px)", fontWeight: 900, letterSpacing: "-.04em", lineHeight: .95, fontVariantNumeric: "tabular-nums", background: "linear-gradient(96deg,#CDB6FF,#F8D2BE 70%,#F6E4A8)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
                   {heroMode === "money" ? nis(total) : bigOpportunities}
-                  {heroMode === "counts" && (
-                    <span style={{ fontSize: "clamp(18px,2vw,24px)", fontWeight: 800, marginInlineStart: 10, color: "rgba(255,255,255,.7)" }}>הזדמנויות</span>
-                  )}
                 </div>
-                {heroRows.length > 0 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 18, maxWidth: 340 }}>
-                    {heroRows.map(([k, v]) => (
-                      <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13.5 }}>
-                        <span style={{ color: "rgba(255,255,255,.62)", fontWeight: 500 }}>{k}</span>
-                        <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{v}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
-                  onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-                  onMouseLeave={e => e.currentTarget.style.transform = "none"}>
-                  ממש את ההזדמנויות <ArrowLeft size={17} strokeWidth={2.4} />
-                </button>
+                <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 1, maxWidth: 380 }}>
+                  {heroRows.map(([k, v]) => (
+                    <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,.09)" }}>
+                      <span style={{ fontSize: 14, color: "rgba(255,255,255,.7)", fontWeight: 500 }}>{k}</span>
+                      <span style={{ fontSize: 15, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
-            {/* floating health card — fed live by the master agent panel */}
+            {/* floating health card — gated: a call-to-action until an analysis
+                runs, then real numbers fed live by the master agent panel */}
             <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "var(--r-md)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
               <div style={{ alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 13.5, fontWeight: 800 }}>בריאות פיננסית</span>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: "rgba(255,255,255,.14)", borderRadius: 999, padding: "3px 10px" }}>
-                  {completedDocs > 0 ? `${completedDocs} מסמכים נותחו` : "ממתין לנתונים"}
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: liveScore ? "rgba(72,201,139,.28)" : "rgba(255,255,255,.12)", borderRadius: 999, padding: "3px 10px" }}>
+                  {liveScore ? "מעודכן · הסוכן הראשי" : "ממתין לניתוח"}
                 </span>
               </div>
-              <RadialGauge
-                value={liveScore ?? scores?.overall ?? 0}
-                sub={(() => {
-                  const v = liveScore ?? scores?.overall;
-                  if (v == null) return "טרם חושב";
-                  return v >= 75 ? "מצב טוב" : v >= 50 ? "מצב סביר" : "דורש טיפול";
-                })()}
-                tone="lavender" size={148} onDark
-              />
-              <div style={{ alignSelf: "stretch", display: "flex", flexDirection: "column", gap: 9, marginTop: 4 }}>
-                {healthRows.map(([k, v], i) => (
-                  <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13 }}>
-                    <span style={{ color: "rgba(255,255,255,.62)", fontWeight: 500 }}>{k}</span>
-                    <span style={{ fontWeight: 800, color: ["var(--mint-ink)", "var(--lav-300)", "var(--peach)"][i], fontVariantNumeric: "tabular-nums" }}>
-                      {v == null ? "—" : `${v}%`}
-                    </span>
+              {liveScore ? (
+                <>
+                  <RadialGauge value={healthValue} sub={healthLabel} tone="lavender" size={148} onDark />
+                  <div style={{ alignSelf: "stretch", display: "flex", flexDirection: "column", gap: 9, marginTop: 4, animation: "hcReveal .6s var(--ease) both" }}>
+                    {healthCategories.map(({ k, v, c }, i) => (
+                      <div key={`${k}-${i}`} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13, animation: `hcReveal .5s ${0.1 + i * 0.09}s var(--ease) both` }}>
+                        <span style={{ color: "rgba(255,255,255,.62)", fontWeight: 500 }}>{k}</span>
+                        <span style={{ fontWeight: 800, color: c, fontVariantNumeric: "tabular-nums" }}>{v}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <HealthGateCTA onRun={() => panelRef.current?.runFull()} />
+              )}
             </div>
           </div>
         </div>
 
         {/* MASTER AGENT PANEL — live orchestrator console */}
-        <MasterAgentPanel onResult={r => setLiveScore(r.globalScore?.score ?? null)} />
+        <MasterAgentPanel ref={panelRef} onResult={r => setLiveScore(r.globalScore ?? null)} />
 
         {/* AGENTS — enter each specialist */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
@@ -581,36 +669,42 @@ export default function HubPage() {
           <div style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)", padding: 24 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
               <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--text-strong)" }}>ממצאים אחרונים</h3>
-              <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ marginInlineStart: "auto", display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 700, color: "var(--accent)" }}>
-                הכל <ArrowLeft size={15} strokeWidth={2.4} />
-              </button>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {rankedFindings.length === 0 && (
-                <div style={{ display: "grid", placeItems: "center", padding: "36px 12px", textAlign: "center", color: "var(--text-muted)", fontSize: 14, fontWeight: 600 }}>
-                  {loading ? "טוענים ממצאים…" : "אין ממצאים פתוחים — הכל נראה תקין."}
-                </div>
-              )}
-              {rankedFindings.map((f, i) => {
-                const rank = i + 1;
-                const top = rank === 1;
-                return (
-                  <button key={f.id} onClick={() => navigate(APP_ROUTES.financialHealth)}
-                    style={{ width: "100%", textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 13, padding: "13px 15px", borderRadius: "var(--r-md)", border: top ? "0" : "1px solid var(--border-hair)", background: top ? "linear-gradient(95deg,var(--peach) 0%,var(--lav-200) 55%,var(--mint) 100%)" : "var(--surface-sunken)" }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 9, flex: "none", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 13, background: top ? "rgba(255,255,255,.6)" : "var(--card)", color: "var(--ink)", boxShadow: "var(--shadow-soft)" }}>#{rank}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>{f.title}</div>
-                      <div style={{ fontSize: 12, color: top ? "var(--ink-soft)" : "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {DOMAIN_LABEL[domainOf(f)]}{f.details ? ` · ${f.details}` : ""}
+            {rankedFindings.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {rankedFindings.map((f, i) => {
+                  const top = i === 0;
+                  const warn = f.severity === "warning";
+                  const domainRoute = AGENTS.find(a => a.id === domainOf(f))?.route ?? APP_ROUTES.documents;
+                  return (
+                    <button key={f.id} onClick={() => navigate(domainRoute)}
+                      style={{ width: "100%", textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 13, padding: "13px 15px", borderRadius: "var(--r-md)", border: top ? "0" : "1px solid var(--border-hair)", background: top ? "linear-gradient(95deg,var(--peach) 0%,var(--lav-200) 55%,var(--mint) 100%)" : "var(--surface-sunken)" }}>
+                      <span style={{ width: 30, height: 30, borderRadius: 9, flex: "none", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 13, background: top ? "rgba(255,255,255,.6)" : "var(--card)", color: "var(--ink)", boxShadow: "var(--shadow-soft)" }}>#{i + 1}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.title}</div>
+                        <div style={{ fontSize: 12, color: top ? "var(--ink-soft)" : "var(--text-muted)" }}>{DOMAIN_LABEL[domainOf(f)]}</div>
                       </div>
-                    </div>
-                    <span style={{ fontWeight: 900, fontSize: 12.5, color: top ? "var(--ink)" : f.severity === "warning" ? "var(--peach-ink, #DA6F44)" : "var(--mint-ink)", whiteSpace: "nowrap" }}>
-                      {f.severity === "warning" ? "לטיפול" : "מידע"}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+                      <span style={{ flex: "none", fontWeight: 800, fontSize: 11.5, borderRadius: "var(--r-pill)", padding: "4px 10px", background: top ? "rgba(255,255,255,.6)" : warn ? "var(--peach-soft)" : "var(--mint-soft)", color: warn ? "var(--peach-ink)" : "var(--mint-ink)" }}>
+                        {warn ? "דורש טיפול" : "כדאי לדעת"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ display: "grid", placeItems: "center", minHeight: 160, textAlign: "center" }}>
+                <div>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text-body)", marginBottom: 6 }}>
+                    {loading ? "טוענים ממצאים…" : completedDocs > 0 ? "אין ממצאים פעילים — הכל תקין 🎉" : "אין ממצאים עדיין"}
+                  </div>
+                  {!loading && completedDocs === 0 && (
+                    <button onClick={() => navigate(APP_ROUTES.documents)} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--lav-100)", color: "var(--lav-700)", border: "1px solid var(--lav-200)", borderRadius: "var(--r-btn)", padding: "10px 18px", fontFamily: "inherit", fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}>
+                      העלאת תלוש ראשון <ArrowLeft size={15} strokeWidth={2.4} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

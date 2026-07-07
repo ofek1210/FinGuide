@@ -8,6 +8,7 @@
  */
 
 const Document = require('../models/Document');
+const llmBudget = require('./llmBudget');
 
 const HAIKU_MODEL = 'claude-haiku-4-5';
 const MAX_TOKENS = 350;
@@ -99,6 +100,7 @@ function buildPrompt(current, previous) {
 async function generateAndSaveDigest(userId, document) {
   const client = getClient();
   if (!client) return; // no API key — skip silently
+  if (!llmBudget.canSpend()) return; // budget guard — skip silently
 
   try {
     const current = extractSummary(document);
@@ -122,6 +124,8 @@ async function generateAndSaveDigest(userId, document) {
       temperature: 0.3,
       messages: [{ role: 'user', content: prompt }],
     });
+
+    llmBudget.record(response.usage);
 
     const text = response.content
       ?.filter(b => b.type === 'text')

@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  ArrowLeft,
   BrainCircuit,
   Calculator,
   CheckCircle2,
   CircleAlert,
   CircleDashed,
   FileSpreadsheet,
-  FlaskConical,
+  ListChecks,
   Play,
+  Plus,
   Send,
   Sparkles,
   Upload,
@@ -18,12 +18,14 @@ import {
 import {
   runFullAnalysis,
   type AgentResult,
+  type FullAnalysisRecommendation,
   type FullAnalysisResponse,
 } from "../../api/fullAnalysis.api";
 import { askAgent } from "../../api/agents.api";
 import { AGENTS, type AgentId, type AgentDef } from "../../theme/agents";
 import { APP_ROUTES } from "../../types/navigation";
 import AgentSyncOverlay, { type SyncStage } from "./AgentSyncOverlay";
+import AgentFocusOverlay, { type FocusStage } from "./AgentFocusOverlay";
 import DebateArena from "./DebateArena";
 
 /* ============================================================
@@ -94,6 +96,23 @@ const QUICK_PROMPTS = [
   "יש לי כפל ביטוחי?",
   "כמה אצבור לפנסיה?",
 ];
+
+/** localStorage key for the persisted command-chat transcript. */
+const CHAT_STORAGE_KEY = "fg_hub_agent_chat";
+
+/** Blended accent of all three agents (lavender → peach → mint), used to frame
+ *  the unified summary as "all agents together". */
+const AGENT_GRADIENT = "linear-gradient(90deg,#B49BF0 0%,#F4A87E 52%,#48C98B 100%)";
+
+/** Map a merged recommendation's agentId to a display tag. */
+function recAgentTag(agentId: string): { label: string; color: string } {
+  const aid = DOMAIN_TO_AGENT[agentId];
+  if (aid) {
+    const def = AGENTS.find(a => a.id === aid);
+    if (def) return { label: def.label, color: def.tone.accent };
+  }
+  return { label: "פרופיל", color: "var(--lav-300)" };
+}
 
 const nis = (n: number) => "₪" + Math.round(n).toLocaleString("en-US");
 
@@ -199,22 +218,37 @@ type MasterAgentPanelProps = {
   onResult?: (result: FullAnalysisResponse) => void;
 };
 
+/** Imperative handle so the Hub's health-card CTA can trigger a full run. */
+export type MasterAgentPanelHandle = { runFull: () => void };
+
 const sleep = (ms: number) => new Promise<void>(r => setTimeout(r, ms));
 
-/** Sync-animation timing: keep the 3D scene up long enough to be readable,
- *  then play the converge/burst exit before revealing the results. */
+/** Overlay timing: hold the animation a readable minimum, then play the exit. */
 const SYNC_MIN_MS = 3400;
 const SYNC_EXIT_MS = 1000;
+const FOCUS_MIN_MS = 2600;
+const FOCUS_EXIT_MS = 800;
 
-export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
+function loadChat(): ChatMsg[] {
+  try {
+    const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProps>(function MasterAgentPanel({ onResult }, ref) {
   const navigate = useNavigate();
   const [phase, setPhase] = useState<Phase>("idle");
   const [focusKey, setFocusKey] = useState<BackendAgentKey | null>(null);
   const [result, setResult] = useState<FullAnalysisResponse | null>(null);
   const [syncStage, setSyncStage] = useState<SyncStage | null>(null);
+  const [focusStage, setFocusStage] = useState<FocusStage | null>(null);
 
-  // ── command chat state ──────────────────────────────────────
-  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  // ── command chat state (persisted to localStorage) ──────────
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>(loadChat);
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const chatListRef = useRef<HTMLDivElement>(null);
@@ -223,6 +257,18 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
     chatListRef.current?.scrollTo({ top: chatListRef.current.scrollHeight, behavior: "smooth" });
   }, [chatMessages, chatBusy]);
 
+  // Persist the transcript (keep the last 50 messages).
+  useEffect(() => {
+    try {
+      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatMessages.slice(-50)));
+    } catch { /* storage full / unavailable — non-fatal */ }
+  }, [chatMessages]);
+
+  const handleNewChat = useCallback(() => {
+    setChatMessages([]);
+    try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch { /* non-fatal */ }
+  }, []);
+
   const busy = phase === "running" || focusKey !== null;
 
   /** Merge an analysis response into panel state.
@@ -230,7 +276,13 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
    *  the cross-referenced synthesis stays from the last full run. */
   const applyResult = useCallback((data: FullAnalysisResponse, focus?: BackendAgentKey) => {
     setResult(prev => {
-      if (!focus || !prev) return data;
+      // Full run — take everything, including the LLM-generated unified summary.
+      if (!focus) return data;
+      // Focused run with no prior full run — show the agent's data but strip any
+      // summary, so the unified summary never appears without a full analysis.
+      if (!prev) return { ...data, summary: undefined };
+      // Focused run after a full run — refresh only this agent's lane + the global
+      // score; keep the last full-run summary untouched.
       return {
         ...prev,
         globalScore: data.globalScore ?? prev.globalScore,
@@ -243,12 +295,12 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
     onResult?.(data);
   }, [onResult]);
 
-  const handleRun = useCallback(async (demo = false) => {
+  const handleRun = useCallback(async () => {
     setPhase("running");
     setSyncStage("enter");
     const startedAt = Date.now();
 
-    const res = await runFullAnalysis({ demo });
+    const res = await runFullAnalysis({});
 
     // Hold the 3D sync scene for a minimum beat, then play the exit
     // (satellites converge into the core, core bursts, overlay fades).
@@ -266,10 +318,25 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
     }
   }, [applyResult]);
 
-  /** Run a single agent (focused analysis) from its lane controls or a chat task. */
+  // Let the Hub's health-card CTA kick off a full run.
+  useImperativeHandle(ref, () => ({ runFull: () => { void handleRun(); } }), [handleRun]);
+
+  /** Run a single agent (focused analysis) from its lane controls or a chat task.
+   *  Shows the solo-mission overlay for just this agent while it works. */
   const handleFocusRun = useCallback(async (key: BackendAgentKey) => {
     setFocusKey(key);
-    const res = await runFullAnalysis({ focus: key });
+    setFocusStage("enter");
+    const startedAt = Date.now();
+
+    // Focused run: skipLLM so no model credit is spent — only the agent's own
+    // (rule-based) data. The unified LLM summary is reserved for a full run.
+    const res = await runFullAnalysis({ focus: key, skipLLM: true });
+
+    await sleep(Math.max(0, FOCUS_MIN_MS - (Date.now() - startedAt)));
+    setFocusStage("exit");
+    await sleep(FOCUS_EXIT_MS);
+    setFocusStage(null);
+
     if (res.ok && res.data) {
       applyResult(res.data, key);
       setPhase(p => (p === "idle" || p === "error" ? "done" : p));
@@ -318,12 +385,15 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
   }, [phase, focusKey, result]);
 
   const actionItems = result?.actionItems ?? [];
+  const recommendations: FullAnalysisRecommendation[] = result?.recommendations ?? [];
   const summarySource = result?.summarySource ? SOURCE_LABEL[result.summarySource] : null;
 
   return (
     <section style={{ marginBottom: 46 }}>
-      {/* full-screen 3D sync sequence while the master agent runs */}
+      {/* full-screen 3D sync sequence while all agents run together */}
       {syncStage && <AgentSyncOverlay stage={syncStage} />}
+      {/* solo-mission sequence while a single agent runs a focused task */}
+      {focusStage && focusKey && <AgentFocusOverlay agentId={DOMAIN_TO_AGENT[focusKey]} stage={focusStage} />}
       <style>{`
         @keyframes fgScan { 0% { transform: translateX(120%); } 100% { transform: translateX(-120%); } }
         @keyframes fgPulse { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
@@ -371,14 +441,7 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
             </div>
             <div style={{ display: "flex", gap: 10 }}>
               <button
-                onClick={() => handleRun(true)}
-                disabled={busy}
-                style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "rgba(255,255,255,.08)", color: "#fff", border: "1px solid rgba(255,255,255,.16)", borderRadius: "var(--r-btn)", padding: "12px 18px", fontFamily: "inherit", fontWeight: 700, fontSize: 13.5, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.55 : 1 }}
-              >
-                <FlaskConical size={15} /> הדגמה
-              </button>
-              <button
-                onClick={() => handleRun(false)}
+                onClick={() => handleRun()}
                 disabled={busy}
                 style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "12px 22px", fontFamily: "inherit", fontWeight: 800, fontSize: 14.5, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.7 : 1, transition: "transform .2s var(--ease)" }}
                 onMouseEnter={e => { if (!busy) e.currentTarget.style.transform = "translateY(-2px)"; }}
@@ -507,62 +570,120 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
 
           {/* synthesis — the master agent's cross-referenced output */}
           {result && (
-            <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: actionItems.length > 0 ? "1.05fr .95fr" : "1fr", gap: 14, animation: "fgRise .6s .15s var(--ease) both" }}>
-              {/* cross-referenced action items */}
-              {actionItems.length > 0 && (
-                <div style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.11)", borderRadius: "var(--r-md)", padding: 20 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                    <span style={{ fontWeight: 900, fontSize: 15 }}>הצלבת הסוכן הראשי — פעולות מומלצות</span>
-                    <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, color: "rgba(255,255,255,.65)" }}>
-                      לכל הממצאים <ArrowLeft size={14} strokeWidth={2.4} />
-                    </button>
+            <div style={{ marginTop: 22, animation: "fgRise .6s .15s var(--ease) both" }}>
+              {/* unified summary — ONLY after a full analysis (the only run that
+                  spends model credit on a cross-agent narrative). Focused agent
+                  runs never reach here. */}
+              {result.summary && (
+                <>
+                  {/* full-analysis banner — emphasises all three agents converged */}
+                  <div style={{ textAlign: "center", marginBottom: 16 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 800, letterSpacing: ".14em", color: "#fff" }}>
+                      <span style={{ width: 22, height: 3, borderRadius: 2, background: AGENT_GRADIENT }} />
+                      ניתוח מלא · שלושת הסוכנים הצטלבו
+                      <span style={{ width: 22, height: 3, borderRadius: 2, background: AGENT_GRADIENT }} />
+                    </span>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    {actionItems.slice(0, 4).map((item, i) => {
-                      const p = PRIORITY_STYLE[item.priority] ?? PRIORITY_STYLE.medium;
-                      const agentId = DOMAIN_TO_AGENT[item.domain];
-                      const domainDef = agentId ? AGENTS.find(x => x.id === agentId) : null;
-                      return (
-                        <button
-                          key={`${item.domain}-${item.title}`}
-                          onClick={() => item.actionUrl && navigate(item.actionUrl)}
-                          style={{ display: "flex", alignItems: "flex-start", gap: 11, textAlign: "start", fontFamily: "inherit", cursor: item.actionUrl ? "pointer" : "default", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "11px 14px", color: "#fff", animation: `fgRise .45s ${0.15 + i * 0.08}s var(--ease) both` }}
-                        >
-                          <span style={{ flex: "none", marginTop: 1, fontSize: 10.5, fontWeight: 800, borderRadius: 999, padding: "3px 9px", background: p.bg, color: p.color }}>{p.label}</span>
-                          <span style={{ flex: 1, minWidth: 0 }}>
-                            <span style={{ display: "block", fontWeight: 800, fontSize: 13.5 }}>{item.title}</span>
-                            {item.description && <span style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,.58)", marginTop: 2, lineHeight: 1.45 }}>{item.description}</span>}
-                          </span>
-                          {domainDef && (
-                            <span style={{ flex: "none", fontSize: 10.5, fontWeight: 800, color: domainDef.tone.accent, background: "rgba(255,255,255,.07)", borderRadius: 999, padding: "3px 9px" }}>{domainDef.label}</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
 
-              {/* unified summary — the master agent's cross-referenced narrative.
-                  (Financial-health score is shown in the Hub's shared health card.) */}
-              <div style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.11)", borderRadius: "var(--r-md)", padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ flex: "none", width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg,#9B7FE8,#6F8BE8)", display: "grid", placeItems: "center" }}>
-                    <Sparkles size={17} />
-                  </span>
-                  <div>
-                    <div style={{ fontWeight: 900, fontSize: 15 }}>סיכום מאוחד</div>
-                    <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.6)", fontWeight: 600, marginTop: 2 }}>
-                      {summarySource ?? "כל הסוכנים בדוח אחד"}
-                      {result.globalScore?.score != null ? ` · ציון ${result.globalScore.score}/100` : ""}
-                      {result.meta?.isDemo ? " · הדגמה" : ""}
+                  {/* framed by a gentle gradient of all three agent colours.
+                      (Financial-health score is shown in the Hub's shared health card.) */}
+                  <div style={{ background: AGENT_GRADIENT, borderRadius: "calc(var(--r-md) + 1px)", padding: 1.5, boxShadow: "0 0 30px rgba(155,127,232,.14)", marginBottom: 14 }}>
+                    <div style={{ background: "linear-gradient(180deg,rgba(38,36,47,.96),rgba(20,19,26,.98))", borderRadius: "var(--r-md)", padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ flex: "none", width: 34, height: 34, borderRadius: 10, background: AGENT_GRADIENT, display: "grid", placeItems: "center", color: "#1a1820" }}>
+                          <Sparkles size={17} strokeWidth={2.2} />
+                        </span>
+                        <div>
+                          <div style={{ fontWeight: 900, fontSize: 15 }}>סיכום מאוחד</div>
+                          <div style={{ fontSize: 12.5, color: "rgba(255,255,255,.6)", fontWeight: 600, marginTop: 2 }}>
+                            {summarySource ?? "כל הסוכנים בדוח אחד"}
+                            {result.globalScore?.score != null ? ` · ציון ${result.globalScore.score}/100` : ""}
+                          </div>
+                        </div>
+                      </div>
+                      <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.65, color: "rgba(255,255,255,.85)", fontWeight: 500, whiteSpace: "pre-line", borderInlineStart: "3px solid transparent", borderImage: `${AGENT_GRADIENT} 1`, paddingInlineStart: 14 }}>
+                        {result.summary}
+                      </p>
                     </div>
                   </div>
-                </div>
-                {result.summary && (
-                  <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.65, color: "rgba(255,255,255,.82)", fontWeight: 500, whiteSpace: "pre-line", borderInlineStart: "3px solid rgba(155,127,232,.55)", paddingInlineStart: 14 }}>
-                    {result.summary}
-                  </p>
+                </>
+              )}
+
+              {/* two rubrics: cross-referenced action items · agent recommendations */}
+              <div style={{ display: "grid", gridTemplateColumns: actionItems.length > 0 && recommendations.length > 0 ? "1fr 1fr" : "1fr", gap: 14 }}>
+                {actionItems.length > 0 && (
+                  <div style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.11)", borderRadius: "var(--r-md)", padding: 20 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 900, fontSize: 15 }}>
+                        <Zap size={15} color="#F4A87E" /> פעולות דחופות
+                      </span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgba(255,255,255,.5)" }}>{actionItems.length}</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                      {actionItems.slice(0, 4).map((item, i) => {
+                        const p = PRIORITY_STYLE[item.priority] ?? PRIORITY_STYLE.medium;
+                        const agentId = DOMAIN_TO_AGENT[item.domain];
+                        const domainDef = agentId ? AGENTS.find(x => x.id === agentId) : null;
+                        return (
+                          <button
+                            key={`${item.domain}-${item.title}`}
+                            onClick={() => item.actionUrl && navigate(item.actionUrl)}
+                            style={{ display: "flex", alignItems: "flex-start", gap: 11, textAlign: "start", fontFamily: "inherit", cursor: item.actionUrl ? "pointer" : "default", background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "11px 14px", color: "#fff", animation: `fgRise .45s ${0.15 + i * 0.08}s var(--ease) both` }}
+                          >
+                            <span style={{ flex: "none", marginTop: 1, fontSize: 10.5, fontWeight: 800, borderRadius: 999, padding: "3px 9px", background: p.bg, color: p.color }}>{p.label}</span>
+                            <span style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ display: "block", fontWeight: 800, fontSize: 13.5 }}>{item.title}</span>
+                              {item.description && <span style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,.58)", marginTop: 2, lineHeight: 1.45 }}>{item.description}</span>}
+                            </span>
+                            {domainDef && (
+                              <span style={{ flex: "none", fontSize: 10.5, fontWeight: 800, color: domainDef.tone.accent, background: "rgba(255,255,255,.07)", borderRadius: 999, padding: "3px 9px" }}>{domainDef.label}</span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* recommendations rubric — merged per-agent recommendations (result.recommendations) */}
+                {recommendations.length > 0 && (
+                  <div style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.11)", borderRadius: "var(--r-md)", padding: 20 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 900, fontSize: 15 }}>
+                        <ListChecks size={15} color="#B49BF0" /> המלצות הסוכנים
+                      </span>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "rgba(255,255,255,.5)" }}>{recommendations.length}</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                      {recommendations.slice(0, 5).map((rec, i) => {
+                        const p = PRIORITY_STYLE[rec.urgency] ?? PRIORITY_STYLE.medium;
+                        const tag = recAgentTag(rec.agentId);
+                        return (
+                          <div
+                            key={`${rec.agentId}-${rec.type}-${i}`}
+                            style={{ display: "flex", alignItems: "flex-start", gap: 11, background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 12, padding: "11px 14px", color: "#fff", animation: `fgRise .45s ${0.15 + i * 0.08}s var(--ease) both` }}
+                          >
+                            <span style={{ flex: "none", marginTop: 1, fontSize: 10.5, fontWeight: 800, borderRadius: 999, padding: "3px 9px", background: p.bg, color: p.color }}>{p.label}</span>
+                            <span style={{ flex: 1, minWidth: 0 }}>
+                              <span style={{ display: "block", fontWeight: 800, fontSize: 13.5 }}>{rec.title}</span>
+                              {rec.financialImpact && (
+                                <span style={{ display: "block", fontSize: 12, color: "#48C98B", fontWeight: 700, marginTop: 3 }}>💰 {rec.financialImpact}</span>
+                              )}
+                              {!rec.financialImpact && rec.reason && (
+                                <span style={{ display: "block", fontSize: 12, color: "rgba(255,255,255,.58)", marginTop: 2, lineHeight: 1.45 }}>{rec.reason}</span>
+                              )}
+                            </span>
+                            <span style={{ flex: "none", display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                              <span style={{ fontSize: 10.5, fontWeight: 800, color: tag.color, background: "rgba(255,255,255,.07)", borderRadius: 999, padding: "3px 9px", whiteSpace: "nowrap" }}>{tag.label}</span>
+                              {typeof rec.confidenceScore === "number" && (
+                                <span style={{ fontSize: 10.5, fontWeight: 700, color: "rgba(255,255,255,.45)" }}>{rec.confidenceScore}%</span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -572,12 +693,12 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
           {phase === "error" && (
             <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 9, background: "rgba(218,111,68,.13)", border: "1px solid rgba(218,111,68,.3)", borderRadius: "var(--r-md)", padding: "12px 16px", fontSize: 13.5, fontWeight: 600, color: "#F4A87E" }}>
               <CircleAlert size={16} />
-              הניתוח נכשל. ודא שהשרת זמין ונסה שוב — או הרץ מצב הדגמה.
+              הניתוח נכשל. ודא שהשרת זמין ונסה שוב.
             </div>
           )}
 
           {/* ── command chat — talk to the agents, hand out tasks ── */}
-          <div style={{ marginTop: 18, background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "var(--r-md)", overflow: "hidden" }}>
+          <div id="agent-chat" style={{ marginTop: 18, background: "rgba(255,255,255,.04)", border: "1px solid rgba(255,255,255,.1)", borderRadius: "var(--r-md)", overflow: "hidden", scrollMarginTop: 90 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", borderBottom: chatMessages.length > 0 || chatBusy ? "1px solid rgba(255,255,255,.08)" : "none" }}>
               <span style={{ width: 30, height: 30, borderRadius: 9, background: "rgba(155,127,232,.2)", color: "#B49BF0", display: "grid", placeItems: "center" }}>
                 <BrainCircuit size={16} strokeWidth={2} />
@@ -586,20 +707,33 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
                 <div style={{ fontWeight: 800, fontSize: 14 }}>דבר עם הסוכנים</div>
                 <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.55)", fontWeight: 600 }}>שאל שאלה — הסוכן הראשי ינתב אותה למומחה הנכון ויציע משימה</div>
               </div>
-              {/* quick prompts */}
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              {/* new-chat: clears the saved transcript */}
+              {chatMessages.length > 0 && (
+                <button
+                  onClick={handleNewChat}
+                  disabled={chatBusy}
+                  title="התחל צ'אט חדש — מוחק את ההיסטוריה"
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.06)", color: "rgba(255,255,255,.8)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 999, padding: "6px 13px", fontFamily: "inherit", fontWeight: 700, fontSize: 12, cursor: chatBusy ? "not-allowed" : "pointer", opacity: chatBusy ? 0.5 : 1, whiteSpace: "nowrap" }}
+                >
+                  <Plus size={13} strokeWidth={2.6} /> צ'אט חדש
+                </button>
+              )}
+            </div>
+
+            {/* quick prompts — only when the chat is empty, to seed a conversation */}
+            {chatMessages.length === 0 && !chatBusy && (
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", padding: "0 18px 12px" }}>
                 {QUICK_PROMPTS.map(q => (
                   <button
                     key={q}
                     onClick={() => handleChatSend(q)}
-                    disabled={chatBusy}
-                    style={{ background: "rgba(255,255,255,.06)", color: "rgba(255,255,255,.75)", border: "1px solid rgba(255,255,255,.13)", borderRadius: 999, padding: "5px 12px", fontFamily: "inherit", fontWeight: 700, fontSize: 11.5, cursor: chatBusy ? "not-allowed" : "pointer", opacity: chatBusy ? 0.5 : 1 }}
+                    style={{ background: "rgba(255,255,255,.06)", color: "rgba(255,255,255,.75)", border: "1px solid rgba(255,255,255,.13)", borderRadius: 999, padding: "5px 12px", fontFamily: "inherit", fontWeight: 700, fontSize: 11.5, cursor: "pointer" }}
                   >
                     {q}
                   </button>
                 ))}
               </div>
-            </div>
+            )}
 
             {/* message list */}
             {(chatMessages.length > 0 || chatBusy) && (
@@ -655,6 +789,7 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
               style={{ display: "flex", gap: 10, padding: "12px 18px", borderTop: "1px solid rgba(255,255,255,.08)" }}
             >
               <input
+                id="agent-chat-input"
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 placeholder="לדוגמה: למה הנטו שלי ירד החודש?"
@@ -674,4 +809,6 @@ export default function MasterAgentPanel({ onResult }: MasterAgentPanelProps) {
       </div>
     </section>
   );
-}
+});
+
+export default MasterAgentPanel;
