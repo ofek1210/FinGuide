@@ -170,6 +170,12 @@ const userProfileSchema = new mongoose.Schema(
     financial: { type: financialSchema, default: () => ({}) },
     assets: { type: assetsSchema, default: () => ({}) },
     insurance: { type: insuranceSchema, default: () => ({}) },
+    insuranceOnboarding: {
+      answers: { type: mongoose.Schema.Types.Mixed, default: {} },
+      skippedIds: { type: [String], default: [] },
+      completedAt: { type: Date, default: null },
+      lastReportAt: { type: Date, default: null },
+    },
     retirement: { type: retirementSchema, default: () => ({}) },
     employment: { type: employmentSchema, default: () => ({}) },
     goals: { type: [goalSchema], default: [] },

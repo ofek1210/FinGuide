@@ -83,10 +83,26 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
           comparisonMatrix: marketAdvice.comparisonMatrix,
           duplicateCount: marketAdvice.duplicateCount,
           dataSource: marketAdvice.dataSource,
+          pricingSource: marketAdvice.pricingSource,
+        }
+        : null,
+      bituahAdvice: analysis.bituahAdvice?.hasData
+        ? {
+          overallVerdict: analysis.bituahAdvice.overallVerdict,
+          overallVerdictLabelHe: analysis.bituahAdvice.overallVerdictLabelHe,
+          sourceName: analysis.bituahAdvice.sourceName,
+          funds: analysis.bituahAdvice.funds?.map(f => ({
+            productName: f.productName,
+            verdict: f.verdict,
+            summaryHe: f.summaryHe,
+          })),
         }
         : null,
     },
     recommendations,
+    pricingSource: marketAdvice?.pricingSource ?? null,
+    disclaimer: marketAdvice?.disclaimer ?? null,
+    disclaimerEn: marketAdvice?.disclaimerEn ?? null,
     llmExplanation,
     durationMs: Date.now() - startedAt,
   };

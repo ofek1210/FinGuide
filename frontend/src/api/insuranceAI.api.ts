@@ -58,6 +58,42 @@ export type InsuranceAnalysisSummary = {
   totalMonthlyPremium: number;
 };
 
+export type InsurancePricingSource = {
+  sourceName: string;
+  sourceDate: string;
+  sourceUrl: string | null;
+  dataCollectionMethod: string;
+};
+
+export type InsurancePricingComparison = {
+  userMonthlyPremium: number | null;
+  fairRange: { min: number; average: number; max: number; currency: string; sampleCount?: number };
+  assessment: string;
+  monthlyDeltaVsAvg: number | null;
+  annualDeltaVsAvg: number | null;
+  disclaimer?: string;
+  disclaimerEn?: string;
+};
+
+export type InsuranceMarketAdvice = {
+  hasData: boolean;
+  overallVerdict?: string;
+  overallVerdictLabelHe?: string;
+  comparisonMatrix?: {
+    policyId: string;
+    type: string;
+    provider: string | null;
+    userCost: number | null;
+    marketAvg: number;
+    premiumVsMarket: string;
+    verdict?: string;
+  }[];
+  pricingSource?: InsurancePricingSource;
+  disclaimer?: string;
+  disclaimerEn?: string;
+  dataSource?: string;
+};
+
 export type InsuranceAnalysisResponse = {
   success: boolean;
   data?: {
@@ -70,6 +106,7 @@ export type InsuranceAnalysisResponse = {
     healthCheck?: InsuranceHealthCheck;
     summary?: InsuranceAnalysisSummary;
     hasImportedPolicies: boolean;
+    marketAdvice?: InsuranceMarketAdvice;
   };
 };
 

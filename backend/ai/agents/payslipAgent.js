@@ -10,6 +10,7 @@
 'use strict';
 
 const { getPayslipSummaries, analyzeSalary, generatePayslipRecommendations } = require('../tools/payslipTools');
+const { buildPayslipGovBenchmarkRecommendations } = require('../../services/payslipGovBenchmarkService');
 const { buildPayslipSystemPrompt } = require('../prompts/payslipPrompt');
 const { askClaude } = require('../../services/claudeChatService');
 
@@ -42,6 +43,8 @@ async function runPayslipAgent(userId, { skipLLM = false } = {}) {
 
   // Step 3: Generate rule-based recommendations
   const recommendations = generatePayslipRecommendations(analysis, payslipData.payslips);
+  const govRecs = await buildPayslipGovBenchmarkRecommendations(userId);
+  const mergedRecs = [...govRecs, ...recommendations];
 
   // Step 4: LLM explanation (optional)
   let llmExplanation = null;
@@ -76,7 +79,7 @@ async function runPayslipAgent(userId, { skipLLM = false } = {}) {
       trend: analysis.trend,
       anomalies: analysis.anomalies,
     },
-    recommendations,
+    recommendations: mergedRecs,
     llmExplanation,
     durationMs: Date.now() - startedAt,
   };

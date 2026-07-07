@@ -11,6 +11,7 @@ import { getDashboardSummary, type DashboardSummaryData } from "../api/dashboard
 import { listFindings, type FindingItem } from "../api/findings.api";
 import { getPensionAnalysis, getPensionImportHistory, type PensionAnalysisData } from "../api/pension.api";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
+import type { FullAnalysisGlobalScore } from "../api/fullAnalysis.api";
 
 /* ============================================================
    Hub — editorial command center in the FinGuide design language:
@@ -252,25 +253,6 @@ function netTrend(docs: DocumentItem[]): number[] {
   return points.length >= 2 ? points : [];
 }
 
-/* Live financial-health card wiring. Category ids/tones come from
-   financialHealthScoreService (documentCompleteness, salaryStability,
-   taxReadiness, pensionConsistency, riskInsurance). We surface the
-   three that mirror the original card: tax · pension · insurance. */
-const CATEGORY_TONE: Record<string, string> = {
-  taxReadiness: "var(--mint-ink)",
-  pensionConsistency: "var(--lav-300)",
-  riskInsurance: "var(--peach)",
-  documentCompleteness: "var(--lav-300)",
-  salaryStability: "var(--mint-ink)",
-};
-const HEALTH_CARD_KEYS = ["taxReadiness", "pensionConsistency", "riskInsurance"];
-
-const STATIC_HEALTH_CATEGORIES = [
-  { k: "ניצול הטבות מס", v: "82%", c: "var(--mint-ink)" },
-  { k: "יעילות פנסיה", v: "71%", c: "var(--lav-300)" },
-  { k: "כיסוי ביטוחי", v: "68%", c: "var(--peach)" },
-];
-
 export default function HubPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -282,6 +264,7 @@ export default function HubPage() {
   const [pension, setPension] = useState<PensionAnalysisData | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [pensionScoreTrend, setPensionScoreTrend] = useState<number[]>([]);
+  const [liveScore, setLiveScore] = useState<FullAnalysisGlobalScore | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -390,6 +373,11 @@ export default function HubPage() {
     ["כיסוי ביטוחי", scores?.insurance ?? null],
   ];
 
+  const healthGaugeValue = liveScore?.score ?? scores?.overall ?? 0;
+  const healthGaugeSub = liveScore?.label ?? (
+    scores?.overall == null ? "טרם חושב" : scores.overall >= 75 ? "מצב טוב" : scores.overall >= 50 ? "מצב סביר" : "דורש טיפול"
+  );
+
   // real per-agent trend series; a card simply shows no chart when there is no history yet
   const payslipTrend = useMemo(() => netTrend(documents), [documents]);
   const agentSpark: Record<AgentId, number[]> = {
@@ -445,12 +433,29 @@ export default function HubPage() {
                   <Upload size={17} strokeWidth={2.4} /> העלאת תלוש ראשון
                 </button>
               </div>
-              <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
-                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "none"}>
-                ממש את ההזדמנויות <ArrowLeft size={17} strokeWidth={2.4} />
-              </button>
-            </div>
+            ) : (
+              <div>
+                <div style={{ fontSize: 13.5, color: "rgba(255,255,255,.6)", fontWeight: 600, marginBottom: 12 }}>
+                  {heroMode === "money" ? "פוטנציאל החיסכון שזיהינו עד הפרישה" : "הזדמנויות פעילות לשיפור"}
+                </div>
+                <div style={{ fontSize: "clamp(44px,5vw,64px)", fontWeight: 900, letterSpacing: "-.04em", lineHeight: .95, fontVariantNumeric: "tabular-nums", background: "linear-gradient(96deg,#CDB6FF,#F8D2BE 70%,#F6E4A8)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>
+                  {heroMode === "money" ? nis(total) : bigOpportunities}
+                </div>
+                <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 1, maxWidth: 380 }}>
+                  {heroRows.map(([k, v]) => (
+                    <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,.09)" }}>
+                      <span style={{ fontSize: 14, color: "rgba(255,255,255,.7)", fontWeight: 500 }}>{k}</span>
+                      <span style={{ fontSize: 15, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{v}</span>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
+                  onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                  onMouseLeave={e => e.currentTarget.style.transform = "none"}>
+                  ממש את ההזדמנויות <ArrowLeft size={17} strokeWidth={2.4} />
+                </button>
+              </div>
+            )}
             {/* floating health card — fed live by the master agent panel */}
             <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "var(--r-md)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
               <div style={{ alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -460,8 +465,8 @@ export default function HubPage() {
                 </span>
               </div>
               <RadialGauge
-                value={scores?.overall ?? 0}
-                sub={scores?.overall == null ? "טרם חושב" : scores.overall >= 75 ? "מצב טוב" : scores.overall >= 50 ? "מצב סביר" : "דורש טיפול"}
+                value={healthGaugeValue}
+                sub={healthGaugeSub}
                 tone="lavender" size={148} onDark
               />
               <div style={{ alignSelf: "stretch", display: "flex", flexDirection: "column", gap: 9, marginTop: 4 }}>
@@ -574,20 +579,38 @@ export default function HubPage() {
               </button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {FINDINGS.map(f => {
-                const top = f.rank === 1;
-                return (
-                  <button key={f.title} onClick={() => navigate(APP_ROUTES.financialHealth)}
-                    style={{ width: "100%", textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 13, padding: "13px 15px", borderRadius: "var(--r-md)", border: top ? "0" : "1px solid var(--border-hair)", background: top ? "linear-gradient(95deg,var(--peach) 0%,var(--lav-200) 55%,var(--mint) 100%)" : "var(--surface-sunken)" }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 9, flex: "none", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 13, background: top ? "rgba(255,255,255,.6)" : "var(--card)", color: "var(--ink)", boxShadow: "var(--shadow-soft)" }}>#{f.rank}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>{f.title}</div>
-                      <div style={{ fontSize: 12, color: top ? "var(--ink-soft)" : "var(--text-muted)" }}>{f.sub}</div>
+              {rankedFindings.length > 0 ? (
+                rankedFindings.map((f, i) => {
+                  const top = i === 0;
+                  const warn = f.severity === "warning";
+                  return (
+                    <button key={f.id} onClick={() => navigate(APP_ROUTES.financialHealth)}
+                      style={{ width: "100%", textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 13, padding: "13px 15px", borderRadius: "var(--r-md)", border: top ? "0" : "1px solid var(--border-hair)", background: top ? "linear-gradient(95deg,var(--peach) 0%,var(--lav-200) 55%,var(--mint) 100%)" : "var(--surface-sunken)" }}>
+                      <span style={{ width: 30, height: 30, borderRadius: 9, flex: "none", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 13, background: top ? "rgba(255,255,255,.6)" : "var(--card)", color: "var(--ink)", boxShadow: "var(--shadow-soft)" }}>#{i + 1}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.title}</div>
+                        <div style={{ fontSize: 12, color: top ? "var(--ink-soft)" : "var(--text-muted)" }}>{DOMAIN_LABEL[domainOf(f)]}</div>
+                      </div>
+                      <span style={{ flex: "none", fontWeight: 800, fontSize: 11.5, borderRadius: "var(--r-pill)", padding: "4px 10px", background: top ? "rgba(255,255,255,.6)" : warn ? "var(--peach-soft)" : "var(--mint-soft)", color: warn ? "var(--peach-ink)" : "var(--mint-ink)" }}>
+                        {warn ? "דורש טיפול" : "כדאי לדעת"}
+                      </span>
+                    </button>
+                  );
+                })
+              ) : (
+                <div style={{ display: "grid", placeItems: "center", minHeight: 160, textAlign: "center" }}>
+                  <div>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text-body)", marginBottom: 6 }}>
+                      {loading ? "טוענים ממצאים…" : completedDocs > 0 ? "אין ממצאים פעילים — הכל תקין 🎉" : "אין ממצאים עדיין"}
                     </div>
-                    <span style={{ fontWeight: 900, fontSize: 15, color: top ? "var(--ink)" : "var(--mint-ink)", fontVariantNumeric: "tabular-nums" }}>{f.amt}</span>
-                  </button>
-                );
-              })}
+                    {!loading && completedDocs === 0 && (
+                      <button onClick={() => navigate(APP_ROUTES.documents)} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--lav-100)", color: "var(--lav-700)", border: "1px solid var(--lav-200)", borderRadius: "var(--r-btn)", padding: "10px 18px", fontFamily: "inherit", fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}>
+                        העלאת תלוש ראשון <ArrowLeft size={15} strokeWidth={2.4} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
