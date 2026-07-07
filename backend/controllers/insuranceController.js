@@ -1,13 +1,14 @@
-'use strict';
+
 
 const InsurancePolicy = require('../models/InsurancePolicy');
 const { parseInsuranceExcel } = require('../services/insuranceExcelParser');
 const { buildInsuranceAnalysis, importInsuranceExcel } = require('../services/insuranceImportService');
 const { buildMarketAdvice } = require('../services/insuranceMarketAdvisorService');
 const InsuranceImportSnapshot = require('../models/InsuranceImportSnapshot');
+const { isDemoRequest } = require('../utils/demoMode');
 
 async function getInsuranceAnalysis(req, res) {
-  if (req.query.demo === 'true') {
+  if (isDemoRequest(req)) {
     const { MOCK_INSURANCE_ANALYSIS } = require('../ai/mock/mockData');
     return res.json({ success: true, data: MOCK_INSURANCE_ANALYSIS });
   }

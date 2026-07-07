@@ -1,4 +1,4 @@
-'use strict';
+
 
 /** Finq market-data API — leading pension funds by risk cohort. */
 const FINQ_BASE_URL = (process.env.FINQ_API_BASE_URL || 'https://api.finqai.co.il/v1').replace(/\/$/, '');

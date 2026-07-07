@@ -1,4 +1,4 @@
-'use strict';
+
 
 const request = require('supertest');
 const mongoose = require('mongoose');
@@ -42,7 +42,7 @@ async function teardownDomainTestApp(mongoServer) {
 }
 
 async function clearAllCollections() {
-  const collections = mongoose.connection.collections;
+  const {collections} = mongoose.connection;
   await Promise.all(Object.values(collections).map(c => c.deleteMany({})));
 }
 

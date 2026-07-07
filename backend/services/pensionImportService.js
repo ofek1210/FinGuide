@@ -1,4 +1,4 @@
-'use strict';
+
 
 const PensionFund = require('../models/PensionFund');
 const PensionImportSnapshot = require('../models/PensionImportSnapshot');

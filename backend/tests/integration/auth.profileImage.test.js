@@ -3,9 +3,9 @@ const path = require('path');
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
+const sharp = require('sharp');
 const createApp = require('../../app');
 const User = require('../../models/User');
-const sharp = require('sharp');
 
 const PROFILE_IMAGES_DIR = path.join(
   __dirname,

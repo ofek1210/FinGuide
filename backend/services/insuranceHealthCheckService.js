@@ -1,7 +1,8 @@
 /**
  * Insurance health score — duplicates, gaps, coverage breadth.
  */
-'use strict';
+
+
 
 const { buildHealthCheckResult } = require('../utils/healthScoreShared');
 
@@ -24,7 +25,7 @@ function runInsuranceHealthCheck(profileDTO, analysis) {
   totalScore += coverageScore;
 
   const dupCount = analysis.duplicateCount ?? 0;
-  let dupScore = dupCount === 0 ? 25 : dupCount === 1 ? 15 : 5;
+  const dupScore = dupCount === 0 ? 25 : dupCount === 1 ? 15 : 5;
   categories.push({
     id: 'duplicates',
     label: 'כפילויות',
@@ -36,7 +37,7 @@ function runInsuranceHealthCheck(profileDTO, analysis) {
   totalScore += dupScore;
 
   const missing = analysis.missingCoverage?.length ?? 0;
-  let gapScore = missing === 0 ? 25 : missing <= 2 ? 15 : 5;
+  const gapScore = missing === 0 ? 25 : missing <= 2 ? 15 : 5;
   categories.push({
     id: 'gaps',
     label: 'פערים בכיסוי',
@@ -48,7 +49,7 @@ function runInsuranceHealthCheck(profileDTO, analysis) {
   totalScore += gapScore;
 
   const waste = analysis.totalMonthlyWaste ?? 0;
-  let wasteScore = waste === 0 ? 25 : waste < 200 ? 15 : 5;
+  const wasteScore = waste === 0 ? 25 : waste < 200 ? 15 : 5;
   categories.push({
     id: 'waste',
     label: 'בזבוז פרמיות',

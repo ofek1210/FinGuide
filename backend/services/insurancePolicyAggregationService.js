@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Insurance policy aggregation & true-duplication detection.

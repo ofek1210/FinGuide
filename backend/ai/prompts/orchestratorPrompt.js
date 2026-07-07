@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * FinGuide Master Orchestrator prompt — merges canvas, gov data, agents, global score.

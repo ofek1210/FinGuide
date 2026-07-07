@@ -1,4 +1,4 @@
-'use strict';
+
 
 const DOMAIN_LABELS = {
   pension: {

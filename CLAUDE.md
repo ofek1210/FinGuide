@@ -38,7 +38,7 @@ npm run lint:fix
 npm run format            # prettier --write
 npx jest path/to/file.test.js                    # single file
 npx jest -t "test name substring"                # single test by name
-npm run debug:extractor:v2                       # run extraction-v2 ad-hoc on fixtures
+npm run eval:ocr                                 # golden-PDF OCR regression eval
 npm run reprocess:payslips -- --only-missing-rates --limit 50 --write
 ```
 
@@ -94,11 +94,8 @@ routes/ → controllers/ → services/ + utils/ → models/ (Mongoose)
 3. `services/payslipOcr.extractPayslipFile`:
    - try `pdf-parse`; if text ≥ 200 chars with intact Hebrew → use directly
    - else fall back to `pdftoppm` → PNG → `sharp` → `tesseract heb+eng` with PSM 6/4/3 candidates, ranked by `services/payslipOcrResolver.rankExtractionCandidates`
-4. `extractPayslipFinancialEN` builds the canonical `analysisData` object (`schema_version: '1.9'`) with `period`, `salary`, `deductions`, `contributions`, `tax`, `parties`, `employment`, `summary`, `raw`
-5. `applyExtractorV2Shadow` runs `services/extraction-v2/` in **shadow mode** — writes results to `analysisData.extraction_v2` + `quality.validation` without replacing the legacy shape the UI reads
-6. Status flips to `completed` (or `failed` with `processingError`)
-
-`services/documentProcessingService.processDocumentAsync` exists and is tested but is **not wired into upload** — the controller does the work synchronously. Don't assume async processing runs.
+4. `extractPayslipFinancialEN` builds the canonical `analysisData` object (`schema_version: '1.9'`) with `period`, `salary`, `deductions`, `contributions`, `tax`, `parties`, `employment`, `summary`, `raw`. Format-specific layouts (e.g. IDF/צה"ל payslips) are handled by `services/payslipFormatProfiles.js`
+5. Status flips to `completed` (or `failed` with `processingError`)
 
 OCR depends on `tesseract` + `poppler-utils` system binaries. Without them, the PDF fallback fails with a clear `ENOENT` message. `backend/Dockerfile` ships them — `dev:docker` is the easiest way to develop OCR-touching code on macOS.
 
@@ -175,7 +172,7 @@ When starting on an unfamiliar area:
 | Request lifecycle | `backend/app.js`, `backend/middleware/errorHandler.js`, `backend/utils/appErrors.js` |
 | Upload + OCR | `backend/controllers/documentController.js` → `backend/services/payslipOcr.js` |
 | OCR helpers | `backend/services/payslipOcr*.js` (label map, parties, contributions, resolver, numbers) |
-| extraction-v2 (shadow) | `backend/services/extraction-v2/extraction.service.js`, `contracts/extractionResult.contract.js` |
+| Payslip format profiles | `backend/services/payslipFormatProfiles.js`, `backend/services/idfPayslipProfile.js` |
 | Findings logic | `backend/controllers/findingsController.js`, `backend/utils/detect*.js` |
 | Savings forecast | `backend/services/savingsForecastService.js`, `backend/utils/linearSavingsForecast.js` |
 | AI assistant | `backend/controllers/aiController.js`, `backend/services/aiService.js` |

@@ -1,4 +1,4 @@
-'use strict';
+
 
 const config = require('../config/pensionFinqConfig');
 const PensionLeadingFundCache = require('../models/PensionLeadingFundCache');

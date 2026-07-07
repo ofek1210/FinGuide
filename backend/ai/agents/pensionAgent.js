@@ -4,7 +4,7 @@
  * Pipeline: buildPensionAnalysis → LLM explanation
  */
 
-'use strict';
+
 
 const { buildPensionAnalysis } = require('../../services/pensionAnalysisService');
 const { buildPensionSystemPrompt } = require('../prompts/pensionPrompt');

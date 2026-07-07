@@ -1,4 +1,4 @@
-'use strict';
+
 
 const PENSION_VERDICT_PRIORITY = { SWITCH: 'high', NEGOTIATE: 'medium', LEAVE: 'low' };
 const INSURANCE_VERDICT = { SWITCH: 'high', REVIEW: 'medium', STAY: 'low' };

@@ -1,4 +1,4 @@
-'use strict';
+
 
 const XLSX = require('xlsx');
 const { parseHarHaBituachBuffer, isHarHaBituachBuffer } = require('./harHaBituachService');
@@ -44,7 +44,7 @@ function safeDate(val) {
   if (val instanceof Date) return val.toISOString().split('T')[0];
   const s = String(val).trim();
   const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-  if (m) return `${m[3].length === 2 ? '20' + m[3] : m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+  if (m) return `${m[3].length === 2 ? `20${  m[3]}` : m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
   return s || null;
 }
 

@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Option A — free report (הר הביטוח / דוח בסיסי): product types + activity status only.

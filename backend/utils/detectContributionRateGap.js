@@ -309,7 +309,7 @@ const buildContributionRateGapFindings = (documents, thresholdsInput) => {
     if (!doc || doc.status !== 'completed' || !isPayslipDocument(doc)) {
       return;
     }
-    const analysisData = doc.analysisData;
+    const {analysisData} = doc;
     if (!analysisData || typeof analysisData !== 'object') {
       return;
     }

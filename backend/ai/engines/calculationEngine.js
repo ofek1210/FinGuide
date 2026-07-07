@@ -9,7 +9,7 @@
  * Never expose Mongoose documents here.
  */
 
-'use strict';
+
 
 // ── Constants (Israel 2026) ───────────────────────────────────────────────────
 
@@ -53,12 +53,12 @@ function projectPensionIncome({
   const monthlyRate = (annualReturnRate - mgmtFeeAccumulation) / 12;
 
   // Future value of existing accumulation
-  const fvExisting = currentAccumulation * Math.pow(1 + monthlyRate, monthsToRetirement);
+  const fvExisting = currentAccumulation * (1 + monthlyRate)**monthsToRetirement;
 
   // Future value of monthly contributions (annuity)
   const fvContributions =
     monthlyRate > 0
-      ? monthlyContribution * ((Math.pow(1 + monthlyRate, monthsToRetirement) - 1) / monthlyRate)
+      ? monthlyContribution * (((1 + monthlyRate)**monthsToRetirement - 1) / monthlyRate)
       : monthlyContribution * monthsToRetirement;
 
   const projectedAccumulation = Math.round(fvExisting + fvContributions);
@@ -68,20 +68,20 @@ function projectPensionIncome({
   const drawdownRate = monthlyRate;
   const monthlyPension =
     drawdownRate > 0
-      ? (projectedAccumulation * drawdownRate) / (1 - Math.pow(1 + drawdownRate, -DRAWDOWN_MONTHS))
+      ? (projectedAccumulation * drawdownRate) / (1 - (1 + drawdownRate)**-DRAWDOWN_MONTHS)
       : projectedAccumulation / DRAWDOWN_MONTHS;
 
   // Optimistic scenario: 7% return, low fees
   const optimisticRate = (0.07 - 0.002) / 12;
-  const fvOptAccum = currentAccumulation * Math.pow(1 + optimisticRate, monthsToRetirement);
+  const fvOptAccum = currentAccumulation * (1 + optimisticRate)**monthsToRetirement;
   const fvOptContrib =
     optimisticRate > 0
-      ? monthlyContribution * ((Math.pow(1 + optimisticRate, monthsToRetirement) - 1) / optimisticRate)
+      ? monthlyContribution * (((1 + optimisticRate)**monthsToRetirement - 1) / optimisticRate)
       : monthlyContribution * monthsToRetirement;
   const optimisticAccumulation = Math.round(fvOptAccum + fvOptContrib);
   const optimisticPension =
     optimisticRate > 0
-      ? (optimisticAccumulation * optimisticRate) / (1 - Math.pow(1 + optimisticRate, -DRAWDOWN_MONTHS))
+      ? (optimisticAccumulation * optimisticRate) / (1 - (1 + optimisticRate)**-DRAWDOWN_MONTHS)
       : optimisticAccumulation / DRAWDOWN_MONTHS;
 
   return {
@@ -118,12 +118,12 @@ function calculateMgmtFeeSavings(accumulation, monthlyContribution, yearsRemaini
   const targetRate  = (PENSION_DEFAULTS.annualReturnRate - targetFee)  / 12;
 
   const fvCurrent =
-    accumulation * Math.pow(1 + currentRate, months) +
-    monthlyContribution * ((Math.pow(1 + currentRate, months) - 1) / Math.max(currentRate, 1e-8));
+    accumulation * (1 + currentRate)**months +
+    monthlyContribution * (((1 + currentRate)**months - 1) / Math.max(currentRate, 1e-8));
 
   const fvTarget =
-    accumulation * Math.pow(1 + targetRate, months) +
-    monthlyContribution * ((Math.pow(1 + targetRate, months) - 1) / Math.max(targetRate, 1e-8));
+    accumulation * (1 + targetRate)**months +
+    monthlyContribution * (((1 + targetRate)**months - 1) / Math.max(targetRate, 1e-8));
 
   const savings = Math.round(fvTarget - fvCurrent);
   const DRAWDOWN_MONTHS = 240;

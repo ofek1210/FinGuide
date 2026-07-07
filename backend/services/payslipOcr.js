@@ -94,6 +94,7 @@ const {
 
 const execFileAsync = promisify(execFile);
 const { PdfPasswordRequiredError, isPdfPasswordError } = require('../utils/pdfPassword');
+
 let pdfParse;
 
 const OCR_PDF_PAGES_MODE = (process.env.OCR_PDF_PAGES_MODE || 'all').toLowerCase();
@@ -522,10 +523,10 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson, expect
   if (convalescence !== undefined) components.push({ type: 'convalescence', amount: convalescence });
   if (clothing_allowance !== undefined) components.push({ type: 'clothing_allowance', amount: clothing_allowance });
 
-  const voluntary_life_insurance = labelMap.voluntary_life_insurance;
-  const voluntary_health_insurance = labelMap.voluntary_health_insurance;
-  const voluntary_disability_insurance = labelMap.voluntary_disability_insurance;
-  const voluntary_collective_insurance = labelMap.voluntary_collective_insurance;
+  const {voluntary_life_insurance} = labelMap;
+  const {voluntary_health_insurance} = labelMap;
+  const {voluntary_disability_insurance} = labelMap;
+  const {voluntary_collective_insurance} = labelMap;
   const voluntaryExtras = enrichVoluntaryInsuranceFromLines(
     lines,
     labelMap,
@@ -760,7 +761,7 @@ async function extractPayslipFile(inputPath, options = {}) {
         extractionMethod = 'pdf_text';
         const sections = splitPayslipSections(embeddedText);
         const sectionText = sections[0].text;
-        let data = await extractPayslipFinancialEN(sectionText, extractionOptions);
+        const data = await extractPayslipFinancialEN(sectionText, extractionOptions);
 
         if (hasCriticalSalaryFields(data, sectionText)) {
           logExtractionResult({ sourcePath: abs, extractionMethod, data });

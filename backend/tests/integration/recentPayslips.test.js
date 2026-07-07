@@ -1,14 +1,10 @@
-'use strict';
+
 
 const fs = require('fs').promises;
 const path = require('path');
 const request = require('supertest');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
-
-jest.mock('../../services/documentProcessingService', () => ({
-  processDocumentAsync: jest.fn(),
-}));
 
 jest.mock('../../services/payslipOcr', () => ({
   extractPayslipFile: jest.fn().mockResolvedValue({

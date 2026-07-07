@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Clearinghouse-specific pension insights — hardcoded business rules from
@@ -156,20 +156,20 @@ async function ruleActiveFundBenchmark(rows) {
         + `דמי הניהול שלך: ${fmtPct(row.depositFee ?? 0)} מהפקדה ו-${fmtPct(row.assetFee ?? 0)} מצבירה. `
         + `לפי פנסיה-נט, זה ${depositDiff > 0 ? `${fmtPct(depositDiff)} מעל הממוצע מהפקדה` : ''}`
         + `${depositDiff > 0 && assetDiff > 0 ? ' ו-' : ''}`
-        + `${assetDiff > 0 ? `${fmtPct(assetDiff)} מעל הממוצע מצבירה` : ''}. `
-        + (loss > 0
+        + `${assetDiff > 0 ? `${fmtPct(assetDiff)} מעל הממוצע מצבירה` : ''}. ${
+         loss > 0
           ? `הפסד צפוי של כ-${fmtMoney(loss)} לאורך 30 שנה לעומת תעריף השוק.`
-          : insight.recommendations?.feeInsight || '');
+          : insight.recommendations?.feeInsight || ''}`;
       urgency = loss > 10000 ? 'high' : 'medium';
       financialImpact = loss > 0 ? `הפסד צפוי ${fmtMoney(loss)}` : null;
     } else {
       title = isClal ? 'דמי ניהול תחרותיים — כלל פנסיה' : `דמי ניהול תחרותיים — ${companyShort(row.companyName)}`;
       reason = `בקרן הפעילה שלך ב${companyShort(row.companyName)} (צבירה ${fmtMoney(row.totalSavings)}) `
         + `דמי הניהול (${fmtPct(row.depositFee ?? 0)} מהפקדה, ${fmtPct(row.assetFee ?? 0)} מצבירה) `
-        + 'נמצאים בממוצע השוק או מתחתיו לפי נתוני פנסיה-נט. '
-        + (insight.recommendations?.returnInsight
+        + `נמצאים בממוצע השוק או מתחתיו לפי נתוני פנסיה-נט. ${
+         insight.recommendations?.returnInsight
           ? insight.recommendations.returnInsight
-          : 'אין חריגת דמי ניהול משמעותית.');
+          : 'אין חריגת דמי ניהול משמעותית.'}`;
       financialImpact = 'דמי ניהול אטרקטיביים';
       urgency = 'low';
     }

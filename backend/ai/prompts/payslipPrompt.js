@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Build the payslip agent system prompt.

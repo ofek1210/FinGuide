@@ -10,7 +10,7 @@
  *   Never: Rule Engine → MongoDB directly
  */
 
-'use strict';
+
 
 const { detectFundContributionStatus } = require('../../utils/detectFundWithoutDeposit');
 const { detectSalaryAnomalies } = require('../../utils/detectSalaryAnomalies');

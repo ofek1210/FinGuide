@@ -1,4 +1,4 @@
-'use strict';
+
 
 const { runPensionHealthCheck } = require('../../services/pensionHealthCheckService');
 

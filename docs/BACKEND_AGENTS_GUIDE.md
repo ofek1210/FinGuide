@@ -84,7 +84,7 @@ backend/services/embeddings/ ← שכבת RAG (embedding + vector store + knowle
 2. `Document.create({ status: 'pending' })`.
 3. `services/payslipOcr.extractPayslipFile` — `pdf-parse`; אם הטקסט קצר/פגום → fallback ל-`pdftoppm` → `sharp` → `tesseract heb+eng` (PSM 6/4/3, מדורג ע"י `payslipOcrResolver`).
 4. בניית `analysisData` קנוני (`schema_version: '1.9'`): `period`, `salary`, `deductions`, `contributions`, `tax`, `parties`, `employment`, `summary`, `raw`.
-5. `applyExtractorV2Shadow` — extraction-v2 רץ ב-shadow mode (נכתב ל-`analysisData.extraction_v2` בלי להחליף את המבנה שה-UI קורא).
+5. פורמטים ייעודיים (למשל תלושי צה"ל) מזוהים דרך `payslipFormatProfiles.js` ומקבלים חילוץ מותאם.
 6. סטטוס → `completed` / `failed`.
 
 **כל הסוכנים קוראים את `analysisData.summary`** (שדות כמו `grossSalary`, `netSalary`, `pensionEmployee`...) — לעולם לא את ה-OCR הגולמי.

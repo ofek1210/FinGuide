@@ -1,4 +1,4 @@
-'use strict';
+
 
 const { policyMergeKey, mergePolicyRecord } = require('../../services/insurancePolicyMergeService');
 const { runInsuranceHealthCheck } = require('../../services/insuranceHealthCheckService');

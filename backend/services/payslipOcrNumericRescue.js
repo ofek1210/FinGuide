@@ -163,7 +163,7 @@ function applyNumericRescue(result, fullText) {
 
   result.deductions = result.deductions || {};
   result.deductions.mandatory = result.deductions.mandatory || {};
-  const mandatory = result.deductions.mandatory;
+  const {mandatory} = result.deductions;
 
   if (!Number.isFinite(mandatory.total) || mandatory.total <= 0) {
     mandatory.total = rescued.mandatory_total;

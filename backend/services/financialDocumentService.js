@@ -30,13 +30,13 @@ const runPostUploadSideEffects = (userId, document) => {
     const { run: runRecommendations } = require('./insuranceRecommender');
     const { generateAndSaveDigest } = require('./digestService');
 
-    notificationService.notifyDocumentProcessed(userId, document).catch(() => {});
+    notificationService.notifyDocumentProcessed(userId, document).catch(err => console.error('[documents] notification failed', err));
     runFullAnalysis(userId)
       .then(() => runRecommendations(userId))
       .catch(err => console.error('[documents] post-upload analysis failed', err));
 
     // Generate AI digest non-blocking — fails silently if no API key
-    generateAndSaveDigest(userId, document).catch(() => {});
+    generateAndSaveDigest(userId, document).catch(err => console.warn('[documents] digest generation skipped:', err.message));
   });
 };
 
@@ -106,7 +106,7 @@ const applyExtractionToDocument = async (document, { password, userId } = {}) =>
     document.status = 'failed';
     document.processingError = extractionError.message;
     document.processedAt = new Date();
-    await document.save().catch(() => {});
+    await document.save().catch(saveErr => console.error('[documents] failed to persist failed status', document._id, saveErr));
     return { document, failed: true };
   }
 };
@@ -131,7 +131,7 @@ const applyHarHaBituachExtraction = async (document, { userId } = {}) => {
     document.status = 'failed';
     document.processingError = err.message;
     document.processedAt = new Date();
-    await document.save().catch(() => {});
+    await document.save().catch(saveErr => console.error('[documents] failed to persist failed status', document._id, saveErr));
     return { document, failed: true };
   }
 };
@@ -156,7 +156,7 @@ const applyForm106Extraction = async (document, text, { userId } = {}) => {
     document.status = 'failed';
     document.processingError = err.message;
     document.processedAt = new Date();
-    await document.save().catch(() => {});
+    await document.save().catch(saveErr => console.error('[documents] failed to persist failed status', document._id, saveErr));
     return { document, failed: true };
   }
 };

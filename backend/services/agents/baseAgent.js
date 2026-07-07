@@ -36,7 +36,7 @@ async function callOllama(systemPrompt, messages, options = {}) {
   try {
     // Truncate system prompt to keep Ollama fast
     const trimmedSystem = systemPrompt.length > 2000
-      ? systemPrompt.slice(0, 2000) + '\n...(מידע נוסף זמין)'
+      ? `${systemPrompt.slice(0, 2000)  }\n...(מידע נוסף זמין)`
       : systemPrompt;
 
     const ollamaMessages = [

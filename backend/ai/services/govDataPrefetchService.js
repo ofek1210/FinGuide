@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Prefetch government market data (data.gov.il) into in-memory cache before agents run.

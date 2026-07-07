@@ -136,8 +136,8 @@ function getProductSuggestions(riskTolerance, { age, hasPension, hasStudyFund, g
 function projectWealth({ monthlyInvestment, currentSavings = 0, years = 20, annualReturnPct }) {
   const r = annualReturnPct / 100 / 12;
   const n = years * 12;
-  const fv = currentSavings * Math.pow(1 + r, n) +
-    monthlyInvestment * ((Math.pow(1 + r, n) - 1) / r);
+  const fv = currentSavings * (1 + r)**n +
+    monthlyInvestment * (((1 + r)**n - 1) / r);
   return Math.round(fv);
 }
 

@@ -3,7 +3,8 @@
  * lastUpdated: 2026-06-21 — update manually from pensyanet / bituachnet monthly.
  * Run: npm run validate:benchmark-tables
  */
-'use strict';
+
+
 
 const MARKET_AVERAGES = {
   pension_comprehensive: {

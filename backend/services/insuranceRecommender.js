@@ -25,7 +25,7 @@ function buildDraft(kind, importance, title, reasoning, priceRange, coverageEsti
 
 async function evaluateRules(profile, { hasLowPensionInsight } = {}) {
   const { personal, assets, insurance, employment } = getProfileContext(profile);
-  const age = personal.age;
+  const {age} = personal;
   const children = personal.childrenCount || 0;
   const gross = employment.expectedMonthlyGross;
   const ctx = { age, grossMonthly: gross, childrenCount: children };

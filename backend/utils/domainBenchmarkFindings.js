@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Shared template for domain benchmark findings (pension, insurance).

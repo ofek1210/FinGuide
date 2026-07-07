@@ -1,6 +1,8 @@
-'use strict';
 
+
+const path = require('path');
 const { MOCK_PENSION_ANALYSIS } = require('../ai/mock/mockData');
+const { isDemoRequest } = require('../utils/demoMode');
 const { getPensionSummary, projectRetirementIncome } = require('../ai/tools/pensionTools');
 const { projectPensionIncome } = require('../ai/engines/calculationEngine');
 const { parseHarHaKesef } = require('../services/harHaKesefService');
@@ -18,7 +20,6 @@ const {
   importManualFundsFromPreview,
 } = require('../services/pensionClearinghouseImportService');
 const PensionImportSnapshot = require('../models/PensionImportSnapshot');
-const path = require('path');
 
 const SNAPSHOT_CAP = 5;
 
@@ -48,7 +49,7 @@ function mapPensionFundToDto(f, { idField = '_id' } = {}) {
  * GET /api/pension/analysis
  */
 async function getPensionAnalysis(req, res) {
-  if (req.query.demo === 'true') {
+  if (isDemoRequest(req)) {
     return res.json({ success: true, data: MOCK_PENSION_ANALYSIS });
   }
   const data = await buildPensionAnalysis(req.user._id);
@@ -177,7 +178,7 @@ async function uploadPensionFile(req, res) {
   }
 
   const result = await importPensionFile(userId, parsed.funds, importSource, req.file.originalname);
-  const analysis = result.analysis;
+  const {analysis} = result;
 
   return res.json({
     success: true,
@@ -502,7 +503,7 @@ async function completeManualFunds(req, res) {
   }
 
   const result = await importManualFundsFromPreview(userId, funds, 'free_report_wizard');
-  const analysis = result.analysis;
+  const {analysis} = result;
 
   return res.json({
     success: true,
@@ -553,7 +554,7 @@ async function uploadClearinghouse(req, res) {
   }
 
   const result = await importClearinghouseFile(userId, parsed, req.file.originalname);
-  const analysis = result.analysis;
+  const {analysis} = result;
 
   return res.json({
     success: true,

@@ -1,7 +1,8 @@
-'use strict';
+
 
 const cron = require('node-cron');
 const config = require('../config/pensiaNetConfig');
+const PensiaNetFund = require('../models/PensiaNetFund');
 const { syncPensiaNetDataset } = require('../services/pensiaNetIngestionService');
 
 let scheduledTask = null;
@@ -73,8 +74,26 @@ function stopPensiaNetCron() {
   }
 }
 
+/**
+ * On cold start, seed market data if the collection is empty (cron alone waits until the 18th).
+ */
+async function ensurePensiaNetSeeded() {
+  if (!config.enabled) {
+    return { skipped: true, reason: 'PENSIANET_ENABLED=false' };
+  }
+
+  const count = await PensiaNetFund.estimatedDocumentCount();
+  if (count > 0) {
+    return { skipped: true, reason: 'already_seeded', count };
+  }
+
+  console.log('[pensiaNetCron] empty PensiaNetFund collection — running initial sync…');
+  return runPensiaNetMonthlySync();
+}
+
 module.exports = {
   runPensiaNetMonthlySync,
   startPensiaNetCron,
   stopPensiaNetCron,
+  ensurePensiaNetSeeded,
 };

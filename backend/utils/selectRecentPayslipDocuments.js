@@ -1,4 +1,4 @@
-'use strict';
+
 
 const { resolvePayslipPeriod, monthKey, compareYearMonth, selectLatestDoc } = require('./payslipPeriod');
 

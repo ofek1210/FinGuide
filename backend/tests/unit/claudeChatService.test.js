@@ -1,13 +1,11 @@
-jest.mock('@anthropic-ai/sdk', () => {
-  return jest.fn().mockImplementation(() => ({
+jest.mock('@anthropic-ai/sdk', () => jest.fn().mockImplementation(() => ({
     messages: {
       create: jest.fn().mockResolvedValue({
         content: [{ type: 'text', text: 'תשובה מ-Claude' }],
         usage: { input_tokens: 10, output_tokens: 20 },
       }),
     },
-  }));
-});
+  })));
 
 describe('claudeChatService', () => {
   const originalEnv = process.env;

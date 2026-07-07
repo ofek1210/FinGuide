@@ -12,7 +12,7 @@ const sanitizeAnalysisDataForApi = analysisData => {
 
   if (safe.raw && typeof safe.raw === 'object') {
     const { rawText, ...restRaw } = safe.raw;
-    delete restRaw['ocr_text'];
+    delete restRaw.ocr_text;
     safe.raw = restRaw;
   }
 

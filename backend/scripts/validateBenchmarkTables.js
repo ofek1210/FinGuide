@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-'use strict';
+
+
 
 const { TRACKS, MARKET_AVERAGES, TOP_QUARTILE } = require('../config/pensionBenchmarkTables');
 

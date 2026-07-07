@@ -4,7 +4,7 @@
  * Pipeline: buildInsuranceAnalysis → LLM explanation
  */
 
-'use strict';
+
 
 const { buildInsuranceAnalysis } = require('../../services/insuranceAnalysisService');
 const { buildInsuranceSystemPrompt } = require('../prompts/insurancePrompt');

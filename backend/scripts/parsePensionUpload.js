@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-'use strict';
+
+
 
 /**
  * Preview pension Excel parse output — same shape as the upload API (without DB write).

@@ -2,7 +2,8 @@
  * Parser for quarterly pension reports (דוח תקופתי) from Israeli providers.
  * FINQ recommends these as richer source than Har HaKesef alone.
  */
-'use strict';
+
+
 
 const { parseHarHaKesefText } = require('./harHaKesefService');
 

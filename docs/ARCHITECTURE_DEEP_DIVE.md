@@ -10,13 +10,13 @@
 
 1. **FinGuide** הוא מונורפו לניתוח תלושי שכר בעברית: `backend/` (Express + Mongoose) ו-`frontend/` (React 19 + Vite + TypeScript).
 2. **זרימת הערך המרכזית:** העלאת PDF → חילוץ טקסט (pdf-parse או OCR) → `extractPayslipFinancialEN` → שמירה ב-`Document.analysisData` → תצוגה ב-UI דרך `documentToPayslip.ts`.
-3. **extraction-v2** רץ במצב **shadow**: תוצאות v2 נשמרות ב-`analysisData.extraction_v2` בלי להחליף את מבנה ה-legacy שה-UI צורך.
+3. **פרופילי פורמט:** זיהוי פורמטים ייעודיים (למשל תלושי צה"ל) נעשה דרך `payslipFormatProfiles.js` — הרזולבר עצמו אגנוסטי לפורמט.
 4. **אימות:** JWT ב-`Authorization: Bearer`, Google OAuth דרך `google-auth-library`, סיסמה עם bcrypt ב-`User` pre-save hook.
 5. **AI:** היברידי — כוונות (intents) עם תשובות rule-based, שאלות פתוחות ל-Ollama; הקשר נבנה תמיד מה-DB (לא מהלקוח).
 6. **אחסון קבצים:** filesystem מקומי `backend/uploads/` (לא S3); הורדה מוגנת עם בדיקת path traversal.
 7. **Docker Compose** מספק Mongo + backend עם Tesseract/Poppler; frontend רץ מחוץ ל-Docker.
 8. **אין CI/CD, migrations, או observability מובנים** — סכימת Mongo מתפתחת דרך Mongoose בלבד.
-9. **קוד מת (או לא מחובר):** `backend/routes/dev.js` לא mounted; `documentProcessingService.processDocumentAsync` לא נקרא מ-upload.
+9. **קוד מת (או לא מחובר):** `backend/routes/dev.js` לא mounted.
 10. **`docs/FRONTEND-BACKEND-ROADMAP.md` מיושן** בחלקים מהותיים (ראו §12).
 
 ---
@@ -87,7 +87,6 @@ npm test              # backend tests + frontend tests + frontend build
 | פריט | מצב |
 |------|------|
 | [`backend/routes/dev.js`](../backend/routes/dev.js) | קיים, **לא** mounted ב-`app.js` |
-| [`documentProcessingService.processDocumentAsync`](../backend/services/documentProcessingService.js) | מיוצא אך **לא** נקרא מ-`uploadDocument` (עיבוד סינכרוני ב-controller) |
 | [`LLM_SERVICE_INTEGRATION_GUIDE.md`](../LLM_SERVICE_INTEGRATION_GUIDE.md) | תיעוד חיצוני; האפליקציה משתמשת ב-`OLLAMA_URL` מקומי |
 
 ---
@@ -257,7 +256,6 @@ flowchart TD
   PDFText{Embedded text OK?}
   Poppler[pdftoppm + Tesseract PSM 6,4,3]
   Extract[extractPayslipFinancialEN]
-  Shadow[applyExtractorV2Shadow]
   Save[status=completed analysisData]
   Fail[status=failed]
 
@@ -265,7 +263,7 @@ flowchart TD
   OCR --> PDFText
   PDFText -->|yes| Extract
   PDFText -->|no/broken Hebrew| Poppler --> Extract
-  Extract --> Shadow --> Save
+  Extract --> Save
   OCR --> Fail
   Extract --> Fail
 ```
@@ -296,31 +294,17 @@ flowchart TD
   insurances: { hmo },
   quality: { warnings, candidates, ... },
   raw: { ocr_engine, ocr_lang, text_sha256, rawText, ocr_text, extractionMethod, rawLines },
-  summary: { /* buildPayslipSummary — שטוח ל-AI */ grossSalary, netSalary, tax, ... },
-  pipeline_version: 'extractor-v2-shadow',  // אחרי shadow
-  extraction_v2: { meta, fields },           // shadow
-  quality: { validation, debug: { extraction_v2_shadow } }
+  summary: { /* buildPayslipSummary — שטוח ל-AI */ grossSalary, netSalary, tax, ... }
 }
 ```
 
 `summary` נבנה ב-[`payslipOcrSummary.js`](../backend/services/payslipOcrSummary.js) — משמש בעיקר את `aiController.buildUserContext`.
 
-### 5.3 extraction-v2 (Shadow)
+### 5.3 פרופילי פורמט
 
-| קובץ | תפקיד |
-|------|--------|
-| [`extraction.service.js`](../backend/services/extraction-v2/extraction.service.js) | `extractPayslipFields` |
-| [`validation.service.js`](../backend/services/extraction-v2/validation.service.js) | `validatePayslipExtraction` |
-| [`extractionResult.contract.js`](../backend/services/extraction-v2/contracts/extractionResult.contract.js) | `CANONICAL_FIELD_KEYS` (35 שדות) |
-| [`compatibility.adapter.js`](../backend/services/extraction-v2/adapters/compatibility.adapter.js) | המרה ל-legacy (לא בשימוש ב-upload path) |
+[`payslipFormatProfiles.js`](../backend/services/payslipFormatProfiles.js) — registry של פרופילי פורמט. כל פרופיל מגדיר `detect` / `collectSalaryCandidates` / `prioritizeSalaryCandidates`. כיום קיים פרופיל צה"ל ([`idfPayslipProfile.js`](../backend/services/idfPayslipProfile.js)); פורמט חדש = אובייקט פרופיל חדש ב-registry.
 
-**Shadow logic** (זהה ב-`documentController` ו-`documentProcessingService`):
-
-- קורא `rawText` / `rawLines` מה-legacy.
-- מריץ v2, שומר ב-`extraction_v2` + `quality.validation`.
-- כשלון v2 → warning, **לא** מוחק legacy.
-
-סקריפטים: `npm run debug:extractor:v2`, `npm run reprocess:payslips`.
+סקריפטים: `npm run eval:ocr` (רגרסיה על golden PDFs), `npm run reprocess:payslips`.
 
 ### 5.4 שדות עברית / מיפוי (legacy)
 
@@ -333,7 +317,7 @@ flowchart TD
 | `payslip-ocr-json-sample.json` | מבנה שורות OCR |
 | `payslip-ocr-pass-ranking.json` | דירוג מועמדי PSM |
 | `payslipOcrParser.test.js` | פרסור סכומים ותקופות |
-| `documentProcessingService.test.js` | מעבר processing→completed/failed |
+| `idfPayslipProfile.test.js` | חילוץ ברוטו/נטו והפרשות בתלושי צה"ל |
 
 ---
 
@@ -475,10 +459,9 @@ Vite proxy: `/api`, `/uploads` → `127.0.0.1:5000`.
 | קובץ | התנהגות נעולה |
 |------|----------------|
 | `auth.routes.test.js` | register/login/JWT |
-| `documents.uploadMetadata.test.js` | upload + metadata (ממוק `processDocumentAsync`) |
+| `documents.uploadMetadata.test.js` | upload + metadata |
 | `payslipOcrParser.test.js` | פרסור תלוש |
 | `payslipOcrResolver.test.js` | דירוג OCR |
-| `documentProcessingService.test.js` | async processing states |
 | `findings.savingsForecast.test.js` | תחזית חיסכון |
 | `payslipHistoryAggregationService.test.js` | אגרגציה שנתית |
 | `detectSalaryAnomalies` (`__tests__/`) | חריגות שכר |
@@ -572,8 +555,7 @@ flowchart TB
   end
   subgraph services [services]
     OCR[payslipOcr]
-    V2[extraction-v2]
-    Proc[documentProcessingService]
+    Profiles[payslipFormatProfiles]
     AI[aiService]
     Hist[payslipHistoryAggregation]
   end
@@ -585,9 +567,9 @@ flowchart TB
 
 1. **מונורפו דו-חבילתי** — פיתוח מהיר, שיתוף types עתידי אפשרי; deploy נפרד (SPA סטטי + API).
 2. **Filesystem uploads** — פשטות ל-MVP; מגביל scale אופקי וגיבוי — מעבר ל-S3/pre-signed URLs בעתיד.
-3. **extraction-v2 shadow** — מאפשר השוואת דיוק בלי לשבור UI שתלוי ב-legacy shape.
+3. **פרופילי פורמט ב-registry** — הוספת פורמט תלוש חדש בלי לגעת ברזולבר; פרופיל צה"ל הוא הראשון.
 4. **Ollama מקומי** — פרטיות ועלות; tradeoff: תלות בתשתית וזמינות; מדריך הקורס לפרוקסי חיצוני לא מוטמע.
-5. **עיבוד סינכרוני ב-upload** — UX פשוט (תשובה עם analysis); סיכון timeout על PDFים כבדים — `documentProcessingService` מוכן ל-async אך לא מחובר.
+5. **עיבוד סינכרוני ב-upload** — UX פשוט (תשובה עם analysis); סיכון timeout על PDFים כבדים.
 6. **AI hybrid rules+LLM** — מפחית hallucination לשאלות נפוצות; LLM רק ב-fallback.
 7. **ללא migrations** — מהירות פיתוח; סיכון drift בין סביבות — צורך ב-scriptי backfill כש-schema משתנה.
 8. **Mongoose `analysisData: Object`** — גמישות מקסימלית; קושי ב-validation צד שרת קשיח.
@@ -647,7 +629,7 @@ flowchart TB
 ## 13. Open Questions (מקסימום 15)
 
 1. האם יש תוכנית להפעיל `buildCompatibleAnalysisData` ולהחליף legacy ב-production?
-2. למה `documentProcessingService` לא מחובר ל-upload — timeout בפרודקשן?
+2. האם להעביר את עיבוד ה-upload ל-async (כיום סינכרוני בתוך ה-request) — timeout בפרודקשן?
 3. האם `upload` אמור לקבל גם תמונות (קוד OCR תומך; multer — PDF בלבד)?
 4. מדיניות retention ל-`uploads/` ו-`.work/`?
 5. האם `onboarding.completed` אמור לחסום routes בפרונט?

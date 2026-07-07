@@ -2,7 +2,8 @@
  * Pension benchmark & ranking vs market (FINQ-style).
  * Matches user funds to static track table and computes percentile, fee status, savings.
  */
-'use strict';
+
+
 
 const { calculateMgmtFeeSavings } = require('../ai/engines/calculationEngine');
 const { getMarketAverage, getTracksByCohort, TOP_QUARTILE, TRACKS } = require('../config/pensionBenchmarkTables');

@@ -13,7 +13,7 @@
  *   - Never sends raw DB documents to LLM
  */
 
-'use strict';
+
 
 const { runPayslipAgent } = require('./payslipAgent');
 const { runInsuranceAgent } = require('./insuranceAgent');

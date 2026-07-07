@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-'use strict';
+
+
 
 /**
  * Manual Pensia-Net sync — same pipeline as the monthly cron job.

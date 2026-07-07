@@ -1,4 +1,4 @@
-'use strict';
+
 
 jest.mock('../../services/aiProviderService', () => ({
   analyzeWithAI: jest.fn().mockResolvedValue(null),

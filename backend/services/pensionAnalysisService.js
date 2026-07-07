@@ -1,7 +1,8 @@
 /**
  * Unified pension analysis builder — reused by API, agent, risk-advice, email.
  */
-'use strict';
+
+
 
 const UserProfile = require('../models/UserProfile');
 const {
