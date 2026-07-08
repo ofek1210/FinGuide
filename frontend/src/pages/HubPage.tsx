@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, Upload } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { ArrowLeft, Play, Sparkles, Upload } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import MasterAgentPanel from "../components/hub/MasterAgentPanel";
+import MasterAgentPanel, { type MasterAgentPanelHandle } from "../components/hub/MasterAgentPanel";
 import { APP_ROUTES } from "../types/navigation";
 import { AGENTS, type AgentId } from "../theme/agents";
-import { getDashboardSummary, type DashboardSummaryData } from "../api/dashboard.api";
 import { listFindings, type FindingItem } from "../api/findings.api";
 import { getPensionAnalysis, getPensionImportHistory, type PensionAnalysisData } from "../api/pension.api";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
@@ -258,27 +257,42 @@ export default function HubPage() {
   const { user } = useAuth();
   const [heroRef, heroSeen] = useInView<HTMLDivElement>();
 
+  // Live financial-health score produced by the master agent panel.
+  // Null until an analysis runs — the health card shows a call-to-action
+  // until then, so no fake numbers are ever displayed.
+  const [liveScore, setLiveScore] = useState<FullAnalysisGlobalScore | null>(null);
+  const panelRef = useRef<MasterAgentPanelHandle>(null);
+  const location = useLocation();
+
+  // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
+  // scroll to the master-agent chat and focus its input.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get("chat") !== "1") return;
+    const t = setTimeout(() => {
+      document.getElementById("agent-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      (document.getElementById("agent-chat-input") as HTMLInputElement | null)?.focus({ preventScroll: true });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [location.search]);
+
   const [loading, setLoading] = useState(true);
-  const [summary, setSummary] = useState<DashboardSummaryData | null>(null);
   const [findings, setFindings] = useState<FindingItem[]>([]);
   const [pension, setPension] = useState<PensionAnalysisData | null>(null);
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [importedPolicies, setImportedPolicies] = useState(0);
   const [pensionScoreTrend, setPensionScoreTrend] = useState<number[]>([]);
   const [liveScore, setLiveScore] = useState<FullAnalysisGlobalScore | null>(null);
 
   useEffect(() => {
     let alive = true;
     Promise.allSettled([
-      getDashboardSummary(),
       listFindings(),
       getPensionAnalysis(),
       listDocuments(),
       getPensionImportHistory(),
-    ]).then(([sumRes, findRes, penRes, docRes, histRes]) => {
+      getInsuranceAnalysis(),
+    ]).then(([findRes, penRes, docRes, histRes, insRes]) => {
       if (!alive) return;
-      if (sumRes.status === "fulfilled" && sumRes.value.ok && sumRes.value.data.data) {
-        setSummary(sumRes.value.data.data);
-      }
       if (findRes.status === "fulfilled" && findRes.value.success && findRes.value.data) {
         setFindings(findRes.value.data);
       }
@@ -297,14 +311,18 @@ export default function HubPage() {
           .slice(-6);
         setPensionScoreTrend(scores.length >= 2 ? scores : []);
       }
+      if (insRes.status === "fulfilled" && insRes.value.ok && insRes.value.data?.data) {
+        setImportedPolicies(insRes.value.data.data.policies?.length ?? 0);
+      }
       setLoading(false);
     });
     return () => { alive = false; };
   }, []);
 
-  const scores = summary?.scores;
-  const completedDocs = summary?.documents.completed ?? 0;
-  const importedPolicies = summary?.profile.importedPolicies ?? 0;
+  const completedDocs = useMemo(
+    () => documents.filter(d => d.status === "completed" || d.status === "needs_review").length,
+    [documents],
+  );
   const pensionFundCount = pension?.summary.fundCount ?? 0;
   const pensionRecs = pension?.recommendations ?? [];
 
@@ -320,6 +338,25 @@ export default function HubPage() {
     findings.forEach(f => { c[domainOf(f)]++; });
     return c;
   }, [findings]);
+
+  // health card — real numbers only, computed from the master agent's live score
+  const healthValue = liveScore?.score ?? 0;
+  const healthLabel = liveScore?.label ?? "";
+  const healthCategories = (() => {
+    const cats = liveScore?.categories ?? [];
+    if (cats.length === 0) return STATIC_HEALTH_CATEGORIES;
+    // Prefer tax · pension · insurance (mirrors the original card); else first 3.
+    const preferred = HEALTH_CARD_KEYS.flatMap(key => {
+      const found = cats.find(c => c.id === key);
+      return found ? [found] : [];
+    });
+    const chosen = (preferred.length > 0 ? preferred : cats).slice(0, 3);
+    return chosen.map(c => ({
+      k: c.label ?? "קטגוריה",
+      v: `${Math.round((c.score / (c.maxScore || 100)) * 100)}%`,
+      c: (c.id && CATEGORY_TONE[c.id]) || "var(--lav-300)",
+    }));
+  })();
 
   // hero: potential savings to retirement, from real pension analysis
   const potentialSavings =
@@ -400,6 +437,14 @@ export default function HubPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface-page)", direction: "rtl", fontFamily: "var(--font-body)" }}>
+      <style>{`
+        @keyframes hcReveal { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        @keyframes hcSpin { to { transform: rotate(360deg); } }
+        @keyframes hcGlow { 0%,100% { opacity: .4; transform: scale(1); } 50% { opacity: .85; transform: scale(1.09); } }
+        @keyframes hcFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        @keyframes hcBtnPulse { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.4); } 70% { box-shadow: 0 0 0 12px rgba(255,255,255,0); } 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); } }
+        @keyframes hcDot { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
+      `}</style>
       <PrivateTopbar />
 
       <main style={{ maxWidth: 1160, margin: "0 auto", padding: "44px 24px 80px" }}>
@@ -460,8 +505,8 @@ export default function HubPage() {
             <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: "var(--r-md)", backdropFilter: "blur(10px)", WebkitBackdropFilter: "blur(10px)", padding: 24, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
               <div style={{ alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <span style={{ fontSize: 13.5, fontWeight: 800 }}>בריאות פיננסית</span>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: "rgba(255,255,255,.14)", borderRadius: 999, padding: "3px 10px" }}>
-                  {completedDocs > 0 ? `${completedDocs} מסמכים נותחו` : "ממתין לנתונים"}
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: liveScore ? "rgba(72,201,139,.28)" : "rgba(255,255,255,.12)", borderRadius: 999, padding: "3px 10px" }}>
+                  {liveScore ? "מעודכן · הסוכן הראשי" : "ממתין לניתוח"}
                 </span>
               </div>
               <RadialGauge
@@ -477,14 +522,16 @@ export default function HubPage() {
                       {v == null ? "—" : `${v}%`}
                     </span>
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <HealthGateCTA onRun={() => panelRef.current?.runFull()} />
+              )}
             </div>
           </div>
         </div>
 
         {/* MASTER AGENT PANEL — live orchestrator console */}
-        <MasterAgentPanel onResult={r => setLiveScore(r.globalScore ?? null)} />
+        <MasterAgentPanel ref={panelRef} onResult={r => setLiveScore(r.globalScore ?? null)} />
 
         {/* AGENTS — enter each specialist */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
@@ -612,6 +659,41 @@ export default function HubPage() {
                 </div>
               )}
             </div>
+            {rankedFindings.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {rankedFindings.map((f, i) => {
+                  const top = i === 0;
+                  const warn = f.severity === "warning";
+                  const domainRoute = AGENTS.find(a => a.id === domainOf(f))?.route ?? APP_ROUTES.documents;
+                  return (
+                    <button key={f.id} onClick={() => navigate(domainRoute)}
+                      style={{ width: "100%", textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 13, padding: "13px 15px", borderRadius: "var(--r-md)", border: top ? "0" : "1px solid var(--border-hair)", background: top ? "linear-gradient(95deg,var(--peach) 0%,var(--lav-200) 55%,var(--mint) 100%)" : "var(--surface-sunken)" }}>
+                      <span style={{ width: 30, height: 30, borderRadius: 9, flex: "none", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 13, background: top ? "rgba(255,255,255,.6)" : "var(--card)", color: "var(--ink)", boxShadow: "var(--shadow-soft)" }}>#{i + 1}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.title}</div>
+                        <div style={{ fontSize: 12, color: top ? "var(--ink-soft)" : "var(--text-muted)" }}>{DOMAIN_LABEL[domainOf(f)]}</div>
+                      </div>
+                      <span style={{ flex: "none", fontWeight: 800, fontSize: 11.5, borderRadius: "var(--r-pill)", padding: "4px 10px", background: top ? "rgba(255,255,255,.6)" : warn ? "var(--peach-soft)" : "var(--mint-soft)", color: warn ? "var(--peach-ink)" : "var(--mint-ink)" }}>
+                        {warn ? "דורש טיפול" : "כדאי לדעת"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div style={{ display: "grid", placeItems: "center", minHeight: 160, textAlign: "center" }}>
+                <div>
+                  <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text-body)", marginBottom: 6 }}>
+                    {loading ? "טוענים ממצאים…" : completedDocs > 0 ? "אין ממצאים פעילים — הכל תקין 🎉" : "אין ממצאים עדיין"}
+                  </div>
+                  {!loading && completedDocs === 0 && (
+                    <button onClick={() => navigate(APP_ROUTES.documents)} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--lav-100)", color: "var(--lav-700)", border: "1px solid var(--lav-200)", borderRadius: "var(--r-btn)", padding: "10px 18px", fontFamily: "inherit", fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}>
+                      העלאת תלוש ראשון <ArrowLeft size={15} strokeWidth={2.4} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

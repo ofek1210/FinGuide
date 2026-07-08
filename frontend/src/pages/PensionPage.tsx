@@ -240,7 +240,7 @@ export default function PensionPage() {
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
             onReimport={() => setStep("onboarding")}
-            onOpenChat={() => navigate(APP_ROUTES.assistant)}
+            onOpenChat={() => navigate(`${APP_ROUTES.hub}?chat=1`)}
           />
         </div>
       </>,

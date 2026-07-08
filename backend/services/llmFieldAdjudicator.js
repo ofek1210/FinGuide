@@ -29,6 +29,7 @@
  */
 
 const crypto = require('crypto');
+const llmBudget = require('./llmBudget');
 
 let AnthropicCtor;
 let cachedClient;
@@ -246,6 +247,9 @@ async function adjudicateField({
     return { ...responseCache.get(cacheKey), source: 'cache' };
   }
 
+  // Budget check after the cache lookup — cached hits are free and must still return.
+  if (!llmBudget.canSpend()) return null;
+
   const prompt = buildPrompt({ field, candidates, snippet, currentResolutions });
 
   let response;
@@ -258,6 +262,7 @@ async function adjudicateField({
       },
       messages: [{ role: 'user', content: prompt }],
     });
+    llmBudget.record(response.usage);
   } catch (error) {
     // eslint-disable-next-line no-console
     console.warn(`[llmFieldAdjudicator] API call failed for ${field}: ${error.message}`);

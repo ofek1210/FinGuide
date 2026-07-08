@@ -734,7 +734,7 @@ function ResultsStep({
         <h3 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שאל את סוכן הביטוח</h3>
         <p style={{ margin: "0 auto 22px", maxWidth: 440, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>"האם אני צריך ביטוח חיים?" · "כמה אני משלם יותר מהממוצע?" · "מה הסיכון הכי גדול שלי?"</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={() => navigate(APP_ROUTES.assistant)} style={inkBtn}><Sparkles size={17} /> פתח שיחה עם הסוכן</button>
+          <button onClick={() => navigate(`${APP_ROUTES.hub}?chat=1`)} style={inkBtn}><Sparkles size={17} /> פתח שיחה עם הסוכן</button>
           <button onClick={() => navigate(APP_ROUTES.insights)} style={secBtn}>תובנות AI</button>
         </div>
         <p style={{ margin: "20px 0 0", fontSize: 12, color: "var(--text-faint)" }}>הניתוח מבוסס על נתוני הדוח שיובא ואינו מהווה ייעוץ ביטוחי מקצועי.</p>

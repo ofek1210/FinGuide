@@ -5,6 +5,7 @@
  */
 const Anthropic = require('@anthropic-ai/sdk');
 const { formatDomainHealthLines } = require('../utils/summaryFormatters');
+const llmBudget = require('./llmBudget');
 
 let anthropicClient = null;
 function getClient() {
@@ -14,7 +15,7 @@ function getClient() {
   return anthropicClient;
 }
 
-const REPORT_MODEL = process.env.CHAT_MODEL || 'claude-sonnet-4-20250514';
+const REPORT_MODEL = process.env.CHAT_MODEL || 'claude-haiku-4-5';
 
 function buildReportContext({ profile, budgetAnalysis, investmentRecs, healthScore, insights, latestPayslip, unifiedSummary }) {
   const lines = [
@@ -69,7 +70,7 @@ function buildReportContext({ profile, budgetAnalysis, investmentRecs, healthSco
 
 async function generateMonthlyReport({ profile, budgetAnalysis, investmentRecs, healthScore, insights, latestPayslip, unifiedSummary }) {
   const client = getClient();
-  if (!client) {
+  if (!client || !llmBudget.canSpend()) {
     return { report: buildFallbackReport({ budgetAnalysis, healthScore, investmentRecs, unifiedSummary }), source: 'rule' };
   }
 
@@ -90,11 +91,13 @@ async function generateMonthlyReport({ profile, budgetAnalysis, investmentRecs, 
   try {
     const response = await client.messages.create({
       model: REPORT_MODEL,
-      max_tokens: 1200,
+      max_tokens: llmBudget.cap(1200),
       temperature: 0.4,
       system: systemPrompt,
       messages: [{ role: 'user', content: `נתוני המשתמש:\n${context}\n\nאנא כתוב דוח פיננסי חודשי מקיף.` }],
     });
+
+    llmBudget.record(response.usage);
 
     const report = response.content
       ?.filter(b => b.type === 'text')

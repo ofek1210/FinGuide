@@ -29,6 +29,19 @@
   overflow-x: clip;
 }
 
+/* AppFooter is rendered as the last direct child of the padded page shell —
+   break it out of the shell's padding so it spans edge-to-edge and sits flush
+   with the viewport bottom, matching the footer on the app pages. */
+.legal-page > footer:last-child,
+.contact-page > footer:last-child,
+.careers-page > footer:last-child,
+.team-page > footer:last-child,
+.job-page > footer:last-child {
+  margin-block-start: auto;
+  margin-block-end: -40px;
+  margin-inline: calc(-1 * clamp(16px, 4vw, 40px));
+}
+
 /* Soft drifting blobs behind the content (skip if reduced-motion drift, but keep static) */
 .legal-page::before,
 .contact-page::before,

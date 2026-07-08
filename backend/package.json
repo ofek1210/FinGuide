@@ -12,6 +12,7 @@
     "test:integration": "jest --runInBand --testMatch '**/tests/integration/**/*.test.js'",
     "test:watch": "jest --watch",
     "reprocess:payslips": "node scripts/reprocessPayslips.js",
+    "seed:test-account": "node scripts/seedTestAccount.js",
     "sync:pensianet": "node scripts/syncPensiaNet.js",
     "sync:gov": "node scripts/syncGovMarket.js",
     "parse:pension": "node scripts/parsePensionUpload.js",
