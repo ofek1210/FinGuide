@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Format unified summary health lines for email, WhatsApp, and reports.

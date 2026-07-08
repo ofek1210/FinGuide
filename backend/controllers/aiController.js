@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Document = require('../models/Document');
 const UserProfile = require('../models/UserProfile');
 const Insight = require('../models/Insight');
@@ -8,7 +9,6 @@ const { chat: claudeChat, streamChat: claudeStreamChat, askClaude } = require('.
 const { detectSalaryAnomalies } = require('../utils/detectSalaryAnomalies');
 const { simulateWhatIf } = require('../utils/simulateWhatIf');
 const { selectRecentPayslipDocuments } = require('../utils/selectRecentPayslipDocuments');
-const mongoose = require('mongoose');
 
 const RLM = '\u200F';
 
@@ -710,7 +710,7 @@ async function chatWithAI(req, res) {
 }
 
 async function getChatHistoryHandler(req, res) {
-  const conversationId = req.query.conversationId;
+  const {conversationId} = req.query;
   if (!conversationId || !mongoose.Types.ObjectId.isValid(conversationId)) {
     return res.status(400).json({ success: false, message: 'conversationId required' });
   }

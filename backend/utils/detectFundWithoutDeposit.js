@@ -98,8 +98,8 @@ const detectFundContributionStatus = (analysisData, fundType) => {
   const fundBlock = contributions[config.contributionKey] || {};
   const storedDetection = readStoredDetection(contributions, fundType);
 
-  const employee = fundBlock.employee;
-  const employer = fundBlock.employer;
+  const {employee} = fundBlock;
+  const {employer} = fundBlock;
   const base = fundBlock[config.baseField];
   const { total: depositTotal } = sumDeposits(employee, employer);
 
@@ -234,7 +234,7 @@ const detectFundFindingsForDocuments = (documents, options = {}) => {
       return;
     }
 
-    const analysisData = doc.analysisData;
+    const {analysisData} = doc;
     if (!analysisData || typeof analysisData !== 'object') {
       return;
     }

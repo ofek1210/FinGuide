@@ -1,4 +1,4 @@
-'use strict';
+
 
 const InsurancePolicy = require('../models/InsurancePolicy');
 const InsuranceImportSnapshot = require('../models/InsuranceImportSnapshot');

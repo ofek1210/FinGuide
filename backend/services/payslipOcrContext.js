@@ -22,7 +22,7 @@ const SECTION_PATTERNS = {
     /שכר\s*בסיס/i,
     /שכר\s*ברוטו/i,
     /סך[-\s]?כל\s*התשלומים/i,
-    /סה["״']?כ\s*תשלומים/i,
+    /סה["״']?כ\s*תשלומים(?:\s*שוטפים?)?/i,
     /Gross/i,
     /Base\s*Salary/i,
     /נסיעות/i,
@@ -41,17 +41,21 @@ const SECTION_PATTERNS = {
   ],
   contributions: [
     /קרן\s*השתלמות/i,
+    /קרן\s*ה+שתלמ/i,
     /שכר\s*לקרן\s*השתלמות/i,
     /שכר\s*לקצבה/i,
-    /פנסי/i,
+    /פנסי|הפנסיה/i,
     /תגמול/i,
     /פיצוי/i,
     /הפרשת\s*מעסיק/i,
     /ניכוי\s*עובד/i,
+    /השתתפות\s*ב\s*קרן/i,
+    /ניכוי\s*ל\s*קרן/i,
   ],
   summary: [
     /סכום\s*בבנק/i,
     /נטו\s*לתשלום/i,
+    /שכר\s*חודשי\s*נטו/i,
     /שכר\s*נטו/i,
     /לתשלום/i,
     /ימי\s*עבודה/i,
@@ -159,9 +163,10 @@ function extractLineEntriesFromOcrJson(payload) {
 
 function buildSectionHints(raw, orderedAmounts, headerCells) {
   const hints = new Set();
+  const normalizedRaw = normalizeLine(raw);
 
   Object.entries(SECTION_PATTERNS).forEach(([section, patterns]) => {
-    if (patterns.some(pattern => pattern.test(raw))) {
+    if (patterns.some(pattern => pattern.test(raw) || pattern.test(normalizedRaw))) {
       hints.add(section);
     }
   });

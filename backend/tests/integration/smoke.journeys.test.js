@@ -1,4 +1,4 @@
-'use strict';
+
 
 jest.mock('../../services/financialDocumentService', () => ({
   computeFileChecksum: jest.fn().mockResolvedValue('test-checksum'),

@@ -3,7 +3,7 @@
  * Flow: Agent → Tool → Service → DTO
  */
 
-'use strict';
+
 
 const UserProfile = require('../../models/UserProfile');
 const { runMissingCoverageRules } = require('../engines/ruleEngine');
@@ -59,7 +59,7 @@ function analyzeInsuranceCoverage(insuranceProfile) {
 
   const hasKupatHolimSupplement = profile?.hasHealthInsurance !== false;
   const aggResult = analyzeAggregatedInsurance(policies, { hasKupatHolimSupplement });
-  const aggregatedPolicies = aggResult.aggregatedPolicies;
+  const {aggregatedPolicies} = aggResult;
   const duplicateResult = {
     duplicates: aggResult.duplicates,
     totalWaste: aggResult.totalMonthlyWaste,

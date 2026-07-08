@@ -1,7 +1,8 @@
 /**
  * Insurance benchmark findings for GET /api/findings.
  */
-'use strict';
+
+
 
 const { buildInsuranceAnalysis } = require('../services/insuranceAnalysisService');
 const {

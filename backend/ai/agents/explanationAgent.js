@@ -5,7 +5,7 @@
  * Adds confidence scores and action items.
  */
 
-'use strict';
+
 
 const { buildExplanationSystemPrompt } = require('../prompts/explanationPrompt');
 const { askClaude } = require('../../services/claudeChatService');

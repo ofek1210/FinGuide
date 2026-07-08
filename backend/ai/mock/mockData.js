@@ -1,4 +1,4 @@
-﻿'use strict';
+
 
 /**
  * Mock data for DEMO mode.

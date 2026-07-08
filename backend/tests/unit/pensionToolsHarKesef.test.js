@@ -1,4 +1,4 @@
-'use strict';
+
 
 jest.mock('../../models/PensionFund', () => ({ find: jest.fn() }));
 jest.mock('../../models/UserProfile', () => ({ findOne: jest.fn() }));

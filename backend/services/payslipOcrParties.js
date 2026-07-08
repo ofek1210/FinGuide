@@ -8,7 +8,13 @@ const { pushCandidate, sortCandidatesByScore } = require('./payslipOcrResolver')
 
 const EMPLOYEE_LABEL_REGEX = /(?:שם\s+עובד|שם\s+העובד|Employee\s+Name)[:\s-]+([^\n]+)/i;
 const EMPLOYER_LABEL_REGEX = /(?:שם\s+מעסיק|שם\s+מעביד|שם\s+החברה|Employer\s+Name)[:\s-]+([^\n]+)/i;
-const EMPLOYEE_ID_LABEL_REGEX = /(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ID)[:\s-]*(\d{7,9})/i;
+const EMPLOYEE_ID_LABEL_REGEX = /(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ת["״']?ז["״']?|ID)[:\s-]*(\d{7,9})/i;
+const EMPLOYEE_ID_LABEL_ONLY_REGEX = /^(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ת["״']?ז["״']?|ID)[:\s-]*$/i;
+const HEADER_EMPLOYER_PATTERNS = [
+  { pattern: /צבא\s*הגנה\s*לישראל/i, name: 'צבא הגנה לישראל', score: 0.96 },
+  { pattern: /צה["״']?ל/i, name: 'צבא הגנה לישראל', score: 0.9 },
+  { pattern: /משרד\s*הביטחון/i, name: 'משרד הביטחון', score: 0.92 },
+];
 const CONTRIBUTION_CONTEXT_REGEX =
   /(?:קרן\s*השתלמות|שכר\s*לקצבה|תגמול|תגמולים|פיצוי|פיצויים|הפרשת\s*מעסיק|ניכוי\s*עובד)/i;
 // Michpal format: "חברה: NNN - Company Name בע"מ"
@@ -116,6 +122,35 @@ function applyEmployeeIdConsistencyBoost(candidates) {
   }
 }
 
+function pickBestEmployeeId(candidates) {
+  const viable = sortCandidatesByScore(candidates || []).filter(
+    candidate => candidate.score >= 0.4 && isValidEmployeeId(candidate.value),
+  );
+  if (!viable.length) return undefined;
+
+  const labeled = viable.find(candidate =>
+    ['employee_id_label', 'employee_id_near_label', 'employee_id_label_next_line'].includes(candidate.source),
+  );
+  const checksumValid = viable.filter(candidate => isLikelyIsraeliId(candidate.value));
+
+  if (labeled && isLikelyIsraeliId(labeled.value)) {
+    return labeled;
+  }
+  if (labeled && checksumValid.some(candidate => candidate.value === labeled.value)) {
+    return labeled;
+  }
+  if (checksumValid.length) {
+    const labeledChecksum = checksumValid.find(candidate =>
+      ['employee_id_label', 'employee_id_near_label', 'employee_id_label_next_line'].includes(candidate.source),
+    );
+    return labeledChecksum || checksumValid[0];
+  }
+  if (labeled) {
+    return labeled;
+  }
+  return viable.find(candidate => isLikelyIsraeliId(candidate.value)) || viable[0];
+}
+
 function isEmployerContextLine(line) {
   return EMPLOYER_CONTEXT_REGEX.test(String(line)) || COMPANY_HINT_REGEX.test(String(line));
 }
@@ -132,7 +167,32 @@ function isContributionContextEntry(entry) {
   return CONTRIBUTION_CONTEXT_REGEX.test(String(entry.raw || entry));
 }
 
-function collectPartyCandidates(context) {
+function namesRoughlyMatch(a, b) {
+  const left = normalizeEmployeeName(a);
+  const right = normalizeEmployeeName(b);
+  if (!left || !right) {
+    return false;
+  }
+  if (left === right) {
+    return true;
+  }
+
+  const leftTokens = left.split(/\s+/).filter(Boolean);
+  const rightTokens = right.split(/\s+/).filter(Boolean);
+  const shared = leftTokens.filter(token => rightTokens.includes(token));
+  if (shared.length >= 2) {
+    return true;
+  }
+  if (leftTokens.length === 1 && rightTokens.includes(leftTokens[0])) {
+    return true;
+  }
+  if (rightTokens.length === 1 && leftTokens.includes(rightTokens[0])) {
+    return true;
+  }
+  return false;
+}
+
+function collectPartyCandidates(context, { expectedEmployeeName } = {}) {
   const store = {};
   const full = context.fullText;
 
@@ -173,6 +233,18 @@ function collectPartyCandidates(context) {
           section: entry.primarySection || 'identity',
           evidenceCategory: 'label',
         });
+      } else if (EMPLOYEE_ID_LABEL_ONLY_REGEX.test(entry.raw.trim())) {
+        const nextIdLine = context.lines[entry.index + 1]?.raw?.trim();
+        if (nextIdLine && isValidEmployeeId(nextIdLine)) {
+          pushCandidate(store, 'employee_id', nextIdLine, {
+            source: 'employee_id_label_next_line',
+            lineIndex: entry.index + 1,
+            score: 0.98,
+            reason: 'Matched employee ID on the line after an identity label.',
+            section: entry.primarySection || 'identity',
+            evidenceCategory: 'label',
+          });
+        }
       }
     }
 
@@ -259,7 +331,7 @@ function collectPartyCandidates(context) {
   }
 
   const idNearIdentityLabel = full.match(
-    /(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ID)[:\s-]*[\s\S]{0,40}?(\d{7,9})/i,
+    /(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ת["״']?ז["״']?|ID)[:\s-]*[\s\S]{0,40}?(\d{7,9})/i,
   );
   if (idNearIdentityLabel && isValidEmployeeId(idNearIdentityLabel[1])) {
     pushCandidate(store, 'employee_id', idNearIdentityLabel[1], {
@@ -309,6 +381,22 @@ function collectPartyCandidates(context) {
     }
   }
 
+  // ---- Header employer patterns (e.g. IDF payslip title) ----
+  for (let i = 0; i < Math.min(context.lines.length, 20); i += 1) {
+    const entry = context.lines[i];
+    for (const { pattern, name, score } of HEADER_EMPLOYER_PATTERNS) {
+      if (!pattern.test(entry.raw)) continue;
+      pushCandidate(store, 'employer_name', name, {
+        source: 'employer_header_pattern',
+        lineIndex: entry.index,
+        score,
+        reason: 'Matched employer from payslip header/title line.',
+        section: 'identity',
+        evidenceCategory: 'header',
+      });
+    }
+  }
+
   // ---- שם החברה label ----
   const companyNameMatch = full.match(/שם\s+החברה\s*[:\s]+([^\n]+)/i);
   if (companyNameMatch) {
@@ -324,10 +412,41 @@ function collectPartyCandidates(context) {
     }
   }
 
+  const profileName = expectedEmployeeName ? normalizeEmployeeName(expectedEmployeeName) : null;
+  if (profileName && isValidEmployeeName(profileName)) {
+    const foundInText = full.includes(profileName);
+    for (let i = 0; i < Math.min(context.lines.length, 25); i += 1) {
+      const entry = context.lines[i];
+      if (entry.raw.includes(profileName) && isValidEmployeeName(profileName)) {
+        pushCandidate(store, 'employee_name', profileName, {
+          source: 'user_profile_name_in_text',
+          lineIndex: entry.index,
+          score: 0.97,
+          reason: 'Matched employee name from user profile within payslip text.',
+          section: entry.primarySection || 'identity',
+          evidenceCategory: 'profile',
+        });
+        break;
+      }
+    }
+
+    if (!store.employee_name?.length) {
+      pushCandidate(store, 'employee_name', profileName, {
+        source: 'user_profile_name',
+        score: foundInText ? 0.93 : 0.82,
+        reason: foundInText
+          ? 'Used employee name from user profile; found in payslip text.'
+          : 'Fallback employee name from user profile settings.',
+        section: 'identity',
+        evidenceCategory: 'profile',
+      });
+    }
+  }
+
   return store;
 }
 
-function resolvePartyCandidates(store) {
+function resolvePartyCandidates(store, { expectedEmployeeName } = {}) {
   applyEmployeeIdConsistencyBoost(store.employee_id);
 
   const employeeName = sortCandidatesByScore(store.employee_name).find(
@@ -336,12 +455,31 @@ function resolvePartyCandidates(store) {
   const employerName = sortCandidatesByScore(store.employer_name).find(
     candidate => candidate.score >= 0.45 && isValidEmployerName(candidate.value),
   );
-  const employeeId = sortCandidatesByScore(store.employee_id).find(
-    candidate => candidate.score >= 0.4 && isValidEmployeeId(candidate.value),
-  );
+  const employeeId = pickBestEmployeeId(store.employee_id);
+
+  let resolvedEmployeeName = employeeName;
+  const profileName = expectedEmployeeName ? normalizeEmployeeName(expectedEmployeeName) : null;
+  if (profileName && isValidEmployeeName(profileName)) {
+    const profileCandidate = sortCandidatesByScore(store.employee_name).find(
+      candidate => namesRoughlyMatch(candidate.value, profileName),
+    );
+    const weakOcrName = !employeeName || employeeName.score < 0.85;
+    if (profileCandidate && (!employeeName || profileCandidate.score >= employeeName.score)) {
+      resolvedEmployeeName = profileCandidate;
+    } else if (weakOcrName || (employeeName && !namesRoughlyMatch(employeeName.value, profileName))) {
+      resolvedEmployeeName = {
+        value: profileName,
+        score: employeeName && namesRoughlyMatch(employeeName.value, profileName) ? employeeName.score : 0.9,
+        source: 'user_profile_name',
+        reason: 'Used employee name from user profile settings.',
+        section: 'identity',
+        evidenceCategory: 'profile',
+      };
+    }
+  }
 
   return {
-    employee_name: employeeName,
+    employee_name: resolvedEmployeeName,
     employer_name: employerName,
     employee_id: employeeId,
   };
@@ -354,7 +492,9 @@ module.exports = {
   isValidEmployeeId,
   isValidEmployeeName,
   isValidEmployerName,
+  namesRoughlyMatch,
   normalizeEmployeeName,
   normalizeEmployerName,
+  pickBestEmployeeId,
   resolvePartyCandidates,
 };

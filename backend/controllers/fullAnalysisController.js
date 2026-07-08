@@ -12,16 +12,17 @@
  *   { success, runId, summary, canvas, govData, globalScore, actionItems, agents, meta }
  */
 
-'use strict';
+
 
 const { runParallelAnalysis } = require('../ai/services/parallelAnalysisService');
 const { MOCK_FULL_ANALYSIS_RESULT } = require('../ai/mock/mockData');
+const { isDemoRequest } = require('../utils/demoMode');
 
 async function runFullAnalysisHandler(req, res) {
   const userId = req.user._id;
-  const { focus = 'all', skipLLM = false, refreshGovData = false, demo = false } = req.body || {};
+  const { focus = 'all', skipLLM = false, refreshGovData = false } = req.body || {};
 
-  if (demo === true || req.query.demo === 'true') {
+  if (isDemoRequest(req)) {
     return res.json({ success: true, ...MOCK_FULL_ANALYSIS_RESULT });
   }
 

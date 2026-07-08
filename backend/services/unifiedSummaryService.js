@@ -1,7 +1,8 @@
 /**
  * Unified financial summary — single source for email, WhatsApp, reports, UI.
  */
-'use strict';
+
+
 
 const { buildPensionAnalysis } = require('./pensionAnalysisService');
 const { buildInsuranceAnalysis } = require('./insuranceAnalysisService');

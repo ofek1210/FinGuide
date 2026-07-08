@@ -1,4 +1,4 @@
-'use strict';
+
 
 const { MOCK_DASHBOARD_SUMMARY } = require('../ai/mock/mockData');
 const Document = require('../models/Document');
@@ -7,13 +7,14 @@ const InsurancePolicy = require('../models/InsurancePolicy');
 const Recommendation = require('../models/Recommendation');
 const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
 const { buildInsuranceAnalysis } = require('../services/insuranceAnalysisService');
+const { isDemoRequest } = require('../utils/demoMode');
 
 /**
  * GET /api/dashboard/summary
  * Lightweight summary for the dashboard header — no LLM, pure DB aggregation.
  */
 async function getDashboardSummary(req, res) {
-  if (req.query.demo === 'true') {
+  if (isDemoRequest(req)) {
     return res.json({ success: true, data: MOCK_DASHBOARD_SUMMARY });
   }
 

@@ -3,7 +3,7 @@
  * Flow: Agent → Tool → Service → DTO
  */
 
-'use strict';
+
 
 const UserProfile = require('../../models/UserProfile');
 const { runDocumentCompletenessRules } = require('../engines/ruleEngine');

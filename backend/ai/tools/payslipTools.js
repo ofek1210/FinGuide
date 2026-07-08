@@ -8,7 +8,7 @@
  * Flow: Agent → Tool → Service → MongoDB → DTO → LLM
  */
 
-'use strict';
+
 
 const Document = require('../../models/Document');
 const { runSalaryAnomalyRules, runPensionGapRules } = require('../engines/ruleEngine');

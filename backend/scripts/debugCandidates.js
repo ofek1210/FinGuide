@@ -55,7 +55,7 @@ async function run() {
     const candidates = store[field] || [];
     console.log(`=== ${field} (${candidates.length} candidates) ===`);
     const sorted = [...candidates].sort((a, b) => b.score - a.score);
-    for (const c of sorted) console.log('  ' + fmtCandidate(c));
+    for (const c of sorted) console.log(`  ${  fmtCandidate(c)}`);
     console.log();
   }
 

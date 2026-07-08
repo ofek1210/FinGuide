@@ -7,7 +7,7 @@
  * Returns a structured DTO — never raw documents.
  */
 
-'use strict';
+
 
 const { getPayslipSummaries, analyzeSalary, generatePayslipRecommendations } = require('../tools/payslipTools');
 const { buildPayslipGovBenchmarkRecommendations } = require('../../services/payslipGovBenchmarkService');

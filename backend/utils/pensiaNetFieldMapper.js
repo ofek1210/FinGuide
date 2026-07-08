@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Map data.gov.il CKAN records → PensiaNet XML field names.

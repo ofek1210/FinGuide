@@ -6,7 +6,7 @@ const { promisify } = require('util');
 const sharp = require('sharp');
 const crypto = require('crypto');
 
-const { extractFromLinesByLabelMap } = require('./payslipOcrLabelMap');
+const { extractFromLinesByLabelMap, extractAmountFromLine } = require('./payslipOcrLabelMap');
 const { buildNormalizedOcrDocumentFromSource } = require('./payslipOcrContext');
 const {
   buildQualityPayload,
@@ -28,8 +28,61 @@ const {
 } = require('./payslipOcrContributions');
 const { buildPayslipSummary } = require('./payslipOcrSummary');
 const { applyNumericRescue } = require('./payslipOcrNumericRescue');
+const { detectIdfPayslip } = require('./idfPayslipProfile');
+
+function enrichVoluntaryInsuranceFromLines(lines, labelMap, mandatoryHealth) {
+  const extras = {};
+  const linePatterns = [
+    {
+      field: 'life_insurance',
+      labelKey: 'voluntary_life_insurance',
+      regex: /ביטוח\s*חיים/i,
+      exclude: /מצטבר/i,
+    },
+    {
+      field: 'health_insurance',
+      labelKey: 'voluntary_health_insurance',
+      regex: /ביטוח\s*בריאות/i,
+      exclude: /מס\s*בריאות|מצטבר|לאומי/i,
+    },
+    {
+      field: 'disability_insurance',
+      labelKey: 'voluntary_disability_insurance',
+      regex: /(?:אובדן\s*כושר\s*עבודה|\bא\.?\s*כ\.?\s*ע\.?\b)/i,
+      exclude: /מצטבר/i,
+    },
+    {
+      field: 'collective_insurance',
+      labelKey: 'voluntary_collective_insurance',
+      regex: /ביטוח\s*קבוצתי/i,
+      exclude: /מצטבר|ביטוח\s*חיים|ביטוח\s*בריאות/i,
+    },
+  ];
+
+  for (const line of lines) {
+    for (const pattern of linePatterns) {
+      if (pattern.exclude.test(line)) continue;
+      if (!pattern.regex.test(line)) continue;
+      if (labelMap[pattern.labelKey] !== undefined || extras[pattern.field] !== undefined) continue;
+
+      const amount = extractAmountFromLine(line, { min: 1, max: 10000 });
+      if (amount === undefined) continue;
+      if (
+        pattern.field === 'health_insurance'
+        && Number.isFinite(mandatoryHealth)
+        && Math.abs(amount - mandatoryHealth) < 1
+      ) {
+        continue;
+      }
+      extras[pattern.field] = amount;
+    }
+  }
+
+  return extras;
+}
 const {
   extractHMO,
+  isLikelyBrokenHebrew,
   linesOf,
   match1,
   matchAmountFlexible,
@@ -41,6 +94,7 @@ const {
 
 const execFileAsync = promisify(execFile);
 const { PdfPasswordRequiredError, isPdfPasswordError } = require('../utils/pdfPassword');
+
 let pdfParse;
 
 const OCR_PDF_PAGES_MODE = (process.env.OCR_PDF_PAGES_MODE || 'all').toLowerCase();
@@ -159,26 +213,25 @@ async function extractPdfEmbeddedText(pdfPath, { password } = {}) {
   }
 }
 
-function isLikelyBrokenHebrew(text) {
-  if (!text) return false;
-  const value = String(text);
-  const hebrewCount = (value.match(/[\u0590-\u05FF]/g) || []).length;
-  const weirdLatinCount = (value.match(/[À-ÿ]/g) || []).length;
-  const modifierLetterCount = (value.match(/[\u02B0-\u02FF]/g) || []).length;
-  const replacementCount = (value.match(/\uFFFD/g) || []).length;
-
-  // Mojibake: PDF fonts decoded as replacement chars — labels unusable, prefer OCR/rescue
-  if (replacementCount > 15) return true;
-  // Long payslip text with almost no Hebrew is almost certainly broken encoding
-  if (value.length > 400 && hebrewCount < 8) return true;
-  if (hebrewCount < 5 && modifierLetterCount > 30) return true;
-  return hebrewCount < 5 && weirdLatinCount > 20;
-}
-
-function hasCriticalSalaryFields(data) {
+function hasCriticalSalaryFields(data, fullText = '') {
   const gross = data?.salary?.gross_total;
   const net = data?.salary?.net_payable;
-  return Number.isFinite(gross) && gross > 500 && Number.isFinite(net) && net > 500;
+  if (!Number.isFinite(gross) || gross <= 500 || !Number.isFinite(net) || net <= 500) {
+    return false;
+  }
+
+  if (Math.abs(gross - net) < 0.01) {
+    return false;
+  }
+
+  const lines = String(fullText || '')
+    .split(/\r?\n/)
+    .map((raw, index) => ({ raw, index }));
+  if (detectIdfPayslip(lines, fullText) && gross <= net * 1.05) {
+    return false;
+  }
+
+  return true;
 }
 
 async function pdfToPngs(pdfPath, outDir, { password } = {}) {
@@ -295,7 +348,7 @@ async function applyLlmAdjudication({
   return { candidate: adjudicated, llm: result };
 }
 
-async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {}) {
+async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson, expectedEmployeeName } = {}) {
   const warnings = [];
   const sourcePayload =
     typeof ocrInput === 'string'
@@ -470,6 +523,26 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
   if (convalescence !== undefined) components.push({ type: 'convalescence', amount: convalescence });
   if (clothing_allowance !== undefined) components.push({ type: 'clothing_allowance', amount: clothing_allowance });
 
+  const {voluntary_life_insurance} = labelMap;
+  const {voluntary_health_insurance} = labelMap;
+  const {voluntary_disability_insurance} = labelMap;
+  const {voluntary_collective_insurance} = labelMap;
+  const voluntaryExtras = enrichVoluntaryInsuranceFromLines(
+    lines,
+    labelMap,
+    resolvedHealthInsurance?.value,
+  );
+  const voluntaryDeductions = {
+    ...(voluntary_life_insurance !== undefined ? { life_insurance: voluntary_life_insurance } : {}),
+    ...(voluntary_health_insurance !== undefined ? { health_insurance: voluntary_health_insurance } : {}),
+    ...(voluntary_disability_insurance !== undefined ? { disability_insurance: voluntary_disability_insurance } : {}),
+    ...(voluntary_collective_insurance !== undefined ? { collective_insurance: voluntary_collective_insurance } : {}),
+    ...voluntaryExtras,
+  };
+  const voluntaryTotal = Object.values(voluntaryDeductions)
+    .filter(Number.isFinite)
+    .reduce((sum, value) => sum + value, 0);
+
   let gross_minus_mandatory_deductions;
   if (gross_total !== undefined && mandatory_total !== undefined) {
     gross_minus_mandatory_deductions = +(gross_total - mandatory_total).toFixed(2);
@@ -500,7 +573,10 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
   const employment_start_date = parseDateDDMMYYYYorYY(employment_start_raw);
   const hmo = translateHMO(extractHMO(full));
 
-  const resolvedParties = resolvePartyCandidates(collectPartyCandidates(normalizedDoc));
+  const resolvedParties = resolvePartyCandidates(
+    collectPartyCandidates(normalizedDoc, { expectedEmployeeName }),
+    { expectedEmployeeName },
+  );
   const employer_name = resolvedParties.employer_name?.value;
   const employee_name = resolvedParties.employee_name?.value;
   const employee_id = resolvedParties.employee_id?.value;
@@ -574,7 +650,8 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
         national_insurance: resolvedNationalInsurance?.value,
         health_insurance: resolvedHealthInsurance?.value,
       },
-      voluntary: {},
+      voluntary: voluntaryDeductions,
+      voluntary_total: voluntaryTotal > 0 ? Math.round(voluntaryTotal * 100) / 100 : undefined,
     },
 
     contributions: {
@@ -582,6 +659,7 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
         base_salary_for_pension: pension.base,
         employee: pension.employee,
         employer: pension.employer,
+        participation_total: pension.participation_total,
         severance: pension.severance,
         base_for_severance: pension.base_for_severance,
         employee_rate_percent: pension.employeeRate,
@@ -593,6 +671,7 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
         base_salary_for_study_fund: study.base,
         employee: study.employee,
         employer: study.employer,
+        participation_total: study.participation_total,
         employee_rate_percent: study.employeeRate,
         employer_rate_percent: study.employerRate,
         detection: study.detection,
@@ -655,10 +734,17 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson } = {})
 }
 
 async function extractPayslipFile(inputPath, options = {}) {
-  const { password } = options;
+  const { password, userId } = options;
+  let { expectedEmployeeName } = options;
+  if (!expectedEmployeeName && userId) {
+    const { getExpectedEmployeeNameForUser } = require('../utils/expectedEmployeeName');
+    expectedEmployeeName = await getExpectedEmployeeNameForUser(userId);
+  }
+
   const abs = path.resolve(inputPath);
   const ext = path.extname(abs).toLowerCase();
   let extractionMethod = 'ocr';
+  const extractionOptions = { sourcePath: abs, expectedEmployeeName };
 
   const workDir = path.join(process.cwd(), '.work');
   await fs.mkdir(workDir, { recursive: true });
@@ -675,9 +761,9 @@ async function extractPayslipFile(inputPath, options = {}) {
         extractionMethod = 'pdf_text';
         const sections = splitPayslipSections(embeddedText);
         const sectionText = sections[0].text;
-        let data = await extractPayslipFinancialEN(sectionText, { sourcePath: abs });
+        const data = await extractPayslipFinancialEN(sectionText, extractionOptions);
 
-        if (hasCriticalSalaryFields(data)) {
+        if (hasCriticalSalaryFields(data, sectionText)) {
           logExtractionResult({ sourcePath: abs, extractionMethod, data });
           data.raw = {
             ...data.raw,
@@ -697,8 +783,8 @@ async function extractPayslipFile(inputPath, options = {}) {
         extractionMethod = 'numeric_rescue';
         const sections = splitPayslipSections(embeddedText);
         const sectionText = sections[0].text;
-        const data = await extractPayslipFinancialEN(sectionText, { sourcePath: abs });
-        if (hasCriticalSalaryFields(data)) {
+        const data = await extractPayslipFinancialEN(sectionText, extractionOptions);
+        if (hasCriticalSalaryFields(data, sectionText)) {
           logExtractionResult({ sourcePath: abs, extractionMethod, data });
           data.raw = {
             ...data.raw,
@@ -765,7 +851,7 @@ async function extractPayslipFile(inputPath, options = {}) {
         continue;
       }
 
-      const data = await extractPayslipFinancialEN(fullText, { sourcePath: abs });
+      const data = await extractPayslipFinancialEN(fullText, extractionOptions);
       logExtractionResult({
         sourcePath: abs,
         extractionMethod,

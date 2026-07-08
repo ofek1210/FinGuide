@@ -25,14 +25,14 @@ export type DashboardSummaryData = {
   topRecommendations: {
     id: string;
     title: string;
-    importance: string;
-    category: string;
+    importance?: string;
+    category?: string;
   }[];
 };
 
 export type DashboardSummaryResponse = {
   success: boolean;
-  data?: DashboardSummaryData;
+  data: DashboardSummaryData;
 };
 
 export const getDashboardSummary = () =>

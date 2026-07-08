@@ -1,4 +1,4 @@
-'use strict';
+
 
 const { formatDomainHealthLines } = require('../../utils/summaryFormatters');
 

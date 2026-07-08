@@ -38,6 +38,13 @@ interface DocumentPayslipAnalysis {
       national_insurance?: number;
       health_insurance?: number;
     };
+    voluntary?: {
+      life_insurance?: number;
+      health_insurance?: number;
+      disability_insurance?: number;
+      collective_insurance?: number;
+    };
+    voluntary_total?: number;
   };
   contributions?: {
     pension?: {
@@ -167,6 +174,10 @@ const DEDUCTION_LABELS: Record<string, string> = {
   pension_employer: "הפקדה לפנסיה (מעסיק)",
   study_fund_employee: "קרן השתלמות (עובד)",
   study_fund_employer: "קרן השתלמות (מעסיק)",
+  voluntary_life_insurance: "ביטוח חיים",
+  voluntary_health_insurance: "ביטוח בריאות (פרטי)",
+  voluntary_disability_insurance: "אובדן כושר עבודה",
+  voluntary_collective_insurance: "ביטוח קבוצתי",
 };
 
 function earningsLabel(type?: string): string {
@@ -255,32 +266,58 @@ function mapDeductions(analysis: DocumentPayslipAnalysis): PayslipLineItem[] {
   if (Number.isFinite(study?.employer)) {
     items.push({ label: deductionLabel("study_fund_employer"), amount: study!.employer! });
   }
+
+  const voluntary = analysis.deductions?.voluntary;
+  if (voluntary) {
+    const voluntaryKeys = [
+      "life_insurance",
+      "health_insurance",
+      "disability_insurance",
+      "collective_insurance",
+    ] as const;
+    for (const key of voluntaryKeys) {
+      const amount = voluntary[key];
+      if (Number.isFinite(amount)) {
+        items.push({
+          label: deductionLabel(`voluntary_${key}`),
+          amount: amount as number,
+        });
+      }
+    }
+  }
   return items;
 }
 
 export function documentToPayslipItem(doc: DocumentItem, index: number): PayslipHistoryItem {
   const analysis = getAnalysisData(doc)!;
-  const month = analysis.period?.month;
+  const metadataYear = doc.metadata?.periodYear;
+  const metadataMonth = doc.metadata?.periodMonth;
+  const metadataPeriod = metadataYear && metadataMonth
+    ? `${metadataYear}-${String(metadataMonth).padStart(2, "0")}`
+    : undefined;
+  const month = analysis.period?.month || metadataPeriod;
   const periodLabel = formatPeriodLabel(month);
   const periodDate = periodMonthToDate(month) || "";
-  const grossSalary = Number.isFinite(analysis.salary?.gross_total)
-    ? (analysis.salary?.gross_total as number)
-    : null;
-  const netSalary = Number.isFinite(analysis.salary?.net_payable)
-    ? (analysis.salary?.net_payable as number)
-    : null;
+  const enriched = enrichPayslipFromAnalysis(analysis);
+  const grossSalary = enriched.grossSalary;
+  const netSalary = enriched.netSalary;
   const isLatest = index === 0;
+  const needsReview = doc.status === "needs_review"
+    || grossSalary == null
+    || netSalary == null
+    || !month;
 
   return {
     id: doc._id,
     periodLabel,
     periodDate,
     periodMonth: month,
-    periodYear: month ? Number(month.split("-")[0]) : undefined,
-    periodMonthNumber: month ? Number(month.split("-")[1]) : undefined,
+    periodYear: month ? Number(month.split("-")[0]) : metadataYear,
+    periodMonthNumber: month ? Number(month.split("-")[1]) : metadataMonth,
     netSalary,
     grossSalary,
     isLatest,
+    needsReview,
     downloadUrl: null,
   };
 }

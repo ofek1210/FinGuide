@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
-  FileText, Upload, Search, Download, Eye, AlertTriangle, ChevronRight, Loader2,
+  FileText, Upload, Search, Download, Eye, AlertTriangle, ChevronRight, Loader2, Trash2,
 } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import { downloadDocument } from "../api/documents.api";
+import { downloadDocument, removeDocument } from "../api/documents.api";
 import { usePayslipHistory } from "../hooks/usePayslipHistory";
 import type { PayslipHistoryItem } from "../types/payslip";
 import { APP_ROUTES } from "../types/navigation";
@@ -80,7 +80,9 @@ export default function PayslipHistoryPage() {
   const { data, isLoading, error, reload } = usePayslipHistory(selectedYear);
   const [query, setQuery] = useState("");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [modalDocId, setModalDocId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -106,6 +108,22 @@ export default function PayslipHistoryPage() {
     link.remove();
     window.URL.revokeObjectURL(url);
   }, []);
+
+  const handleDelete = useCallback(async (item: PayslipHistoryItem) => {
+    if (!item.id) return;
+    const label = item.periodLabel || "תלוש זה";
+    if (!window.confirm(`למחוק את ${label} מההיסטוריה? לא ניתן לשחזר את הקובץ.`)) return;
+
+    setDeleteError(null);
+    setDeletingId(item.id);
+    const response = await removeDocument(item.id);
+    setDeletingId(null);
+    if (!response.success) {
+      setDeleteError(response.message ?? "שגיאה במחיקת התלוש.");
+      return;
+    }
+    await reload();
+  }, [reload]);
 
   const goDetail = (item: PayslipHistoryItem) => navigate(`${APP_ROUTES.payslipHistory}/${item.id}`);
   const goComplete = (item: PayslipHistoryItem) => setModalDocId(item.id);
@@ -177,7 +195,11 @@ export default function PayslipHistoryPage() {
           <button onClick={goUpload} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "13px 22px", borderRadius: "var(--r-btn)", background: "var(--ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, boxShadow: "var(--shadow-ink)" }}><Upload size={17} /> העלאת תלושים</button>
         </div>
 
-        {downloadError && <div style={{ marginBottom: 16, padding: "11px 16px", borderRadius: "var(--r-btn)", background: "#FEF2F2", border: "1px solid rgba(220,38,38,.2)", color: "var(--danger)", fontWeight: 700, fontSize: 13.5 }}>{downloadError}</div>}
+        {(downloadError || deleteError) && (
+          <div style={{ marginBottom: 16, padding: "11px 16px", borderRadius: "var(--r-btn)", background: "#FEF2F2", border: "1px solid rgba(220,38,38,.2)", color: "var(--danger)", fontWeight: 700, fontSize: 13.5 }}>
+            {downloadError || deleteError}
+          </div>
+        )}
 
         {incompleteCount > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 24, padding: "13px 16px", borderRadius: "var(--r-btn)", background: "var(--peach-soft)", border: "1px solid var(--peach)", color: "var(--peach-ink)" }}>
@@ -280,6 +302,14 @@ export default function PayslipHistoryPage() {
                         )}
                         <RowAction title="צפייה" onClick={() => goDetail(p)}><Eye size={16} /></RowAction>
                         <RowAction title="הורדה" onClick={() => void handleDownload(p)} busy={downloadingId === p.id}><Download size={16} /></RowAction>
+                        <RowAction
+                          title="מחיקה"
+                          variant="danger"
+                          onClick={() => void handleDelete(p)}
+                          busy={deletingId === p.id}
+                        >
+                          <Trash2 size={16} />
+                        </RowAction>
                       </div>
                     </div>
                   );
@@ -301,11 +331,24 @@ export default function PayslipHistoryPage() {
   );
 }
 
-function RowAction({ children, title, onClick, busy }: { children: React.ReactNode; title: string; onClick: () => void; busy?: boolean }) {
+function RowAction({
+  children,
+  title,
+  onClick,
+  busy,
+  variant = "default",
+}: {
+  children: React.ReactNode;
+  title: string;
+  onClick: () => void;
+  busy?: boolean;
+  variant?: "default" | "danger";
+}) {
+  const hoverColor = variant === "danger" ? "var(--danger)" : "var(--lav-600)";
   return (
     <button title={title} onClick={onClick} disabled={busy}
-      style={{ width: 34, height: 34, borderRadius: 9, border: "1px solid var(--border-hair)", background: "var(--card)", color: "var(--text-muted)", cursor: busy ? "wait" : "pointer", display: "grid", placeItems: "center", transition: "all .15s" }}
-      onMouseEnter={e => { e.currentTarget.style.background = "var(--surface-sunken)"; e.currentTarget.style.color = "var(--lav-600)"; }}
+      style={{ width: 34, height: 34, borderRadius: 9, border: `1px solid ${variant === "danger" ? "rgba(220,38,38,.25)" : "var(--border-hair)"}`, background: "var(--card)", color: "var(--text-muted)", cursor: busy ? "wait" : "pointer", display: "grid", placeItems: "center", transition: "all .15s" }}
+      onMouseEnter={e => { e.currentTarget.style.background = variant === "danger" ? "#FEF2F2" : "var(--surface-sunken)"; e.currentTarget.style.color = hoverColor; }}
       onMouseLeave={e => { e.currentTarget.style.background = "var(--card)"; e.currentTarget.style.color = "var(--text-muted)"; }}>
       {busy ? <Loader2 size={15} style={{ animation: "spin .8s linear infinite" }} /> : children}
     </button>

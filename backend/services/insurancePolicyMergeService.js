@@ -1,4 +1,4 @@
-'use strict';
+
 
 const InsurancePolicy = require('../models/InsurancePolicy');
 const { extractRiderFromPolicy } = require('./insurancePolicyAggregationService');
@@ -23,13 +23,12 @@ function mergePolicyRecord(existing, incoming) {
   const incomingRider = extractRiderFromPolicy(incoming);
   const riders = [...existingRiders, incomingRider];
 
-  const summedMonthly = (existing.monthlyPremium || 0) + (incoming.monthlyPremium || 0);
-
   return {
     type: incoming.type || existing.type,
     provider: incoming.provider ?? existing.provider,
     policyNumber: incoming.policyNumber ?? existing.policyNumber,
-    monthlyPremium: summedMonthly || incoming.monthlyPremium || existing.monthlyPremium,
+    // Replace, don't sum — the newer import supersedes the old premium.
+    monthlyPremium: incoming.monthlyPremium ?? existing.monthlyPremium,
     coverageAmount: incoming.coverageAmount ?? existing.coverageAmount,
     startDate: incoming.startDate ?? existing.startDate,
     endDate: incoming.endDate ?? existing.endDate,

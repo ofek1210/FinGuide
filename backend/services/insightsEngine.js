@@ -1,6 +1,7 @@
 const Document = require('../models/Document');
 const Insight = require('../models/Insight');
 const { buildPayslipHistoryIntelligence } = require('./payslipHistoryAggregationService');
+const { enrichSummary } = require('../utils/payslipEnrichment');
 
 const SALARY_CHANGE_THRESHOLD = 0.05;
 const UNUSUAL_DEDUCTION_THRESHOLD = 0.5;
@@ -17,28 +18,11 @@ function pctChange(prev, curr) {
 }
 
 function getPensionEmployeeRate(doc) {
-  const gross = toFinite(doc?.analysisData?.salary?.gross_total)
-    ?? toFinite(doc?.analysisData?.summary?.grossSalary);
-  const pension = toFinite(doc?.analysisData?.contributions?.pension?.employee_amount)
-    ?? toFinite(doc?.analysisData?.summary?.pensionEmployee);
+  const enriched = enrichSummary(doc);
+  const gross = enriched.grossSalary;
+  const pension = enriched.pensionEmployee;
   if (!gross || !Number.isFinite(pension)) return null;
   return pension / gross;
-}
-
-function enrichSummary(doc) {
-  const summary = doc?.analysisData?.summary || {};
-  const salary = doc?.analysisData?.salary || {};
-  const deductions = doc?.analysisData?.deductions?.mandatory || {};
-  return {
-    grossSalary: toFinite(summary.grossSalary) ?? toFinite(salary.gross_total),
-    netSalary: toFinite(summary.netSalary) ?? toFinite(salary.net_payable),
-    tax: toFinite(summary.tax) ?? toFinite(deductions.income_tax),
-    nationalInsurance: toFinite(summary.nationalInsurance) ?? toFinite(deductions.national_insurance),
-    healthInsurance: toFinite(summary.healthInsurance) ?? toFinite(deductions.health_insurance),
-    pensionEmployee: toFinite(summary.pensionEmployee)
-      ?? toFinite(doc?.analysisData?.contributions?.pension?.employee_amount),
-    mandatoryTotal: toFinite(summary.mandatoryDeductionsTotal) ?? toFinite(deductions.total),
-  };
 }
 
 function buildInsightDraft({ kind, severity, title, description, payload, sourceDocumentIds }) {
@@ -97,10 +81,12 @@ async function analyzePayslipTrends(userId, history) {
 }
 
 async function analyzePensionContributions(userId, documents) {
-  const completed = documents.filter(d => d.status === 'completed');
-  if (!completed.length) return [];
+  const payslips = documents.filter(
+    d => (d.status === 'completed' || d.status === 'needs_review') && d.analysisData,
+  );
+  if (!payslips.length) return [];
 
-  const latest = completed[0];
+  const latest = payslips[0];
   const rate = getPensionEmployeeRate(latest);
   const pensionAmt = enrichSummary(latest).pensionEmployee;
   const drafts = [];
@@ -163,11 +149,13 @@ async function detectMissingMonths(userId, history) {
 }
 
 async function detectUnusualDeductions(userId, documents) {
-  const completed = documents.filter(d => d.status === 'completed');
-  if (completed.length < 2) return [];
+  const payslips = documents.filter(
+    d => (d.status === 'completed' || d.status === 'needs_review') && d.analysisData,
+  );
+  if (payslips.length < 2) return [];
 
-  const latestSummary = enrichSummary(completed[0]);
-  const prevSummary = enrichSummary(completed[1]);
+  const latestSummary = enrichSummary(payslips[0]);
+  const prevSummary = enrichSummary(payslips[1]);
   const drafts = [];
 
   const fields = [
@@ -194,7 +182,7 @@ async function detectUnusualDeductions(userId, documents) {
             currentValue: curr,
             changePercent: Math.round(change * 100),
           },
-          sourceDocumentIds: [completed[0]._id, completed[1]._id],
+          sourceDocumentIds: [payslips[0]._id, payslips[1]._id],
         }),
       );
     }
@@ -210,7 +198,7 @@ async function detectUnusualDeductions(userId, documents) {
         title: 'נטו קרוב מאוד לברוטו',
         description: 'הנטו גבוה ביחס לברוטו — ייתכן שחסרים ניכויים או שיש בעיה בניתוח התלוש.',
         payload: { grossSalary: gross, netSalary: net, ratio: Math.round((net / gross) * 100) },
-        sourceDocumentIds: [completed[0]._id],
+        sourceDocumentIds: [payslips[0]._id],
       }),
     );
   }
@@ -258,13 +246,15 @@ async function runFullAnalysis(userId) {
     .lean(false);
 
   const history = buildPayslipHistoryIntelligence(documents);
-  const completedDocs = documents.filter(d => d.status === 'completed');
+  const payslipDocs = documents.filter(
+    d => (d.status === 'completed' || d.status === 'needs_review') && d.analysisData,
+  );
 
   const drafts = [
     ...(await analyzePayslipTrends(userId, history)),
-    ...(await analyzePensionContributions(userId, completedDocs)),
+    ...(await analyzePensionContributions(userId, payslipDocs)),
     ...(await detectMissingMonths(userId, history)),
-    ...(await detectUnusualDeductions(userId, completedDocs)),
+    ...(await detectUnusualDeductions(userId, payslipDocs)),
   ];
 
   return upsertInsights(userId, drafts);

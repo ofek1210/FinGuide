@@ -1,4 +1,4 @@
-'use strict';
+
 
 const fs = require('fs');
 const path = require('path');
@@ -107,7 +107,7 @@ function parseGovCsv(csvText) {
 
     let return1Y = col.return1Y >= 0 ? parsePercent(get(col.return1Y)) : null;
     let return3Y = col.return3Y >= 0 ? parsePercent(get(col.return3Y)) : null;
-    let return5Y = col.return5Y >= 0 ? parsePercent(get(col.return5Y)) : null;
+    const return5Y = col.return5Y >= 0 ? parsePercent(get(col.return5Y)) : null;
 
     if (return1Y == null && return5Y != null) return1Y = return5Y * 0.85;
     if (return3Y == null && return1Y != null && return5Y != null) {
@@ -126,8 +126,8 @@ function parseGovCsv(csvText) {
       name: fundName || provider,
       productType,
       riskLevel,
-      mgmtFeeAccumulation: mgmtFeeAccumulation,
-      mgmtFeeDeposit: mgmtFeeDeposit,
+      mgmtFeeAccumulation,
+      mgmtFeeDeposit,
       return1Y,
       return3Y,
       return5Y,

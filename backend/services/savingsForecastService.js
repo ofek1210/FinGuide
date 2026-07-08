@@ -202,7 +202,7 @@ const resolveCurrentMonthlyContribution = async ({
 };
 
 const buildForecastSummary = (currentScenario, adjustedScenario, { currentAge, retirementAge }) => {
-  const monthsToRetirement = currentScenario.monthsToRetirement;
+  const {monthsToRetirement} = currentScenario;
   const currentProjectedBalance = currentScenario.projectedBalance;
   const adjustedProjectedBalance = adjustedScenario.projectedBalance;
 

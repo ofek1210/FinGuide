@@ -1,6 +1,8 @@
 const {
   PAYSLIP_LABEL_MAP,
   FIELD_ORDER,
+  FULLTEXT_CORE_REGEXES,
+  FULLTEXT_SUPPLEMENTAL_REGEXES,
   extractAllAmountsFromLine,
   extractFromLinesByLabelMap,
   lineMatchesExclude,
@@ -15,10 +17,12 @@ const {
   isCumulativeLine,
   isLikelyCumulativeZoneLine,
   isLikelyTaxBaseNoiseLine,
+  isPayslipPeriodNoise,
   match1,
   parseMoney,
   parsePercent,
 } = require('./payslipOcrShared');
+const { detectPayslipFormatProfile } = require('./payslipFormatProfiles');
 
 const CORE_NUMERIC_FIELDS = [
   'gross_total',
@@ -27,29 +31,6 @@ const CORE_NUMERIC_FIELDS = [
   'income_tax',
   'national_insurance',
   'health_insurance',
-];
-
-const SUPPLEMENTAL_NUMERIC_FIELDS = [
-  'base_salary',
-  'global_overtime',
-  'travel_expenses',
-  'personal_credit',
-  'gross_for_income_tax',
-  'gross_for_national_insurance',
-  'job_percent',
-  'pension_base',
-  'pension_employee',
-  'pension_employer',
-  'pension_severance',
-  'study_base',
-  'study_employee',
-  'study_employer',
-  'bonus',
-  'holiday_pay',
-  'overtime_125',
-  'overtime_150',
-  'convalescence',
-  'clothing_allowance',
 ];
 
 const CORE_TABLE_CANDIDATE_FIELDS = [
@@ -82,15 +63,21 @@ const NUMERIC_FIELD_LIMITS = {
   pension_employee: { min: 0, max: 60000 },
   pension_employer: { min: 0, max: 60000 },
   pension_severance: { min: 0, max: 60000 },
+  pension_participation_total: { min: 0, max: 120000 },
   study_base: { min: 5000, max: 200000 },
   study_employee: { min: 0, max: 30000 },
   study_employer: { min: 0, max: 30000 },
+  study_participation_total: { min: 0, max: 60000 },
   bonus: { min: 0, max: 100000 },
   holiday_pay: { min: 0, max: 30000 },
   overtime_125: { min: 0, max: 50000 },
   overtime_150: { min: 0, max: 50000 },
   convalescence: { min: 0, max: 15000 },
   clothing_allowance: { min: 0, max: 10000 },
+  voluntary_life_insurance: { min: 0, max: 10000 },
+  voluntary_health_insurance: { min: 0, max: 10000 },
+  voluntary_disability_insurance: { min: 0, max: 10000 },
+  voluntary_collective_insurance: { min: 0, max: 10000 },
 };
 
 const QUALITY_FIELD_WEIGHTS = {
@@ -128,9 +115,11 @@ const FIELD_SECTIONS = {
   pension_employee: ['contributions'],
   pension_employer: ['contributions'],
   pension_severance: ['contributions'],
+  pension_participation_total: ['contributions'],
   study_base: ['contributions'],
   study_employee: ['contributions'],
   study_employer: ['contributions'],
+  study_participation_total: ['contributions'],
   bonus: ['earnings'],
   holiday_pay: ['earnings'],
   overtime_125: ['earnings'],
@@ -231,8 +220,15 @@ function isReasonableFieldValue(field, value) {
   return value >= limits.min && value <= limits.max;
 }
 
-function rankFieldAmounts(field, amounts) {
-  const filtered = [...new Set(amounts.filter(value => isReasonableFieldValue(field, value)))];
+function rankFieldAmounts(field, amounts, lineText) {
+  const filtered = [
+    ...new Set(
+      amounts.filter(
+        value =>
+          isReasonableFieldValue(field, value) && !isPayslipPeriodNoise(value, lineText),
+      ),
+    ),
+  ];
   return filtered.sort((a, b) => b - a);
 }
 
@@ -462,6 +458,28 @@ function pushRegexValueCandidates(
   }
 }
 
+/**
+ * Run a declarative regex-spec table (FULLTEXT_CORE_REGEXES /
+ * FULLTEXT_SUPPLEMENTAL_REGEXES from the label map) against the document text.
+ */
+function pushFullTextRegexCandidates(store, specs, { monthlyText, fullText }) {
+  for (const spec of specs) {
+    pushRegexValueCandidates(
+      store,
+      spec.field,
+      spec.scope === 'monthly' ? monthlyText : fullText,
+      spec.regexes,
+      {
+        source: spec.source,
+        score: spec.score,
+        reason: spec.reason,
+        section: spec.section,
+        parser: spec.parser === 'percent' ? parsePercent : undefined,
+      },
+    );
+  }
+}
+
 function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, adjacentScore = 0.86 } = {}) {
   for (const field of fields) {
     const patterns = PAYSLIP_LABEL_MAP[field] || [];
@@ -480,7 +498,7 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
         continue;
       }
 
-      const rankedAmounts = rankFieldAmounts(field, entry.amounts);
+      const rankedAmounts = rankFieldAmounts(field, entry.amounts, entry.raw);
       rankedAmounts.slice(0, 3).forEach((value, index) => {
         pushCandidate(store, field, value, {
           source: 'label_same_line',
@@ -511,7 +529,7 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
           });
           if (neighborOwned) continue;
 
-          const neighborAmounts = rankFieldAmounts(field, neighbor.amounts);
+          const neighborAmounts = rankFieldAmounts(field, neighbor.amounts, neighbor.raw);
           if (neighborAmounts.length !== 1) {
             continue;
           }
@@ -532,6 +550,7 @@ function collectLabelCandidates(store, context, fields, { adjacentWindow = 5, ad
 function collectCoreFieldCandidates(context) {
   const store = {};
   const legacyLabelMap = extractFromLinesByLabelMap(context.lines.map(line => line.raw));
+  const formatProfile = detectPayslipFormatProfile(context.lines, context.fullText);
 
   // For regex extraction, strip text after cumulative section markers
   // to avoid picking up year-to-date totals as monthly values.
@@ -539,6 +558,13 @@ function collectCoreFieldCandidates(context) {
   const monthlyText = cumulativeMarkerIndex > 0
     ? context.fullText.slice(0, cumulativeMarkerIndex)
     : context.fullText;
+
+  formatProfile?.collectSalaryCandidates({
+    lines: context.lines,
+    monthlyText,
+    store,
+    pushCandidate,
+  });
 
   collectLabelCandidates(store, context, CORE_NUMERIC_FIELDS);
   collectTableCandidates(store, context, CORE_TABLE_CANDIDATE_FIELDS, { tableMinCols: 6 });
@@ -554,7 +580,7 @@ function collectCoreFieldCandidates(context) {
     }
 
     const salaryRangeAmounts = amounts
-      .filter(value => value >= 2000 && value <= 100000)
+      .filter(value => value >= 2000 && value <= 250000)
       .sort((a, b) => b - a);
     const deductionRangeAmounts = amounts
       .filter(value => value >= 100 && value <= NUMERIC_FIELD_LIMITS.mandatory_total.max)
@@ -598,72 +624,9 @@ function collectCoreFieldCandidates(context) {
     }
   }
 
-  pushRegexValueCandidates(store, 'gross_total', context.fullText, [
-    /סך[-\s]?כל\s*התשלומים[^\d]*(\d[\d,.\s₪]+)/i,
-    /סה['"״]כ\s*תשלומים[^\d]*(\d[\d,.\s₪]+)/i,
-    /שכר\s*ברוטו[^\d]*(\d[\d,.\s₪]+)/i,
-  ], {
-    source: 'regex_gross_label',
-    score: 0.94,
-    reason: 'Matched gross salary with a dedicated regex.',
-    section: 'earnings',
-  });
-
-  pushRegexValueCandidates(store, 'net_payable', context.fullText, [
-    /נטו\s*לתשלום[^\d]*(\d[\d,.\s₪]+)/i,
-    /שכר\s*נטו(?:\s*לתשלום)?[^\d]*(\d[\d,.\s₪]+)/i,
-    /סה['"״]כ\s*לתשלום[^\d]*(\d[\d,.\s₪]+)/i,
-    /(\d[\d,.]+)\s*\n\s*לתשלום/i,
-  ], {
-    source: 'regex_net_label',
-    score: 0.93,
-    reason: 'Matched net salary with a dedicated regex.',
-    section: 'summary',
-  });
-
-  pushRegexValueCandidates(store, 'mandatory_total', context.fullText, [
-    /כל\s*הניכו\w*[^\d]*(\d[\d,.\s₪]+)/i,
-    /סה["״']?כ\s*ניכו\w*[^\d]*(\d[\d,.\s₪]+)/i,
-    /ניכויי\s*חובה[^\d]*(\d[\d,.\s₪]+)/i,
-    /(\d[\d,.]+)\s*\n?\s*ניכויי\s*חובה(?!\s*\n\s*\d)/i,
-  ], {
-    source: 'regex_mandatory_total',
-    score: 0.9,
-    reason: 'Matched mandatory deductions total with a dedicated regex.',
-    section: 'deductions',
-  });
-
-  pushRegexValueCandidates(store, 'income_tax', monthlyText, [
-    /מס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i,
-    /(\d[\d,.]+)[^\S\n]*מס\s*הכנסה/i,
-  ], {
-    source: 'regex_income_tax',
-    score: 0.89,
-    reason: 'Matched income tax with a dedicated regex.',
-    section: 'deductions',
-  });
-
-  pushRegexValueCandidates(store, 'national_insurance', monthlyText, [
-    /ביטוח\s*לאומי[^\d]*(\d[\d,.\s₪]+)/i,
-    /National\s+Insurance[^\d]*(\d[\d,.\s₪]+)/i,
-    /(\d[\d,.]+)[^\S\n]*(?:ב\.?\s*לאומי|בט\.\s*לאומי)/i,
-  ], {
-    source: 'regex_national_insurance',
-    score: 0.87,
-    reason: 'Matched national insurance with a dedicated regex.',
-    section: 'deductions',
-  });
-
-  pushRegexValueCandidates(store, 'health_insurance', monthlyText, [
-    /ביטוח\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
-    /מס\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
-    /Health\s+Insurance[^\d]*(\d[\d,.\s₪]+)/i,
-    /(\d[\d,.]+)[^\S\n]*מס\s*בריאות/i,
-  ], {
-    source: 'regex_health_insurance',
-    score: 0.87,
-    reason: 'Matched health insurance with a dedicated regex.',
-    section: 'deductions',
+  pushFullTextRegexCandidates(store, FULLTEXT_CORE_REGEXES, {
+    monthlyText,
+    fullText: context.fullText,
   });
 
   if (/סכום\s*בבנק/i.test(context.fullText)) {
@@ -697,6 +660,8 @@ function collectCoreFieldCandidates(context) {
     }
   }
 
+  formatProfile?.prioritizeSalaryCandidates(store);
+
   return store;
 }
 
@@ -717,101 +682,17 @@ function collectSupplementalFieldCandidates(context, labelMap = {}) {
   });
   collectTableCandidates(store, context, SUPPLEMENTAL_TABLE_CANDIDATE_FIELDS, { tableMinCols: 4, baseScore: 0.94 });
 
-  pushRegexValueCandidates(store, 'base_salary', context.fullText, [
-    /שכר\s*בסיס[^\d]*(\d[\d,.\s₪]+)/i,
-    /Base\s*Salary[^\d]*(\d[\d,.\s₪]+)/i,
-  ], {
-    source: 'regex_base_salary',
-    score: 0.88,
-    reason: 'Matched base salary with a dedicated regex.',
-    section: 'earnings',
+  pushFullTextRegexCandidates(store, FULLTEXT_SUPPLEMENTAL_REGEXES, {
+    monthlyText: context.fullText,
+    fullText: context.fullText,
   });
 
-  pushRegexValueCandidates(store, 'global_overtime', context.fullText, [
-    /ש\.?\s*נוס\.?\s*גלובל(?:י(?:ו(?:ת)?)?)?[^\d]*(\d[\d,.\s₪]+)/i,
-    /שעות\s*נוספות\s*גלובל[^\d]*(\d[\d,.\s₪]+)/i,
-    /overtime[^\d]*(\d[\d,.\s₪]+)/i,
-  ], {
-    source: 'regex_global_overtime',
-    score: 0.84,
-    reason: 'Matched global overtime with a dedicated regex.',
-    section: 'earnings',
-  });
-
-  pushRegexValueCandidates(store, 'travel_expenses', context.fullText, [
-    /נסיעות[^\d]*(\d[\d,.\s₪]+)/i,
-    /דמי\s*נסיעה[^\d]*(\d[\d,.\s₪]+)/i,
-    /travel[^\d]*(\d[\d,.\s₪]+)/i,
-  ], {
-    source: 'regex_travel_expenses',
-    score: 0.84,
-    reason: 'Matched travel expenses with a dedicated regex.',
-    section: 'earnings',
-  });
-
-  pushRegexValueCandidates(store, 'bonus', context.fullText, [
-    /בונוס[^\d]*(\d[\d,.\s₪]+)/i,
-    /מענק[^\d]*(\d[\d,.\s₪]+)/i,
-    /bonus[^\d]*(\d[\d,.\s₪]+)/i,
-  ], {
-    source: 'regex_bonus',
-    score: 0.82,
-    reason: 'Matched bonus with a dedicated regex.',
-    section: 'earnings',
-  });
-
-  pushRegexValueCandidates(store, 'convalescence', context.fullText, [
-    /(?:דמי\s*)?הבראה[^\d]*(\d[\d,.\s₪]+)/i,
-    /convalescence[^\d]*(\d[\d,.\s₪]+)/i,
-  ], {
-    source: 'regex_convalescence',
-    score: 0.82,
-    reason: 'Matched convalescence with a dedicated regex.',
-    section: 'earnings',
-  });
-
-  pushRegexValueCandidates(store, 'personal_credit', context.fullText, [
-    /זיכוי\s*אישי[^\d]*(\d[\d,.\s₪]+)/i,
-    /זיכוי\s*(?:ב|מ)מס[^\d]*(\d[\d,.\s₪]+)/i,
-    /personal\s*(?:tax\s*)?credit[^\d]*(\d[\d,.\s₪]+)/i,
-  ], {
-    source: 'regex_personal_credit',
-    score: 0.86,
-    reason: 'Matched personal tax credit amount with a dedicated regex.',
-    section: 'deductions',
-  });
-
-  pushRegexValueCandidates(store, 'gross_for_income_tax', context.fullText, [
-    /ברוטו\s*למס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i,
-    /הכנסה\s*חייבת\s*במס[^\d]*(\d[\d,.\s₪]+)/i,
-  ], {
-    source: 'regex_gross_for_income_tax',
-    score: 0.86,
-    reason: 'Matched taxable gross with a dedicated regex.',
-    section: 'tax_base',
-  });
-
-  pushRegexValueCandidates(store, 'gross_for_national_insurance', context.fullText, [
-    /(?:שכר\s*חייב\s*ב\.?\s*ל\.?|שכר\s*חייב\s*בב\.?\s*ל\.?|ברוטו\s*לב\.?\s*לאומי|הכנסה\s*חייבת\s*ביטוח\s*לאומי)[^\d]*(\d[\d,.\s₪]+)/i,
-  ], {
-    source: 'regex_gross_for_national_insurance',
-    score: 0.86,
-    reason: 'Matched national insurance gross with a dedicated regex.',
-    section: 'tax_base',
-  });
-
-  pushRegexValueCandidates(store, 'job_percent', context.fullText, [
-    /חלקיות\s+(\d+(?:\.\d+)?)%/i,
-    /אחוז\s*משרה[^\d]*(\d+(?:\.\d+)?)\s*%?/i,
-  ], {
-    source: 'regex_job_percent',
-    score: 0.82,
-    reason: 'Matched job percentage with a dedicated regex.',
-    parser: parsePercent,
-    section: 'summary',
-  });
-
-  for (const field of ['base_salary', 'global_overtime', 'travel_expenses', 'personal_credit', 'bonus', 'holiday_pay', 'overtime_125', 'overtime_150', 'convalescence', 'clothing_allowance']) {
+  for (const field of [
+    'base_salary', 'global_overtime', 'travel_expenses', 'personal_credit', 'bonus', 'holiday_pay',
+    'overtime_125', 'overtime_150', 'convalescence', 'clothing_allowance',
+    'voluntary_life_insurance', 'voluntary_health_insurance', 'voluntary_disability_insurance',
+    'voluntary_collective_insurance',
+  ]) {
     const value = labelMap[field];
     if (value !== undefined && isReasonableFieldValue(field, value)) {
       pushCandidate(store, field, value, {
@@ -1041,19 +922,14 @@ function rankExtractionCandidates(candidates = []) {
 }
 
 module.exports = {
-  CORE_NUMERIC_FIELDS,
-  QUALITY_FIELD_WEIGHTS,
-  SUPPLEMENTAL_NUMERIC_FIELDS,
   buildQualityPayload,
   collectCoreFieldCandidates,
   collectPeriodMonthCandidates,
   collectSupplementalFieldCandidates,
-  isReasonableFieldValue,
   pushCandidate,
   rankExtractionCandidates,
   resolveBestNumericCandidate,
   resolveGrossAndNetCandidates,
   resolveMandatoryTotalCandidate,
   sortCandidatesByScore,
-  inferEvidenceCategory,
 };

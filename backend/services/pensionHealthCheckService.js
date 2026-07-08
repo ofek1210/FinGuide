@@ -1,7 +1,8 @@
 /**
  * Pension Health Check — FINQ-inspired structured score (boxes א/ג/ה/ד).
  */
-'use strict';
+
+
 
 const { recommendedRiskLevel } = require('../utils/pensionShared');
 const { statusFromRatio, buildHealthCheckResult } = require('../utils/healthScoreShared');

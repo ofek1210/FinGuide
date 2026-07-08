@@ -3,7 +3,7 @@
  * Common with PDFs whose embedded fonts map incorrectly (U+FFFD mojibake).
  */
 
-const { parseMoney, linesOf } = require('./payslipOcrShared');
+const { parseMoney, linesOf, isLikelyBrokenHebrew } = require('./payslipOcrShared');
 
 const LEFT_AMOUNT_RE = /^\s*([\d]{1,3}(?:,\d{3})*\.\d{2})(?:\s+|$)/;
 const TRAILING_AMOUNT_RE = /([\d]{1,3}(?:,\d{3})*\.\d{2})\s*$/;
@@ -134,12 +134,20 @@ function rescueFromLayoutText(fullText) {
   };
 }
 
+/**
+ * Explicit numeric rescue: fills gross/net/deductions from the numeric layout
+ * ONLY when both conditions hold:
+ * 1. Critical salary fields are missing after normal extraction, and
+ * 2. The text's Hebrew labels are unusable (mojibake / broken encoding) —
+ *    otherwise a rescue would silently mask label-extraction bugs.
+ */
 function applyNumericRescue(result, fullText) {
   const gross = result?.salary?.gross_total;
   const net = result?.salary?.net_payable;
+
   const needsRescue =
     !Number.isFinite(gross) || gross <= 0 || !Number.isFinite(net) || net <= 0;
-  if (!needsRescue) return result;
+  if (!needsRescue || !isLikelyBrokenHebrew(fullText)) return result;
 
   const rescued = rescueFromLayoutText(fullText);
   if (!rescued) return result;
@@ -155,7 +163,7 @@ function applyNumericRescue(result, fullText) {
 
   result.deductions = result.deductions || {};
   result.deductions.mandatory = result.deductions.mandatory || {};
-  const mandatory = result.deductions.mandatory;
+  const {mandatory} = result.deductions;
 
   if (!Number.isFinite(mandatory.total) || mandatory.total <= 0) {
     mandatory.total = rescued.mandatory_total;

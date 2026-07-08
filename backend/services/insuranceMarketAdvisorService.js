@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Insurance Market Advisor — cost vs service index vs market baseline.

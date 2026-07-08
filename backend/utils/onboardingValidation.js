@@ -147,7 +147,7 @@ const checkField = (sectionName, fieldName, rule, value, errors) => {
       if (!isValidDateString(value)) {
         errors.push({ field: path, message: 'Must be YYYY-MM-DD' });
       }
-      return;
+      
 
     default:
       // Unknown rule type, ignore.

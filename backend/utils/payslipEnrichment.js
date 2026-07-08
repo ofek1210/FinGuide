@@ -16,6 +16,16 @@ function isGrossPlausible(gross, salary) {
   return gross >= maxComponent;
 }
 
+function sumSalaryComponents(salary) {
+  const components = salary?.components;
+  if (!Array.isArray(components) || !components.length) return null;
+  const total = components.reduce((sum, c) => {
+    const amount = toFiniteNumber(c.amount);
+    return amount != null && amount > 0 ? sum + amount : sum;
+  }, 0);
+  return total > 0 ? Math.round(total * 100) / 100 : null;
+}
+
 function readPensionEmployee(analysis) {
   const summary = analysis?.summary || {};
   const pension = analysis?.contributions?.pension || {};
@@ -82,9 +92,8 @@ function enrichSummary(document) {
   const rawGross = toPositiveSalary(summary.grossSalary) ?? toPositiveSalary(salary.gross_total);
   const grossSalary = isGrossPlausible(rawGross, salary)
     ? rawGross
-    : (toPositiveSalary(contributions?.pension?.base_salary_for_pension)
+    : (toPositiveSalary(sumSalaryComponents(salary))
         ?? toPositiveSalary(tax.gross_for_income_tax)
-        ?? toPositiveSalary(salary.gross_total)
         ?? rawGross);
 
   const rawNet = toPositiveSalary(summary.netSalary) ?? toPositiveSalary(salary.net_payable);

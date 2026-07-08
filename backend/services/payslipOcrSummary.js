@@ -78,6 +78,12 @@ function buildPayslipSummary(data, rawText) {
   const nationalInsurance = data.deductions?.mandatory?.national_insurance ?? null;
   const healthInsurance = data.deductions?.mandatory?.health_insurance ?? null;
   const mandatoryDeductionsTotal = data.deductions?.mandatory?.total ?? null;
+  const voluntary = data.deductions?.voluntary || {};
+  const voluntaryLifeInsurance = voluntary.life_insurance ?? null;
+  const voluntaryHealthInsurance = voluntary.health_insurance ?? null;
+  const voluntaryDisabilityInsurance = voluntary.disability_insurance ?? null;
+  const voluntaryCollectiveInsurance = voluntary.collective_insurance ?? null;
+  const voluntaryDeductionsTotal = data.deductions?.voluntary_total ?? null;
   const jobPercentage = data.employment?.job_percent ?? null;
   const marginalTaxRate = data.tax?.marginal_tax_rate_percent ?? null;
   const taxCreditPoints = data.tax?.tax_credit_points ?? null;
@@ -131,6 +137,11 @@ function buildPayslipSummary(data, rawText) {
     nationalInsurance,
     healthInsurance,
     mandatoryDeductionsTotal,
+    voluntaryLifeInsurance,
+    voluntaryHealthInsurance,
+    voluntaryDisabilityInsurance,
+    voluntaryCollectiveInsurance,
+    voluntaryDeductionsTotal,
     marginalTaxRate,
     taxCreditPoints,
     jobPercentage,

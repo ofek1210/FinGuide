@@ -1,4 +1,4 @@
-'use strict';
+
 
 const URGENCY_TO_SEVERITY = {
   high: 'warning',

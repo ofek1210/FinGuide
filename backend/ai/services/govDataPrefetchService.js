@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Warm pension + insurance gov caches and verify gemel/bituah DB snapshots.

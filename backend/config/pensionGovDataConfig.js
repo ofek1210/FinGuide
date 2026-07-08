@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * data.gov.il / Pensia-Net integration config.

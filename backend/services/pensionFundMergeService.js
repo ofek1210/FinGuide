@@ -1,7 +1,8 @@
 /**
  * Merge pension funds from multiple import sources (har_hakesef, quarterly_report, manual).
  */
-'use strict';
+
+
 
 const PensionFund = require('../models/PensionFund');
 const { norm, upsertImportedRecords } = require('./importMergeService');

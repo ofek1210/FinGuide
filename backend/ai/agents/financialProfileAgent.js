@@ -4,7 +4,7 @@
  * Pipeline: getFinancialProfile → calculateRiskProfile → detectPriorities → LLM
  */
 
-'use strict';
+
 
 const { getFinancialProfile, calculateRiskProfile, detectFinancialPriorities } = require('../tools/profileTools');
 

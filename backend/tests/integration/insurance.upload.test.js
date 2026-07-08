@@ -1,4 +1,4 @@
-'use strict';
+
 
 const request = require('supertest');
 const { createDomainTestHarness } = require('../helpers/domainTestHarness');

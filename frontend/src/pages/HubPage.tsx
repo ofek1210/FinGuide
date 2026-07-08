@@ -10,6 +10,8 @@ import { AGENTS, type AgentId } from "../theme/agents";
 import { listFindings, type FindingItem } from "../api/findings.api";
 import { getPensionAnalysis, getPensionImportHistory, type PensionAnalysisData } from "../api/pension.api";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
+import { enrichPayslipFromDoc } from "../utils/payslipEnrichment";
+import { getInsuranceAnalysis } from "../api/insuranceAI.api";
 import type { FullAnalysisGlobalScore } from "../api/fullAnalysis.api";
 
 /* ============================================================
@@ -245,9 +247,10 @@ function periodKey(d: DocumentItem): number {
 /** net-salary trend across the user's completed payslips (last 6 with a net value) */
 function netTrend(docs: DocumentItem[]): number[] {
   const points = docs
-    .filter(d => (d.status === "completed" || d.status === "needs_review") && d.analysisData?.summary?.netSalary != null)
+    .filter(d => d.status === "completed" || d.status === "needs_review")
     .sort((a, b) => periodKey(a) - periodKey(b))
-    .map(d => d.analysisData!.summary!.netSalary as number)
+    .map(d => enrichPayslipFromDoc(d).netSalary)
+    .filter((n): n is number => n != null)
     .slice(-6);
   return points.length >= 2 ? points : [];
 }

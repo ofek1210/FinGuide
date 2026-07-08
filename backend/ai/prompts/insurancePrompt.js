@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Insurance Optimization Agent prompt — Har HaBituach aggregation & true duplication rules.

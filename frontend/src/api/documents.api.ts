@@ -232,9 +232,7 @@ export const listDocuments = async () => {
     } as ListDocumentsResponse;
   }
 
-  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
-  console.log("[frontend] listDocuments response", payload);
-  return payload;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
 };
 
 export const listRecentPayslips = async (limit = 3) => {
@@ -296,9 +294,7 @@ export const uploadDocument = async (
   if (!result.ok) {
     return { success: false, message: result.error.message } as UploadDocumentResponse;
   }
-  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as UploadDocumentResponse);
-  console.log("[frontend] uploadDocument response", payload);
-  return payload;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as UploadDocumentResponse);
 };
 
 export const getDocument = async (id: string) => {
@@ -316,9 +312,7 @@ export const getDocument = async (id: string) => {
     return { success: false, message: result.error.message } as DocumentResponse;
   }
 
-  const payload = result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
-  console.log("[frontend] getDocument response", payload);
-  return payload;
+  return result.data || ({ success: false, message: "תגובה לא תקינה." } as DocumentResponse);
 };
 
 /**

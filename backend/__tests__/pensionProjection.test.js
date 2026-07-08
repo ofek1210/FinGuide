@@ -1,4 +1,4 @@
-﻿'use strict';
+
 
 const { projectPensionIncome, PENSION_DEFAULTS } = require('../ai/engines/calculationEngine');
 

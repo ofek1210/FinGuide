@@ -137,6 +137,50 @@ function buildPayslipHistoryIntelligence(documents, { year } = {}) {
       };
     });
 
+  const incompleteItems = resolved
+    .filter(entry => entry.period.incompletePeriod)
+    .map(entry => {
+      const missingCritical = [...computeMissingCritical(entry), 'period'];
+      const uploadedAt = entry.doc.uploadedAt ? new Date(entry.doc.uploadedAt) : null;
+      const uploadYear = uploadedAt && !Number.isNaN(uploadedAt.getTime())
+        ? uploadedAt.getFullYear()
+        : null;
+      const uploadMonth = uploadedAt && !Number.isNaN(uploadedAt.getTime())
+        ? uploadedAt.getMonth() + 1
+        : null;
+      return {
+        id: entry.doc._id?.toString?.() || entry.doc._id,
+        periodMonth: uploadYear && uploadMonth
+          ? `${uploadYear}-${String(uploadMonth).padStart(2, '0')}`
+          : 'unknown',
+        periodYear: uploadYear,
+        periodMonthNumber: uploadMonth,
+        grossSalary: entry.summary.grossSalary,
+        netSalary: entry.summary.netSalary,
+        tax: entry.summary.tax,
+        nationalInsurance: entry.summary.nationalInsurance,
+        healthInsurance: entry.summary.healthInsurance,
+        pensionEmployee: entry.summary.pensionEmployee,
+        pensionEmployer: entry.summary.pensionEmployer,
+        pensionSeverance: entry.summary.pensionSeverance,
+        uploadedAt: entry.doc.uploadedAt || null,
+        isLatest: false,
+        needsReview: true,
+        missingCritical,
+        incompletePeriod: true,
+        originalName: entry.doc.originalName || null,
+      };
+    })
+    .filter(item => allYears || !Number.isFinite(selectedYear) || item.periodYear === selectedYear);
+
+  const mergedItems = [...selectedYearEntries, ...incompleteItems]
+    .sort((a, b) => {
+      const aTs = new Date(a.uploadedAt || 0).getTime();
+      const bTs = new Date(b.uploadedAt || 0).getTime();
+      return bTs - aTs;
+    })
+    .map((item, index) => ({ ...item, isLatest: index === 0 }));
+
   const selectedYearStats = yearStats.find(stat => stat.year === selectedYear) || {
     year: selectedYear,
     monthsPresent: [],
@@ -181,7 +225,7 @@ function buildPayslipHistoryIntelligence(documents, { year } = {}) {
     years: yearStats,
     selectedYear,
     selectedYearStats,
-    items: selectedYearEntries,
+    items: mergedItems,
     missingMonthsByYear,
     incompletePeriods,
     taxAdjustment,

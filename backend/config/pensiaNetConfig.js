@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Pensia-Net (data.gov.il) ingestion + recommendation config.

@@ -37,7 +37,7 @@ async function notifyRecommendationNew(userId, recommendation) {
 }
 
 async function notifyDocumentProcessed(userId, document) {
-  const status = document.status;
+  const {status} = document;
   const title = status === 'completed' ? 'תלוש עובד בהצלחה' : 'תלוש דורש בדיקה';
   const body =
     status === 'completed'

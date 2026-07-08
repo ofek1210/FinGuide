@@ -1,7 +1,8 @@
 /**
  * Pension benchmark findings for GET /api/findings.
  */
-'use strict';
+
+
 
 const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
 const {

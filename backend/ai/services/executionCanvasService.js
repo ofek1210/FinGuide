@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Execution Canvas — structured work plan before multi-agent analysis.

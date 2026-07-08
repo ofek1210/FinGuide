@@ -145,6 +145,14 @@ const getMinimumForRole = (thresholds, fundType, role) => {
   return fundThresholds.severanceMinPercent ?? null;
 };
 
+const resolveContributionBase = (analysisData, fundBlock, config) => {
+  const fundBase = toAmount(fundBlock[config.baseField]);
+  if (fundBase != null && fundBase > 0) {
+    return fundBase;
+  }
+  return toAmount(analysisData?.salary?.gross_total);
+};
+
 const analyzeContributionRates = (analysisData, fundType, thresholdsInput) => {
   const config = FUND_CONFIG[fundType];
   const thresholds = thresholdsInput || getContributionRateThresholds();
@@ -166,7 +174,7 @@ const analyzeContributionRates = (analysisData, fundType, thresholdsInput) => {
   }
 
   const fundBlock = analysisData?.contributions?.[config.contributionKey] || {};
-  const base = fundBlock[config.baseField];
+  const base = resolveContributionBase(analysisData, fundBlock, config);
   const warningCategories = getWarningCategories(analysisData);
   const ambiguousRoles = warningCategories.includes(config.ambiguousCategory);
 
@@ -301,7 +309,7 @@ const buildContributionRateGapFindings = (documents, thresholdsInput) => {
     if (!doc || doc.status !== 'completed' || !isPayslipDocument(doc)) {
       return;
     }
-    const analysisData = doc.analysisData;
+    const {analysisData} = doc;
     if (!analysisData || typeof analysisData !== 'object') {
       return;
     }

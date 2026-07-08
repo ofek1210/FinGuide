@@ -5,7 +5,7 @@
  * Validates input, calls orchestratorAgent, returns sanitized response.
  */
 
-'use strict';
+
 
 const { runFullAnalysis } = require('../agents/orchestratorAgent');
 

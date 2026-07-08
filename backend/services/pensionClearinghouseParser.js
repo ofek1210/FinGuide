@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Parser for official Pension Clearinghouse (מסלקה פנסיונית) Excel exports.

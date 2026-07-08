@@ -1,7 +1,8 @@
 /**
  * Shared pension constants and pure helpers — single source for risk/fee logic.
  */
-'use strict';
+
+
 
 const { getMarketAverage } = require('../config/pensionBenchmarkTables');
 

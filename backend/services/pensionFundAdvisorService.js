@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Pension Fund Advisor — actuarial verdict engine (LEAVE | NEGOTIATE | SWITCH).

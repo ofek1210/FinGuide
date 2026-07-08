@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Pension Comparison Engine — compares user pension products vs Pensia-Net market data.

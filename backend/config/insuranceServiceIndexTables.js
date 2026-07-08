@@ -1,4 +1,4 @@
-'use strict';
+
 
 /**
  * Static insurance service index (מדד השירות) — 2024 ISA estimates.
@@ -52,12 +52,12 @@ function getServiceScores(providerName, policyType = 'other') {
 
   const adj = BRANCH_ADJUSTMENTS[policyType]?.[matched.id] ?? 0;
   const claimPaymentRate = Math.min(100, Math.max(0, matched.claimPaymentRate + adj));
-  const satisfactionScore = matched.satisfactionScore;
+  const {satisfactionScore} = matched;
   const serviceIndex = Math.round((claimPaymentRate * 0.6 + satisfactionScore * 0.4));
 
   return {
     providerId: matched.id,
-    providerName: providerName,
+    providerName,
     claimPaymentRate,
     satisfactionScore,
     serviceIndex,

@@ -12,6 +12,7 @@ const {
   extractAllNumericTokens,
   extractOrderedNumericTokens,
 } = require('./payslipOcrNumbers');
+const { normalizeHebrewLine } = require('./payslipOcrShared');
 
 // ---------------------------------------------------------------------------
 // Label map: field key → array of patterns (string or RegExp)
@@ -25,24 +26,34 @@ const PAYSLIP_LABEL_MAP = {
     'סך כל התשלומים',
     'סך תשלומים',
     'ברוטו שוטף',
+    'ברוטו כולל תוספות',
+    'ברוטו כולל',
     "סה''כ תשלומים שוטף",
     'סה"כ תשלומים שוטף',
+    "סה''כ תשלומים שוטפים",
+    'סה"כ תשלומים שוטפים',
+    'סהכ תשלומים שוטפים',
     "סך-כל התשלומים",
     "סה''כ תשלומים",
     'סה"כ תשלומים',
     'שכר ברוטו',
     'סה"כ ברוטו',
-    'שכר לקצבה',
+    'שכר חיובי',
+    'סך הכל ברוטו',
     /סך[-\s]?כל\s*התשלומים/i,
     /סך\s*תשלומים/i,
     /ברוטו\s*שוטף/i,
-    /סה['"]?כ\s*תשלומים/i,
+    /ברוטו\s*כולל(?:\s*תוספות)?/i,
+    /סה['"]?כ\s*תשלומים(?:\s*שוטפים?)?/i,
+    /סהכ\s*תשלומים(?:\s*שוטפים?)?/i,
     /שכר\s*ברוטו/i,
+    /שכר\s*חיובי/i,
+    /סך\s*הכל\s*ברוטו/i,
     /Gross\s*(?:Salary|Total)?/i,
     /Total\s*Gross/i,
   ],
-  // Do NOT match "ברוטו למס הכנסה" (taxable base) for gross_total
-  _gross_total_exclude: [/ברוטו\s*למס/i, /למס\s*הכנסה/i],
+  // Do NOT match pension base or taxable-base lines as gross_total
+  _gross_total_exclude: [/ברוטו\s*למס/i, /למס\s*הכנסה/i, /שכר\s*לקצבה/i],
 
   net_payable: [
     'סכום בבנק',
@@ -50,12 +61,20 @@ const PAYSLIP_LABEL_MAP = {
     'נטו לתשלום',
     'שכר נטו לתשלום',
     'שכר נטו',
+    'שכר חודשי נטו',
     'סה"כ לתשלום',
     "סה''כ לתשלום",
+    'סה"כ נטו',
+    'נטו לקבלה',
+    'סכום לתשלום',
     'לתשלום',
     /סכום\s*בבנק/i,
     /נטו\s*לתשלום/i,
+    /נטו\s*לקבלה/i,
+    /שכר\s*חודשי\s*נטו/i,
     /שכר\s*נטו/i,
+    /סה['"]?כ\s*נטו/i,
+    /סה['"]?כ\s*לתשלום/i,
     /Net\s*(?:Salary|Pay|Payable)?/i,
     /Take\s*Home/i,
     /לתשלום\s*\d/i,
@@ -79,6 +98,36 @@ const PAYSLIP_LABEL_MAP = {
   _net_payable_exclude: [/תעריף/i, /tariff/i, /rate/i, /מצטבר/i, /cumulative/i],
 
   _mandatory_total_exclude: [/מצטבר/i, /cumulative/i],
+
+  voluntary_life_insurance: [
+    'ביטוח חיים',
+    'ביטוח חיים קבוצתי',
+    /ביטוח\s*חיים/i,
+    /life\s*insurance/i,
+  ],
+
+  voluntary_health_insurance: [
+    'ביטוח בריאות קבוצתי',
+    'ביטוח בריאות פרטי',
+    /ביטוח\s*בריאות\s*קבוצתי/i,
+    /ביטוח\s*בריאות\s*פרטי/i,
+  ],
+
+  voluntary_disability_insurance: [
+    'אובדן כושר עבודה',
+    'א.כ.ע',
+    'א.כ.ע.',
+    /אובדן\s*כושר\s*עבודה/i,
+    /\bא\.?\s*כ\.?\s*ע\.?\b/i,
+    /disability\s*insurance/i,
+  ],
+
+  voluntary_collective_insurance: [
+    'ביטוח קבוצתי',
+    'ביטוחים קבוצתיים',
+    /ביטוח\s*קבוצתי/i,
+  ],
+  _voluntary_collective_insurance_exclude: [/ביטוח\s*חיים/i, /ביטוח\s*בריאות/i, /מצטבר/i],
 
   income_tax: [
     'מס הכנסה',
@@ -109,7 +158,7 @@ const PAYSLIP_LABEL_MAP = {
     /מס\s*בריאות/i,
     /health\s+insurance/i,
   ],
-  _health_insurance_exclude: [/מצטבר/i, /cumulative/i],
+  _health_insurance_exclude: [/מצטבר/i, /cumulative/i, /ביטוח\s*בריאות\s*קבוצתי/i, /ביטוח\s*בריאות\s*פרטי/i],
 
   base_salary: [
     'שכר בסיס',
@@ -193,6 +242,221 @@ const PAYSLIP_LABEL_MAP = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// Full-text capture regexes: field → { regexes, score, section, reason }
+// Complements PAYSLIP_LABEL_MAP for cross-line / concatenated layouts where
+// per-line label matching fails. This is the ONLY place to add such variants —
+// the resolver just iterates these tables (no per-field regex code there).
+// scope: 'monthly' = run on text truncated before the cumulative section,
+//        'full'    = run on the whole document text.
+// ---------------------------------------------------------------------------
+
+const FULLTEXT_CORE_REGEXES = [
+  {
+    field: 'gross_total',
+    scope: 'monthly',
+    source: 'regex_gross_label',
+    score: 0.94,
+    section: 'earnings',
+    reason: 'Matched gross salary with a dedicated regex.',
+    regexes: [
+      /סך[-\s]?כל\s*התשלומים[^\d]*(\d[\d,.\s₪]+)/i,
+      /סה[_\s"״'’]*כ[_\s]*תשלומים(?:[_\s]*שוטפים?)?[^\d]*(\d[\d,.\s₪]+)/i,
+      /סה['"״]כ\s*תשלומים(?:\s*שוטפים?)?[^\d]*(\d[\d,.\s₪]+)/i,
+      /סהכ\s*תשלומים(?:\s*שוטפים?)?[^\d]*(\d[\d,.\s₪]+)/i,
+      /שכר\s*ברוטו[^\d]*(\d[\d,.\s₪]+)/i,
+      /שכר\s*חיובי[^\d]*(\d[\d,.\s₪]+)/i,
+      /סך\s*הכל\s*ברוטו[^\d]*(\d[\d,.\s₪]+)/i,
+    ],
+  },
+  {
+    field: 'net_payable',
+    scope: 'monthly',
+    source: 'regex_net_label',
+    score: 0.93,
+    section: 'summary',
+    reason: 'Matched net salary with a dedicated regex.',
+    regexes: [
+      /נטו\s*לתשלום[^\d]*(\d[\d,.\s₪]+)/i,
+      /נטו\s*לקבלה[^\d]*(\d[\d,.\s₪]+)/i,
+      /שכר[_\s]*חודשי[_\s]*נטו[^\d]*(\d[\d,.\s₪]+)/i,
+      /שכר\s*חודשי\s*נטו[^\d]*(\d[\d,.\s₪]+)/i,
+      /שכר\s*נטו(?:\s*לתשלום)?[^\d]*(\d[\d,.\s₪]+)/i,
+      /סה['"״]כ\s*לתשלום[^\d]*(\d[\d,.\s₪]+)/i,
+      /סה['"״]כ\s*נטו[^\d]*(\d[\d,.\s₪]+)/i,
+      /(\d[\d,.]+)\s*\n\s*לתשלום/i,
+    ],
+  },
+  {
+    field: 'mandatory_total',
+    scope: 'full',
+    source: 'regex_mandatory_total',
+    score: 0.9,
+    section: 'deductions',
+    reason: 'Matched mandatory deductions total with a dedicated regex.',
+    regexes: [
+      /כל\s*הניכו\w*[^\d]*(\d[\d,.\s₪]+)/i,
+      /סה["״']?כ\s*ניכו\w*[^\d]*(\d[\d,.\s₪]+)/i,
+      /ניכויי\s*חובה[^\d]*(\d[\d,.\s₪]+)/i,
+      /(\d[\d,.]+)\s*\n?\s*ניכויי\s*חובה(?!\s*\n\s*\d)/i,
+    ],
+  },
+  {
+    field: 'income_tax',
+    scope: 'monthly',
+    source: 'regex_income_tax',
+    score: 0.89,
+    section: 'deductions',
+    reason: 'Matched income tax with a dedicated regex.',
+    regexes: [
+      /מס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i,
+      /(\d[\d,.]+)[^\S\n]*מס\s*הכנסה/i,
+    ],
+  },
+  {
+    field: 'national_insurance',
+    scope: 'monthly',
+    source: 'regex_national_insurance',
+    score: 0.87,
+    section: 'deductions',
+    reason: 'Matched national insurance with a dedicated regex.',
+    regexes: [
+      /ביטוח\s*לאומי[^\d]*(\d[\d,.\s₪]+)/i,
+      /National\s+Insurance[^\d]*(\d[\d,.\s₪]+)/i,
+      /(\d[\d,.]+)[^\S\n]*(?:ב\.?\s*לאומי|בט\.\s*לאומי)/i,
+    ],
+  },
+  {
+    field: 'health_insurance',
+    scope: 'monthly',
+    source: 'regex_health_insurance',
+    score: 0.87,
+    section: 'deductions',
+    reason: 'Matched health insurance with a dedicated regex.',
+    regexes: [
+      /ביטוח\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
+      /מס\s*בריאות[^\d]*(\d[\d,.\s₪]+)/i,
+      /Health\s+Insurance[^\d]*(\d[\d,.\s₪]+)/i,
+      /(\d[\d,.]+)[^\S\n]*מס\s*בריאות/i,
+    ],
+  },
+];
+
+const FULLTEXT_SUPPLEMENTAL_REGEXES = [
+  {
+    field: 'base_salary',
+    scope: 'full',
+    source: 'regex_base_salary',
+    score: 0.88,
+    section: 'earnings',
+    reason: 'Matched base salary with a dedicated regex.',
+    regexes: [
+      /שכר\s*בסיס[^\d]*(\d[\d,.\s₪]+)/i,
+      /Base\s*Salary[^\d]*(\d[\d,.\s₪]+)/i,
+    ],
+  },
+  {
+    field: 'global_overtime',
+    scope: 'full',
+    source: 'regex_global_overtime',
+    score: 0.84,
+    section: 'earnings',
+    reason: 'Matched global overtime with a dedicated regex.',
+    regexes: [
+      /ש\.?\s*נוס\.?\s*גלובל(?:י(?:ו(?:ת)?)?)?[^\d]*(\d[\d,.\s₪]+)/i,
+      /שעות\s*נוספות\s*גלובל[^\d]*(\d[\d,.\s₪]+)/i,
+      /overtime[^\d]*(\d[\d,.\s₪]+)/i,
+    ],
+  },
+  {
+    field: 'travel_expenses',
+    scope: 'full',
+    source: 'regex_travel_expenses',
+    score: 0.84,
+    section: 'earnings',
+    reason: 'Matched travel expenses with a dedicated regex.',
+    regexes: [
+      /נסיעות[^\d]*(\d[\d,.\s₪]+)/i,
+      /דמי\s*נסיעה[^\d]*(\d[\d,.\s₪]+)/i,
+      /travel[^\d]*(\d[\d,.\s₪]+)/i,
+    ],
+  },
+  {
+    field: 'bonus',
+    scope: 'full',
+    source: 'regex_bonus',
+    score: 0.82,
+    section: 'earnings',
+    reason: 'Matched bonus with a dedicated regex.',
+    regexes: [
+      /בונוס[^\d]*(\d[\d,.\s₪]+)/i,
+      /מענק[^\d]*(\d[\d,.\s₪]+)/i,
+      /bonus[^\d]*(\d[\d,.\s₪]+)/i,
+    ],
+  },
+  {
+    field: 'convalescence',
+    scope: 'full',
+    source: 'regex_convalescence',
+    score: 0.82,
+    section: 'earnings',
+    reason: 'Matched convalescence with a dedicated regex.',
+    regexes: [
+      /(?:דמי\s*)?הבראה[^\d]*(\d[\d,.\s₪]+)/i,
+      /convalescence[^\d]*(\d[\d,.\s₪]+)/i,
+    ],
+  },
+  {
+    field: 'personal_credit',
+    scope: 'full',
+    source: 'regex_personal_credit',
+    score: 0.86,
+    section: 'deductions',
+    reason: 'Matched personal tax credit amount with a dedicated regex.',
+    regexes: [
+      /זיכוי\s*אישי[^\d]*(\d[\d,.\s₪]+)/i,
+      /זיכוי\s*(?:ב|מ)מס[^\d]*(\d[\d,.\s₪]+)/i,
+      /personal\s*(?:tax\s*)?credit[^\d]*(\d[\d,.\s₪]+)/i,
+    ],
+  },
+  {
+    field: 'gross_for_income_tax',
+    scope: 'full',
+    source: 'regex_gross_for_income_tax',
+    score: 0.86,
+    section: 'tax_base',
+    reason: 'Matched taxable gross with a dedicated regex.',
+    regexes: [
+      /ברוטו\s*למס\s*הכנסה[^\d]*(\d[\d,.\s₪]+)/i,
+      /הכנסה\s*חייבת\s*במס[^\d]*(\d[\d,.\s₪]+)/i,
+    ],
+  },
+  {
+    field: 'gross_for_national_insurance',
+    scope: 'full',
+    source: 'regex_gross_for_national_insurance',
+    score: 0.86,
+    section: 'tax_base',
+    reason: 'Matched national insurance gross with a dedicated regex.',
+    regexes: [
+      /(?:שכר\s*חייב\s*ב\.?\s*ל\.?|שכר\s*חייב\s*בב\.?\s*ל\.?|ברוטו\s*לב\.?\s*לאומי|הכנסה\s*חייבת\s*ביטוח\s*לאומי)[^\d]*(\d[\d,.\s₪]+)/i,
+    ],
+  },
+  {
+    field: 'job_percent',
+    scope: 'full',
+    source: 'regex_job_percent',
+    score: 0.82,
+    section: 'summary',
+    reason: 'Matched job percentage with a dedicated regex.',
+    parser: 'percent',
+    regexes: [
+      /חלקיות\s+(\d+(?:\.\d+)?)%/i,
+      /אחוז\s*משרה[^\d]*(\d+(?:\.\d+)?)\s*%?/i,
+    ],
+  },
+];
+
 /** Field order: first match wins when a line matches multiple labels. */
 const FIELD_ORDER = [
   'gross_total',
@@ -200,6 +464,10 @@ const FIELD_ORDER = [
   'mandatory_total',
   'income_tax',
   'national_insurance',
+  'voluntary_life_insurance',
+  'voluntary_health_insurance',
+  'voluntary_disability_insurance',
+  'voluntary_collective_insurance',
   'health_insurance',
   'personal_credit',
   'base_salary',
@@ -217,14 +485,7 @@ const FIELD_ORDER = [
 // Helpers
 // ---------------------------------------------------------------------------
 
-function normalizeLine(line) {
-  if (!line || typeof line !== 'string') return '';
-  return line
-    .replace(/\s+/g, ' ')
-    .replace(/[''`׳]/g, "'")
-    .replace(/[""״]/g, '"')
-    .trim();
-}
+const normalizeLine = normalizeHebrewLine;
 
 function lineMatchesPattern(normalizedLine, pattern) {
   if (typeof pattern === 'string') {
@@ -533,6 +794,8 @@ function addLabelPatterns(fieldKey, patterns) {
 module.exports = {
   PAYSLIP_LABEL_MAP,
   FIELD_ORDER,
+  FULLTEXT_CORE_REGEXES,
+  FULLTEXT_SUPPLEMENTAL_REGEXES,
   extractFromLinesByLabelMap,
   addLabelPatterns,
   normalizeLine,

@@ -1,7 +1,8 @@
 /**
  * Unified insurance analysis — reused by API and upload response.
  */
-'use strict';
+
+
 
 const InsurancePolicy = require('../models/InsurancePolicy');
 const {

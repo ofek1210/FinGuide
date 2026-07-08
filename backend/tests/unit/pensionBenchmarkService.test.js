@@ -1,4 +1,4 @@
-'use strict';
+
 
 const { benchmarkPortfolio, matchFundToTrack, feeStatus } = require('../../services/pensionBenchmarkService');
 
