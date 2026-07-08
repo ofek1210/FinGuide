@@ -567,19 +567,15 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
 
           {/* synthesis — the master agent's cross-referenced output */}
           {result && (
-            <div style={{ marginTop: 22, animation: "fgRise .6s .15s var(--ease) both" }}>
-              {/* unified summary — ONLY after a full analysis (the only run that
-                  spends model credit on a cross-agent narrative). Focused agent
-                  runs never reach here. */}
-              {result.summary && (
-                <>
-                  {/* full-analysis banner — emphasises all three agents converged */}
-                  <div style={{ textAlign: "center", marginBottom: 16 }}>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, fontWeight: 800, letterSpacing: ".14em", color: "#fff" }}>
-                      <span style={{ width: 22, height: 3, borderRadius: 2, background: AGENT_GRADIENT }} />
-                      ניתוח מלא · שלושת הסוכנים הצטלבו
-                      <span style={{ width: 22, height: 3, borderRadius: 2, background: AGENT_GRADIENT }} />
-                    </span>
+            <div style={{ marginTop: 18, display: "grid", gridTemplateColumns: actionItems.length > 0 ? "1.05fr .95fr" : "1fr", gap: 14, animation: "fgRise .6s .15s var(--ease) both" }}>
+              {/* cross-referenced action items */}
+              {actionItems.length > 0 && (
+                <div style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.11)", borderRadius: "var(--r-md)", padding: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                    <span style={{ fontWeight: 900, fontSize: 15 }}>הצלבת הסוכן הראשי — פעולות מומלצות</span>
+                    <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 12.5, fontWeight: 700, color: "rgba(255,255,255,.65)" }}>
+                      לכל הממצאים <ArrowLeft size={14} strokeWidth={2.4} />
+                    </button>
                   </div>
 
                   {/* framed by a gentle gradient of all three agent colours.

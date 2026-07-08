@@ -31,6 +31,8 @@ describe('insuranceMarketAdvisor', () => {
     const advice = await buildMarketAdvice(profileDTO.policies, profileDTO);
     expect(advice.hasData).toBe(true);
     expect(advice.comparisonMatrix.length).toBe(1);
+    expect(advice.pricingSource?.sourceName).toBeTruthy();
+    expect(advice.disclaimerEn).toMatch(/not official quotes/i);
     expect([VERDICT.STAY, VERDICT.REVIEW]).toContain(advice.policies[0].verdict);
   });
 

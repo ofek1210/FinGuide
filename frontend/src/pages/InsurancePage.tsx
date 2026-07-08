@@ -14,6 +14,7 @@ import AppFooter from "../components/AppFooter";
 import InsuranceRibbonWave from "../components/insurance/InsuranceRibbonWave";
 import InsuranceImportGuide from "../components/insurance/InsuranceImportGuide";
 import InsuranceUpload from "../components/insurance/InsuranceUpload";
+import InsuranceOnboardingWizard from "../components/insurance/InsuranceOnboardingWizard";
 import AIInsightsLoadingState from "../components/ai/AIInsightsLoadingState";
 import {
   getInsuranceAnalysis,
@@ -27,7 +28,9 @@ import {
   type InsuranceRecommendationDTO,
   type InsuranceHealthCheck,
   type InsuranceImportHistoryItem,
+  type InsuranceMarketAdvice,
 } from "../api/insuranceAI.api";
+import { getInsuranceOnboardingSession } from "../api/insuranceOnboarding.api";
 import { formatCurrencyOrDash } from "../utils/formatters";
 import { POLICY_TYPE_LABELS, UPLOAD_PROGRESS_STEPS } from "../utils/insuranceDisplay";
 import { INSURANCE_IMPORT_CONFIG } from "../config/govReportImportConfig";
@@ -108,13 +111,17 @@ export default function InsurancePage() {
     void loadImportHistory();
   }, [load, loadImportHistory]);
 
-  // On first load, if the user already has policies, jump straight to results.
-  // Gated to the landing step so it never skips the upload success screen mid-flow.
+  // On first load: skip to results if policies exist AND onboarding completed.
   useEffect(() => {
-    if (step === "landing" && (data?.policies ?? []).length > 0) {
-      setStep("results");
-    }
-  }, [data, step, setStep]);
+    if (step !== "landing" || loading) return;
+    if ((data?.policies ?? []).length === 0) return;
+
+    void getInsuranceOnboardingSession().then(res => {
+      if (res.ok && res.data?.success && res.data.data?.completed) {
+        setStep("results");
+      }
+    });
+  }, [data, step, loading, setStep]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("למחוק פוליסה זו?")) return;
@@ -154,7 +161,7 @@ export default function InsurancePage() {
     return insuranceShell(
       <InsuranceUpload
         onBack={() => setStep("guide")}
-        onContinue={() => setStep("results")}
+        onContinue={() => setStep("onboarding")}
         onUpload={handleUpload}
         uploading={uploading}
         uploadMsg={uploadMsg}
@@ -167,6 +174,18 @@ export default function InsurancePage() {
     );
   }
 
+  if (step === "onboarding") {
+    return insuranceShell(
+      <InsuranceOnboardingWizard
+        onBack={() => setStep("upload")}
+        onComplete={() => {
+          void load();
+          setStep("results");
+        }}
+      />,
+    );
+  }
+
   // Results — insurance analysis (design-system, peach accent).
   return insuranceShell(
     <ResultsStep
@@ -175,6 +194,7 @@ export default function InsurancePage() {
       onRetry={() => void load()}
       analysis={analysis}
       healthCheck={healthCheck}
+      marketAdvice={data?.marketAdvice}
       importHistory={importHistory}
       lastSavingsDelta={lastSavingsDelta}
       policies={policies}
@@ -403,7 +423,7 @@ function InsuranceLandingScreen({ loading, onImport }: { loading: boolean; onImp
 
 function ResultsStep({
   loading, analysisError, onRetry,
-  analysis, healthCheck, importHistory, lastSavingsDelta,
+  analysis, healthCheck, marketAdvice, importHistory, lastSavingsDelta,
   policies, recs, totalPremium, deletingId, onDelete, onReimport, navigate,
 }: {
   loading: boolean;
@@ -411,6 +431,7 @@ function ResultsStep({
   onRetry: () => void;
   analysis: InsuranceAnalysisDTO | null | undefined;
   healthCheck: InsuranceHealthCheck | undefined;
+  marketAdvice?: InsuranceMarketAdvice;
   importHistory: InsuranceImportHistoryItem[];
   lastSavingsDelta: number | null;
   policies: InsurancePolicyDTO[];
@@ -485,9 +506,35 @@ function ResultsStep({
   };
 
   const RC = 2 * Math.PI * 42;
+  const pricingDisclaimer = marketAdvice?.disclaimer
+    ?? "המחירים הם הערכות המבוססות על מדגם נתונים מקומי ואינם הצעות מחיר רשמיות מחברות הביטוח.";
+  const pricingSource = marketAdvice?.pricingSource;
+  const comparisonMatrix = marketAdvice?.comparisonMatrix ?? [];
+
+  const premStatusHe: Record<string, string> = {
+    below_market: "מתחת לשוק",
+    fair: "בטווח הוגן",
+    above_market: "מעל הממוצע",
+    high: "גבוה משמעותית",
+    unknown: "לא ידוע",
+  };
 
   return wrap(
     <>
+      {/* pricing source disclaimer */}
+      <div role="note" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", marginBottom: 20, borderRadius: "var(--r-md)", background: "var(--butter-soft)", border: "1px solid var(--butter)" }}>
+        <AlertCircle size={17} color="var(--butter-ink)" style={{ flex: "none", marginTop: 2 }} />
+        <div style={{ fontSize: 13, lineHeight: 1.55, color: "var(--butter-ink)" }}>
+          <div style={{ fontWeight: 800, marginBottom: 4 }}>{pricingDisclaimer}</div>
+          {pricingSource && (
+            <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
+              מקור: {pricingSource.sourceName} · {pricingSource.sourceDate}
+              {pricingSource.dataCollectionMethod ? ` · ${pricingSource.dataCollectionMethod}` : ""}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
@@ -550,6 +597,33 @@ function ResultsStep({
           );
         })}
       </div>
+
+      {/* market comparison */}
+      {comparisonMatrix.length > 0 && (
+        <Section title="השוואת פרמיה לטווח הוגן" sub="מול מדגם מחירים מקומי — לא הצעות מחיר רשמיות">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {comparisonMatrix.map(row => (
+              <div key={row.policyId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>{row.type}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{row.provider ?? "—"}</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>שלך</div>
+                  <div style={{ fontWeight: 900, fontSize: 15 }}>{fmt(row.userCost)}</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>ממוצע שוק</div>
+                  <div style={{ fontWeight: 900, fontSize: 15 }}>{fmt(row.marketAvg)}</div>
+                </div>
+                <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--peach-ink)", background: "var(--peach-soft)", borderRadius: 999, padding: "4px 10px", flex: "none" }}>
+                  {premStatusHe[row.premiumVsMarket] ?? row.premiumVsMarket}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* health check */}
       {healthCheck && healthCheck.categories?.length > 0 && (

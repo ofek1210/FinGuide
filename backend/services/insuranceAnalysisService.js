@@ -11,6 +11,7 @@ const {
 } = require('../ai/tools/insuranceTools');
 const { runInsuranceHealthCheck } = require('./insuranceHealthCheckService');
 const { buildMarketAdvice } = require('./insuranceMarketAdvisorService');
+const { buildBituahMarketAdvice } = require('./bituahNetAdvisorService');
 
 async function buildInsuranceAnalysis(userId) {
   const profileDTO = await getInsuranceProfile(userId);
@@ -36,6 +37,20 @@ async function buildInsuranceAnalysis(userId) {
   const recommendations = generateInsuranceRecommendations(analysis);
 
   const marketAdvice = await buildMarketAdvice(policiesForDisplay, profileDTO);
+  const bituahAdvice = await buildBituahMarketAdvice(policiesForDisplay, profileDTO);
+
+  const bituahRecs = (bituahAdvice.funds || [])
+    .filter(f => f.verdict !== 'LEAVE')
+    .map(f => ({
+      type: 'bituah_track',
+      title: `מסלול השקעה — ${f.verdictLabelHe}`,
+      reason: f.summaryHe,
+      urgency: f.verdict === 'SWITCH' ? 'high' : 'medium',
+      financialImpact: f.annualSavingsEstimate
+        ? `~₪${f.annualSavingsEstimate.toLocaleString('he-IL')}/שנה`
+        : null,
+      confidenceScore: 0.76,
+    }));
 
   return {
     summary: {
@@ -51,8 +66,9 @@ async function buildInsuranceAnalysis(userId) {
     policies: policiesForDisplay,
     analysis,
     healthCheck,
-    recommendations,
+    recommendations: [...bituahRecs, ...recommendations],
     marketAdvice,
+    bituahAdvice,
     hasImportedPolicies: dbPolicies.length > 0,
   };
 }

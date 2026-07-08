@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useGovReportUploadProgress } from "./useGovReportUploadProgress";
 
-export type FlowStep = "landing" | "guide" | "upload" | "results";
+export type FlowStep = "landing" | "guide" | "upload" | "onboarding" | "results";
 
 type UploadMsg = { type: "success" | "error"; text: string } | null;
 

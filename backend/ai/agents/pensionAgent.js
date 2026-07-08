@@ -88,6 +88,18 @@ async function runPensionAgent(userId, { skipLLM = false } = {}) {
           })),
         }
         : null,
+      gemelAdvice: analysis.gemelAdvice?.hasData
+        ? {
+          overallVerdict: analysis.gemelAdvice.overallVerdict,
+          overallVerdictLabelHe: analysis.gemelAdvice.overallVerdictLabelHe,
+          sourceName: analysis.gemelAdvice.sourceName,
+          funds: analysis.gemelAdvice.funds?.map(f => ({
+            productName: f.productName,
+            verdict: f.verdict,
+            summaryHe: f.summaryHe,
+          })),
+        }
+        : null,
     },
     recommendations,
     llmExplanation,
