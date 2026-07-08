@@ -5,6 +5,7 @@
  */
 const Document = require('../models/Document');
 const UserProfile = require('../models/UserProfile');
+const mongoose = require('mongoose');
 const { getPensionSummary } = require('../ai/tools/pensionTools');
 const { buildGemelMarketAdvice } = require('./gemelNetAdvisorService');
 const { buildFundAdvice } = require('./pensionFundAdvisorService');
@@ -47,6 +48,8 @@ async function getLatestPayslipContribution(userId) {
 
 async function buildPayslipGovBenchmarkRecommendations(userId) {
   const recommendations = [];
+  if (!mongoose.isValidObjectId(userId)) return recommendations;
+
   const [payslip, summary, profile] = await Promise.all([
     getLatestPayslipContribution(userId),
     getPensionSummary(userId),

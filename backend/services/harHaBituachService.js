@@ -36,8 +36,11 @@ function parsePremiumPeriod(periodStr = '') {
   return { from: parse(match[1]), to: parse(match[2]) };
 }
 
-function rowHasHeader(rows, needle) {
-  return rows.some(r => Array.isArray(r) && r.some(c => String(c ?? '').includes(needle)));
+function rowHasHeader(rows, ...needles) {
+  return rows.some(r => (
+    Array.isArray(r)
+    && needles.every(needle => r.some(c => String(c ?? '').includes(needle)))
+  ));
 }
 
 /** Find column index where header cell includes any of the needles */
@@ -53,9 +56,9 @@ function findCol(headers, ...needles) {
 function parseHarHaBituachRows(rows) {
   const exportDate = rows[0]?.[5] || null;
 
-  const headerRowIdx = rows.findIndex(
-    r => Array.isArray(r) && r.some(c => String(c ?? '').includes('ענף ראשי')),
-  );
+  const headerRowIdx = rows.findIndex(r => rowHasHeader([r], 'פוליסה')
+    && (rowHasHeader([r], 'חברה') || rowHasHeader([r], 'חברת') || rowHasHeader([r], 'מבטח'))
+    && (rowHasHeader([r], 'ענף') || rowHasHeader([r], 'מוצר')));
   if (headerRowIdx === -1) {
     return { policies: [], exportDate, rawRowCount: rows.length };
   }
@@ -64,7 +67,7 @@ function parseHarHaBituachRows(rows) {
   const col = {
     id: findCol(headers, 'תעודת זהות') ?? 0,
     mainBranch: findCol(headers, 'ענף ראשי') ?? 1,
-    company: findCol(headers, 'חברה'),
+    company: findCol(headers, 'חברה', 'חברת', 'מבטח'),
     productType: findCol(headers, 'סוג מוצר'),
     subBranch: findCol(headers, 'ענף', 'משני'),
     period: findCol(headers, 'תקופת ביטוח'),
@@ -156,8 +159,17 @@ function parseHarHaBituachRows(rows) {
   };
 }
 
+function findHarSheetName(workbook) {
+  return workbook.SheetNames.find(name => {
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: null });
+    return rowHasHeader(rows, 'פוליסה')
+      && (rowHasHeader(rows, 'חברה') || rowHasHeader(rows, 'חברת') || rowHasHeader(rows, 'מבטח'))
+      && (rowHasHeader(rows, 'ענף') || rowHasHeader(rows, 'מוצר'));
+  }) || workbook.SheetNames[0];
+}
+
 function readWorkbookRows(workbook) {
-  const ws = workbook.Sheets[workbook.SheetNames[0]];
+  const ws = workbook.Sheets[findHarSheetName(workbook)];
   return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 }
 
@@ -170,7 +182,9 @@ function isHarHaBituachBuffer(buffer) {
   try {
     const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
     const rows = readWorkbookRows(wb);
-    return rowHasHeader(rows, 'ענף ראשי');
+    return rowHasHeader(rows, 'פוליסה')
+      && (rowHasHeader(rows, 'חברה') || rowHasHeader(rows, 'חברת') || rowHasHeader(rows, 'מבטח'))
+      && (rowHasHeader(rows, 'ענף') || rowHasHeader(rows, 'מוצר'));
   } catch {
     return false;
   }

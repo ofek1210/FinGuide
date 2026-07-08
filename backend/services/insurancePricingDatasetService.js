@@ -7,6 +7,7 @@ const {
   loadHealthCalculatorSamples,
   mergePricingRows,
 } = require('./insuranceHealthCalculatorImport');
+const { loadCalculatorSamples } = require('./insuranceCalculatorSampleImport');
 
 let cache = { rows: null, loadedAt: 0, file: null };
 
@@ -106,21 +107,26 @@ function loadPricingDataset({ forceReload = false } = {}) {
     file = `${file}+${samplesDir}`;
   }
 
+  const calculatorSampleDirs = config.calculatorSampleDirs.map(dir => path.join(config.dataDir, dir));
+  const calculatorRows = loadCalculatorSamples(calculatorSampleDirs);
+  if (calculatorRows.length) {
+    rows = mergePricingRows(rows, calculatorRows);
+    file = `${file}+${calculatorSampleDirs.join('+')}`;
+  }
+
   cache = { rows, loadedAt: Date.now(), file };
   return { rows, sourceFile: file };
 }
 
 function matchRows(rows, kind, { age, gender, coverageTier }) {
   const g = normalizeGender(gender);
-  const tier = coverageTier || 'standard';
+  const tier = coverageTier || null;
   const ageNum = age != null ? Number(age) : null;
 
   return rows.filter(r => {
     if (r.insuranceType !== kind) return false;
     if (ageNum != null && (ageNum < r.ageMin || ageNum > r.ageMax)) return false;
-    if (r.coverageTier !== tier && tier !== 'standard') {
-      if (r.coverageTier !== tier) return false;
-    }
+    if (tier && r.coverageTier !== tier) return false;
     if (r.gender !== 'all' && g !== 'all' && r.gender !== g) return false;
     return true;
   });
@@ -137,6 +143,33 @@ function aggregateRange(matched) {
   };
 }
 
+function distanceFromBand(age, row) {
+  if (age == null || !Number.isFinite(age)) return 0;
+  if (age >= row.ageMin && age <= row.ageMax) return 0;
+  return Math.min(Math.abs(age - row.ageMin), Math.abs(age - row.ageMax));
+}
+
+function nearestRowsByAge(rows, kind, { age, gender, coverageTier }) {
+  const ageNum = age != null ? Number(age) : null;
+  if (ageNum == null || !Number.isFinite(ageNum)) return [];
+
+  const g = normalizeGender(gender);
+  let candidates = rows.filter(r =>
+    r.insuranceType === kind
+    && (!coverageTier || r.coverageTier === coverageTier)
+    && (r.gender === 'all' || g === 'all' || r.gender === g),
+  );
+
+  if (g !== 'all') {
+    const genderSpecific = candidates.filter(r => r.gender === g);
+    if (genderSpecific.length) candidates = genderSpecific;
+  }
+  if (!candidates.length) return [];
+
+  const minDistance = Math.min(...candidates.map(row => distanceFromBand(ageNum, row)));
+  return candidates.filter(row => distanceFromBand(ageNum, row) === minDistance);
+}
+
 /**
  * Fair price range from local dataset — normalized by age, gender, type, coverage tier.
  */
@@ -151,6 +184,7 @@ function getFairPriceRange(kind, {
 } = {}) {
   const { rows } = loadPricingDataset();
   const tier = coverageTier || coverageTierFromAmount(kind, coverageAmount);
+  let effectiveTier = tier;
 
   let matched = matchRows(rows, kind, { age, gender, coverageTier: tier });
   const g = normalizeGender(gender);
@@ -158,11 +192,20 @@ function getFairPriceRange(kind, {
     const genderSpecific = matched.filter(r => r.gender === g);
     if (genderSpecific.length) matched = genderSpecific;
   }
+  if (!matched.length && tier !== 'standard') {
+    matched = nearestRowsByAge(rows, kind, { age, gender, coverageTier: tier });
+  }
   if (!matched.length) {
     matched = matchRows(rows, kind, { age, gender: 'all', coverageTier: 'standard' });
+    effectiveTier = 'standard';
+  }
+  if (!matched.length && tier !== 'standard') {
+    matched = matchRows(rows, kind, { age, gender, coverageTier: null });
+    effectiveTier = 'mixed';
   }
   if (!matched.length) {
     matched = rows.filter(r => r.insuranceType === kind && r.gender === 'all' && r.coverageTier === 'standard');
+    effectiveTier = 'standard';
   }
 
   let range = aggregateRange(matched);
@@ -191,7 +234,8 @@ function getFairPriceRange(kind, {
 
   return {
     ...range,
-    coverageTier: tier,
+    coverageTier: effectiveTier,
+    requestedCoverageTier: tier,
     source: getSourceMetadata(),
   };
 }

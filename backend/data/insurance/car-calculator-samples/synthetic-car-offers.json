@@ -1,0 +1,1622 @@
+[
+  {
+    "id": "car-male-18-01",
+    "insuranceType": "car",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "mandatory_only",
+      "coverageAmount": null,
+      "assetValue": 42000,
+      "vehicleYear": 2017,
+      "vehicleType": "compact_used",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": []
+    },
+    "monthlyPremiumNis": 269,
+    "yearlyPremiumNis": 3228,
+    "deductibleNis": null,
+    "coverageSummary": "mandatory only for a 2017 compact used",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-18-02",
+    "insuranceType": "car",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 76000,
+      "vehicleYear": 2019,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 512,
+    "yearlyPremiumNis": 6144,
+    "deductibleNis": 1200,
+    "coverageSummary": "third party mandatory for a 2019 family sedan",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-18-03",
+    "insuranceType": "car",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 128000,
+      "vehicleYear": 2022,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car"
+      ]
+    },
+    "monthlyPremiumNis": 1130,
+    "yearlyPremiumNis": 13560,
+    "deductibleNis": 1750,
+    "coverageSummary": "comprehensive mandatory for a 2022 family sedan",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-18-04",
+    "insuranceType": "car",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 190000,
+      "vehicleYear": 2024,
+      "vehicleType": "electric_suv",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 1200,
+    "yearlyPremiumNis": 14400,
+    "deductibleNis": 1600,
+    "coverageSummary": "comprehensive mandatory for a 2024 electric suv",
+    "score": 83,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-18-05",
+    "insuranceType": "car",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 99000,
+      "vehicleYear": 2021,
+      "vehicleType": "small_crossover",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "third_party_liability",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 465,
+    "yearlyPremiumNis": 5580,
+    "deductibleNis": 1300,
+    "coverageSummary": "third party mandatory for a 2021 small crossover",
+    "score": 73,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-18-01",
+    "insuranceType": "car",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "mandatory_only",
+      "coverageAmount": null,
+      "assetValue": 42000,
+      "vehicleYear": 2017,
+      "vehicleType": "compact_used",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": []
+    },
+    "monthlyPremiumNis": 244,
+    "yearlyPremiumNis": 2928,
+    "deductibleNis": null,
+    "coverageSummary": "mandatory only for a 2017 compact used",
+    "score": 72,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-18-02",
+    "insuranceType": "car",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 76000,
+      "vehicleYear": 2019,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 445,
+    "yearlyPremiumNis": 5340,
+    "deductibleNis": 1400,
+    "coverageSummary": "third party mandatory for a 2019 family sedan",
+    "score": 71,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-18-03",
+    "insuranceType": "car",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 128000,
+      "vehicleYear": 2022,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car"
+      ]
+    },
+    "monthlyPremiumNis": 992,
+    "yearlyPremiumNis": 11904,
+    "deductibleNis": 1800,
+    "coverageSummary": "comprehensive mandatory for a 2022 family sedan",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-18-04",
+    "insuranceType": "car",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 190000,
+      "vehicleYear": 2024,
+      "vehicleType": "electric_suv",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 1135,
+    "yearlyPremiumNis": 13620,
+    "deductibleNis": 2000,
+    "coverageSummary": "comprehensive mandatory for a 2024 electric suv",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-18-05",
+    "insuranceType": "car",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 99000,
+      "vehicleYear": 2021,
+      "vehicleType": "small_crossover",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "third_party_liability",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 421,
+    "yearlyPremiumNis": 5052,
+    "deductibleNis": 1350,
+    "coverageSummary": "third party mandatory for a 2021 small crossover",
+    "score": 71,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-30-01",
+    "insuranceType": "car",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "mandatory_only",
+      "coverageAmount": null,
+      "assetValue": 42000,
+      "vehicleYear": 2017,
+      "vehicleType": "compact_used",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": []
+    },
+    "monthlyPremiumNis": 175,
+    "yearlyPremiumNis": 2100,
+    "deductibleNis": null,
+    "coverageSummary": "mandatory only for a 2017 compact used",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-30-02",
+    "insuranceType": "car",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 76000,
+      "vehicleYear": 2019,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 338,
+    "yearlyPremiumNis": 4056,
+    "deductibleNis": 1150,
+    "coverageSummary": "third party mandatory for a 2019 family sedan",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-30-03",
+    "insuranceType": "car",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 128000,
+      "vehicleYear": 2022,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car"
+      ]
+    },
+    "monthlyPremiumNis": 666,
+    "yearlyPremiumNis": 7992,
+    "deductibleNis": 1900,
+    "coverageSummary": "comprehensive mandatory for a 2022 family sedan",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-30-04",
+    "insuranceType": "car",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 190000,
+      "vehicleYear": 2024,
+      "vehicleType": "electric_suv",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 787,
+    "yearlyPremiumNis": 9444,
+    "deductibleNis": 1950,
+    "coverageSummary": "comprehensive mandatory for a 2024 electric suv",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-30-05",
+    "insuranceType": "car",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 99000,
+      "vehicleYear": 2021,
+      "vehicleType": "small_crossover",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "third_party_liability",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 296,
+    "yearlyPremiumNis": 3552,
+    "deductibleNis": 1250,
+    "coverageSummary": "third party mandatory for a 2021 small crossover",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-30-01",
+    "insuranceType": "car",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "mandatory_only",
+      "coverageAmount": null,
+      "assetValue": 42000,
+      "vehicleYear": 2017,
+      "vehicleType": "compact_used",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": []
+    },
+    "monthlyPremiumNis": 161,
+    "yearlyPremiumNis": 1932,
+    "deductibleNis": null,
+    "coverageSummary": "mandatory only for a 2017 compact used",
+    "score": 73,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-30-02",
+    "insuranceType": "car",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 76000,
+      "vehicleYear": 2019,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 331,
+    "yearlyPremiumNis": 3972,
+    "deductibleNis": 1200,
+    "coverageSummary": "third party mandatory for a 2019 family sedan",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-30-03",
+    "insuranceType": "car",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 128000,
+      "vehicleYear": 2022,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car"
+      ]
+    },
+    "monthlyPremiumNis": 696,
+    "yearlyPremiumNis": 8352,
+    "deductibleNis": 1750,
+    "coverageSummary": "comprehensive mandatory for a 2022 family sedan",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-30-04",
+    "insuranceType": "car",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 190000,
+      "vehicleYear": 2024,
+      "vehicleType": "electric_suv",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 762,
+    "yearlyPremiumNis": 9144,
+    "deductibleNis": 2050,
+    "coverageSummary": "comprehensive mandatory for a 2024 electric suv",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-30-05",
+    "insuranceType": "car",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 99000,
+      "vehicleYear": 2021,
+      "vehicleType": "small_crossover",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "third_party_liability",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 286,
+    "yearlyPremiumNis": 3432,
+    "deductibleNis": 1350,
+    "coverageSummary": "third party mandatory for a 2021 small crossover",
+    "score": 71,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-40-01",
+    "insuranceType": "car",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "mandatory_only",
+      "coverageAmount": null,
+      "assetValue": 42000,
+      "vehicleYear": 2017,
+      "vehicleType": "compact_used",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": []
+    },
+    "monthlyPremiumNis": 151,
+    "yearlyPremiumNis": 1812,
+    "deductibleNis": null,
+    "coverageSummary": "mandatory only for a 2017 compact used",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-40-02",
+    "insuranceType": "car",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 76000,
+      "vehicleYear": 2019,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 313,
+    "yearlyPremiumNis": 3756,
+    "deductibleNis": 1100,
+    "coverageSummary": "third party mandatory for a 2019 family sedan",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-40-03",
+    "insuranceType": "car",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 128000,
+      "vehicleYear": 2022,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car"
+      ]
+    },
+    "monthlyPremiumNis": 654,
+    "yearlyPremiumNis": 7848,
+    "deductibleNis": 1600,
+    "coverageSummary": "comprehensive mandatory for a 2022 family sedan",
+    "score": 78,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-40-04",
+    "insuranceType": "car",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 190000,
+      "vehicleYear": 2024,
+      "vehicleType": "electric_suv",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 702,
+    "yearlyPremiumNis": 8424,
+    "deductibleNis": 1950,
+    "coverageSummary": "comprehensive mandatory for a 2024 electric suv",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-40-05",
+    "insuranceType": "car",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 99000,
+      "vehicleYear": 2021,
+      "vehicleType": "small_crossover",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "third_party_liability",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 270,
+    "yearlyPremiumNis": 3240,
+    "deductibleNis": 1250,
+    "coverageSummary": "third party mandatory for a 2021 small crossover",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-40-01",
+    "insuranceType": "car",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "mandatory_only",
+      "coverageAmount": null,
+      "assetValue": 42000,
+      "vehicleYear": 2017,
+      "vehicleType": "compact_used",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": []
+    },
+    "monthlyPremiumNis": 148,
+    "yearlyPremiumNis": 1776,
+    "deductibleNis": null,
+    "coverageSummary": "mandatory only for a 2017 compact used",
+    "score": 72,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-40-02",
+    "insuranceType": "car",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 76000,
+      "vehicleYear": 2019,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 264,
+    "yearlyPremiumNis": 3168,
+    "deductibleNis": 1350,
+    "coverageSummary": "third party mandatory for a 2019 family sedan",
+    "score": 73,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-40-03",
+    "insuranceType": "car",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 128000,
+      "vehicleYear": 2022,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car"
+      ]
+    },
+    "monthlyPremiumNis": 595,
+    "yearlyPremiumNis": 7140,
+    "deductibleNis": 1900,
+    "coverageSummary": "comprehensive mandatory for a 2022 family sedan",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-40-04",
+    "insuranceType": "car",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 190000,
+      "vehicleYear": 2024,
+      "vehicleType": "electric_suv",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 688,
+    "yearlyPremiumNis": 8256,
+    "deductibleNis": 2000,
+    "coverageSummary": "comprehensive mandatory for a 2024 electric suv",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-40-05",
+    "insuranceType": "car",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 99000,
+      "vehicleYear": 2021,
+      "vehicleType": "small_crossover",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "third_party_liability",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 255,
+    "yearlyPremiumNis": 3060,
+    "deductibleNis": 1350,
+    "coverageSummary": "third party mandatory for a 2021 small crossover",
+    "score": 71,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-55-01",
+    "insuranceType": "car",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "mandatory_only",
+      "coverageAmount": null,
+      "assetValue": 42000,
+      "vehicleYear": 2017,
+      "vehicleType": "compact_used",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": []
+    },
+    "monthlyPremiumNis": 155,
+    "yearlyPremiumNis": 1860,
+    "deductibleNis": null,
+    "coverageSummary": "mandatory only for a 2017 compact used",
+    "score": 71,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-55-02",
+    "insuranceType": "car",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 76000,
+      "vehicleYear": 2019,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 347,
+    "yearlyPremiumNis": 4164,
+    "deductibleNis": 1150,
+    "coverageSummary": "third party mandatory for a 2019 family sedan",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-55-03",
+    "insuranceType": "car",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 128000,
+      "vehicleYear": 2022,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car"
+      ]
+    },
+    "monthlyPremiumNis": 821,
+    "yearlyPremiumNis": 9852,
+    "deductibleNis": 1450,
+    "coverageSummary": "comprehensive mandatory for a 2022 family sedan",
+    "score": 80,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-55-04",
+    "insuranceType": "car",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 190000,
+      "vehicleYear": 2024,
+      "vehicleType": "electric_suv",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 766,
+    "yearlyPremiumNis": 9192,
+    "deductibleNis": 2000,
+    "coverageSummary": "comprehensive mandatory for a 2024 electric suv",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-55-05",
+    "insuranceType": "car",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 99000,
+      "vehicleYear": 2021,
+      "vehicleType": "small_crossover",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "third_party_liability",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 300,
+    "yearlyPremiumNis": 3600,
+    "deductibleNis": 1300,
+    "coverageSummary": "third party mandatory for a 2021 small crossover",
+    "score": 73,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-55-01",
+    "insuranceType": "car",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "mandatory_only",
+      "coverageAmount": null,
+      "assetValue": 42000,
+      "vehicleYear": 2017,
+      "vehicleType": "compact_used",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": []
+    },
+    "monthlyPremiumNis": 160,
+    "yearlyPremiumNis": 1920,
+    "deductibleNis": null,
+    "coverageSummary": "mandatory only for a 2017 compact used",
+    "score": 72,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-55-02",
+    "insuranceType": "car",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 76000,
+      "vehicleYear": 2019,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 330,
+    "yearlyPremiumNis": 3960,
+    "deductibleNis": 1200,
+    "coverageSummary": "third party mandatory for a 2019 family sedan",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-55-03",
+    "insuranceType": "car",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 128000,
+      "vehicleYear": 2022,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car"
+      ]
+    },
+    "monthlyPremiumNis": 775,
+    "yearlyPremiumNis": 9300,
+    "deductibleNis": 1600,
+    "coverageSummary": "comprehensive mandatory for a 2022 family sedan",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-55-04",
+    "insuranceType": "car",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 190000,
+      "vehicleYear": 2024,
+      "vehicleType": "electric_suv",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 791,
+    "yearlyPremiumNis": 9492,
+    "deductibleNis": 2000,
+    "coverageSummary": "comprehensive mandatory for a 2024 electric suv",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-55-05",
+    "insuranceType": "car",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 99000,
+      "vehicleYear": 2021,
+      "vehicleType": "small_crossover",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Haifa",
+      "addOns": [
+        "third_party_liability",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 293,
+    "yearlyPremiumNis": 3516,
+    "deductibleNis": 1350,
+    "coverageSummary": "third party mandatory for a 2021 small crossover",
+    "score": 71,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-70-01",
+    "insuranceType": "car",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "mandatory_only",
+      "coverageAmount": null,
+      "assetValue": 42000,
+      "vehicleYear": 2017,
+      "vehicleType": "compact_used",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": []
+    },
+    "monthlyPremiumNis": 193,
+    "yearlyPremiumNis": 2316,
+    "deductibleNis": null,
+    "coverageSummary": "mandatory only for a 2017 compact used",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-70-02",
+    "insuranceType": "car",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 76000,
+      "vehicleYear": 2019,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 401,
+    "yearlyPremiumNis": 4812,
+    "deductibleNis": 1100,
+    "coverageSummary": "third party mandatory for a 2019 family sedan",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-70-03",
+    "insuranceType": "car",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 128000,
+      "vehicleYear": 2022,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car"
+      ]
+    },
+    "monthlyPremiumNis": 837,
+    "yearlyPremiumNis": 10044,
+    "deductibleNis": 1600,
+    "coverageSummary": "comprehensive mandatory for a 2022 family sedan",
+    "score": 78,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-70-04",
+    "insuranceType": "car",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 190000,
+      "vehicleYear": 2024,
+      "vehicleType": "electric_suv",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 899,
+    "yearlyPremiumNis": 10788,
+    "deductibleNis": 1950,
+    "coverageSummary": "comprehensive mandatory for a 2024 electric suv",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-male-70-05",
+    "insuranceType": "car",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 99000,
+      "vehicleYear": 2021,
+      "vehicleType": "small_crossover",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Jerusalem",
+      "addOns": [
+        "third_party_liability",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 345,
+    "yearlyPremiumNis": 4140,
+    "deductibleNis": 1250,
+    "coverageSummary": "third party mandatory for a 2021 small crossover",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-70-01",
+    "insuranceType": "car",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "mandatory_only",
+      "coverageAmount": null,
+      "assetValue": 42000,
+      "vehicleYear": 2017,
+      "vehicleType": "compact_used",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": []
+    },
+    "monthlyPremiumNis": 189,
+    "yearlyPremiumNis": 2268,
+    "deductibleNis": null,
+    "coverageSummary": "mandatory only for a 2017 compact used",
+    "score": 73,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-70-02",
+    "insuranceType": "car",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 76000,
+      "vehicleYear": 2019,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 338,
+    "yearlyPremiumNis": 4056,
+    "deductibleNis": 1350,
+    "coverageSummary": "third party mandatory for a 2019 family sedan",
+    "score": 73,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-70-03",
+    "insuranceType": "car",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 128000,
+      "vehicleYear": 2022,
+      "vehicleType": "family_sedan",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car"
+      ]
+    },
+    "monthlyPremiumNis": 761,
+    "yearlyPremiumNis": 9132,
+    "deductibleNis": 1900,
+    "coverageSummary": "comprehensive mandatory for a 2022 family sedan",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-70-04",
+    "insuranceType": "car",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "comprehensive_mandatory",
+      "coverageAmount": null,
+      "assetValue": 190000,
+      "vehicleYear": 2024,
+      "vehicleType": "electric_suv",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "roadside_assistance",
+        "replacement_car",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 880,
+    "yearlyPremiumNis": 10560,
+    "deductibleNis": 2000,
+    "coverageSummary": "comprehensive mandatory for a 2024 electric suv",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "car-female-70-05",
+    "insuranceType": "car",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "third_party_mandatory",
+      "coverageAmount": null,
+      "assetValue": 99000,
+      "vehicleYear": 2021,
+      "vehicleType": "small_crossover",
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": "Tel Aviv",
+      "addOns": [
+        "third_party_liability",
+        "windshield_cover"
+      ]
+    },
+    "monthlyPremiumNis": 327,
+    "yearlyPremiumNis": 3924,
+    "deductibleNis": 1350,
+    "coverageSummary": "third party mandatory for a 2021 small crossover",
+    "score": 71,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  }
+]

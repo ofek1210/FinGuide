@@ -102,10 +102,19 @@ function parseHarHaBituachImport(buffer, originalName) {
 
 function parseGenericInsuranceExcel(buffer, originalName) {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+  const sheets = workbook.SheetNames.map(sheetName => workbook.Sheets[sheetName]);
 
+  const policies = [];
+
+  for (const sheet of sheets) {
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+    policies.push(...parseGenericRows(rows, originalName));
+  }
+
+  return aggregatePoliciesByPolicyNumber(policies);
+}
+
+function parseGenericRows(rows, originalName) {
   const policies = [];
 
   for (const row of rows) {
@@ -114,16 +123,18 @@ function parseGenericInsuranceExcel(buffer, originalName) {
     const find = (...keys) => {
       for (const key of keys) {
         for (const col of Object.keys(row)) {
-          if (col.includes(key)) return row[col];
+          const normalizedCol = String(col).replace(/\s+/g, '');
+          const normalizedKey = String(key).replace(/\s+/g, '');
+          if (normalizedCol.includes(normalizedKey)) return row[col];
         }
       }
       return null;
     };
 
-    const premium = safeNum(find('פרמיה', 'premium', 'תשלום', 'סכום חודשי'));
+    const premium = safeNum(find('פרמיה', 'premium', 'תשלום', 'סכום חודשי', 'עלות'));
     const coverage = safeNum(find('סכום', 'coverage', 'ביטוח', 'כיסוי'));
-    const provider = String(find('חברה', 'מבטח', 'provider', 'חברת') || '').trim() || null;
-    const policyNum = String(find('פוליסה', 'מספר', 'policy') || '').trim() || null;
+    const provider = String(find('חברה', 'מבטח', 'provider', 'חברת', 'שם חברה', 'שם חברת הביטוח') || '').trim() || null;
+    const policyNum = String(find('פוליסה', 'מספר פוליסה', 'policy') || '').trim() || null;
     const startDate = safeDate(find('תחילה', 'start', 'תאריך תחילה'));
     const endDate = safeDate(find('תפוגה', 'end', 'סיום', 'פקיעה'));
 

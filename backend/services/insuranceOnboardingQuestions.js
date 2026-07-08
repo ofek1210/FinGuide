@@ -355,6 +355,7 @@ function buildQuestionBank(ctx) {
 function filterQuestions(bank, profile, onboarding, ctx) {
   const merged = mergeProfileForWhen(profile, onboarding);
   return bank.filter(question => {
+    if (onboarding?.skippedIds?.includes(question.id)) return false;
     if (question.type === 'info') return !onboarding?.answers?.[question.id];
     if (isAnswered(profile, onboarding, question.profilePath || question.id)) return false;
     if (question.when && !question.when(merged)) return false;

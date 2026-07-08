@@ -98,6 +98,9 @@ function decideVerdict({
   const highFees = feeVsMarket === 'above_market' || feeVsMarket === 'high'
     || (userFee != null && marketFee != null && userFee > marketFee * NEGOTIATE_FEE_RATIO);
 
+  if (highFees && returnPercentile != null && returnPercentile >= 30 && negotiateGain > 15000) {
+    return VERDICT.NEGOTIATE;
+  }
   if (switchGainVsBest >= SWITCH_SAVINGS_THRESHOLD && returnPercentile != null && returnPercentile < 55) {
     return VERDICT.SWITCH;
   }

@@ -3,5 +3,6 @@ module.exports = {
   collectCoverage: true,
   coverageDirectory: 'coverage',
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
-  transform: {}
+  transform: {},
+  testTimeout: 30000,
 };

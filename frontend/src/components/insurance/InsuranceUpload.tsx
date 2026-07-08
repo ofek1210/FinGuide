@@ -163,7 +163,7 @@ export default function InsuranceUpload({
             <>
               <div style={{ fontSize: 19, fontWeight: 900, letterSpacing: "-.02em", marginBottom: 6, color: "var(--ink)" }}>הקובץ נותח בהצלחה</div>
               <div style={{ fontSize: 14, color: "var(--text-muted)", fontWeight: 500, marginBottom: 4 }}>
-                {importedCount != null
+                {importedCount != null && importedCount > 0
                   ? <>זוהו <b style={{ color: "var(--mint-ink)", fontWeight: 800 }}>{importedCount} פוליסות</b>{fileName ? <> בקובץ <span style={{ direction: "ltr", unicodeBidi: "isolate" }}>{fileName}</span></> : null}</>
                   : uploadMsg?.text}
               </div>
