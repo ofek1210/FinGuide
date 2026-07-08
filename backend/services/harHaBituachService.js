@@ -203,6 +203,35 @@ function isHarHaBituachBuffer(buffer) {
 /**
  * Parse an HbResults XLSX file and return structured analysisData.
  */
+function ensureFullSheetRef(ws) {
+  if (!ws || !ws['!ref']) return;
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  let minR = range.s.r;
+  let maxR = range.e.r;
+  let minC = range.s.c;
+  let maxC = range.e.c;
+
+  for (const addr of Object.keys(ws)) {
+    if (addr.startsWith('!')) continue;
+    const cell = XLSX.utils.decode_cell(addr);
+    minR = Math.min(minR, cell.r);
+    minC = Math.min(minC, cell.c);
+    maxR = Math.max(maxR, cell.r);
+    maxC = Math.max(maxC, cell.c);
+  }
+
+  const actualRef = XLSX.utils.encode_range({ s: { r: minR, c: minC }, e: { r: maxR, c: maxC } });
+  if (actualRef !== ws['!ref']) {
+    ws['!ref'] = actualRef;
+  }
+}
+
+function readWorkbookRows(workbook) {
+  const ws = workbook.Sheets[findHarSheetName(workbook)];
+  ensureFullSheetRef(ws);
+  return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+}
+
 function parseHarHaBituach(filePath) {
   const wb = XLSX.readFile(filePath);
   return parseHarHaBituachRows(readWorkbookRows(wb));
