@@ -1,7 +1,13 @@
 /**
- * Monthly price ranges (ILS) for Israeli insurance products, 2026 estimates.
- * Used by the deterministic recommender — not personalized quotes.
+ * Monthly price ranges — delegates to local CSV/Excel dataset (no live scraping).
+ * Hardcoded BASE retained as last-resort fallback if dataset file missing.
  */
+
+const {
+  getFairPriceRange,
+  getSourceMetadata,
+  getPricingDisclaimer,
+} = require('./insurancePricingDatasetService');
 
 const BASE = {
   life: { min: 40, average: 120, max: 350 },
@@ -38,19 +44,39 @@ function scaleRange(base, multiplier) {
   };
 }
 
-function getPriceRange(kind, { age, grossMonthly, childrenCount } = {}) {
+function getLegacyPriceRange(kind, ctx = {}) {
   const base = BASE[kind];
   if (!base) return { min: 0, average: 0, max: 0, currency: 'ILS' };
 
-  let multiplier = ageMultiplier(age) * salaryMultiplier(grossMonthly);
-  if (kind === 'life' && childrenCount > 0) {
-    multiplier *= 1 + childrenCount * 0.15;
+  let multiplier = ageMultiplier(ctx.age) * salaryMultiplier(ctx.grossMonthly);
+  if (kind === 'life' && ctx.childrenCount > 0) {
+    multiplier *= 1 + ctx.childrenCount * 0.15;
   }
-  if (kind === 'apartment') {
-    multiplier *= 1.1;
-  }
+  if (kind === 'apartment') multiplier *= 1.1;
 
   return scaleRange(base, multiplier);
 }
 
-module.exports = { BASE, getPriceRange, ageMultiplier, salaryMultiplier };
+function getPriceRange(kind, ctx = {}) {
+  try {
+    return getFairPriceRange(kind, ctx);
+  } catch (err) {
+    console.warn('[insurancePricing] local dataset unavailable, using legacy tables:', err.message);
+    const legacy = getLegacyPriceRange(kind, ctx);
+    return {
+      ...legacy,
+      source: getSourceMetadata(),
+      fallback: true,
+    };
+  }
+}
+
+module.exports = {
+  BASE,
+  getPriceRange,
+  getLegacyPriceRange,
+  ageMultiplier,
+  salaryMultiplier,
+  getSourceMetadata,
+  getPricingDisclaimer,
+};

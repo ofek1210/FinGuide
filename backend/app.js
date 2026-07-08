@@ -23,6 +23,7 @@ const pensionRoutes = require('./routes/pension');
 const insuranceRoutes = require('./routes/insurance');
 const dashboardRoutes = require('./routes/dashboard');
 const agentRoutes = require('./routes/agents');
+const govRoutes = require('./routes/gov');
 const summaryEmailRoutes = require('./routes/summaryEmail');
 
 const createApp = () => {
@@ -101,6 +102,7 @@ const createApp = () => {
   app.use('/api/insurance', insuranceRoutes);
   app.use('/api/dashboard', dashboardRoutes);
   app.use('/api/agents', agentRoutes);
+  app.use('/api/gov', govRoutes);
   app.use('/api/summary-email', summaryEmailRoutes);
 
   // 404 handler

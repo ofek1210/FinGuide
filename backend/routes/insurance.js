@@ -13,6 +13,9 @@ const {
   getInsuranceImportHistory,
   deleteInsurancePolicy,
   getMarketAdvice,
+  getInsuranceOnboardingSession,
+  postInsuranceOnboardingAnswer,
+  postInsuranceOnboardingComplete,
 } = require('../controllers/insuranceController');
 const { getInsuranceInsights } = require('../services/insuranceProfileAnalyzer');
 
@@ -66,6 +69,19 @@ router.get('/profile-insights', async (req, res, next) => {
 
 router.get('/market-advice', (req, res, next) => {
   Promise.resolve(getMarketAdvice(req, res)).catch(next);
+});
+
+// Smart onboarding — dynamic Q&A after Har HaBituach import
+router.get('/onboarding/session', (req, res, next) => {
+  Promise.resolve(getInsuranceOnboardingSession(req, res)).catch(next);
+});
+
+router.post('/onboarding/answer', (req, res, next) => {
+  Promise.resolve(postInsuranceOnboardingAnswer(req, res)).catch(next);
+});
+
+router.post('/onboarding/complete', (req, res, next) => {
+  Promise.resolve(postInsuranceOnboardingComplete(req, res)).catch(next);
 });
 
 // DELETE /api/insurance/data — delete ALL insurance policies for the user

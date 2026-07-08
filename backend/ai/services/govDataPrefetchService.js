@@ -1,20 +1,21 @@
 
 
 /**
- * Prefetch government market data (data.gov.il) into in-memory cache before agents run.
+ * Warm pension + insurance gov caches and verify gemel/bituah DB snapshots.
  */
 const { loadGovTracks } = require('../../services/pensionGovDataService');
 const { loadServiceIndex } = require('../../services/insuranceGovDataService');
+const { getGovMarketStatus } = require('../../jobs/govMarketMonthlySync');
 
 /**
- * Warm pension + insurance gov caches.
  * @param {object} [options]
  * @param {boolean} [options.forceRefresh]
  */
 async function prefetchGovMarketData({ forceRefresh = false } = {}) {
-  const [pensionResult, insuranceResult] = await Promise.allSettled([
+  const [pensionResult, insuranceResult, marketStatus] = await Promise.allSettled([
     loadGovTracks({ forceRefresh }),
     loadServiceIndex({ forceRefresh }),
+    getGovMarketStatus(),
   ]);
 
   const pension = pensionResult.status === 'fulfilled'
@@ -35,11 +36,20 @@ async function prefetchGovMarketData({ forceRefresh = false } = {}) {
     }
     : { error: insuranceResult.reason?.message || 'insurance fetch failed' };
 
+  const nets = marketStatus.status === 'fulfilled'
+    ? marketStatus.value.nets
+    : { error: marketStatus.reason?.message || 'gov market status failed' };
+
+  const gemelReady = nets.gemel?.fundCount > 0;
+  const bituahReady = nets.bituah?.fundCount > 0;
+  const pensiaReady = nets.pensia?.fundCount > 0;
+
   return {
     prefetchedAt: new Date().toISOString(),
     pension,
     insurance,
-    ready: !pension.error && !insurance.error,
+    nets,
+    ready: !pension.error && !insurance.error && gemelReady && bituahReady && pensiaReady,
   };
 }
 

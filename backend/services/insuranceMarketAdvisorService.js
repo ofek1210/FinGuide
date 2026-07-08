@@ -4,7 +4,8 @@
  * Insurance Market Advisor — cost vs service index vs market baseline.
  * Verdicts: STAY | REVIEW | SWITCH
  */
-const { getPriceRange } = require('./insurancePricingTables');
+const { getPriceRange, getPricingDisclaimer } = require('./insurancePricingTables');
+const { compareUserPremium, getSourceMetadata } = require('./insurancePricingDatasetService');
 const { loadServiceIndex, lookupProviderScores } = require('./insuranceGovDataService');
 const { getTopProvidersByService } = require('../config/insuranceServiceIndexTables');
 const { analyzeInsuranceCoverage } = require('../ai/tools/insuranceTools');
@@ -41,6 +42,14 @@ function premiumVsMarket(monthlyPremium, baseline) {
   if (monthlyPremium <= baseline.average * 1.08) return 'fair';
   if (monthlyPremium <= baseline.max) return 'above_market';
   return 'high';
+}
+
+function mapAssessmentToPremiumStatus(assessment) {
+  if (assessment === 'low') return 'below_market';
+  if (assessment === 'normal') return 'fair';
+  if (assessment === 'high') return 'above_market';
+  if (assessment === 'very_high') return 'high';
+  return 'unknown';
 }
 
 function serviceTier(serviceIndex) {
@@ -86,12 +95,25 @@ function analyzePolicy(policy, profileDTO, govRows, duplicateTypes) {
   const monthlyPremium = policy.monthlyPremium ?? null;
   const baseline = getPriceRange(policy.type, {
     age: personal.age,
-    grossMonthly: profileDTO?.financial?.salaryRange,
+    gender: personal.gender,
+    grossMonthly: profileDTO?.employment?.expectedMonthlyGross,
+    salaryRange: profileDTO?.financial?.salaryRange,
     childrenCount: personal.childrenCount,
+    coverageAmount: policy.coverageAmount,
+  });
+
+  const pricingCompare = compareUserPremium(policy.monthlyPremium, policy.type, {
+    age: personal.age,
+    gender: personal.gender,
+    grossMonthly: profileDTO?.employment?.expectedMonthlyGross,
+    salaryRange: profileDTO?.financial?.salaryRange,
+    childrenCount: personal.childrenCount,
+    coverageAmount: policy.coverageAmount,
   });
 
   const service = lookupProviderScores(policy.provider, policy.type, govRows);
-  const premStatus = premiumVsMarket(monthlyPremium, baseline);
+  const premStatus = mapAssessmentToPremiumStatus(pricingCompare.assessment)
+    || premiumVsMarket(monthlyPremium, baseline);
   const monthlyOverpay = monthlyPremium != null && baseline.average
     ? Math.max(0, monthlyPremium - baseline.average)
     : 0;
@@ -140,7 +162,9 @@ function analyzePolicy(policy, profileDTO, govRows, duplicateTypes) {
         premiumRange: baseline,
         marketClaimPaymentRate: 82,
         marketServiceIndex: 80,
+        pricingSource: pricingCompare.source,
       },
+      pricingComparison: pricingCompare,
     },
     duplicateCoverage: isDuplicate,
     verdict,
@@ -221,12 +245,16 @@ async function buildMarketAdvice(policies, profileDTO, options = {}) {
   );
   const duplicateWaste = coverage.totalMonthlyWaste ?? 0;
 
+  const pricingMeta = getSourceMetadata();
+  const pricingDisclaimer = getPricingDisclaimer();
+
   return {
     hasData: true,
     role: 'Insurance Analyst & Risk Management Expert',
     dataSource: source,
     dataCached: Boolean(cached),
     dataWarning: warning || null,
+    pricingSource: pricingMeta,
     policies: policyAdvice,
     comparisonMatrix,
     duplicates: coverage.duplicates || [],
@@ -245,7 +273,9 @@ async function buildMarketAdvice(policies, profileDTO, options = {}) {
       : overallVerdict === VERDICT.REVIEW
         ? 'יש מקום לייעול — נהל משא ומר על פרמיות ובדוק כפילויות לפני החלפת מכרז.'
         : 'מומלץ לבחון מחדש חברות עם מדד שירות גבוה יותר — במיוחד אחוז תשלום תביעות.',
-    disclaimer: 'המידע מבוסס על מדד השירות הרשמי וטווחי הר הביטוח — אינו ייעוץ ביטוחי. יש להתייעץ עם סוכן ביטוח מורשה.',
+    disclaimer: pricingDisclaimer.he,
+    disclaimerEn: pricingDisclaimer.en,
+    disclaimerLegacy: 'המידע מבוסס על מדד שירות ומדגם מחירים מקומי — אינו ייעוץ ביטוחי. יש להתייעץ עם סוכן ביטוח מורשה.',
   };
 }
 

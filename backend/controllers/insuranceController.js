@@ -4,6 +4,12 @@ const InsurancePolicy = require('../models/InsurancePolicy');
 const { parseInsuranceExcel } = require('../services/insuranceExcelParser');
 const { buildInsuranceAnalysis, importInsuranceExcel } = require('../services/insuranceImportService');
 const { buildMarketAdvice } = require('../services/insuranceMarketAdvisorService');
+const {
+  getSession,
+  submitAnswer,
+  completeOnboarding,
+  markReportImported,
+} = require('../services/insuranceOnboardingService');
 const InsuranceImportSnapshot = require('../models/InsuranceImportSnapshot');
 const { isDemoRequest } = require('../utils/demoMode');
 
@@ -58,6 +64,7 @@ async function uploadInsuranceExcel(req, res) {
   }
 
   const result = await importInsuranceExcel(req.user._id, parsed, req.file.originalname);
+  await markReportImported(req.user._id);
 
   return res.json({
     success: true,
@@ -112,6 +119,25 @@ async function getMarketAdvice(req, res) {
   return res.json({ success: true, data: marketAdvice });
 }
 
+async function getInsuranceOnboardingSession(req, res) {
+  const data = await getSession(req.user._id);
+  return res.json({ success: true, data });
+}
+
+async function postInsuranceOnboardingAnswer(req, res) {
+  const { questionId, value, skipped } = req.body || {};
+  if (!questionId) {
+    return res.status(400).json({ success: false, message: 'חסר מזהה שאלה' });
+  }
+  const data = await submitAnswer(req.user._id, { questionId, value, skipped: Boolean(skipped) });
+  return res.json({ success: true, data });
+}
+
+async function postInsuranceOnboardingComplete(req, res) {
+  const data = await completeOnboarding(req.user._id);
+  return res.json({ success: true, data });
+}
+
 module.exports = {
   getInsuranceAnalysis,
   getInsurancePolicies,
@@ -119,4 +145,7 @@ module.exports = {
   uploadInsuranceExcel,
   deleteInsurancePolicy,
   getMarketAdvice,
+  getInsuranceOnboardingSession,
+  postInsuranceOnboardingAnswer,
+  postInsuranceOnboardingComplete,
 };

@@ -142,25 +142,15 @@ async function loadServiceIndex({ forceRefresh = false } = {}) {
     return { rows: cache.rows, source: cache.source, cached: true };
   }
 
-  if (!config.enabled) {
-    const rows = staticRowsFromConfig();
-    cache = { rows, fetchedAt: now, source: 'static_disabled' };
-    return { rows, source: 'static_disabled', cached: false };
-  }
-
+  const localCsvPath = path.join(config.localDataDir, config.localServiceIndexFile);
   const fixturePath = path.join(__dirname, '../tests/fixtures/insurance-service-index-sample.csv');
 
-  try {
-    const csvUrl = await resolveCsvUrl();
-    const csvRes = await fetchWithTimeout(csvUrl);
-    if (!csvRes.ok) throw new Error(`CSV download failed: ${csvRes.status}`);
-    const parsed = parseServiceIndexCsv(await csvRes.text());
+  if (fs.existsSync(localCsvPath)) {
+    const parsed = parseServiceIndexCsv(fs.readFileSync(localCsvPath, 'utf8'));
     if (parsed.length > 0) {
-      cache = { rows: parsed, fetchedAt: now, source: 'data.gov.il' };
-      return { rows: parsed, source: 'data.gov.il', cached: false };
+      cache = { rows: parsed, fetchedAt: now, source: 'local_csv' };
+      return { rows: parsed, source: 'local_csv', cached: false };
     }
-  } catch (err) {
-    console.warn('[insuranceGovData] remote fetch failed:', err.message);
   }
 
   if (fs.existsSync(fixturePath)) {
@@ -171,9 +161,24 @@ async function loadServiceIndex({ forceRefresh = false } = {}) {
     }
   }
 
+  if (config.enabled && config.remoteFetchEnabled) {
+    try {
+      const csvUrl = await resolveCsvUrl();
+      const csvRes = await fetchWithTimeout(csvUrl);
+      if (!csvRes.ok) throw new Error(`CSV download failed: ${csvRes.status}`);
+      const parsed = parseServiceIndexCsv(await csvRes.text());
+      if (parsed.length > 0) {
+        cache = { rows: parsed, fetchedAt: now, source: 'data.gov.il' };
+        return { rows: parsed, source: 'data.gov.il', cached: false };
+      }
+    } catch (err) {
+      console.warn('[insuranceGovData] remote fetch skipped/failed:', err.message);
+    }
+  }
+
   const rows = staticRowsFromConfig();
   cache = { rows, fetchedAt: now, source: 'static_fallback' };
-  return { rows, source: 'static_fallback', cached: false, warning: 'live gov service index unavailable' };
+  return { rows, source: 'static_fallback', cached: false, warning: 'using static service index — local CSV preferred' };
 }
 
 function lookupProviderScores(providerName, policyType, govRows) {
