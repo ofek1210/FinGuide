@@ -46,9 +46,13 @@ function rowHasHeader(rows, ...needles) {
 /** Find column index where header cell includes any of the needles */
 function findCol(headers, ...needles) {
   for (let i = 0; i < headers.length; i++) {
-    const h = String(headers[i] ?? '').trim();
+    const h = String(headers[i] ?? '').trim().toLowerCase();
     if (!h) continue;
-    if (needles.some(n => h.includes(n))) return i;
+    if (needles.some(n => {
+      const nLower = String(n).toLowerCase();
+      return h.includes(nLower) 
+        || h.replace(/[^א-תa-z0-9]/g, '').includes(nLower.replace(/[^א-תa-z0-9]/g, ''));
+    })) return i;
   }
   return undefined;
 }
@@ -56,9 +60,13 @@ function findCol(headers, ...needles) {
 function parseHarHaBituachRows(rows) {
   const exportDate = rows[0]?.[5] || null;
 
-  const headerRowIdx = rows.findIndex(r => rowHasHeader([r], 'פוליסה')
-    && (rowHasHeader([r], 'חברה') || rowHasHeader([r], 'חברת') || rowHasHeader([r], 'מבטח'))
-    && (rowHasHeader([r], 'ענף') || rowHasHeader([r], 'מוצר')));
+  const headerRowIdx = rows.findIndex(r => {
+    if (!rowHasHeader([r], 'פוליסה')) return false;
+    const hasCompany = rowHasHeader([r], 'חברה') || rowHasHeader([r], 'חברת') || rowHasHeader([r], 'מבטח');
+    const hasBranch = rowHasHeader([r], 'ענף') || rowHasHeader([r], 'מוצר');
+    return hasCompany && hasBranch;
+  });
+  
   if (headerRowIdx === -1) {
     return { policies: [], exportDate, rawRowCount: rows.length };
   }
@@ -105,7 +113,8 @@ function parseHarHaBituachRows(rows) {
     const planClass = col.planClass != null ? String(row[col.planClass] ?? '').trim() : '';
     const extra = col.extra != null ? String(row[col.extra] ?? '').trim() : '';
 
-    if (!company && !policyNumber) continue;
+    // Accept rows with company OR policyNumber OR premium
+    if (!company && !policyNumber && premiumRaw == null) continue;
 
     const premium = typeof premiumRaw === 'number'
       ? premiumRaw
@@ -182,9 +191,10 @@ function isHarHaBituachBuffer(buffer) {
   try {
     const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
     const rows = readWorkbookRows(wb);
-    return rowHasHeader(rows, 'פוליסה')
-      && (rowHasHeader(rows, 'חברה') || rowHasHeader(rows, 'חברת') || rowHasHeader(rows, 'מבטח'))
-      && (rowHasHeader(rows, 'ענף') || rowHasHeader(rows, 'מוצר'));
+    const hasPolicy = rowHasHeader(rows, 'פוליסה');
+    const hasCompany = rowHasHeader(rows, 'חברה') || rowHasHeader(rows, 'חברת') || rowHasHeader(rows, 'מבטח');
+    const hasBranch = rowHasHeader(rows, 'ענף') || rowHasHeader(rows, 'מוצר');
+    return hasPolicy && hasCompany && hasBranch;
   } catch {
     return false;
   }
