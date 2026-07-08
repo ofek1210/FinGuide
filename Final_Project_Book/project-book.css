@@ -1,0 +1,279 @@
+/* FinGuide Final Project Book — print stylesheet (A4 academic) */
+
+@page {
+  size: A4;
+  margin: 2.5cm 2.5cm 3cm 2.5cm;
+
+  @bottom-center {
+    content: counter(page);
+    font-family: "Times New Roman", "David", "Noto Serif Hebrew", serif;
+    font-size: 10pt;
+    color: #333;
+  }
+}
+
+@page :first {
+  @bottom-center {
+    content: none;
+  }
+}
+
+html {
+  font-size: 12pt;
+}
+
+body {
+  font-family: "Times New Roman", "David", "Noto Serif Hebrew", Georgia, serif;
+  font-size: 12pt;
+  line-height: 1.6;
+  color: #111;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Title page */
+h1.book-title {
+  font-size: 18pt;
+  font-weight: bold;
+  text-align: center;
+  line-height: 1.35;
+  margin-top: 5.5cm;
+  margin-bottom: 2cm;
+  page-break-after: always;
+}
+
+.title-page-meta {
+  text-align: center;
+  font-size: 12pt;
+  line-height: 1.8;
+  page-break-after: always;
+}
+
+.title-page-meta p {
+  text-align: center;
+  margin-bottom: 0.35em;
+}
+
+/* Front-matter sections before Chapter 1 */
+h2 {
+  font-size: 14pt;
+  font-weight: bold;
+  margin-top: 0;
+  margin-bottom: 0.75em;
+  page-break-before: always;
+  page-break-after: avoid;
+}
+
+h2:first-of-type {
+  page-break-before: auto;
+}
+
+h3 {
+  font-size: 12pt;
+  font-weight: bold;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+  page-break-after: avoid;
+}
+
+h4 {
+  font-size: 12pt;
+  font-weight: bold;
+  font-style: italic;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+
+p {
+  margin: 0 0 0.75em;
+  orphans: 3;
+  widows: 3;
+}
+
+ul,
+ol {
+  margin: 0 0 0.75em;
+  padding-left: 1.5em;
+}
+
+li {
+  margin-bottom: 0.35em;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 1.5em 0;
+}
+
+
+h1 {
+  font-size: 16pt;
+  font-weight: bold;
+  margin-top: 0;
+  margin-bottom: 1em;
+  page-break-before: always;
+  page-break-after: avoid;
+}
+h2 + h3,
+h3 + p,
+h3 + ul,
+h3 + ol {
+  page-break-before: avoid;
+}
+
+strong {
+  font-weight: bold;
+}
+
+em {
+  font-style: italic;
+}
+
+a {
+  color: #1a4a8a;
+  text-decoration: none;
+}
+
+a.toc-link {
+  color: #1a4a8a;
+  text-decoration: underline;
+}
+
+a.toc-link:hover {
+  color: #0d2d5e;
+}
+
+@media print {
+  a.toc-link {
+    color: #1a4a8a !important;
+    text-decoration: underline !important;
+  }
+}
+
+h1[id],
+h2[id],
+h3[id],
+h4[id] {
+  scroll-margin-top: 1.5cm;
+}
+
+ul.toc-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+ul.toc-list ul {
+  list-style: none;
+  padding-left: 1.5em;
+  margin-top: 0.25em;
+}
+
+ul.toc-list li {
+  margin-bottom: 0.4em;
+  line-height: 1.4;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0 1.5em;
+  font-size: 10.5pt;
+  page-break-inside: avoid;
+}
+
+thead {
+  display: table-header-group;
+}
+
+tr {
+  page-break-inside: avoid;
+}
+
+th,
+td {
+  border: 1px solid #333;
+  padding: 0.4em 0.6em;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  font-weight: bold;
+  background-color: #f5f5f5;
+}
+
+pre {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 9.5pt;
+  line-height: 1.45;
+  background: #f8f8f8;
+  border: 1px solid #ddd;
+  padding: 0.75em 1em;
+  margin: 1em 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  page-break-inside: avoid;
+}
+
+code {
+  font-family: "Courier New", Courier, monospace;
+  font-size: 10pt;
+  background: #f4f4f4;
+  padding: 0.1em 0.25em;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+}
+
+blockquote {
+  margin: 1em 1.5em;
+  font-style: italic;
+  border-left: 3px solid #ccc;
+  padding-left: 1em;
+}
+
+/* Table of contents — compact list */
+body > h2:first-of-type + ul,
+body > h2:nth-of-type(2) + ul {
+  list-style: none;
+  padding-left: 0;
+}
+
+/* Avoid breaking figures / figure captions */
+p:has(strong:first-child) {
+  page-break-inside: avoid;
+}
+
+figure.book-figure {
+  margin: 1.25em auto 1.5em;
+  max-width: 100%;
+  page-break-inside: avoid;
+  text-align: center;
+}
+
+figure.book-figure img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid #ccc;
+}
+
+figure.book-figure figcaption {
+  font-size: 10.5pt;
+  font-style: italic;
+  text-align: center;
+  margin-top: 0.5em;
+  color: #333;
+}
+
+figure.book-figure.missing .figure-missing {
+  font-style: italic;
+  color: #666;
+  text-align: center;
+  border: 1px dashed #999;
+  padding: 1em;
+}

@@ -1,0 +1,17 @@
+flowchart TB
+  subgraph layers [Backend Layered Architecture]
+    direction TB
+    Routes["Routes\nbackend/routes/"]
+    Controllers["Controllers\nbackend/controllers/"]
+    Services["Services\nbackend/services/"]
+    Utils["Utilities\nbackend/utils/"]
+    Models["Models\nbackend/models/"]
+  end
+
+  HTTP["HTTP Request"] --> Routes
+  Routes --> Controllers
+  Controllers --> Services
+  Services --> Utils
+  Services --> Models
+  Models --> MongoDB[(MongoDB)]
+  Controllers --> HTTPResp["JSON Response"]

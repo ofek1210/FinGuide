@@ -1,0 +1,23 @@
+flowchart TB
+  subgraph dev [Development verification]
+    UnitTests[Jest unit tests]
+    IntTests[Jest integration tests]
+    FrontendTests[Frontend ts-jest tests]
+  end
+  subgraph regression [Regression harnesses]
+    Golden[Golden fixture corpus n=7]
+    EvalOCR["npm run eval:ocr"]
+    EvalFindings["npm run eval:findings"]
+    EvalAI["npm run eval:ai-routing"]
+  end
+  subgraph ci [Local CI gate]
+    RootTest["npm test at repo root"]
+    ViteBuild[vite build typecheck]
+  end
+  UnitTests --> RootTest
+  IntTests --> RootTest
+  FrontendTests --> RootTest
+  Golden --> EvalOCR
+  Golden --> EvalFindings
+  EvalOCR --> RootTest
+  RootTest --> ViteBuild

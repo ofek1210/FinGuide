@@ -1,0 +1,29 @@
+flowchart TD
+  User["User clicks Run\nHub MasterAgentPanel"]
+  API["POST /api/ai/full-analysis"]
+  Canvas["buildExecutionCanvas\nonboarding, documents, profile"]
+  Prefetch["prefetchGovMarketData\nparallel"]
+  Score["buildFinancialHealthScore\nparallel"]
+  Agents["Promise.allSettled\n4 domain agents"]
+  Payslip["payslipAgent"]
+  Insurance["insuranceAgent"]
+  Pension["pensionAgent"]
+  Profile["financialProfileAgent"]
+  Merge["mergeRecommendations\ndeduplicate by type"]
+  Summary["Hebrew summary\nClaude or rule fallback"]
+  Log["AgentRunLog persisted"]
+  Response["FullAnalysisResponse\nscore + agents + actions"]
+
+  User --> API --> Canvas
+  Canvas --> Prefetch
+  Canvas --> Score
+  Canvas --> Agents
+  Agents --> Payslip
+  Agents --> Insurance
+  Agents --> Pension
+  Agents --> Profile
+  Payslip --> Merge
+  Insurance --> Merge
+  Pension --> Merge
+  Profile --> Merge
+  Merge --> Summary --> Log --> Response
