@@ -1,0 +1,23 @@
+sequenceDiagram
+  participant User
+  participant SPA as React SPA
+  participant API as Express API
+  participant DB as MongoDB
+
+  alt Email and password
+    User->>SPA: Register or login form
+    SPA->>API: POST /api/auth/register or /login
+    API->>DB: Create or verify User
+    API-->>SPA: JWT token
+  else Google OAuth
+    User->>SPA: Google ID token
+    SPA->>API: POST /api/auth/google
+    API->>DB: Upsert User by googleId
+    API-->>SPA: JWT token
+  end
+
+  SPA->>SPA: Store JWT in localStorage
+  SPA->>API: Authorization Bearer on protected routes
+  API->>API: protect middleware verifies JWT
+  API->>DB: Load req.user
+  API-->>SPA: Protected resource

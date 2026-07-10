@@ -1,0 +1,15 @@
+flowchart TB
+  Browser["Browser Client\nReact 19 SPA"]
+  Express["Express API Server\nNode.js"]
+  MongoDB[(MongoDB)]
+  FS["Local Filesystem\nbackend/uploads/"]
+  Tesseract["Tesseract + Poppler\nchild processes"]
+  Claude["Anthropic Claude API"]
+  Ollama["Ollama LLM\noptional fallback"]
+
+  Browser -->|"HTTPS REST"| Express
+  Express --> MongoDB
+  Express --> FS
+  Express --> Tesseract
+  Express --> Claude
+  Express --> Ollama

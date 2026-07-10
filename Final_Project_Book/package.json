@@ -1,0 +1,15 @@
+{
+  "name": "finguide-project-book",
+  "private": true,
+  "description": "Build PDF for the FinGuide Final Project Book",
+  "scripts": {
+    "build:figures": "node build-figures.js && node build-figure10.js && node build-figure12.js",
+    "build:pdf": "node build-pdf.js",
+    "build": "npm run build:figures && npm run build:pdf",
+    "serve": "node serve.js"
+  },
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.4.0",
+    "puppeteer-core": "^24.0.0"
+  }
+}
