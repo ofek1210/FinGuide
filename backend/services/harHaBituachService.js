@@ -36,16 +36,23 @@ function parsePremiumPeriod(periodStr = '') {
   return { from: parse(match[1]), to: parse(match[2]) };
 }
 
-function rowHasHeader(rows, needle) {
-  return rows.some(r => Array.isArray(r) && r.some(c => String(c ?? '').includes(needle)));
+function rowHasHeader(rows, ...needles) {
+  return rows.some(r => (
+    Array.isArray(r)
+    && needles.every(needle => r.some(c => String(c ?? '').includes(needle)))
+  ));
 }
 
 /** Find column index where header cell includes any of the needles */
 function findCol(headers, ...needles) {
   for (let i = 0; i < headers.length; i++) {
-    const h = String(headers[i] ?? '').trim();
+    const h = String(headers[i] ?? '').trim().toLowerCase();
     if (!h) continue;
-    if (needles.some(n => h.includes(n))) return i;
+    if (needles.some(n => {
+      const nLower = String(n).toLowerCase();
+      return h.includes(nLower) 
+        || h.replace(/[^א-תa-z0-9]/g, '').includes(nLower.replace(/[^א-תa-z0-9]/g, ''));
+    })) return i;
   }
   return undefined;
 }
@@ -53,9 +60,13 @@ function findCol(headers, ...needles) {
 function parseHarHaBituachRows(rows) {
   const exportDate = rows[0]?.[5] || null;
 
-  const headerRowIdx = rows.findIndex(
-    r => Array.isArray(r) && r.some(c => String(c ?? '').includes('ענף ראשי')),
-  );
+  const headerRowIdx = rows.findIndex(r => {
+    if (!rowHasHeader([r], 'פוליסה')) return false;
+    const hasCompany = rowHasHeader([r], 'חברה') || rowHasHeader([r], 'חברת') || rowHasHeader([r], 'מבטח');
+    const hasBranch = rowHasHeader([r], 'ענף') || rowHasHeader([r], 'מוצר');
+    return hasCompany && hasBranch;
+  });
+  
   if (headerRowIdx === -1) {
     return { policies: [], exportDate, rawRowCount: rows.length };
   }
@@ -64,7 +75,7 @@ function parseHarHaBituachRows(rows) {
   const col = {
     id: findCol(headers, 'תעודת זהות') ?? 0,
     mainBranch: findCol(headers, 'ענף ראשי') ?? 1,
-    company: findCol(headers, 'חברה'),
+    company: findCol(headers, 'חברה', 'חברת', 'מבטח'),
     productType: findCol(headers, 'סוג מוצר'),
     subBranch: findCol(headers, 'ענף', 'משני'),
     period: findCol(headers, 'תקופת ביטוח'),
@@ -102,7 +113,8 @@ function parseHarHaBituachRows(rows) {
     const planClass = col.planClass != null ? String(row[col.planClass] ?? '').trim() : '';
     const extra = col.extra != null ? String(row[col.extra] ?? '').trim() : '';
 
-    if (!company && !policyNumber) continue;
+    // Accept rows with company OR policyNumber OR premium
+    if (!company && !policyNumber && premiumRaw == null) continue;
 
     const premium = typeof premiumRaw === 'number'
       ? premiumRaw
@@ -156,8 +168,17 @@ function parseHarHaBituachRows(rows) {
   };
 }
 
+function findHarSheetName(workbook) {
+  return workbook.SheetNames.find(name => {
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[name], { header: 1, defval: null });
+    return rowHasHeader(rows, 'פוליסה')
+      && (rowHasHeader(rows, 'חברה') || rowHasHeader(rows, 'חברת') || rowHasHeader(rows, 'מבטח'))
+      && (rowHasHeader(rows, 'ענף') || rowHasHeader(rows, 'מוצר'));
+  }) || workbook.SheetNames[0];
+}
+
 function readWorkbookRows(workbook) {
-  const ws = workbook.Sheets[workbook.SheetNames[0]];
+  const ws = workbook.Sheets[findHarSheetName(workbook)];
   return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
 }
 
@@ -170,7 +191,10 @@ function isHarHaBituachBuffer(buffer) {
   try {
     const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
     const rows = readWorkbookRows(wb);
-    return rowHasHeader(rows, 'ענף ראשי');
+    const hasPolicy = rowHasHeader(rows, 'פוליסה');
+    const hasCompany = rowHasHeader(rows, 'חברה') || rowHasHeader(rows, 'חברת') || rowHasHeader(rows, 'מבטח');
+    const hasBranch = rowHasHeader(rows, 'ענף') || rowHasHeader(rows, 'מוצר');
+    return hasPolicy && hasCompany && hasBranch;
   } catch {
     return false;
   }
@@ -179,6 +203,35 @@ function isHarHaBituachBuffer(buffer) {
 /**
  * Parse an HbResults XLSX file and return structured analysisData.
  */
+function ensureFullSheetRef(ws) {
+  if (!ws || !ws['!ref']) return;
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  let minR = range.s.r;
+  let maxR = range.e.r;
+  let minC = range.s.c;
+  let maxC = range.e.c;
+
+  for (const addr of Object.keys(ws)) {
+    if (addr.startsWith('!')) continue;
+    const cell = XLSX.utils.decode_cell(addr);
+    minR = Math.min(minR, cell.r);
+    minC = Math.min(minC, cell.c);
+    maxR = Math.max(maxR, cell.r);
+    maxC = Math.max(maxC, cell.c);
+  }
+
+  const actualRef = XLSX.utils.encode_range({ s: { r: minR, c: minC }, e: { r: maxR, c: maxC } });
+  if (actualRef !== ws['!ref']) {
+    ws['!ref'] = actualRef;
+  }
+}
+
+function readWorkbookRows(workbook) {
+  const ws = workbook.Sheets[findHarSheetName(workbook)];
+  ensureFullSheetRef(ws);
+  return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+}
+
 function parseHarHaBituach(filePath) {
   const wb = XLSX.readFile(filePath);
   return parseHarHaBituachRows(readWorkbookRows(wb));

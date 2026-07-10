@@ -15,6 +15,7 @@
     "seed:test-account": "node scripts/seedTestAccount.js",
     "sync:pensianet": "node scripts/syncPensiaNet.js",
     "sync:gov": "node scripts/syncGovMarket.js",
+    "generate:insurance-samples": "node scripts/generateInsuranceCalculatorSamples.js",
     "parse:pension": "node scripts/parsePensionUpload.js",
     "validate:benchmark-tables": "node scripts/validateBenchmarkTables.js",
     "eval:ocr": "node scripts/evalOcr.js",

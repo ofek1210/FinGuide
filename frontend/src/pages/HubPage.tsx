@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowLeft, Play, Sparkles, Upload } from "lucide-react";
+import { ArrowLeft, Sparkles, Upload } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
@@ -284,7 +284,6 @@ export default function HubPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [importedPolicies, setImportedPolicies] = useState(0);
   const [pensionScoreTrend, setPensionScoreTrend] = useState<number[]>([]);
-  const [liveScore, setLiveScore] = useState<FullAnalysisGlobalScore | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -342,25 +341,6 @@ export default function HubPage() {
     return c;
   }, [findings]);
 
-  // health card — real numbers only, computed from the master agent's live score
-  const healthValue = liveScore?.score ?? 0;
-  const healthLabel = liveScore?.label ?? "";
-  const healthCategories = (() => {
-    const cats = liveScore?.categories ?? [];
-    if (cats.length === 0) return STATIC_HEALTH_CATEGORIES;
-    // Prefer tax · pension · insurance (mirrors the original card); else first 3.
-    const preferred = HEALTH_CARD_KEYS.flatMap(key => {
-      const found = cats.find(c => c.id === key);
-      return found ? [found] : [];
-    });
-    const chosen = (preferred.length > 0 ? preferred : cats).slice(0, 3);
-    return chosen.map(c => ({
-      k: c.label ?? "קטגוריה",
-      v: `${Math.round((c.score / (c.maxScore || 100)) * 100)}%`,
-      c: (c.id && CATEGORY_TONE[c.id]) || "var(--lav-300)",
-    }));
-  })();
-
   // hero: potential savings to retirement, from real pension analysis
   const potentialSavings =
     pension?.benchmark?.summary.totalPotentialSavings ??
@@ -407,16 +387,19 @@ export default function HubPage() {
           ? "לא נמצאו הזדמנויות חדשות — הכל נראה תקין."
           : "העלו תלוש ראשון כדי שנתחיל לזהות הזדמנויות.";
 
-  const healthRows: [string, number | null][] = [
-    ["תלושי שכר", scores?.payslip ?? null],
-    ["יעילות פנסיה", scores?.pension ?? null],
-    ["כיסוי ביטוחי", scores?.insurance ?? null],
-  ];
+  const healthRows: [string, number | null][] = liveScore?.categories?.length
+    ? liveScore.categories.slice(0, 3).map(cat => [
+      cat.label,
+      Math.round((cat.score / (cat.maxScore || 100)) * 100),
+    ])
+    : [
+      ["תלושי שכר", null],
+      ["יעילות פנסיה", null],
+      ["כיסוי ביטוחי", null],
+    ];
 
-  const healthGaugeValue = liveScore?.score ?? scores?.overall ?? 0;
-  const healthGaugeSub = liveScore?.label ?? (
-    scores?.overall == null ? "טרם חושב" : scores.overall >= 75 ? "מצב טוב" : scores.overall >= 50 ? "מצב סביר" : "דורש טיפול"
-  );
+  const healthGaugeValue = liveScore?.score ?? 0;
+  const healthGaugeSub = liveScore?.label ?? "טרם חושב";
 
   // real per-agent trend series; a card simply shows no chart when there is no history yet
   const payslipTrend = useMemo(() => netTrend(documents), [documents]);
@@ -525,10 +508,8 @@ export default function HubPage() {
                       {v == null ? "—" : `${v}%`}
                     </span>
                   </div>
-                </>
-              ) : (
-                <HealthGateCTA onRun={() => panelRef.current?.runFull()} />
-              )}
+                ))}
+              </div>
             </div>
           </div>
         </div>

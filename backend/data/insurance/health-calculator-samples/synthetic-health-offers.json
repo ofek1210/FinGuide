@@ -1,0 +1,1622 @@
+[
+  {
+    "id": "health-male-18-01",
+    "insuranceType": "health",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "basic",
+      "coverageAmount": 150000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 64,
+    "yearlyPremiumNis": 768,
+    "deductibleNis": 250,
+    "coverageSummary": "basic health package with 150000 NIS indicative coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-18-02",
+    "insuranceType": "health",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "standard_private_surgery",
+      "coverageAmount": 300000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery"
+      ]
+    },
+    "monthlyPremiumNis": 81,
+    "yearlyPremiumNis": 972,
+    "deductibleNis": 450,
+    "coverageSummary": "standard private surgery health package with 300000 NIS indicative coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-18-03",
+    "insuranceType": "health",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_private_surgery_consultations",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "specialist_consultations"
+      ]
+    },
+    "monthlyPremiumNis": 114,
+    "yearlyPremiumNis": 1368,
+    "deductibleNis": 500,
+    "coverageSummary": "premium private surgery consultations health package with 500000 NIS indicative coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-18-04",
+    "insuranceType": "health",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_surgery_drugs_transplants",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "drugs_outside_basket",
+        "transplants"
+      ]
+    },
+    "monthlyPremiumNis": 155,
+    "yearlyPremiumNis": 1860,
+    "deductibleNis": 400,
+    "coverageSummary": "premium surgery drugs transplants health package with 750000 NIS indicative coverage",
+    "score": 85,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-18-05",
+    "insuranceType": "health",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "family_extended_consultations",
+      "coverageAmount": 400000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "specialist_consultations",
+        "ambulatory_services"
+      ]
+    },
+    "monthlyPremiumNis": 90,
+    "yearlyPremiumNis": 1080,
+    "deductibleNis": 550,
+    "coverageSummary": "family extended consultations health package with 400000 NIS indicative coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-18-01",
+    "insuranceType": "health",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "basic",
+      "coverageAmount": 150000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 63,
+    "yearlyPremiumNis": 756,
+    "deductibleNis": 250,
+    "coverageSummary": "basic health package with 150000 NIS indicative coverage",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-18-02",
+    "insuranceType": "health",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "standard_private_surgery",
+      "coverageAmount": 300000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery"
+      ]
+    },
+    "monthlyPremiumNis": 76,
+    "yearlyPremiumNis": 912,
+    "deductibleNis": 500,
+    "coverageSummary": "standard private surgery health package with 300000 NIS indicative coverage",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-18-03",
+    "insuranceType": "health",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_private_surgery_consultations",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "specialist_consultations"
+      ]
+    },
+    "monthlyPremiumNis": 108,
+    "yearlyPremiumNis": 1296,
+    "deductibleNis": 500,
+    "coverageSummary": "premium private surgery consultations health package with 500000 NIS indicative coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-18-04",
+    "insuranceType": "health",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_surgery_drugs_transplants",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "drugs_outside_basket",
+        "transplants"
+      ]
+    },
+    "monthlyPremiumNis": 135,
+    "yearlyPremiumNis": 1620,
+    "deductibleNis": 500,
+    "coverageSummary": "premium surgery drugs transplants health package with 750000 NIS indicative coverage",
+    "score": 82,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-18-05",
+    "insuranceType": "health",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "family_extended_consultations",
+      "coverageAmount": 400000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "specialist_consultations",
+        "ambulatory_services"
+      ]
+    },
+    "monthlyPremiumNis": 88,
+    "yearlyPremiumNis": 1056,
+    "deductibleNis": 550,
+    "coverageSummary": "family extended consultations health package with 400000 NIS indicative coverage",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-30-01",
+    "insuranceType": "health",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "basic",
+      "coverageAmount": 150000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 105,
+    "yearlyPremiumNis": 1260,
+    "deductibleNis": 250,
+    "coverageSummary": "basic health package with 150000 NIS indicative coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-30-02",
+    "insuranceType": "health",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "standard_private_surgery",
+      "coverageAmount": 300000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery"
+      ]
+    },
+    "monthlyPremiumNis": 135,
+    "yearlyPremiumNis": 1620,
+    "deductibleNis": 450,
+    "coverageSummary": "standard private surgery health package with 300000 NIS indicative coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-30-03",
+    "insuranceType": "health",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_private_surgery_consultations",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "specialist_consultations"
+      ]
+    },
+    "monthlyPremiumNis": 170,
+    "yearlyPremiumNis": 2040,
+    "deductibleNis": 550,
+    "coverageSummary": "premium private surgery consultations health package with 500000 NIS indicative coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-30-04",
+    "insuranceType": "health",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_surgery_drugs_transplants",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "drugs_outside_basket",
+        "transplants"
+      ]
+    },
+    "monthlyPremiumNis": 218,
+    "yearlyPremiumNis": 2616,
+    "deductibleNis": 500,
+    "coverageSummary": "premium surgery drugs transplants health package with 750000 NIS indicative coverage",
+    "score": 82,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-30-05",
+    "insuranceType": "health",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "family_extended_consultations",
+      "coverageAmount": 400000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "specialist_consultations",
+        "ambulatory_services"
+      ]
+    },
+    "monthlyPremiumNis": 144,
+    "yearlyPremiumNis": 1728,
+    "deductibleNis": 500,
+    "coverageSummary": "family extended consultations health package with 400000 NIS indicative coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-30-01",
+    "insuranceType": "health",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "basic",
+      "coverageAmount": 150000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 97,
+    "yearlyPremiumNis": 1164,
+    "deductibleNis": 250,
+    "coverageSummary": "basic health package with 150000 NIS indicative coverage",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-30-02",
+    "insuranceType": "health",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "standard_private_surgery",
+      "coverageAmount": 300000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery"
+      ]
+    },
+    "monthlyPremiumNis": 133,
+    "yearlyPremiumNis": 1596,
+    "deductibleNis": 450,
+    "coverageSummary": "standard private surgery health package with 300000 NIS indicative coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-30-03",
+    "insuranceType": "health",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_private_surgery_consultations",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "specialist_consultations"
+      ]
+    },
+    "monthlyPremiumNis": 177,
+    "yearlyPremiumNis": 2124,
+    "deductibleNis": 500,
+    "coverageSummary": "premium private surgery consultations health package with 500000 NIS indicative coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-30-04",
+    "insuranceType": "health",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_surgery_drugs_transplants",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "drugs_outside_basket",
+        "transplants"
+      ]
+    },
+    "monthlyPremiumNis": 212,
+    "yearlyPremiumNis": 2544,
+    "deductibleNis": 500,
+    "coverageSummary": "premium surgery drugs transplants health package with 750000 NIS indicative coverage",
+    "score": 80,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-30-05",
+    "insuranceType": "health",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "family_extended_consultations",
+      "coverageAmount": 400000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "specialist_consultations",
+        "ambulatory_services"
+      ]
+    },
+    "monthlyPremiumNis": 140,
+    "yearlyPremiumNis": 1680,
+    "deductibleNis": 550,
+    "coverageSummary": "family extended consultations health package with 400000 NIS indicative coverage",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-40-01",
+    "insuranceType": "health",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "basic",
+      "coverageAmount": 150000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 148,
+    "yearlyPremiumNis": 1776,
+    "deductibleNis": 250,
+    "coverageSummary": "basic health package with 150000 NIS indicative coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-40-02",
+    "insuranceType": "health",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "standard_private_surgery",
+      "coverageAmount": 300000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery"
+      ]
+    },
+    "monthlyPremiumNis": 205,
+    "yearlyPremiumNis": 2460,
+    "deductibleNis": 400,
+    "coverageSummary": "standard private surgery health package with 300000 NIS indicative coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-40-03",
+    "insuranceType": "health",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_private_surgery_consultations",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "specialist_consultations"
+      ]
+    },
+    "monthlyPremiumNis": 273,
+    "yearlyPremiumNis": 3276,
+    "deductibleNis": 450,
+    "coverageSummary": "premium private surgery consultations health package with 500000 NIS indicative coverage",
+    "score": 80,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-40-04",
+    "insuranceType": "health",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_surgery_drugs_transplants",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "drugs_outside_basket",
+        "transplants"
+      ]
+    },
+    "monthlyPremiumNis": 319,
+    "yearlyPremiumNis": 3828,
+    "deductibleNis": 500,
+    "coverageSummary": "premium surgery drugs transplants health package with 750000 NIS indicative coverage",
+    "score": 82,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-40-05",
+    "insuranceType": "health",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "family_extended_consultations",
+      "coverageAmount": 400000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "specialist_consultations",
+        "ambulatory_services"
+      ]
+    },
+    "monthlyPremiumNis": 216,
+    "yearlyPremiumNis": 2592,
+    "deductibleNis": 500,
+    "coverageSummary": "family extended consultations health package with 400000 NIS indicative coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-40-01",
+    "insuranceType": "health",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "basic",
+      "coverageAmount": 150000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 145,
+    "yearlyPremiumNis": 1740,
+    "deductibleNis": 250,
+    "coverageSummary": "basic health package with 150000 NIS indicative coverage",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-40-02",
+    "insuranceType": "health",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "standard_private_surgery",
+      "coverageAmount": 300000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery"
+      ]
+    },
+    "monthlyPremiumNis": 173,
+    "yearlyPremiumNis": 2076,
+    "deductibleNis": 500,
+    "coverageSummary": "standard private surgery health package with 300000 NIS indicative coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-40-03",
+    "insuranceType": "health",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_private_surgery_consultations",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "specialist_consultations"
+      ]
+    },
+    "monthlyPremiumNis": 248,
+    "yearlyPremiumNis": 2976,
+    "deductibleNis": 550,
+    "coverageSummary": "premium private surgery consultations health package with 500000 NIS indicative coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-40-04",
+    "insuranceType": "health",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_surgery_drugs_transplants",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "drugs_outside_basket",
+        "transplants"
+      ]
+    },
+    "monthlyPremiumNis": 313,
+    "yearlyPremiumNis": 3756,
+    "deductibleNis": 500,
+    "coverageSummary": "premium surgery drugs transplants health package with 750000 NIS indicative coverage",
+    "score": 82,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-40-05",
+    "insuranceType": "health",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "family_extended_consultations",
+      "coverageAmount": 400000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "specialist_consultations",
+        "ambulatory_services"
+      ]
+    },
+    "monthlyPremiumNis": 204,
+    "yearlyPremiumNis": 2448,
+    "deductibleNis": 550,
+    "coverageSummary": "family extended consultations health package with 400000 NIS indicative coverage",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-55-01",
+    "insuranceType": "health",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "basic",
+      "coverageAmount": 150000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 230,
+    "yearlyPremiumNis": 2760,
+    "deductibleNis": 300,
+    "coverageSummary": "basic health package with 150000 NIS indicative coverage",
+    "score": 72,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-55-02",
+    "insuranceType": "health",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "standard_private_surgery",
+      "coverageAmount": 300000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery"
+      ]
+    },
+    "monthlyPremiumNis": 343,
+    "yearlyPremiumNis": 4116,
+    "deductibleNis": 450,
+    "coverageSummary": "standard private surgery health package with 300000 NIS indicative coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-55-03",
+    "insuranceType": "health",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_private_surgery_consultations",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "specialist_consultations"
+      ]
+    },
+    "monthlyPremiumNis": 517,
+    "yearlyPremiumNis": 6204,
+    "deductibleNis": 400,
+    "coverageSummary": "premium private surgery consultations health package with 500000 NIS indicative coverage",
+    "score": 82,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-55-04",
+    "insuranceType": "health",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_surgery_drugs_transplants",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "drugs_outside_basket",
+        "transplants"
+      ]
+    },
+    "monthlyPremiumNis": 526,
+    "yearlyPremiumNis": 6312,
+    "deductibleNis": 500,
+    "coverageSummary": "premium surgery drugs transplants health package with 750000 NIS indicative coverage",
+    "score": 82,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-55-05",
+    "insuranceType": "health",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "family_extended_consultations",
+      "coverageAmount": 400000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "specialist_consultations",
+        "ambulatory_services"
+      ]
+    },
+    "monthlyPremiumNis": 362,
+    "yearlyPremiumNis": 4344,
+    "deductibleNis": 550,
+    "coverageSummary": "family extended consultations health package with 400000 NIS indicative coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-55-01",
+    "insuranceType": "health",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "basic",
+      "coverageAmount": 150000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 238,
+    "yearlyPremiumNis": 2856,
+    "deductibleNis": 250,
+    "coverageSummary": "basic health package with 150000 NIS indicative coverage",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-55-02",
+    "insuranceType": "health",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "standard_private_surgery",
+      "coverageAmount": 300000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery"
+      ]
+    },
+    "monthlyPremiumNis": 327,
+    "yearlyPremiumNis": 3924,
+    "deductibleNis": 450,
+    "coverageSummary": "standard private surgery health package with 300000 NIS indicative coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-55-03",
+    "insuranceType": "health",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_private_surgery_consultations",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "specialist_consultations"
+      ]
+    },
+    "monthlyPremiumNis": 488,
+    "yearlyPremiumNis": 5856,
+    "deductibleNis": 450,
+    "coverageSummary": "premium private surgery consultations health package with 500000 NIS indicative coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-55-04",
+    "insuranceType": "health",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_surgery_drugs_transplants",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "drugs_outside_basket",
+        "transplants"
+      ]
+    },
+    "monthlyPremiumNis": 543,
+    "yearlyPremiumNis": 6516,
+    "deductibleNis": 500,
+    "coverageSummary": "premium surgery drugs transplants health package with 750000 NIS indicative coverage",
+    "score": 82,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-55-05",
+    "insuranceType": "health",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "family_extended_consultations",
+      "coverageAmount": 400000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "specialist_consultations",
+        "ambulatory_services"
+      ]
+    },
+    "monthlyPremiumNis": 354,
+    "yearlyPremiumNis": 4248,
+    "deductibleNis": 550,
+    "coverageSummary": "family extended consultations health package with 400000 NIS indicative coverage",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-70-01",
+    "insuranceType": "health",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "basic",
+      "coverageAmount": 150000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 476,
+    "yearlyPremiumNis": 5712,
+    "deductibleNis": 250,
+    "coverageSummary": "basic health package with 150000 NIS indicative coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-70-02",
+    "insuranceType": "health",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "standard_private_surgery",
+      "coverageAmount": 300000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery"
+      ]
+    },
+    "monthlyPremiumNis": 659,
+    "yearlyPremiumNis": 7908,
+    "deductibleNis": 400,
+    "coverageSummary": "standard private surgery health package with 300000 NIS indicative coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-70-03",
+    "insuranceType": "health",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_private_surgery_consultations",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "specialist_consultations"
+      ]
+    },
+    "monthlyPremiumNis": 876,
+    "yearlyPremiumNis": 10512,
+    "deductibleNis": 450,
+    "coverageSummary": "premium private surgery consultations health package with 500000 NIS indicative coverage",
+    "score": 80,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-70-04",
+    "insuranceType": "health",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_surgery_drugs_transplants",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "drugs_outside_basket",
+        "transplants"
+      ]
+    },
+    "monthlyPremiumNis": 1025,
+    "yearlyPremiumNis": 12300,
+    "deductibleNis": 500,
+    "coverageSummary": "premium surgery drugs transplants health package with 750000 NIS indicative coverage",
+    "score": 82,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-male-70-05",
+    "insuranceType": "health",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "family_extended_consultations",
+      "coverageAmount": 400000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "specialist_consultations",
+        "ambulatory_services"
+      ]
+    },
+    "monthlyPremiumNis": 692,
+    "yearlyPremiumNis": 8304,
+    "deductibleNis": 500,
+    "coverageSummary": "family extended consultations health package with 400000 NIS indicative coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-70-01",
+    "insuranceType": "health",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "basic",
+      "coverageAmount": 150000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 467,
+    "yearlyPremiumNis": 5604,
+    "deductibleNis": 250,
+    "coverageSummary": "basic health package with 150000 NIS indicative coverage",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-70-02",
+    "insuranceType": "health",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "standard_private_surgery",
+      "coverageAmount": 300000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery"
+      ]
+    },
+    "monthlyPremiumNis": 555,
+    "yearlyPremiumNis": 6660,
+    "deductibleNis": 500,
+    "coverageSummary": "standard private surgery health package with 300000 NIS indicative coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-70-03",
+    "insuranceType": "health",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_private_surgery_consultations",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "specialist_consultations"
+      ]
+    },
+    "monthlyPremiumNis": 796,
+    "yearlyPremiumNis": 9552,
+    "deductibleNis": 550,
+    "coverageSummary": "premium private surgery consultations health package with 500000 NIS indicative coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-70-04",
+    "insuranceType": "health",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "premium_surgery_drugs_transplants",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "private_surgery",
+        "drugs_outside_basket",
+        "transplants"
+      ]
+    },
+    "monthlyPremiumNis": 1003,
+    "yearlyPremiumNis": 12036,
+    "deductibleNis": 500,
+    "coverageSummary": "premium surgery drugs transplants health package with 750000 NIS indicative coverage",
+    "score": 82,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "health-female-70-05",
+    "insuranceType": "health",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "family_extended_consultations",
+      "coverageAmount": 400000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "specialist_consultations",
+        "ambulatory_services"
+      ]
+    },
+    "monthlyPremiumNis": 655,
+    "yearlyPremiumNis": 7860,
+    "deductibleNis": 550,
+    "coverageSummary": "family extended consultations health package with 400000 NIS indicative coverage",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  }
+]

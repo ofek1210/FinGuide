@@ -92,7 +92,12 @@ export default function InsurancePage() {
     uploadFile: uploadInsuranceExcel,
     extractSavingsDelta: res => res.data?.savingsDelta ?? null,
     onUploadSuccess: res => setLastImported(res.data?.imported ?? null),
-    uploadSuccessMessage: res => `יובאו ${res.data?.imported ?? 0} פוליסות בהצלחה — הסוכן מנתח...`,
+    uploadSuccessMessage: res => {
+      const imported = res.data?.imported ?? 0;
+      return imported > 0
+        ? `יובאו ${imported} פוליסות בהצלחה — הסוכן מנתח...`
+        : "הדוח נקלט בהצלחה — לא נמצאו בו פוליסות פעילות, הסוכן ממשיך לניתוח לפי השאלון.";
+    },
     reloadAfterUpload: load,
     reloadImportHistory: loadImportHistory,
     // keep the redesigned success state visible; the user advances via the
@@ -111,10 +116,11 @@ export default function InsurancePage() {
     void loadImportHistory();
   }, [load, loadImportHistory]);
 
-  // On first load: skip to results if policies exist AND onboarding completed.
+  // On first load: skip to results when insurance onboarding is complete,
+  // even if Har HaBituach contained 0 active policies.
   useEffect(() => {
     if (step !== "landing" || loading) return;
-    if ((data?.policies ?? []).length === 0) return;
+    if (!data) return;
 
     void getInsuranceOnboardingSession().then(res => {
       if (res.ok && res.data?.success && res.data.data?.completed) {
@@ -128,6 +134,21 @@ export default function InsurancePage() {
     setDeletingId(id);
     await deleteInsurancePolicy(id);
     setDeletingId(null);
+    void load();
+  };
+
+  const continueAfterUpload = async () => {
+    const res = await getInsuranceOnboardingSession();
+    if (res.ok && res.data?.success && res.data.data?.completed) {
+      await load();
+      setStep("results");
+      return;
+    }
+    setStep("onboarding");
+  };
+
+  const showResults = () => {
+    setStep("results");
     void load();
   };
 
@@ -161,7 +182,7 @@ export default function InsurancePage() {
     return insuranceShell(
       <InsuranceUpload
         onBack={() => setStep("guide")}
-        onContinue={() => setStep("onboarding")}
+        onContinue={() => { void continueAfterUpload(); }}
         onUpload={handleUpload}
         uploading={uploading}
         uploadMsg={uploadMsg}
@@ -178,10 +199,7 @@ export default function InsurancePage() {
     return insuranceShell(
       <InsuranceOnboardingWizard
         onBack={() => setStep("upload")}
-        onComplete={() => {
-          void load();
-          setStep("results");
-        }}
+        onComplete={showResults}
       />,
     );
   }
@@ -474,7 +492,8 @@ function ResultsStep({
       </div>,
     );
   }
-  if (policies.length === 0) {
+  const hasAnalysisOutput = Boolean(analysis || healthCheck || marketAdvice || recs.length > 0);
+  if (policies.length === 0 && !hasAnalysisOutput) {
     return wrap(
       <div style={{ textAlign: "center", padding: "56px 24px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)" }}>
         <span style={{ width: 58, height: 58, borderRadius: 16, background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center", margin: "0 auto 16px" }}><Shield size={28} /></span>
@@ -490,14 +509,28 @@ function ResultsStep({
   const missing = analysis?.missingCoverage ?? [];
   const duplicates = analysis?.duplicates ?? [];
   const score = healthCheck?.score;
+  const isReportWithoutPolicies = policies.length === 0 && hasAnalysisOutput;
+  const heroMetric = isReportWithoutPolicies
+    ? (score != null ? `${score}/100` : String(missing.length))
+    : fmt(annualSavings);
+  const heroMetricLabel = isReportWithoutPolicies
+    ? (score != null ? "ציון התאמת כיסוי" : "כיסויים חסרים")
+    : "פוטנציאל חיסכון שנתי";
+  const heroDescription = isReportWithoutPolicies
+    ? "הדוח נקלט, אבל לא נמצאו בו פוליסות פעילות. הניתוח מבוסס על תשובות השאלון ומדגיש כיסויים שכדאי לבדוק."
+    : "על בסיס זיהוי כפילויות ואופטימיזציית פרמיות בפוליסות שלך.";
 
   const stats: { icon: LucideIcon; label: string; value: string; bg: string; fg: string }[] = [
-    { icon: Shield, label: "הוצאה חודשית", value: fmt(totalPremium), bg: "var(--peach-soft)", fg: "var(--peach-ink)" },
-    { icon: TrendingDown, label: "בזבוז מכפילויות", value: fmt(monthlyWaste), bg: monthlyWaste > 0 ? "rgba(214,69,69,.08)" : "var(--surface-sunken)", fg: monthlyWaste > 0 ? "var(--danger)" : "var(--text-faint)" },
-    { icon: TrendingUp, label: "חיסכון שנתי", value: fmt(annualSavings), bg: "var(--mint-soft)", fg: "var(--mint-ink)" },
-    { icon: FileText, label: "פוליסות פעילות", value: String(policies.length), bg: "var(--lav-100)", fg: "var(--lav-600)" },
-    ...(missing.length ? [{ icon: AlertTriangle, label: "כיסויים חסרים", value: String(missing.length), bg: "var(--butter-soft)", fg: "var(--butter-ink)" }] : []),
-  ];
+    ...(score != null ? [{ icon: ShieldCheck, label: "ציון כיסוי", value: String(score), bg: "var(--peach-soft)", fg: "var(--peach-ink)" }] : []),
+    { icon: AlertTriangle, label: "כיסויים לבדיקה", value: String(missing.length), bg: "var(--butter-soft)", fg: "var(--butter-ink)" },
+    { icon: Lightbulb, label: "המלצות", value: String(recs.length), bg: "var(--mint-soft)", fg: "var(--mint-ink)" },
+    { icon: FileText, label: "פוליסות פעילות בדוח", value: String(policies.length), bg: "var(--lav-100)", fg: "var(--lav-600)" },
+    ...(!isReportWithoutPolicies ? [
+      { icon: Shield, label: "הוצאה חודשית", value: fmt(totalPremium), bg: "var(--peach-soft)", fg: "var(--peach-ink)" },
+      { icon: TrendingDown, label: "בזבוז מכפילויות", value: fmt(monthlyWaste), bg: monthlyWaste > 0 ? "rgba(214,69,69,.08)" : "var(--surface-sunken)", fg: monthlyWaste > 0 ? "var(--danger)" : "var(--text-faint)" },
+      { icon: TrendingUp, label: "חיסכון שנתי", value: fmt(annualSavings), bg: "var(--mint-soft)", fg: "var(--mint-ink)" },
+    ] : []),
+  ].slice(0, isReportWithoutPolicies ? 4 : 6);
 
   const urgencyMap: Record<string, [string, string, string]> = {
     high: ["var(--peach-soft)", "var(--peach-ink)", "גבוהה"],
@@ -540,8 +573,14 @@ function ResultsStep({
         <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
           <span style={{ width: 46, height: 46, borderRadius: 13, flex: "none", background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center" }}><Shield size={22} /></span>
           <div>
-            <h1 style={{ margin: 0, fontSize: "clamp(24px,3vw,34px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>ניתוח הביטוח שלך</h1>
-            <p style={{ margin: "6px 0 0", fontSize: 15, color: "var(--text-muted)", fontWeight: 500 }}>{policies.length} פוליסות פעילות · עלות חודשית {fmt(totalPremium)}</p>
+            <h1 style={{ margin: 0, fontSize: "clamp(24px,3vw,34px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>
+              {isReportWithoutPolicies ? "בדיקת כיסוי ביטוחי" : "ניתוח הביטוח שלך"}
+            </h1>
+            <p style={{ margin: "6px 0 0", fontSize: 15, color: "var(--text-muted)", fontWeight: 500 }}>
+              {isReportWithoutPolicies
+                ? "הדוח תקין, אך לא נמצאו פוליסות פעילות. הנה תמונת מצב לפי השאלון."
+                : `${policies.length} פוליסות פעילות · עלות חודשית ${fmt(totalPremium)}`}
+            </p>
           </div>
         </div>
         <button onClick={onReimport} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: "var(--r-pill)", border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13.5, boxShadow: "var(--shadow-soft)" }}><RefreshCw size={15} /> ייבוא מחדש</button>
@@ -564,9 +603,9 @@ function ResultsStep({
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.7)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "6px 14px", marginBottom: 16, fontSize: 12.5, fontWeight: 800, color: "var(--peach-ink)" }}>
               <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--mint-ink)", boxShadow: "0 0 0 4px rgba(47,156,98,.18)" }} />הניתוח הושלם
             </div>
-            <div style={{ fontSize: 14.5, color: "var(--ink-soft)", fontWeight: 600, marginBottom: 6 }}>פוטנציאל חיסכון שנתי</div>
-            <div style={{ fontSize: "clamp(42px,6vw,64px)", fontWeight: 900, letterSpacing: "-.045em", lineHeight: 0.95, backgroundImage: "linear-gradient(96deg,var(--peach-ink),var(--lav-600) 55%,var(--mint-ink))", backgroundSize: "220% auto", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", animation: "resShine 4.5s linear infinite" }}>{fmt(annualSavings)}</div>
-            <div style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 500, marginTop: 10, maxWidth: 360 }}>על בסיס זיהוי כפילויות ואופטימיזציית פרמיות בפוליסות שלך.</div>
+            <div style={{ fontSize: 14.5, color: "var(--ink-soft)", fontWeight: 600, marginBottom: 6 }}>{heroMetricLabel}</div>
+            <div style={{ fontSize: "clamp(42px,6vw,64px)", fontWeight: 900, letterSpacing: "-.045em", lineHeight: 0.95, backgroundImage: "linear-gradient(96deg,var(--peach-ink),var(--lav-600) 55%,var(--mint-ink))", backgroundSize: "220% auto", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", animation: "resShine 4.5s linear infinite" }}>{heroMetric}</div>
+            <div style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 500, marginTop: 10, maxWidth: 420 }}>{heroDescription}</div>
           </div>
           {score != null && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "rgba(255,255,255,.62)", backdropFilter: "blur(8px)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "20px 26px" }}>
@@ -583,6 +622,19 @@ function ResultsStep({
           )}
         </div>
       </div>
+
+      {isReportWithoutPolicies && (
+        <div role="note" style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "16px 18px", marginBottom: 28, borderRadius: "var(--r-md)", background: "var(--surface-sunken)", border: "1px solid var(--border-hair)" }}>
+          <FileText size={20} color="var(--peach-ink)" style={{ flex: "none", marginTop: 2 }} />
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--text-strong)", marginBottom: 4 }}>לא נמצאו פוליסות פעילות בדוח</div>
+            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--text-muted)" }}>
+              זה יכול לקרות אם אין לך ביטוחים פרטיים פעילים, אם הדוח הופק ללא פוליסות, או אם קיימים כיסויים דרך קופת חולים/מעסיק שלא מופיעים כדוח פוליסות פעיל.
+              לכן הסוכן מציג המלצות לפי פרופיל הסיכון שמילאת בשאלון.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* stat grid */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 14, marginBottom: 34 }}>
@@ -702,31 +754,33 @@ function ResultsStep({
       )}
 
       {/* policies */}
-      <Section title="הפוליסות שלך" sub={`${policies.length} פוליסות · ${fmt(totalPremium)} / חודש`}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {policies.map((p: InsurancePolicyDTO) => (
-            <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                <span style={{ width: 38, height: 38, borderRadius: 11, flex: "none", background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center" }}><Shield size={17} /></span>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-strong)" }}>{POLICY_TYPE_LABELS[p.type] ?? p.type}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{p.provider ?? "—"}{p.policyNumber ? ` · ${p.policyNumber}` : ""}</div>
+      {policies.length > 0 && (
+        <Section title="הפוליסות שלך" sub={`${policies.length} פוליסות · ${fmt(totalPremium)} / חודש`}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {policies.map((p: InsurancePolicyDTO) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+                  <span style={{ width: 38, height: 38, borderRadius: 11, flex: "none", background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center" }}><Shield size={17} /></span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-strong)" }}>{POLICY_TYPE_LABELS[p.type] ?? p.type}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{p.provider ?? "—"}{p.policyNumber ? ` · ${p.policyNumber}` : ""}</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, flex: "none" }}>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: 900, fontSize: 15.5, color: "var(--ink)" }}>{fmt(p.monthlyPremium)}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>לחודש</div>
+                  </div>
+                  {p.status === "active" ? <CheckCircle size={16} color="var(--mint-ink)" /> : <AlertCircle size={16} color="var(--butter-ink)" />}
+                  <button onClick={() => void onDelete(p.id)} disabled={deletingId === p.id} aria-label="מחק פוליסה" style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--text-faint)", cursor: "pointer", display: "grid", placeItems: "center", flex: "none" }}>
+                    {deletingId === p.id ? <Loader2 size={14} style={{ animation: "spin .8s linear infinite" }} /> : <Trash2 size={14} />}
+                  </button>
                 </div>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 16, flex: "none" }}>
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontWeight: 900, fontSize: 15.5, color: "var(--ink)" }}>{fmt(p.monthlyPremium)}</div>
-                  <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>לחודש</div>
-                </div>
-                {p.status === "active" ? <CheckCircle size={16} color="var(--mint-ink)" /> : <AlertCircle size={16} color="var(--butter-ink)" />}
-                <button onClick={() => void onDelete(p.id)} disabled={deletingId === p.id} aria-label="מחק פוליסה" style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--text-faint)", cursor: "pointer", display: "grid", placeItems: "center", flex: "none" }}>
-                  {deletingId === p.id ? <Loader2 size={14} style={{ animation: "spin .8s linear infinite" }} /> : <Trash2 size={14} />}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Section>
+            ))}
+          </div>
+        </Section>
+      )}
 
       {/* ask agent */}
       <div style={{ textAlign: "center", background: "radial-gradient(120% 100% at 50% 0%,var(--peach-soft),var(--surface-card))", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "38px 28px", boxShadow: "var(--shadow-soft)", marginTop: 8 }}>

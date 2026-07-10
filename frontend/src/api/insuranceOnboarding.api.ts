@@ -73,7 +73,7 @@ export const submitInsuranceOnboardingAnswer = (body: {
   apiJson<{ success: boolean; data: InsuranceOnboardingSession }>("/api/insurance/onboarding/answer", {
     method: "POST",
     auth: true,
-    body: JSON.stringify(body),
+    body,
   });
 
 export const completeInsuranceOnboarding = () =>
