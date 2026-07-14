@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { APP_ROUTES } from "../types/navigation";
 import { useLandingAnimations } from "./landing/useLandingAnimations";
 import "./landing/landing.css";
@@ -851,16 +851,13 @@ export default function LandingPage() {
             </div>
             <div className="fcol">
               <h4>חברה</h4>
-              <a href="#">עלינו</a>
-              <a href="#">קריירה</a>
-              <a href="#">בלוג</a>
-              <a href="#">צור קשר</a>
+              <Link to={APP_ROUTES.careers}>קריירה</Link>
+              <Link to={APP_ROUTES.contact}>צור קשר</Link>
             </div>
             <div className="fcol">
               <h4>משפטי</h4>
-              <a href="#">תנאי שימוש</a>
-              <a href="#">מדיניות פרטיות</a>
-              <a href="#">אבטחת מידע</a>
+              <Link to={APP_ROUTES.terms}>תנאי שימוש</Link>
+              <Link to={APP_ROUTES.privacy}>מדיניות פרטיות</Link>
             </div>
           </div>
           <div className="foot-bot">
