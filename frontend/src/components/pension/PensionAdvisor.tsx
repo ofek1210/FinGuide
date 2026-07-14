@@ -395,7 +395,7 @@ function FundGroup({
               </div>
               {active && (f.monthlyEmployeeDeposit > 0 || f.monthlyEmployerDeposit > 0) && (
                 <div style={{ fontSize: 11.5, color: "var(--text-faint)", marginTop: 8, fontWeight: 600 }}>
-                  הפקדות: עובד {fmt(f.monthlyEmployeeDeposit)} · מעביד {fmt(f.monthlyEmployerDeposit)}
+                  הפקדות: עובד {fmt(f.monthlyEmployeeDeposit)} · מעסיק {fmt(f.monthlyEmployerDeposit)}
                 </div>
               )}
             </div>

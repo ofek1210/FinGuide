@@ -419,7 +419,7 @@ export const CULTURE_ITEMS: CultureItem[] = [
   { icon: "🤝", label: "שיתופי פעולה", tone: "yellow" },
   { icon: "⚡", label: "Hackathons", tone: "pink" },
   { icon: "📚", label: "Learning Sessions", tone: "mint" },
-  { icon: "🎉", label: "ארועי חברה", tone: "purple" },
+  { icon: "🎉", label: "אירועי חברה", tone: "purple" },
   { icon: "💥", label: "Innovation Days", tone: "yellow" },
   { icon: "🧠", label: "Knowledge Sharing", tone: "pink" },
 ];
