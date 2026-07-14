@@ -79,7 +79,7 @@ export default function PensionLeadingFundsTable() {
       setWarning(res.data.data.warning ?? null);
     } else {
       setFunds([]);
-      setError(!res.ok ? res.error.message : "לא הצלחנו לטעון את קרנות המובילות");
+      setError(!res.ok ? res.error.message : "לא הצלחנו לטעון את הקרנות המובילות");
     }
   }, []);
 
