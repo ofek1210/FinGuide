@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Gavel, MessageSquareQuote, Scale, Swords } from "lucide-react";
 import {
   streamAgentDebate,
@@ -50,6 +50,10 @@ export default function DebateArena({ disabled = false }: Props) {
   const [verdict, setVerdict] = useState<DebateVerdict | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const abortRef = useRef<(() => void) | null>(null);
+
+  // Abort any in-flight SSE stream when the component unmounts, so leaving the
+  // Hub mid-debate doesn't keep the connection alive or setState after unmount.
+  useEffect(() => () => abortRef.current?.(), []);
 
   const reset = useCallback(() => {
     abortRef.current?.();
