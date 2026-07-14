@@ -56,6 +56,7 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
 
   const handleLogout = () => { setUserMenuOpen(false); logoutWithConfirm(navigate); };
   const goToSettings = () => { setUserMenuOpen(false); navigate(APP_ROUTES.settings); };
+  const goToHelp = () => { setUserMenuOpen(false); navigate(APP_ROUTES.help); };
 
   return (
     <header
@@ -282,6 +283,15 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                 >
                   הגדרות פרופיל
+                </button>
+                <button
+                  type="button"
+                  onClick={goToHelp}
+                  style={{ width: "100%", padding: "9px 12px", borderRadius: 10, background: "none", border: "none", cursor: "pointer", textAlign: "right", fontFamily: "inherit", fontSize: 13.5, color: "var(--text-body)", fontWeight: 500, transition: "background var(--dur-fast) var(--ease)" }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent-soft)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
+                >
+                  עזרה ותמיכה
                 </button>
                 <button
                   type="button"
