@@ -48,3 +48,30 @@ describe('insuranceOnboardingQuestions', () => {
     expect(report.totalMonthlyPremium).toBe(350);
   });
 });
+
+describe('insuranceOnboardingService resetOnboarding', () => {
+  it('clears completed onboarding state', async () => {
+    const { resetOnboarding } = require('../../services/insuranceOnboardingService');
+    const UserProfile = require('../../models/UserProfile');
+
+    const save = jest.fn();
+    const markModified = jest.fn();
+    UserProfile.findOrCreateForUser = jest.fn().mockResolvedValue({
+      insuranceOnboarding: {
+        answers: { 'home.owns_home': true, _answeredIds: ['home.owns_home'] },
+        skippedIds: ['vehicle.owns'],
+        completedAt: new Date('2024-01-01'),
+        lastReportAt: new Date('2024-01-01'),
+      },
+      markModified,
+      save,
+    });
+
+    await resetOnboarding('user123');
+
+    expect(save).toHaveBeenCalled();
+    expect(markModified).toHaveBeenCalledWith('insuranceOnboarding');
+    const profile = await UserProfile.findOrCreateForUser.mock.results[0].value;
+    expect(profile.insuranceOnboarding).toEqual({ answers: {}, skippedIds: [] });
+  });
+});

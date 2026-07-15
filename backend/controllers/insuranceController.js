@@ -112,9 +112,17 @@ async function uploadInsuranceExcel(req, res) {
 }
 
 async function deleteInsurancePolicy(req, res) {
-  const policy = await InsurancePolicy.findOne({ _id: req.params.id, user: req.user._id });
+  const userId = req.user._id;
+  const policy = await InsurancePolicy.findOne({ _id: req.params.id, user: userId });
   if (!policy) return res.status(404).json({ success: false, message: 'פוליסה לא נמצאה' });
   await policy.deleteOne();
+
+  const remaining = await InsurancePolicy.countDocuments({ user: userId });
+  if (remaining === 0) {
+    const { resetOnboarding } = require('../services/insuranceOnboardingService');
+    await resetOnboarding(userId);
+  }
+
   return res.json({ success: true, message: 'הפוליסה נמחקה' });
 }
 

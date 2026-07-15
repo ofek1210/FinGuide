@@ -90,12 +90,12 @@ export default function PensionPage() {
       setFunds(fundList);
       if (analysisRes.ok && analysisRes.data?.success && analysisRes.data.data) {
         setData(analysisRes.data.data);
-        if (analysisRes.data.data.summary?.hasData || fundList.length > 0) {
-          setStep("results");
-          if (!analysisRes.data.data.summary?.currentAge) setShowAgeModal(true);
-        }
-      } else if (fundList.length > 0) {
+      }
+      if (fundList.length > 0) {
         setStep("results");
+        if (analysisRes.ok && analysisRes.data?.success && !analysisRes.data.data?.summary?.currentAge) {
+          setShowAgeModal(true);
+        }
       }
     })();
   }, []);
@@ -120,7 +120,17 @@ export default function PensionPage() {
     setDeletingId(id);
     await deletePensionFund(id);
     setDeletingId(null);
-    void loadFunds(); void loadAnalysis();
+    const [fundsRes, analysisRes] = await Promise.all([getPensionFunds(), getPensionAnalysis()]);
+    const fundList = fundsRes.ok && fundsRes.data?.data ? fundsRes.data.data : [];
+    setFunds(fundList);
+    if (analysisRes.ok && analysisRes.data?.success && analysisRes.data.data) {
+      setData(analysisRes.data.data);
+    }
+    if (fundList.length === 0) {
+      setStep("landing");
+      setShowAddForm(false);
+      setShowAgeModal(false);
+    }
   };
 
   const handleFileUpload = async (file: File) => {
