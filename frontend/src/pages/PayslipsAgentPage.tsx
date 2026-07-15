@@ -1,7 +1,7 @@
 /**
  * PayslipsAgentPage — 2-step agent flow (personal details handled by onboarding)
  *
- * Step 1 (upload)  — connect Gmail OR upload PDFs
+ * Step 1 (upload)  — manual PDF upload
  * Step 2 (results) — AI insights dashboard
  *
  * Personal data is loaded from the saved onboarding profile; if none exists the
@@ -9,8 +9,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Mail, Upload, FileText, RefreshCw, Sparkles, Check, ArrowLeft, ChevronRight,
-  History, Plus, Lock, Wallet, TrendingUp, Landmark, ShieldCheck,
+  Upload, FileText, Sparkles, Check, ArrowLeft, ChevronRight,
+  History, Plus, Wallet, TrendingUp, Landmark, ShieldCheck,
   PiggyBank, GraduationCap, CalendarDays, HeartPulse, type LucideIcon,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -20,7 +20,6 @@ import DocumentsRibbonWave from "../components/documents/DocumentsRibbonWave";
 import Loader from "../components/ui/Loader";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
-import { syncGmail, getGmailStatus, type GmailIntegrationStatus } from "../api/integrations.api";
 import { APP_ROUTES } from "../types/navigation";
 import { getUserProfile, type UserProfileResponseData } from "../api/userProfile.api";
 import {
@@ -57,7 +56,7 @@ function profileToIntake(p: UserProfileResponseData): IntakeData {
     age: p.personal?.age != null ? String(p.personal.age) : "",
     maritalStatus: p.personal?.maritalStatus || "",
     children: p.personal?.childrenCount != null ? String(p.personal.childrenCount) : "0",
-    city: "",
+    city: p.personal?.residenceCity || "",
   };
 }
 
@@ -98,16 +97,13 @@ type WizardStep = "upload" | "results";
 export default function PayslipsAgentPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const gmailResult = searchParams.get("gmail");
+  const forceUpload = searchParams.get("upload") === "1" || searchParams.get("step") === "upload";
 
   const [intake, setIntake] = useState<IntakeData>(EMPTY_INTAKE);
-  const [step, setStep] = useState<WizardStep>(gmailResult === "success" ? "results" : "upload");
+  const [step, setStep] = useState<WizardStep>("upload");
+  const [bootstrapping, setBootstrapping] = useState(!forceUpload);
   const [resultsRefreshKey, setResultsRefreshKey] = useState(0);
   const [resultsSeedDocs, setResultsSeedDocs] = useState<DocumentItem[] | null>(null);
-
-  useEffect(() => {
-    if (gmailResult === "success") setResultsRefreshKey(k => k + 1);
-  }, [gmailResult]);
 
   // Best-effort personalization from the onboarding profile. RequireAuth already
   // guarantees onboarding is complete before this route renders, so we never
@@ -119,6 +115,41 @@ export default function PayslipsAgentPage() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (forceUpload) {
+      setBootstrapping(false);
+      return;
+    }
+
+    let cancelled = false;
+    void fetchLastPayslipAnalysis(1)
+      .then(data => {
+        if (cancelled) return;
+        if (data.count > 0) {
+          setStep("results");
+          setResultsRefreshKey(k => k + 1);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBootstrapping(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [forceUpload]);
+
+  if (bootstrapping) {
+    return (
+      <div data-agent="payslips" style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
+        <PrivateTopbar />
+        <main style={{ maxWidth: 640, margin: "0 auto", padding: "120px 24px", textAlign: "center" }}>
+          <Loader />
+          <div style={{ color: "var(--text-muted)", fontSize: 14, marginTop: 14, fontWeight: 600 }}>טוען את דאשבורד התלושים...</div>
+        </main>
+        <AppFooter variant="private" />
+      </div>
+    );
+  }
 
   return (
     <div data-agent="payslips" style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl", position: "relative" }}>
@@ -184,19 +215,14 @@ function StepIndicator({ step }: { step: WizardStep }) {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   STEP 1 — UPLOAD (Gmail / manual segmented switch)
+   STEP 1 — UPLOAD (manual PDF only)
 ════════════════════════════════════════════════════════════════ */
 function UploadStep({ intake, onComplete, onBack }: {
   intake: IntakeData;
   onComplete: (analyzableCount: number, uploadedDocs: DocumentItem[]) => void;
   onBack: () => void;
 }) {
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [method, setMethod] = useState<"gmail" | "manual">("gmail");
-  const [gmail, setGmail] = useState<GmailIntegrationStatus | null>(null);
-  const [gmailLoading, setGmailLoading] = useState(true);
-  const [syncLoading, setSyncLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [continuing, setContinuing] = useState(false);
   const [uploadedEntries, setUploadedEntries] = useState<UploadedEntry[]>([]);
@@ -209,7 +235,7 @@ function UploadStep({ intake, onComplete, onBack }: {
   const canShowResults = analyzableDocs.length > 0;
   const hasUploadAttempts = uploadedEntries.length > 0;
   const slotsLeft = MAX_PAYSLIPS - uploadedEntries.length;
-  const ready = canShowResults || gmail?.connected === true;
+  const ready = canShowResults;
 
   useEffect(() => {
     if (document.getElementById("up-anim")) return;
@@ -218,38 +244,6 @@ function UploadStep({ intake, onComplete, onBack }: {
     st.textContent = "@keyframes upFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}@keyframes fgspin{to{transform:rotate(360deg)}}";
     document.head.appendChild(st);
   }, []);
-
-  useEffect(() => {
-    void getGmailStatus().then(res => {
-      if (res.success && res.data) setGmail(res.data);
-      setGmailLoading(false);
-    });
-  }, []);
-
-  const handleGmailConnect = () => navigate(`${APP_ROUTES.integrationsEmail}?from=documents`);
-
-  const handleGmailSync = async () => {
-    setSyncLoading(true); setMsg(null);
-    const res = await syncGmail();
-    setSyncLoading(false);
-    if (res.success && res.data) {
-      const count = res.data.imported;
-      if (count > 0) {
-        setMsg({ type: "success", text: `יובאו ${count} תלושים חדשים — טוען ניתוח...` });
-        try {
-          const analysis = await fetchLastPayslipAnalysis(3);
-          if (analysis.count > 0) setTimeout(() => onComplete(analysis.count, []), 800);
-          else setMsg({ type: "error", text: "התלושים יובאו אך עדיין לא מוכנים לניתוח — נסו שוב בעוד רגע" });
-        } catch { setMsg({ type: "error", text: "שגיאה בטעינת התלושים אחרי הסנכרון" }); }
-      } else if (res.data.found === 0) {
-        setMsg({ type: "info", text: "לא נמצאו תלושי שכר חדשים בתיבת הדואר" });
-      } else {
-        setMsg({ type: "info", text: `נמצאו ${res.data.found} קבצים, ${res.data.skippedDuplicates} כבר קיימים` });
-      }
-    } else {
-      setMsg({ type: "error", text: res.message || "שגיאה בסנכרון Gmail" });
-    }
-  };
 
   const handleUnlock = async (entry: UploadedEntry) => {
     const password = passwordInputs[entry.id]?.trim();
@@ -299,16 +293,6 @@ function UploadStep({ intake, onComplete, onBack }: {
     finally { setContinuing(false); }
   };
 
-  const seg = (key: "gmail" | "manual", label: string, recommended?: boolean) => {
-    const on = method === key;
-    return (
-      <button onClick={() => setMethod(key)} style={{ position: "relative", zIndex: 1, flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 10px", border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 14.5, color: on ? "var(--ink)" : "var(--text-muted)", transition: "color .25s var(--ease)" }}>
-        {label}
-        {recommended && <span style={{ fontSize: 10.5, fontWeight: 800, color: on ? "var(--lav-600)" : "var(--text-faint)", background: on ? "var(--lav-100)" : "transparent", borderRadius: 999, padding: "2px 8px", transition: "all .25s" }}>מומלץ</span>}
-      </button>
-    );
-  };
-
   return (
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "44px 24px 80px" }}>
       <StepIndicator step="upload" />
@@ -317,108 +301,59 @@ function UploadStep({ intake, onComplete, onBack }: {
         <h1 style={{ fontSize: "clamp(28px,3.4vw,40px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.1, margin: "0 0 12px", color: "var(--text-strong)" }}>
           {intake.firstName ? `${intake.firstName}, נמשוך את התלושים שלך.` : "בוא נמשוך את התלושים שלך."}
         </h1>
-        <p style={{ fontSize: 16.5, color: "var(--text-muted)", lineHeight: 1.55, fontWeight: 500, margin: "0 auto", maxWidth: 420 }}>שתי דרכים להעביר תלושים לסוכן. הוא ינתח, יזהה חריגות ויחשב מה מגיע לך.</p>
+        <p style={{ fontSize: 16.5, color: "var(--text-muted)", lineHeight: 1.55, fontWeight: 500, margin: "0 auto", maxWidth: 420 }}>העלה תלושי שכר ב-PDF — הסוכן ינתח, יזהה חריגות ויחשב מה מגיע לך.</p>
       </div>
 
-      {/* one focused panel */}
       <div style={{ background: "var(--card)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-card)", overflow: "hidden" }}>
-        {/* segmented switch */}
-        <div style={{ position: "relative", display: "flex", margin: 10, background: "var(--surface-sunken)", borderRadius: "var(--r-md)", padding: 4 }}>
-          <div style={{ position: "absolute", top: 4, bottom: 4, insetInlineStart: method === "gmail" ? 4 : "calc(50% + 0px)", width: "calc(50% - 4px)", background: "var(--card)", borderRadius: "calc(var(--r-md) - 3px)", boxShadow: "var(--shadow-soft)", transition: "inset-inline-start .32s cubic-bezier(.4,0,.15,1)" }} />
-          {seg("gmail", "חיבור Gmail", true)}
-          {seg("manual", "העלאה ידנית")}
-        </div>
+        <div style={{ padding: "24px 30px 30px", minHeight: 280 }}>
+          <input ref={fileInputRef} type="file" accept=".pdf" multiple style={{ display: "none" }}
+            onChange={e => { if (e.target.files?.length) void handleFileUpload(e.target.files); e.target.value = ""; }} />
+          <div
+            onClick={() => !uploading && slotsLeft > 0 && fileInputRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) void handleFileUpload(e.dataTransfer.files); }}
+            style={{ cursor: uploading || slotsLeft <= 0 ? "not-allowed" : "pointer", borderRadius: "var(--r-md)", border: "1.5px dashed " + (isDragging ? "var(--lav-500)" : "var(--border-soft)"), background: isDragging ? "var(--accent-soft)" : "transparent", padding: "38px 20px", textAlign: "center", transition: "all .2s var(--ease)", marginBottom: uploadedEntries.length ? 16 : 0, opacity: slotsLeft <= 0 ? 0.6 : 1 }}>
+            <span style={{ width: 50, height: 50, borderRadius: 13, background: "var(--lav-100)", color: "var(--lav-600)", display: "grid", placeItems: "center", margin: "0 auto 14px" }}><Upload size={23} strokeWidth={1.85} /></span>
+            <div style={{ fontWeight: 800, fontSize: 15.5, marginBottom: 4, color: "var(--text-strong)" }}>{uploading ? "מעלה ומעבד..." : slotsLeft <= 0 ? `הגעת למקסימום ${MAX_PAYSLIPS} תלושים` : "גרור תלושים לכאן"}</div>
+            {!uploading && slotsLeft > 0 && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>PDF · עד {MAX_PAYSLIPS} קבצים · {slotsLeft} נותרו</div>}
+          </div>
 
-        <div style={{ padding: "12px 30px 30px", minHeight: 280 }}>
-          {method === "gmail" ? (
-            <div key="g" style={{ animation: "upFade .35s var(--ease)", textAlign: "center", paddingTop: 14 }}>
-              <span style={{ width: 60, height: 60, borderRadius: 16, background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center", margin: "0 auto 18px" }}><Mail size={28} strokeWidth={1.85} /></span>
-              <h3 style={{ margin: "0 0 8px", fontSize: 21, fontWeight: 900, letterSpacing: "-.02em", color: "var(--text-strong)" }}>ייבוא אוטומטי מ‑Gmail</h3>
-              <p style={{ margin: "0 auto 22px", maxWidth: 360, fontSize: 14.5, color: "var(--text-muted)", lineHeight: 1.6 }}>הסוכן מאתר ומייבא את כל תלושי השכר מהמייל — אוטומטית, כל חודש.</p>
-
-              <div style={{ maxWidth: 360, margin: "0 auto 24px" }}>
-                {gmailLoading ? (
-                  <div style={{ color: "var(--lav-600)", fontSize: 13, fontWeight: 600 }}>בודק חיבור...</div>
-                ) : gmail?.connected ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "12px 14px", borderRadius: "var(--r-btn)", background: "var(--mint-soft)", color: "var(--mint-ink)", fontWeight: 800, fontSize: 14, animation: "upFade .4s var(--ease)" }}>
-                      <Check size={17} strokeWidth={3} /> מחובר · {gmail.gmailEmail} · {gmail.importedCount} תלושים
+          {uploadedEntries.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {uploadedEntries.map(entry => {
+                const ok = isAnalyzableUpload(entry.doc);
+                const needsPassword = entry.doc.status === "needs_password";
+                const [bg, fg] = ok ? TONES.mint : needsPassword ? TONES.butter : TONES.peach;
+                return (
+                  <div key={entry.id}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 13px", borderRadius: "var(--r-sm)", background: "var(--surface-sunken)", border: "1px solid var(--border-hair)", animation: "upFade .3s var(--ease)" }}>
+                      <span style={{ width: 30, height: 30, borderRadius: 8, flex: "none", background: bg, color: fg, display: "grid", placeItems: "center" }}><FileText size={16} /></span>
+                      <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-strong)" }}>{entryDisplayLabel(entry)}</span>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: fg }}>{ok ? "מוכן" : needsPassword ? "סיסמה" : "שגיאה"}</span>
                     </div>
-                    <button onClick={() => void handleGmailSync()} disabled={syncLoading}
-                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px", borderRadius: "var(--r-btn)", background: "var(--accent-soft)", color: "var(--lav-600)", border: "1px solid var(--lav-200)", cursor: syncLoading ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 14 }}>
-                      <RefreshCw size={15} style={{ animation: syncLoading ? "fgspin .8s linear infinite" : "none" }} /> {syncLoading ? "מסנכרן..." : "סנכרן ונתח"}
-                    </button>
-                  </div>
-                ) : gmail?.oauthConfigured === false ? (
-                  <div style={{ padding: "12px 14px", borderRadius: "var(--r-btn)", background: "var(--butter-soft)", border: "1px solid var(--butter)", textAlign: "start" }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: "var(--butter-ink)", marginBottom: 4 }}>חיבור Gmail לא מוגדר בשרת</div>
-                    <div style={{ fontSize: 12, color: "var(--butter-ink)", lineHeight: 1.55, opacity: .85 }}>יש להוסיף GOOGLE_CLIENT_SECRET לקובץ backend/.env ולהפעיל מחדש את השרת.</div>
-                  </div>
-                ) : (
-                  <PrimaryBtn fullWidth onClick={handleGmailConnect} iconLeft={<Mail size={18} strokeWidth={2} />}>התחבר עם Gmail</PrimaryBtn>
-                )}
-              </div>
-
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 12, fontSize: 12.5, color: "var(--text-faint)", fontWeight: 600 }}>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Lock size={13} color="var(--lav-500)" />תלושים בלבד</span>
-                <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--border-soft)" }} />
-                <span>אוטומטי כל חודש</span>
-                <span style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--border-soft)" }} />
-                <span>ניתן לנתק</span>
-              </div>
-            </div>
-          ) : (
-            <div key="m" style={{ animation: "upFade .35s var(--ease)", paddingTop: 14 }}>
-              <input ref={fileInputRef} type="file" accept=".pdf" multiple style={{ display: "none" }}
-                onChange={e => { if (e.target.files?.length) void handleFileUpload(e.target.files); e.target.value = ""; }} />
-              <div
-                onClick={() => !uploading && slotsLeft > 0 && fileInputRef.current?.click()}
-                onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) void handleFileUpload(e.dataTransfer.files); }}
-                style={{ cursor: uploading || slotsLeft <= 0 ? "not-allowed" : "pointer", borderRadius: "var(--r-md)", border: "1.5px dashed " + (isDragging ? "var(--lav-500)" : "var(--border-soft)"), background: isDragging ? "var(--accent-soft)" : "transparent", padding: "38px 20px", textAlign: "center", transition: "all .2s var(--ease)", marginBottom: uploadedEntries.length ? 16 : 0, opacity: slotsLeft <= 0 ? 0.6 : 1 }}>
-                <span style={{ width: 50, height: 50, borderRadius: 13, background: "var(--lav-100)", color: "var(--lav-600)", display: "grid", placeItems: "center", margin: "0 auto 14px" }}><Upload size={23} strokeWidth={1.85} /></span>
-                <div style={{ fontWeight: 800, fontSize: 15.5, marginBottom: 4, color: "var(--text-strong)" }}>{uploading ? "מעלה ומעבד..." : slotsLeft <= 0 ? `הגעת למקסימום ${MAX_PAYSLIPS} תלושים` : "גרור תלושים לכאן"}</div>
-                {!uploading && slotsLeft > 0 && <div style={{ fontSize: 13, color: "var(--text-muted)" }}>PDF · עד {MAX_PAYSLIPS} קבצים · {slotsLeft} נותרו</div>}
-              </div>
-
-              {uploadedEntries.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {uploadedEntries.map(entry => {
-                    const ok = isAnalyzableUpload(entry.doc);
-                    const needsPassword = entry.doc.status === "needs_password";
-                    const [bg, fg] = ok ? TONES.mint : needsPassword ? TONES.butter : TONES.peach;
-                    return (
-                      <div key={entry.id}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "10px 13px", borderRadius: "var(--r-sm)", background: "var(--surface-sunken)", border: "1px solid var(--border-hair)", animation: "upFade .3s var(--ease)" }}>
-                          <span style={{ width: 30, height: 30, borderRadius: 8, flex: "none", background: bg, color: fg, display: "grid", placeItems: "center" }}><FileText size={16} /></span>
-                          <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-strong)" }}>{entryDisplayLabel(entry)}</span>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: fg }}>{ok ? "מוכן" : needsPassword ? "סיסמה" : "שגיאה"}</span>
+                    {needsPassword && (
+                      <div style={{ marginTop: 6, padding: "10px 12px", borderRadius: "var(--r-sm)", background: "var(--butter-soft)", border: "1px solid var(--butter)" }}>
+                        <div style={{ fontSize: 12, color: "var(--butter-ink)", marginBottom: 6, fontWeight: 600 }}>הזן/י סיסמת PDF לפתיחה ועיבוד</div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <input type="password" value={passwordInputs[entry.id] || ""} placeholder="סיסמת PDF" disabled={unlockingId === entry.id}
+                            onChange={e => setPasswordInputs(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                            style={{ flex: 1, padding: "8px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--butter)", fontFamily: "inherit", fontSize: 13, background: "var(--card)" }} />
+                          <button type="button" onClick={() => void handleUnlock(entry)} disabled={unlockingId === entry.id || !passwordInputs[entry.id]?.trim()}
+                            style={{ padding: "8px 14px", borderRadius: "var(--r-sm)", background: "var(--butter-ink)", color: "#fff", border: "none", cursor: unlockingId === entry.id ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12 }}>
+                            {unlockingId === entry.id ? "פותח..." : "פתח"}
+                          </button>
                         </div>
-                        {needsPassword && (
-                          <div style={{ marginTop: 6, padding: "10px 12px", borderRadius: "var(--r-sm)", background: "var(--butter-soft)", border: "1px solid var(--butter)" }}>
-                            <div style={{ fontSize: 12, color: "var(--butter-ink)", marginBottom: 6, fontWeight: 600 }}>הזן/י סיסמת PDF לפתיחה ועיבוד</div>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <input type="password" value={passwordInputs[entry.id] || ""} placeholder="סיסמת PDF" disabled={unlockingId === entry.id}
-                                onChange={e => setPasswordInputs(prev => ({ ...prev, [entry.id]: e.target.value }))}
-                                style={{ flex: 1, padding: "8px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--butter)", fontFamily: "inherit", fontSize: 13, background: "var(--card)" }} />
-                              <button type="button" onClick={() => void handleUnlock(entry)} disabled={unlockingId === entry.id || !passwordInputs[entry.id]?.trim()}
-                                style={{ padding: "8px 14px", borderRadius: "var(--r-sm)", background: "var(--butter-ink)", color: "#fff", border: "none", cursor: unlockingId === entry.id ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12 }}>
-                                {unlockingId === entry.id ? "פותח..." : "פתח"}
-                              </button>
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    );
-                  })}
-                  {slotsLeft > 0 && (
-                    <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                      style={{ marginTop: 4, padding: "10px", borderRadius: "var(--r-btn)", background: "var(--accent-soft)", color: "var(--lav-600)", border: "1px solid var(--lav-200)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>
-                      + הוסף תלוש נוסף ({analyzableDocs.length}/{uploadedEntries.length} מוכנים)
-                    </button>
-                  )}
-                </div>
+                    )}
+                  </div>
+                );
+              })}
+              {slotsLeft > 0 && (
+                <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                  style={{ marginTop: 4, padding: "10px", borderRadius: "var(--r-btn)", background: "var(--accent-soft)", color: "var(--lav-600)", border: "1px solid var(--lav-200)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13 }}>
+                  + הוסף תלוש נוסף ({analyzableDocs.length}/{uploadedEntries.length} מוכנים)
+                </button>
               )}
             </div>
           )}
@@ -483,15 +418,18 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
   const loadAnalysis = useCallback(async () => {
     setLoading(true); setError(null);
     try {
-      if (initialDocs?.length) {
-        const listRes = await listDocuments();
-        const allDocs = listRes.success ? (listRes.data ?? []) : [];
-        const seeded = buildAnalysisSummary(mergeDocumentsById(initialDocs, allDocs), 3);
-        if (seeded.count > 0) { setSummary(seeded); return; }
-      }
-      let data = await fetchLastPayslipAnalysis(3);
+      const listRes = await listDocuments();
+      const allDocs = listRes.success ? (listRes.data ?? []) : [];
+      const merged = initialDocs?.length ? mergeDocumentsById(initialDocs, allDocs) : allDocs;
+      let data = buildAnalysisSummary(merged);
       if (data.count === 0 && initialDocs?.length) {
-        for (let attempt = 0; attempt < 3; attempt++) { await sleep(500); data = await fetchLastPayslipAnalysis(3); if (data.count > 0) break; }
+        for (let attempt = 0; attempt < 3; attempt++) {
+          await sleep(500);
+          const retry = await listDocuments();
+          const retryDocs = retry.success ? (retry.data ?? []) : [];
+          data = buildAnalysisSummary(mergeDocumentsById(initialDocs, retryDocs));
+          if (data.count > 0) break;
+        }
       }
       setSummary(data);
     } catch (err) {
@@ -530,7 +468,11 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
     { v: fmt(summary.avgTax), l: "ממוצע מס הכנסה", icon: Landmark, tone: "butter" },
     { v: fmt(summary.avgNationalInsurance), l: "ביטוח לאומי", icon: ShieldCheck, tone: "peach" },
     { v: fmt(summary.avgPensionEmployee), l: "פנסיה (עובד)", icon: PiggyBank, tone: "mint" },
-    { v: fmt(summary.avgStudyFundEmployee), l: "קרן השתלמות", icon: GraduationCap, tone: "lavender" },
+    { v: fmt(summary.avgPensionEmployer), l: "פנסיה (מעסיק)", icon: PiggyBank, tone: "lavender" },
+    { v: fmt(summary.avgPensionTotal), l: "פנסיה (סה״כ)", icon: PiggyBank, tone: "peach" },
+    { v: fmt(summary.avgStudyFundEmployee), l: "השתלמות (עובד)", icon: GraduationCap, tone: "mint" },
+    { v: fmt(summary.avgStudyFundEmployer), l: "השתלמות (מעסיק)", icon: GraduationCap, tone: "lavender" },
+    { v: fmt(summary.avgStudyFundTotal), l: "השתלמות (סה״כ)", icon: GraduationCap, tone: "peach" },
     { v: summary.avgVacationDays != null ? String(summary.avgVacationDays) : "—", l: "ימי חופשה", icon: CalendarDays, tone: "butter" },
     { v: summary.avgSickDays != null ? String(summary.avgSickDays) : "—", l: "ימי מחלה", icon: HeartPulse, tone: "peach" },
   ] : [];
@@ -554,7 +496,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
       {loading ? (
         <div style={{ background: "var(--card)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)", padding: 48, textAlign: "center" }}>
           <Loader />
-          <div style={{ color: "var(--text-muted)", fontSize: 14, marginTop: 14 }}>טוען 3 תלושים אחרונים ומפעיל ניתוח AI...</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14, marginTop: 14 }}>טוען את התלושים ומפעיל ניתוח AI...</div>
         </div>
       ) : error ? (
         <div style={{ background: "var(--card)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)", padding: 40, textAlign: "center" }}>
@@ -573,7 +515,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.7)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "6px 14px", marginBottom: 16, fontSize: 12.5, fontWeight: 800, color: "var(--lav-600)" }}>
                   <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--mint-ink)", boxShadow: "0 0 0 4px rgba(47,156,98,.18)" }} />הניתוח הושלם
                 </div>
-                <div style={{ fontSize: 14.5, color: "var(--ink-soft)", fontWeight: 600, marginBottom: 6 }}>נטו ממוצע ב‑{summary.count} התלושים האחרונים</div>
+                <div style={{ fontSize: 14.5, color: "var(--ink-soft)", fontWeight: 600, marginBottom: 6 }}>נטו ממוצע על פני {summary.count} תלושים</div>
                 <div style={{ fontSize: "clamp(42px,6vw,68px)", fontWeight: 900, letterSpacing: "-.045em", lineHeight: .92, fontVariantNumeric: "tabular-nums", backgroundImage: "linear-gradient(96deg,var(--lav-700),var(--peach-ink) 42%,var(--mint-ink) 70%,var(--lav-600))", backgroundSize: "220% auto", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", animation: "resShine 4.5s linear infinite" }}>{fmt(summary.avgNet)}</div>
                 <div style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 500, marginTop: 10, maxWidth: 360 }}>מתוך ברוטו ממוצע של {fmt(summary.avgGross)}.</div>
               </div>
@@ -589,7 +531,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
           </div>
 
           {/* salary picture */}
-          <ResSection title="תמונת השכר שלך" sub={`ממוצע ${summary.count} תלושים אחרונים · ברוטו ${fmt(summary.avgGross)} → נטו ${fmt(summary.avgNet)}`}>
+          <ResSection title="תמונת השכר שלך" sub={`ממוצע על פני ${summary.count} תלושים · ברוטו ${fmt(summary.avgGross)} → נטו ${fmt(summary.avgNet)}`}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
               {statTiles.map(s => {
                 const [bg, fg] = TONES[s.tone];
@@ -609,7 +551,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
           {summary.moneyFlow && <MoneyFlowSection flow={summary.moneyFlow} />}
 
           {/* recent payslips */}
-          <ResSection title={`${summary.count} תלושים אחרונים`}>
+          <ResSection title={`${summary.count} תלושים`}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {rows.map(p => (
                 <button key={p.id} onClick={() => navigate(`${APP_ROUTES.payslipHistory}/${p.id}`)}
@@ -688,25 +630,28 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
 ════════════════════════════════════════════════════════════════ */
 function MoneyFlowSection({ flow }: { flow: MoneyFlow }) {
   const pctNet = flow.avgGross > 0 ? Math.round((flow.avgNet / flow.avgGross) * 100) : 0;
-  const pctWithheld = flow.avgGross > 0 ? Math.round((flow.totalWithheld / flow.avgGross) * 100) : 0;
+  const pctWithheld = flow.totalGross > 0 ? Math.round((flow.totalWithheld / flow.totalGross) * 100) : 0;
   const maxPct = Math.max(...flow.items.map(it => it.pctOfGross), 1);
+  const withheldCaption = flow.payslipCount > 1
+    ? `₪${flow.totalWithheld.toLocaleString("he-IL")} סה״כ ניכויים והפרשות מ‑${flow.payslipCount} תלושים`
+    : `₪${flow.totalWithheld.toLocaleString("he-IL")} ניכויים והפרשות מהברוטו`;
   return (
-    <ResSection title="לאן הולך הכסף?" sub={`מ‑₪${flow.avgGross.toLocaleString("he-IL")} ברוטו → ₪${flow.avgNet.toLocaleString("he-IL")} נטו · ₪${flow.totalWithheld.toLocaleString("he-IL")} ניכויים (${pctWithheld}%)`}>
+    <ResSection title="לאן הולך הכסף?" sub={`ברוטו ממוצע ₪${flow.avgGross.toLocaleString("he-IL")} → נטו ממוצע ₪${flow.avgNet.toLocaleString("he-IL")} · סה״כ ניכויים ₪${flow.totalWithheld.toLocaleString("he-IL")} (${pctWithheld}%)`}>
       <div style={{ background: "var(--card)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: 26, boxShadow: "var(--shadow-soft)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, fontWeight: 800, marginBottom: 10 }}>
-          <span style={{ color: "var(--lav-600)" }}>ברוטו ₪{flow.avgGross.toLocaleString("he-IL")}</span>
-          <span style={{ color: "var(--mint-ink)" }}>נטו ₪{flow.avgNet.toLocaleString("he-IL")} ({pctNet}%)</span>
+          <span style={{ color: "var(--lav-600)" }}>ברוטו ממוצע ₪{flow.avgGross.toLocaleString("he-IL")}</span>
+          <span style={{ color: "var(--mint-ink)" }}>נטו ממוצע ₪{flow.avgNet.toLocaleString("he-IL")} ({pctNet}%)</span>
         </div>
         <div style={{ height: 14, borderRadius: 999, background: "var(--hair)", overflow: "hidden", marginBottom: 8 }}>
           <div style={{ height: "100%", width: `${pctNet}%`, borderRadius: 999, background: "linear-gradient(90deg,var(--mint),var(--mint-ink))" }} />
         </div>
-        <div style={{ textAlign: "center", fontSize: 12.5, color: "var(--text-muted)", fontWeight: 600, marginBottom: 22 }}>₪{flow.totalWithheld.toLocaleString("he-IL")} ניכויים והפרשות מהברוטו</div>
+        <div style={{ textAlign: "center", fontSize: 12.5, color: "var(--text-muted)", fontWeight: 600, marginBottom: 22 }}>{withheldCaption}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {flow.items.map(item => (
             <div key={item.label}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 7 }}>
                 <span style={{ fontWeight: 700, color: "var(--text-body)" }}>{item.label}</span>
-                <span style={{ fontWeight: 900, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>₪{item.avgAmount.toLocaleString("he-IL")} · {item.pctOfGross}%</span>
+                <span style={{ fontWeight: 900, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>₪{item.totalAmount.toLocaleString("he-IL")} סה״כ · {item.pctOfGross}%</span>
               </div>
               <div style={{ height: 12, borderRadius: 999, background: "var(--surface-sunken)", overflow: "hidden" }}>
                 <div style={{ height: "100%", width: `${Math.max((item.pctOfGross / maxPct) * 100, 4)}%`, borderRadius: 999, background: "linear-gradient(90deg,var(--lav-400),var(--lav-600))" }} />

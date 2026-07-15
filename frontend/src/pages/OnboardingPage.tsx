@@ -24,13 +24,14 @@ import {
    contract; a few design-only fields stay client-side.
    ============================================================ */
 
-const CITIES = ["תל אביב-יפו", "ירושלים", "חיפה", "ראשון לציון", "פתח תקווה", "אשדוד", "נתניה", "באר שבע", "בני ברק", "חולון", "רמת גן", "הרצליה", "כפר סבא", "מודיעין", "רעננה"];
+const CITIES = ["תל אביב-יפו", "ירושלים", "חיפה", "ראשון לציון", "פתח תקווה", "אשדוד", "נתניה", "באר שבע", "דימונה", "ערד", "אופקים", "נתיבות", "שדרות", "בני ברק", "חולון", "רמת גן", "הרצליה", "כפר סבא", "מודיעין", "רעננה"];
 const STREETS = ["הרצל", "ויצמן", "ז'בוטינסקי", "בן גוריון", "אלנבי", "דיזנגוף", "רוטשילד", "סוקולוב", "ביאליק", "ארלוזורוב"];
 
 type Section = "personal" | "employment" | "financial" | "assets" | "insurance" | "retirement";
 
 interface FlowData {
-  fullName?: string; age?: string; city?: string; street?: string; maritalStatus?: string;
+  fullName?: string; age?: string; gender?: string; city?: string; street?: string; maritalStatus?: string;
+  childrenCount?: string; educationLevel?: string;
   employmentType?: string; expectedMonthlyGross?: string; employmentStartDate?: string;
   salaryRange?: string; monthlyExpensesEstimate?: string; savingsEstimate?: string;
   ownsApartment?: boolean; ownsCar?: boolean; hasMortgage?: boolean;
@@ -52,8 +53,11 @@ const FLOW: Step[] = [
   { kind: "intro" },
   { section: "personal", kind: "field", title: "איך קוראים לך?", sub: "כך נפנה אליך בהמשך הדרך.", fields: [{ key: "fullName", label: "שם מלא", placeholder: "אריה כהן" }] },
   { section: "personal", kind: "field", title: "בן כמה אתה?", fields: [{ key: "age", label: "גיל", placeholder: "37", type: "number" }] },
+  { section: "personal", kind: "single", title: "מה המין שלך?", key: "gender", options: [{ value: "male", label: "זכר" }, { value: "female", label: "נקבה" }, { value: "other", label: "אחר / לא רוצה לציין" }] },
   { section: "extra", kind: "autocomplete", title: "מה כתובת המגורים שלך?", fields: [{ key: "city", label: "עיר", placeholder: "שם היישוב או העיר", options: CITIES }, { key: "street", label: "רחוב", placeholder: "בחר רחוב", options: STREETS }] },
   { section: "personal", kind: "single", title: "מה המצב המשפחתי שלך?", key: "maritalStatus", options: [{ value: "single", label: "רווק/ה" }, { value: "married", label: "נשוי/אה" }, { value: "partnered", label: "בזוגיות" }, { value: "divorced", label: "גרוש/ה" }, { value: "widowed", label: "אלמן/ה" }] },
+  { section: "personal", kind: "field", title: "כמה ילדים יש לך?", sub: "משפיע על נקודות זיכוי במס הכנסה.", fields: [{ key: "childrenCount", label: "מספר ילדים", placeholder: "0", type: "number" }] },
+  { section: "personal", kind: "single", title: "מה רמת ההשכלה שלך?", sub: "תואר ראשון מזכה בנקודת זיכוי במס.", key: "educationLevel", options: [{ value: "none", label: "ללא תואר אקדמי" }, { value: "high_school", label: "תיכון / מקצועי" }, { value: "student", label: "סטודנט/ית לתואר ראשון" }, { value: "first_degree", label: "תואר ראשון" }, { value: "second_degree", label: "תואר שני ומעלה" }, { value: "vocational", label: "הכשרה מקצועית" }] },
   { section: "employment", kind: "single", title: "מה סוג ההעסקה שלך?", key: "employmentType", options: [{ value: "employee", label: "שכיר/ה", hint: "מקבל/ת תלוש שכר", icon: true }, { value: "self_employed", label: "עצמאי/ת", hint: "עוסק מורשה / פטור" }, { value: "freelancer", label: "פרילנסר/ית" }, { value: "business_owner", label: "בעל/ת עסק", hint: "מעסיק/ה עובדים" }] },
   { section: "employment", kind: "field", title: "מה השכר החודשי ברוטו הצפוי?", sub: "נתון זה עוזר לחשב זכויות והפרשות.", fields: [{ key: "expectedMonthlyGross", label: "ברוטו חודשי (₪)", placeholder: "20,750", type: "number" }] },
   { section: "employment", kind: "field", title: "מתי התחלת לעבוד במקום הנוכחי?", sub: "עוזר לחשב ותק וזכויות מצטברות.", fields: [{ key: "employmentStartDate", label: "תאריך תחילת עבודה", type: "date" }] },
@@ -104,7 +108,17 @@ function locateField(path: string): { index: number; key: string } | null {
 function buildSectionPatch(section: Section, d: FlowData): OnboardingPatch {
   switch (section) {
     case "personal":
-      return { personal: { fullName: d.fullName?.trim() || null, age: toNum(d.age), maritalStatus: (d.maritalStatus as MaritalStatus) ?? null } };
+      return {
+        personal: {
+          fullName: d.fullName?.trim() || null,
+          age: toNum(d.age),
+          gender: (d.gender as "male" | "female" | "other") ?? null,
+          maritalStatus: (d.maritalStatus as MaritalStatus) ?? null,
+          childrenCount: toNum(d.childrenCount),
+          residenceCity: d.city?.trim() || null,
+          educationLevel: (d.educationLevel as "none" | "high_school" | "first_degree" | "second_degree" | "vocational" | "student") ?? null,
+        },
+      };
     case "employment":
       return { employment: { employmentType: (d.employmentType as EmploymentType) ?? null, expectedMonthlyGross: toNum(d.expectedMonthlyGross), employmentStartDate: d.employmentStartDate || null } };
     case "financial":
@@ -168,7 +182,11 @@ export default function OnboardingPage() {
         setData({
           fullName: p.personal?.fullName ?? undefined,
           age: p.personal?.age != null ? String(p.personal.age) : undefined,
+          gender: p.personal?.gender ?? undefined,
+          city: p.personal?.residenceCity ?? undefined,
           maritalStatus: p.personal?.maritalStatus ?? undefined,
+          childrenCount: p.personal?.childrenCount != null ? String(p.personal.childrenCount) : undefined,
+          educationLevel: p.personal?.educationLevel ?? undefined,
           employmentType: p.employment?.employmentType ?? undefined,
           expectedMonthlyGross: p.employment?.expectedMonthlyGross != null ? String(p.employment.expectedMonthlyGross) : undefined,
           employmentStartDate: p.employment?.employmentStartDate ?? undefined,

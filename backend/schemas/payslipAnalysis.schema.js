@@ -42,6 +42,30 @@ const payslipAnalysisCriticalSchema = z.object({
   }).passthrough(),
 }).passthrough();
 
+function deriveMandatoryTotal(mandatory = {}) {
+  if (Number.isFinite(mandatory.total) && mandatory.total >= 0) {
+    return mandatory;
+  }
+  const parts = [mandatory.income_tax, mandatory.national_insurance, mandatory.health_insurance]
+    .filter(v => Number.isFinite(v));
+  if (parts.length === 0) return mandatory;
+  return {
+    ...mandatory,
+    total: +parts.reduce((sum, value) => sum + value, 0).toFixed(2),
+    total_is_derived: true,
+  };
+}
+
+/** Fill derivable critical fields before schema validation (non-destructive clone). */
+function normalizePayslipAnalysis(input) {
+  if (!input || typeof input !== 'object') return input;
+  const data = JSON.parse(JSON.stringify(input));
+  if (data.deductions?.mandatory) {
+    data.deductions.mandatory = deriveMandatoryTotal(data.deductions.mandatory);
+  }
+  return data;
+}
+
 /**
  * Cross-field sanity rules applied AFTER the schema parses. Kept separate so
  * the rules can grow without bloating the type contract.
@@ -66,6 +90,12 @@ function detectCrossFieldIssues(data) {
   if (Number.isFinite(personalCredit) && Number.isFinite(incomeTax) && personalCredit > incomeTax * 1.005) {
     issues.push(`personal_credit (${personalCredit}) exceeds income_tax (${incomeTax})`);
   }
+
+  const flagged = data?.quality?.flaggedInconsistencies;
+  if (Array.isArray(flagged) && flagged.length > 0) {
+    issues.push(...flagged);
+  }
+
   return issues;
 }
 
@@ -77,7 +107,8 @@ function detectCrossFieldIssues(data) {
  * Never throws.
  */
 function validatePayslipAnalysis(input) {
-  const parsed = payslipAnalysisCriticalSchema.safeParse(input);
+  const normalized = normalizePayslipAnalysis(input);
+  const parsed = payslipAnalysisCriticalSchema.safeParse(normalized);
   if (!parsed.success) {
     const flat = parsed.error.issues.map(issue => `${issue.path.join('.') || '<root>'}: ${issue.message}`);
     return {
@@ -97,7 +128,7 @@ function validatePayslipAnalysis(input) {
       message: `analysisData failed cross-field check: ${crossFieldIssues.join('; ')}`,
     };
   }
-  return { ok: true, data: parsed.data };
+  return { ok: true, data: normalized };
 }
 
 /**
@@ -125,6 +156,8 @@ function buildFieldsMeta(analysisData) {
 
 module.exports = {
   payslipAnalysisCriticalSchema,
+  normalizePayslipAnalysis,
+  deriveMandatoryTotal,
   validatePayslipAnalysis,
   detectCrossFieldIssues,
   buildFieldsMeta,

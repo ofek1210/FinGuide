@@ -12,6 +12,9 @@ const ALL_FIELDS = {
     maritalStatus: { type: 'enum', values: STRING_ENUMS.maritalStatus },
     childrenCount: { type: 'number', min: 0, max: 20, integer: true },
     childrenAges: { type: 'number-array', min: 0, max: 25 },
+    residenceCity: { type: 'string', maxLength: 80 },
+    educationLevel: { type: 'enum', values: STRING_ENUMS.educationLevel },
+    hasCompletedMilitaryService: { type: 'boolean' },
     spouseWorks: { type: 'boolean' },
   },
   financial: {

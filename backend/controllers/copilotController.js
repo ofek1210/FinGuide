@@ -6,6 +6,12 @@ const { analyzeBudget } = require('../services/budgetAnalysisService');
 const { generateMonthlyReport } = require('../services/monthlyReportService');
 const { buildFinancialHealthScore } = require('../services/financialHealthScoreService');
 const { buildUnifiedSummary } = require('../services/unifiedSummaryService');
+const {
+  BREAKDOWN_KEYS,
+  serializeByPeriod,
+  applyPeriodExpenseUpdate,
+} = require('../utils/monthlyExpensesPeriod');
+const { buildPayslipsByPeriod } = require('../utils/payslipsByPeriod');
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -30,6 +36,19 @@ async function getLatestPayslipSummary(userId) {
   };
 }
 
+async function getPayslipsByPeriod(userId) {
+  const docs = await Document.find({
+    user: userId,
+    status: { $in: ['completed', 'needs_review'] },
+    analysisData: { $exists: true, $ne: null },
+  })
+    .select('metadata analysisData')
+    .sort({ uploadedAt: -1 })
+    .lean();
+
+  return buildPayslipsByPeriod(docs);
+}
+
 // ── GET /api/copilot/analysis ─────────────────────────────────────────────────
 
 exports.getCopilotAnalysis = async (req, res, next) => {
@@ -42,6 +61,7 @@ exports.getCopilotAnalysis = async (req, res, next) => {
     ]);
 
     const payslip = await getLatestPayslipSummary(userId);
+    const payslipsByPeriod = await getPayslipsByPeriod(userId);
     const netSalary = payslip?.netSalary ?? null;
     const grossSalary = payslip?.grossSalary ?? null;
 
@@ -76,8 +96,11 @@ exports.getCopilotAnalysis = async (req, res, next) => {
           monthlyExpenses: profile?.financial?.monthlyExpensesEstimate || null,
           monthlyDebts: profile?.financial?.monthlyDebts || null,
           savings: profile?.financial?.savingsEstimate || null,
+          monthlyExpensesBreakdown: profile?.financial?.monthlyExpensesBreakdown || null,
+          monthlyExpensesByPeriod: serializeByPeriod(profile?.financial?.monthlyExpensesByPeriod),
         },
         payslip,
+        payslipsByPeriod,
         budgetAnalysis,
         investmentRecs,
         healthScore,
@@ -95,13 +118,45 @@ exports.getCopilotAnalysis = async (req, res, next) => {
 exports.updateCopilotProfile = async (req, res, next) => {
   try {
     const userId = req.user._id;
-    const { riskTolerance, monthlyExpenses, monthlyDebts, savings } = req.body;
+    const {
+      riskTolerance,
+      monthlyExpenses,
+      monthlyDebts,
+      savings,
+      monthlyExpensesBreakdown,
+      expensePeriod,
+      otherEstimate,
+    } = req.body;
 
     const profile = await UserProfile.findOrCreateForUser(userId);
     if (riskTolerance !== undefined) profile.financial.riskTolerance = riskTolerance;
-    if (monthlyExpenses !== undefined) profile.financial.monthlyExpensesEstimate = Number(monthlyExpenses) || null;
-    if (monthlyDebts !== undefined) profile.financial.monthlyDebts = Number(monthlyDebts) || null;
     if (savings !== undefined) profile.financial.savingsEstimate = Number(savings) || null;
+
+    if (expensePeriod) {
+      applyPeriodExpenseUpdate(profile.financial, {
+        period: expensePeriod,
+        monthlyExpenses,
+        monthlyDebts,
+        monthlyExpensesBreakdown,
+        otherEstimate,
+      });
+    } else {
+      if (monthlyExpenses !== undefined) profile.financial.monthlyExpensesEstimate = Number(monthlyExpenses) || null;
+      if (monthlyDebts !== undefined) profile.financial.monthlyDebts = Number(monthlyDebts) || null;
+      if (monthlyExpensesBreakdown !== undefined && monthlyExpensesBreakdown !== null) {
+        if (!profile.financial.monthlyExpensesBreakdown) {
+          profile.financial.monthlyExpensesBreakdown = {};
+        }
+        for (const key of BREAKDOWN_KEYS) {
+          if (Object.prototype.hasOwnProperty.call(monthlyExpensesBreakdown, key)) {
+            const n = Number(monthlyExpensesBreakdown[key]);
+            profile.financial.monthlyExpensesBreakdown[key] =
+              Number.isFinite(n) && n > 0 ? n : null;
+          }
+        }
+        profile.markModified('financial.monthlyExpensesBreakdown');
+      }
+    }
     await profile.save();
 
     res.json({ success: true });

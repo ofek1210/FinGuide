@@ -124,8 +124,8 @@ describe('IDF payslip contribution extraction across months', () => {
         'ניכוי_לקרן__השתלמות 743.61',
         'השתתפות_בקרן_ההשתלמו 1744.17',
       ],
-      pension: { employee: 2112.62, participation: 3176.41, employer: 1063.79 },
-      study: { employee: 743.61, participation: 1744.17, employer: 1000.56 },
+      pension: { employee: 2112.62, employer: 3176.41, participation_total: 5289.03 },
+      study: { employee: 743.61, employer: 1744.17, participation_total: 2487.78 },
     },
     {
       name: 'June 2026',
@@ -135,8 +135,8 @@ describe('IDF payslip contribution extraction across months', () => {
         'ניכוי_לקרן__השתלמות 743.61',
         'השתתפות_בקרן_ההשתלמו 1744.17',
       ],
-      pension: { employee: 2112.62, participation: 3176.41, employer: 1063.79 },
-      study: { employee: 743.61, participation: 1744.17, employer: 1000.56 },
+      pension: { employee: 2112.62, employer: 3176.41, participation_total: 5289.03 },
+      study: { employee: 743.61, employer: 1744.17, participation_total: 2487.78 },
     },
     {
       name: 'March 2025',
@@ -146,10 +146,43 @@ describe('IDF payslip contribution extraction across months', () => {
         'ניכוי_לקרן__השתלמות 680.25',
         'השתתפות_בקרן_ההשתלמו 1594.50',
       ],
-      pension: { employee: 1980.5, participation: 2970.75, employer: 990.25 },
-      study: { employee: 680.25, participation: 1594.5, employer: 914.25 },
+      pension: { employee: 1980.5, employer: 2970.75, participation_total: 4951.25 },
+      study: { employee: 680.25, employer: 1594.5, participation_total: 2274.75 },
     },
   ];
+
+  it('picks current-month pension employee when OCR merges prior month on same line', () => {
+    const lines = [
+      'צבא הגנה לישראל',
+      '3637.60 ניכוי לקרן פנסיה 2112.621647.03',
+      'השתתפות בקרן הפנסיה 3,176.41',
+    ];
+    const collected = collectContributionCandidates(lines);
+    const resolved = resolveContributionCandidates(collected.store, collected.stats, []);
+
+    expect(resolved.pension.employee).toBe(1647.03);
+    expect(resolved.pension.employer).toBe(3176.41);
+    expect(resolved.pension.participation_total).toBe(4823.44);
+  });
+
+  it('ignores glued pay-period suffix on IDF participation lines (01.06.26 → not employer=26)', () => {
+    const lines = [
+      'צבא הגנה לישראל',
+      'ניכוי_לקרן_הפנסיה 1647.03',
+      'השתתפות_בקרן_הפנסיה 3,176.4101.06.26',
+      'ניכוי_לקרן__השתלמות 581.39',
+      'השתתפות_בקרן_ההשתלמו 1,744.1701.06.26',
+    ];
+    const collected = collectContributionCandidates(lines);
+    const resolved = resolveContributionCandidates(collected.store, collected.stats, []);
+
+    expect(resolved.pension.employee).toBe(1647.03);
+    expect(resolved.pension.employer).toBe(3176.41);
+    expect(resolved.pension.participation_total).toBe(4823.44);
+    expect(resolved.study.employee).toBe(581.39);
+    expect(resolved.study.employer).toBe(1744.17);
+    expect(resolved.study.participation_total).toBe(2325.56);
+  });
 
   it.each(cases)('extracts employee vs participation for $name', ({ lines, pension, study }) => {
     const collected = collectContributionCandidates(lines);
@@ -157,11 +190,11 @@ describe('IDF payslip contribution extraction across months', () => {
 
     expect(collected.stats.idfProfileDetected).toBe(true);
     expect(resolved.pension.employee).toBe(pension.employee);
-    expect(resolved.pension.participation_total).toBe(pension.participation);
     expect(resolved.pension.employer).toBe(pension.employer);
+    expect(resolved.pension.participation_total).toBe(pension.participation_total);
     expect(resolved.study.employee).toBe(study.employee);
-    expect(resolved.study.participation_total).toBe(study.participation);
     expect(resolved.study.employer).toBe(study.employer);
+    expect(resolved.study.participation_total).toBe(study.participation_total);
   });
 
   it.each([
@@ -188,13 +221,11 @@ describe('IDF payslip contribution extraction across months', () => {
       expect(result.contributions.study_fund.employee).toBeDefined();
       expect(result.contributions.study_fund.participation_total).toBeDefined();
       expect(result.contributions.study_fund.employer).toBeDefined();
-      expect(result.contributions.pension.employer).toBe(
-        +(result.contributions.pension.participation_total - result.contributions.pension.employee).toFixed(2),
+      expect(result.contributions.pension.participation_total).toBe(
+        +(result.contributions.pension.employee + result.contributions.pension.employer).toFixed(2),
       );
-      expect(result.contributions.study_fund.employer).toBe(
-        +(
-          result.contributions.study_fund.participation_total - result.contributions.study_fund.employee
-        ).toFixed(2),
+      expect(result.contributions.study_fund.participation_total).toBe(
+        +(result.contributions.study_fund.employee + result.contributions.study_fund.employer).toFixed(2),
       );
     },
   );

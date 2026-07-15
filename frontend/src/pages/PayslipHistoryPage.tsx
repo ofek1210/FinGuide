@@ -10,22 +10,23 @@ import { usePayslipHistory } from "../hooks/usePayslipHistory";
 import type { PayslipHistoryItem } from "../types/payslip";
 import { APP_ROUTES } from "../types/navigation";
 import { formatCurrencyILS } from "../utils/formatters";
+import { isPayslipSystemReviewOnly, isPayslipUserCompletable } from "../utils/payslipMissingFields";
 import MissingFieldsModal from "../components/payslip-history/MissingFieldsModal";
 
 const nis = (n: number | null | undefined) => (n == null ? "—" : formatCurrencyILS(n));
 
-/** Incomplete = the extraction flagged it (needs_review / missing critical fields). */
-function isIncomplete(item: PayslipHistoryItem): boolean {
-  if (item.needsReview) return true;
-  if (item.missingCritical && item.missingCritical.length > 0) return true;
-  return item.grossSalary == null || item.netSalary == null;
-}
-
-type StatusKey = "analyzed" | "flagged";
+type StatusKey = "analyzed" | "flagged" | "review";
 const STATUS: Record<StatusKey, { label: string; bg: string; fg: string }> = {
   analyzed: { label: "נותח", bg: "var(--mint-soft)", fg: "var(--mint-ink)" },
   flagged: { label: "דורש השלמה", bg: "var(--peach-soft)", fg: "var(--peach-ink)" },
+  review: { label: "דורש בדיקה", bg: "var(--butter-soft)", fg: "var(--butter-ink)" },
 };
+
+function statusKeyFor(item: PayslipHistoryItem): StatusKey {
+  if (isPayslipUserCompletable(item)) return "flagged";
+  if (isPayslipSystemReviewOnly(item)) return "review";
+  return "analyzed";
+}
 
 /* ── area sparkline (net trend) ──────────────────────────────── */
 function NetTrend({ points, w = 330, h = 104 }: { points: number[]; w?: number; h?: number }) {
@@ -127,7 +128,7 @@ export default function PayslipHistoryPage() {
 
   const goDetail = (item: PayslipHistoryItem) => navigate(`${APP_ROUTES.payslipHistory}/${item.id}`);
   const goComplete = (item: PayslipHistoryItem) => setModalDocId(item.id);
-  const goUpload = () => navigate(APP_ROUTES.documents);
+  const goUpload = () => navigate(APP_ROUTES.documentsUpload);
 
   if (isLoading) {
     return <Shell><div style={{ minHeight: "55vh", display: "grid", placeItems: "center", color: "var(--lav-600)" }}><Loader2 size={28} style={{ animation: "spin .8s linear infinite" }} /></div></Shell>;
@@ -155,7 +156,8 @@ export default function PayslipHistoryPage() {
   const yearOptions = years.map(y => y.year).sort((a, b) => b - a);
 
   const filtered = items.filter(it => query === "" || (it.periodLabel || "").includes(query));
-  const incompleteCount = items.filter(isIncomplete).length;
+  const incompleteCount = items.filter(isPayslipUserCompletable).length;
+  const reviewCount = items.filter(isPayslipSystemReviewOnly).length;
   const netSeries = items
     .slice()
     .sort((a, b) => new Date(a.periodDate).getTime() - new Date(b.periodDate).getTime())
@@ -173,7 +175,7 @@ export default function PayslipHistoryPage() {
   const summaryStats = [
     { v: String(stats.totalPayslips), l: "תלושים בארכיון", c: "var(--lav-600)" },
     { v: nis(stats.averageNet), l: "ממוצע נטו", c: "var(--mint-ink)" },
-    { v: String(incompleteCount), l: "דורשים השלמה", c: "var(--peach-ink)" },
+    { v: String(incompleteCount + reviewCount), l: "דורשים טיפול", c: "var(--peach-ink)" },
     { v: nis(stats.averageGross), l: "ממוצע ברוטו", c: "var(--ink)" },
   ];
 
@@ -201,11 +203,13 @@ export default function PayslipHistoryPage() {
           </div>
         )}
 
-        {incompleteCount > 0 && (
+        {(incompleteCount > 0 || reviewCount > 0) && (
           <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 24, padding: "13px 16px", borderRadius: "var(--r-btn)", background: "var(--peach-soft)", border: "1px solid var(--peach)", color: "var(--peach-ink)" }}>
             <AlertTriangle size={18} strokeWidth={2} style={{ flexShrink: 0 }} />
             <span style={{ fontSize: 13.5, fontWeight: 700 }}>
-              ב‑{incompleteCount} {incompleteCount === 1 ? "תלוש" : "תלושים"} לא הצלחנו לחלץ את כל הפרטים מה‑PDF — לחצו על "השלמת פרטים" כדי להשלים ידנית.
+              {incompleteCount > 0 && `ב‑${incompleteCount} ${incompleteCount === 1 ? "תלוש" : "תלושים"} חסרים פרטים להשלמה ידנית.`}
+              {incompleteCount > 0 && reviewCount > 0 && " "}
+              {reviewCount > 0 && `ב‑${reviewCount} ${reviewCount === 1 ? "תלוש" : "תלושים"} יש בעיית חילוץ טכנית — לחצו על "בדיקה" לחילוץ מחדש.`}
             </span>
           </div>
         )}
@@ -269,8 +273,9 @@ export default function PayslipHistoryPage() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {list.map(p => {
-                  const incomplete = isIncomplete(p);
-                  const st = STATUS[incomplete ? "flagged" : "analyzed"];
+                  const userCompletable = isPayslipUserCompletable(p);
+                  const systemReview = isPayslipSystemReviewOnly(p);
+                  const st = STATUS[statusKeyFor(p)];
                   const highlighted = p.periodMonth && highlightedPeriods?.has(p.periodMonth);
                   return (
                     <div key={p.id} className={highlighted ? "payslip-row-highlight" : undefined}
@@ -294,10 +299,16 @@ export default function PayslipHistoryPage() {
                         </div>
                       </div>
                       <div style={{ display: "flex", gap: 4, flex: "none" }}>
-                        {incomplete && (
+                        {userCompletable && (
                           <button onClick={() => goComplete(p)} title="השלמת פרטים"
                             style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 9, border: "1px solid var(--peach)", background: "var(--peach-soft)", color: "var(--peach-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12.5 }}>
                             <AlertTriangle size={14} /> השלמת פרטים
+                          </button>
+                        )}
+                        {systemReview && (
+                          <button onClick={() => goComplete(p)} title="בדיקה וחילוץ מחדש"
+                            style={{ display: "inline-flex", alignItems: "center", gap: 6, height: 34, padding: "0 12px", borderRadius: 9, border: "1px solid var(--butter)", background: "var(--butter-soft)", color: "var(--butter-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 12.5 }}>
+                            <AlertTriangle size={14} /> בדיקה
                           </button>
                         )}
                         <RowAction title="צפייה" onClick={() => goDetail(p)}><Eye size={16} /></RowAction>

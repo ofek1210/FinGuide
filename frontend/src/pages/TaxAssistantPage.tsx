@@ -176,8 +176,8 @@ export default function TaxAssistantPage() {
 
             {/* CTAs */}
             <div style={{ display: "flex", gap: 12, justifyContent: "flex-end", flexWrap: "wrap", marginBottom: 36 }}>
-              <button onClick={() => navigate(APP_ROUTES.documents)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 20px", borderRadius: "var(--r-btn)", border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--text-body)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}><Upload size={17} /> העלה תלוש חסר</button>
-              <button onClick={() => navigate(APP_ROUTES.documents)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 20px", borderRadius: "var(--r-btn)", border: "none", background: "var(--ink)", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 14, boxShadow: "var(--shadow-ink)" }}><FileText size={17} /> העלה טופס 106</button>
+              <button onClick={() => navigate(APP_ROUTES.documentsUpload)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 20px", borderRadius: "var(--r-btn)", border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--text-body)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14 }}><Upload size={17} /> העלה תלוש חסר</button>
+              <button onClick={() => navigate(APP_ROUTES.documentsUpload)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 20px", borderRadius: "var(--r-btn)", border: "none", background: "var(--ink)", color: "#fff", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 14, boxShadow: "var(--shadow-ink)" }}><FileText size={17} /> העלה טופס 106</button>
             </div>
 
             {/* findings */}

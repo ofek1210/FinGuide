@@ -1,4 +1,4 @@
-import { FileText, ShieldCheck, TrendingUp } from "lucide-react";
+import { FileText, ShieldCheck, TrendingUp, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { APP_ROUTES } from "../types/navigation";
 
@@ -20,7 +20,7 @@ import { APP_ROUTES } from "../types/navigation";
         resolves to the current agent's colour.
    ============================================================ */
 
-export type AgentId = "payslips" | "insurance" | "pension";
+export type AgentId = "payslips" | "insurance" | "pension" | "expenses";
 
 export interface AgentTone {
   /** Primary accent (text / icon / line). */
@@ -97,6 +97,21 @@ export const AGENTS: AgentDef[] = [
       soft: "var(--mint-soft)",
       ring: "var(--mint)",
       bg: "#F2FBF6",
+    },
+  },
+  {
+    id: "expenses",
+    label: "הוצאות שוטפות",
+    sub: "תקציב חודשי והמלצות",
+    Icon: Wallet,
+    route: APP_ROUTES.expenses,
+    routes: [APP_ROUTES.expenses],
+    tone: {
+      accent: "var(--butter-ink)",
+      strong: "#96700F",
+      soft: "var(--butter-soft)",
+      ring: "var(--butter)",
+      bg: "#FFFBF0",
     },
   },
 ];

@@ -18,6 +18,19 @@ const {
   formatDomainHealthLinesHtml,
   formatDomainHealthLinesWhatsApp,
 } = require('../utils/summaryFormatters');
+const { computeRecoverableSavingsAnnual } = require('../utils/recoverableSavings');
+
+function sumRecoverableSavings(payslip, insurance, pension) {
+  const payslipAnnual = payslip?.meta?.recoverableSavingsAnnual
+    ?? computeRecoverableSavingsAnnual(payslip?.insights || []);
+  const insuranceAnnual = insurance?.meta?.annualSavings
+    ?? computeRecoverableSavingsAnnual(insurance?.insights || []);
+  const pensionAnnual = pension?.meta?.totalPotentialSavings
+    ?? computeRecoverableSavingsAnnual(pension?.insights || []);
+  return Math.round(
+    (payslipAnnual || 0) + (insuranceAnnual || 0) + (pensionAnnual || 0),
+  );
+}
 
 const CPA_NAME = 'רו"ח דניאל לוי';
 const CPA_PHONE = '050-1234567';
@@ -56,7 +69,7 @@ function buildEmailHtml({ userName, payslip, insurance, pension, unified }) {
     ...(insurance?.insights || []),
     ...(pension?.insights || []),
   ];
-  const totalSavings = allInsights.reduce((sum, i) => sum + (i.financialImpact || 0), 0);
+  const totalSavings = sumRecoverableSavings(payslip, insurance, pension);
   const totalInsights = allInsights.length;
 
   const savingsLine = totalSavings > 0 ? `פוטנציאל חיסכון: ₪${totalSavings.toLocaleString('he-IL')}\n` : '';
@@ -219,11 +232,7 @@ async function sendSummaryEmail(user, userConsent) {
  * Build a WhatsApp share URL with pre-filled text summary.
  */
 function buildWhatsAppShareUrl(payslip, insurance, pension, unified) {
-  const totalSavings = [
-    ...(payslip?.insights || []),
-    ...(insurance?.insights || []),
-    ...(pension?.insights || []),
-  ].reduce((sum, i) => sum + (i.financialImpact || 0), 0);
+  const totalSavings = sumRecoverableSavings(payslip, insurance, pension);
 
   const lines = [
     `📊 הסיכום הפיננסי שלי מ-FinGuide מוכן!`,

@@ -2,6 +2,13 @@ import { apiJson, type ApiErrorPayload } from "./client";
 
 export type SalaryType = "global" | "hourly";
 export type Gender = "male" | "female" | "other";
+export type EducationLevel =
+  | "none"
+  | "high_school"
+  | "first_degree"
+  | "second_degree"
+  | "vocational"
+  | "student";
 export type MaritalStatus =
   | "single"
   | "married"
@@ -26,6 +33,9 @@ export type PersonalSection = {
   maritalStatus: MaritalStatus | null;
   childrenCount: number | null;
   childrenAges: number[];
+  residenceCity: string | null;
+  educationLevel: EducationLevel | null;
+  hasCompletedMilitaryService: boolean | null;
   spouseWorks: boolean | null;
   isSmoker: boolean | null;
 };
@@ -125,6 +135,9 @@ export const EMPTY_PROFILE: OnboardingProfile = {
     maritalStatus: null,
     childrenCount: null,
     childrenAges: [],
+    residenceCity: null,
+    educationLevel: null,
+    hasCompletedMilitaryService: null,
     spouseWorks: null,
     isSmoker: null,
   },

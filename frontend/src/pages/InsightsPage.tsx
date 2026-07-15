@@ -144,7 +144,7 @@ export default function InsightsPage() {
             <span style={{ width: 56, height: 56, borderRadius: 15, background: "var(--lav-100)", color: "var(--lav-600)", display: "grid", placeItems: "center", margin: "0 auto 16px" }}><Sparkles size={26} /></span>
             <h3 style={{ fontSize: 20, fontWeight: 900, color: "var(--text-strong)", margin: "0 0 10px" }}>אין עדיין תובנות</h3>
             <p style={{ fontSize: 14.5, color: "var(--text-muted)", margin: "0 0 20px" }}>העלה תלושים והרץ ניתוח AI כדי לקבל תובנות מותאמות.</p>
-            <button onClick={() => navigate(APP_ROUTES.documents)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: "var(--r-btn)", background: "var(--ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 14, boxShadow: "var(--shadow-ink)" }}><Upload size={16} /> העלאת תלוש</button>
+            <button onClick={() => navigate(APP_ROUTES.documentsUpload)} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 24px", borderRadius: "var(--r-btn)", background: "var(--ink)", color: "#fff", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 14, boxShadow: "var(--shadow-ink)" }}><Upload size={16} /> העלאת תלוש</button>
           </div>
         ) : (
           <>

@@ -18,6 +18,7 @@
     "parse:pension": "node scripts/parsePensionUpload.js",
     "validate:benchmark-tables": "node scripts/validateBenchmarkTables.js",
     "eval:ocr": "node scripts/evalOcr.js",
+    "eval:vision": "node scripts/evalVisionPayslips.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,json,md}\"",

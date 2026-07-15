@@ -67,7 +67,7 @@ const IDF_CONTRIBUTION_COLUMNS = Object.freeze([
     field: 'pension_participation_total',
     fund: 'pension',
     role: 'participation_total',
-    descriptionHe: 'השתתפות בקרן הפנסיה — סך הכל נכנס לקרן',
+    descriptionHe: 'השתתפות בקרן הפנסיה — הפרשת המעסיק',
     labelPatterns: [/השתתפות\s+ב\s*קרן\s+ה*פנסיה/i],
     rawMarkers: ['השתתפות_בקרן_הפנסיה', 'השתתפות_בקרן_הפנס'],
     amountRange: { min: 1, max: 120000 },
@@ -78,8 +78,8 @@ const IDF_CONTRIBUTION_COLUMNS = Object.freeze([
     role: 'employee',
     descriptionHe: 'ניכוי לקרן השתלמות — הפרשת העובד',
     labelPatterns: [
-      /ניכוי\s+ל\s*קרן\s+ה+שתלמ/i,
-      /נכוי\s+ל\s*קרן\s+ה+שתלמ/i,
+      /ניכוי\s+ל\s*קרן\s+[\s|"'״']*(?:ה+)?שתלמ/i,
+      /נכוי\s+ל\s*קרן\s+[\s|"'״']*(?:ה+)?שתלמ/i,
       /ניכוי\s+ל\s*קרן\s+השתלמות/i,
     ],
     rawMarkers: [
@@ -94,7 +94,7 @@ const IDF_CONTRIBUTION_COLUMNS = Object.freeze([
     field: 'study_participation_total',
     fund: 'study',
     role: 'participation_total',
-    descriptionHe: 'השתתפות בקרן ההשתלמות — סך הכל נכנס לקרן',
+    descriptionHe: 'השתתפות בקרן ההשתלמות — הפרשת המעסיק',
     labelPatterns: [/השתתפות\s+ב\s*קרן\s+ה*שתלמ/i],
     rawMarkers: ['השתתפות_בקרן_ההשתלמו', 'השתתפות_בקרן_השתלמות'],
     amountRange: { min: 1, max: 60000 },
@@ -402,8 +402,46 @@ function neighborMatchesExcludedColumn(raw, excludedFields = []) {
   return false;
 }
 
+function findIdfColumnLabelEnd(raw, column) {
+  if (!raw || !column) {
+    return -1;
+  }
+
+  for (const pattern of column.labelPatterns || []) {
+    const match = String(raw).match(pattern);
+    if (match && match.index !== undefined) {
+      return match.index + match[0].length;
+    }
+  }
+
+  for (const marker of column.rawMarkers || []) {
+    const idx = String(raw).indexOf(marker);
+    if (idx >= 0) {
+      return idx + marker.length;
+    }
+  }
+
+  return -1;
+}
+
+function pickIdfContributionColumnAmount(amounts, role) {
+  const substantial = amounts.filter(value => value >= 50);
+  if (!substantial.length) {
+    return amounts[amounts.length - 1];
+  }
+
+  // Employee lines may carry prior-month amounts; current month is usually last.
+  if (role === 'employee') {
+    return substantial[substantial.length - 1];
+  }
+
+  // Participation/employer lines often have a glued pay-period suffix (e.g. 3176.4101.06.26).
+  return substantial[0];
+}
+
 function pickIdfColumnAmount(entry, entries, column) {
   const { min, max } = column.amountRange;
+  const isContributionColumn = column.fund === 'pension' || column.fund === 'study';
   const excludedNeighborFields =
     column.field === 'gross_total'
       ? ['net_payable']
@@ -411,12 +449,17 @@ function pickIdfColumnAmount(entry, entries, column) {
         ? ['gross_total']
         : [];
 
-  const ownNums = extractAllNumericTokens(entry.raw).filter(value => value >= min && value <= max);
+  const labelEnd = isContributionColumn ? findIdfColumnLabelEnd(entry.raw, column) : -1;
+  const ownSource = labelEnd >= 0 ? entry.raw.slice(labelEnd) : entry.raw;
+  const ownNums = extractAllNumericTokens(ownSource).filter(value => value >= min && value <= max);
   if (ownNums.length === 1) {
     return { amount: ownNums[0], lineIndex: entry.index, adjacent: false };
   }
   if (ownNums.length > 1) {
-    return { amount: Math.max(...ownNums), lineIndex: entry.index, adjacent: false };
+    const amount = isContributionColumn
+      ? pickIdfContributionColumnAmount(ownNums, column.role)
+      : Math.max(...ownNums);
+    return { amount, lineIndex: entry.index, adjacent: false };
   }
 
   for (let offset = 1; offset <= 5; offset += 1) {

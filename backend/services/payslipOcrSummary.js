@@ -3,6 +3,7 @@ const {
   match1,
   parseNumber,
 } = require('./payslipOcrShared');
+const { readTaxCreditPoints } = require('../utils/taxCreditPoints');
 
 function extractNumberByRegexes(full, regexes, parser = parseNumber) {
   if (!full) return null;
@@ -86,7 +87,7 @@ function buildPayslipSummary(data, rawText) {
   const voluntaryDeductionsTotal = data.deductions?.voluntary_total ?? null;
   const jobPercentage = data.employment?.job_percent ?? null;
   const marginalTaxRate = data.tax?.marginal_tax_rate_percent ?? null;
-  const taxCreditPoints = data.tax?.tax_credit_points ?? null;
+  const taxCreditPoints = readTaxCreditPoints(data, textSource);
   const employerName = data.parties?.employer_name ?? null;
   const employeeId = data.parties?.employee_id ?? null;
   const baseSalary = data.salary?.components?.find(c => c.type === 'base_salary')?.amount ?? null;

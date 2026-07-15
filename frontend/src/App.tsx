@@ -25,6 +25,7 @@ import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import PensionPage from "./pages/PensionPage";
+import ExpensesPage from "./pages/ExpensesPage";
 import TeamPage from "./pages/TeamPage";
 import ContactPage from "./pages/ContactPage";
 import FAQPage from "./pages/FAQPage";
@@ -148,6 +149,14 @@ export default function App() {
           element={
             <RequireAuth>
               <FinancialPlanningPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.expenses}
+          element={
+            <RequireAuth>
+              <ExpensesPage />
             </RequireAuth>
           }
         />

@@ -17,7 +17,7 @@ export type EnrichedPayslip = {
 
 export type MoneyFlowItem = {
   label: string;
-  avgAmount: number;
+  totalAmount: number;
   pctOfGross: number;
   pctOfGap: number;
 };
@@ -26,6 +26,7 @@ export type MoneyFlow = {
   payslipCount: number;
   avgGross: number;
   avgNet: number;
+  totalGross: number;
   totalWithheld: number;
   items: MoneyFlowItem[];
 };
@@ -209,12 +210,22 @@ function avgField(list: EnrichedPayslip[], key: keyof EnrichedPayslip): number |
   return Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
 }
 
+function sumField(list: EnrichedPayslip[], key: keyof EnrichedPayslip): number {
+  const total = list.reduce((sum, e) => {
+    const v = e[key];
+    return typeof v === "number" && Number.isFinite(v) && v > 0 ? sum + v : sum;
+  }, 0);
+  return Math.round(total);
+}
+
 const FLOW_LABELS: Array<{ key: keyof EnrichedPayslip; label: string }> = [
   { key: "tax", label: "מס הכנסה" },
   { key: "nationalInsurance", label: "ביטוח לאומי" },
   { key: "healthInsurance", label: "מס בריאות" },
   { key: "pensionEmployee", label: "הפקדה לפנסיה (עובד)" },
+  { key: "pensionEmployer", label: "הפקדה לפנסיה (מעסיק)" },
   { key: "studyFundEmployee", label: "קרן השתלמות (עובד)" },
+  { key: "studyFundEmployer", label: "קרן השתלמות (מעסיק)" },
 ];
 
 export function buildMoneyFlow(enrichedList: EnrichedPayslip[]): MoneyFlow | null {
@@ -227,39 +238,45 @@ export function buildMoneyFlow(enrichedList: EnrichedPayslip[]): MoneyFlow | nul
   const avgNet = avgField(valid, "netSalary");
   if (!Number.isFinite(avgGross) || !Number.isFinite(avgNet)) return null;
 
-  const totalWithheld = Math.round((avgGross as number) - (avgNet as number));
+  const totalGross = Math.round(valid.reduce((s, e) => s + (e.grossSalary as number), 0));
+  const totalWithheld = Math.round(
+    valid.reduce((s, e) => s + ((e.grossSalary as number) - (e.netSalary as number)), 0),
+  );
   const items: MoneyFlowItem[] = FLOW_LABELS
     .map(({ key, label }) => {
-      const avgAmount = avgField(valid, key);
-      if (!Number.isFinite(avgAmount) || (avgAmount as number) <= 0) return null;
+      const totalAmount = sumField(valid, key);
+      if (totalAmount <= 0) return null;
       return {
         label,
-        avgAmount: avgAmount as number,
-        pctOfGross: Math.round(((avgAmount as number) / (avgGross as number)) * 1000) / 10,
+        totalAmount,
+        pctOfGross: totalGross > 0
+          ? Math.round((totalAmount / totalGross) * 1000) / 10
+          : 0,
         pctOfGap: totalWithheld > 0
-          ? Math.round(((avgAmount as number) / totalWithheld) * 1000) / 10
+          ? Math.round((totalAmount / totalWithheld) * 1000) / 10
           : 0,
       };
     })
     .filter((i): i is MoneyFlowItem => i !== null);
 
-  const itemised = items.reduce((s, i) => s + i.avgAmount, 0);
+  const itemised = items.reduce((s, i) => s + i.totalAmount, 0);
   const remainder = totalWithheld - itemised;
   if (remainder > 50) {
     items.push({
       label: "ניכויים נוספים / אחר",
-      avgAmount: Math.round(remainder),
-      pctOfGross: Math.round((remainder / (avgGross as number)) * 1000) / 10,
+      totalAmount: Math.round(remainder),
+      pctOfGross: totalGross > 0 ? Math.round((remainder / totalGross) * 1000) / 10 : 0,
       pctOfGap: totalWithheld > 0 ? Math.round((remainder / totalWithheld) * 1000) / 10 : 0,
     });
   }
 
-  items.sort((a, b) => b.avgAmount - a.avgAmount);
+  items.sort((a, b) => b.totalAmount - a.totalAmount);
 
   return {
     payslipCount: valid.length,
     avgGross: avgGross as number,
     avgNet: avgNet as number,
+    totalGross,
     totalWithheld,
     items,
   };

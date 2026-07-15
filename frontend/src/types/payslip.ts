@@ -106,6 +106,12 @@ export type PayslipDetail = {
   deductions: PayslipLineItem[];
   grossSalary: number | null;
   netSalary: number | null;
+  /** הפרשת עובד לפנסיה */
+  pensionEmployee?: number | null;
+  /** הפרשת מעסיק לפנסיה */
+  pensionEmployer?: number | null;
+  /** סה"כ שנכנס לקרן הפנסיה (עובד + מעסיק) */
+  pensionTotal?: number | null;
   /** נקודות זיכוי ממס */
   taxCreditPoints?: number | null;
   /** זיכוי אישי — סכום הפחתת מס בש"ח */

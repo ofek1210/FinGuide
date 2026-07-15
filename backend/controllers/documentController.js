@@ -95,7 +95,10 @@ exports.getPayslipHistory = async (req, res, next) => {
 
 exports.getRecentPayslips = async (req, res, next) => {
   try {
-    const limit = Math.min(Math.max(Number(req.query.limit) || 3, 1), 12);
+    const rawLimit = Number(req.query.limit);
+    const limit = Number.isFinite(rawLimit) && rawLimit <= 0
+      ? 0
+      : Math.min(Math.max(rawLimit || 3, 1), 60);
     const documents = await Document.find({
       user: req.user.id,
       status: { $in: ['completed', 'needs_review'] },

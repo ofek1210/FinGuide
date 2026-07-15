@@ -49,6 +49,7 @@ const AGENT_KEY: Record<AgentId, BackendAgentKey> = {
   payslips: "payslip",
   insurance: "insurance",
   pension: "pension",
+  expenses: "payslip",
 };
 
 const DOMAIN_TO_AGENT: Record<string, AgentId> = {
@@ -178,8 +179,9 @@ function agentVerdict(id: AgentId, result: AgentResult | undefined): string | nu
 
 /** Domain quick-action per agent (navigation into the domain flow). */
 function agentQuickAction(id: AgentId): { label: string; Icon: typeof Upload; route: string } {
-  if (id === "payslips") return { label: "העלה תלוש", Icon: Upload, route: APP_ROUTES.documents };
+  if (id === "payslips") return { label: "העלה תלוש", Icon: Upload, route: APP_ROUTES.documentsUpload };
   if (id === "insurance") return { label: "ייבוא הר הביטוח", Icon: FileSpreadsheet, route: APP_ROUTES.insurance };
+  if (id === "expenses") return { label: "עדכון הוצאות", Icon: Upload, route: APP_ROUTES.expenses };
   return { label: "סימולציית פרישה", Icon: Calculator, route: APP_ROUTES.pension };
 }
 

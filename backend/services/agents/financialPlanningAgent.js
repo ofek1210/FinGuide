@@ -70,6 +70,99 @@ class FinancialPlanningAgent extends BaseAgent {
       }
     }
 
+    const fin = ctx.profile?.financial;
+    if (fin) {
+      const breakdownLabels = {
+        rent: 'שכר דירה',
+        arnona: 'ארנונה',
+        vaadBayit: 'ועד בית',
+        clothing: 'ביגוד',
+        food: 'מזון',
+        restaurants: 'מסעדות',
+        childcare: 'גנים/חינוך',
+        tvInternet: 'טלוויזיה ואינטרנט',
+        electricity: 'חשמל',
+        water: 'מים',
+      };
+
+      const formatPeriodLabel = (period) => {
+        const [year, month] = String(period).split('-').map(Number);
+        if (!year || !month) return period;
+        const names = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+        return `${names[month - 1] || month} ${year}`;
+      };
+
+      const byPeriod = fin.monthlyExpensesByPeriod;
+      const periodKeys = byPeriod && typeof byPeriod === 'object'
+        ? Object.keys(byPeriod).sort().reverse()
+        : [];
+
+      if (periodKeys.length > 0) {
+        lines.push('**הוצאות שוטפות לפי חודש:**');
+        for (const period of periodKeys.slice(0, 6)) {
+          const entry = byPeriod[period];
+          if (!entry) continue;
+          const breakdown = entry.breakdown;
+          let expenseTotal = Number(entry.total) > 0 ? Number(entry.total) : null;
+          if (!expenseTotal && entry.otherEstimate) expenseTotal = entry.otherEstimate;
+
+          lines.push(`--- ${formatPeriodLabel(period)} ---`);
+          if (breakdown && typeof breakdown === 'object') {
+            const entries = Object.entries(breakdown).filter(([, v]) => Number(v) > 0);
+            if (entries.length > 0) {
+              if (!expenseTotal) expenseTotal = entries.reduce((sum, [, v]) => sum + Number(v), 0);
+              for (const [key, amount] of entries) {
+                if (breakdownLabels[key]) lines.push(`${breakdownLabels[key]}: ${amount} ₪`);
+              }
+            }
+          }
+          if (!expenseTotal && entry.otherEstimate) {
+            lines.push(`אחר / לא מפורט: ${entry.otherEstimate} ₪`);
+            expenseTotal = entry.otherEstimate;
+          }
+          if (expenseTotal) lines.push(`סה"כ הוצאות: ${expenseTotal} ₪`);
+          if (entry.monthlyDebts) lines.push(`החזרי חובות: ${entry.monthlyDebts} ₪`);
+
+          const payslipForPeriod = ctx.payslipsByPeriod?.[period];
+          const netForPeriod = payslipForPeriod?.netSalary ?? (period === periodKeys[0] ? ctx.netSalary : null);
+          if (netForPeriod && expenseTotal != null) {
+            const disposable = netForPeriod - expenseTotal - (entry.monthlyDebts || 0);
+            lines.push(`נטו מתלוש (${formatPeriodLabel(period)}): ${netForPeriod} ₪`);
+            lines.push(`הכנסה פנויה: ${disposable} ₪`);
+          }
+        }
+      } else {
+        const breakdown = fin.monthlyExpensesBreakdown;
+        let expenseTotal = null;
+
+        if (breakdown && typeof breakdown === 'object') {
+          const entries = Object.entries(breakdown).filter(([, v]) => Number(v) > 0);
+          if (entries.length > 0) {
+            expenseTotal = entries.reduce((sum, [, v]) => sum + Number(v), 0);
+            lines.push(`סה"כ הוצאות שוטפות חודשיות: ${expenseTotal} ₪`);
+            lines.push('**פירוט הוצאות:**');
+            for (const [key, amount] of entries) {
+              if (breakdownLabels[key]) lines.push(`${breakdownLabels[key]}: ${amount} ₪`);
+            }
+          }
+        }
+
+        if (expenseTotal == null && fin.monthlyExpensesEstimate) {
+          expenseTotal = fin.monthlyExpensesEstimate;
+          lines.push(`הוצאות חודשיות (לא מפורט): ${expenseTotal} ₪`);
+        }
+
+        if (fin.monthlyDebts) {
+          lines.push(`החזרי חובות חודשיים: ${fin.monthlyDebts} ₪`);
+        }
+
+        if (ctx.netSalary && expenseTotal != null) {
+          const disposable = ctx.netSalary - expenseTotal - (fin.monthlyDebts || 0);
+          lines.push(`הכנסה פנויה (נטו פחות הוצאות וחובות): ${disposable} ₪/חודש`);
+        }
+      }
+    }
+
     return lines.join('\n');
   }
 }

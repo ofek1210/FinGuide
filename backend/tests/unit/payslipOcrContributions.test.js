@@ -38,7 +38,7 @@ describe('payslipOcrContributions explicit deduction labels', () => {
     expect(resolved.pension.employer).toBe(2000);
   });
 
-  it('reads IDF underscore labels and derives employer from השתתפות totals', () => {
+  it('reads IDF underscore labels: השתתפות is employer share, total is employee + employer', () => {
     const lines = [
       'ניכוי_לקרן_פנסיה 750.00',
       'השתתפות_בקרן_פנסיה 1,875.00',
@@ -51,11 +51,11 @@ describe('payslipOcrContributions explicit deduction labels', () => {
     const resolved = resolveContributionCandidates(collected.store, collected.stats, warnings);
 
     expect(resolved.pension.employee).toBe(750);
-    expect(resolved.pension.participation_total).toBe(1875);
-    expect(resolved.pension.employer).toBe(1125);
+    expect(resolved.pension.employer).toBe(1875);
+    expect(resolved.pension.participation_total).toBe(2625);
     expect(resolved.study.employee).toBe(250);
-    expect(resolved.study.participation_total).toBe(500);
-    expect(resolved.study.employer).toBe(250);
+    expect(resolved.study.employer).toBe(500);
+    expect(resolved.study.participation_total).toBe(750);
     expect(warnings).toEqual([]);
   });
 
@@ -89,7 +89,8 @@ describe('payslipOcrContributions explicit deduction labels', () => {
     expect(stdResolved.pension.employee).toBe(1080);
     expect(stdResolved.pension.employer).toBe(1170);
     expect(idfResolved.pension.employee).toBe(750);
-    expect(idfResolved.pension.employer).toBe(1125);
+    expect(idfResolved.pension.employer).toBe(1875);
+    expect(idfResolved.pension.participation_total).toBe(2625);
   });
 
   it('reads IDF labels with הפנסיה, ההשתלמו and double underscore', () => {
@@ -105,11 +106,11 @@ describe('payslipOcrContributions explicit deduction labels', () => {
     const resolved = resolveContributionCandidates(collected.store, collected.stats, warnings);
 
     expect(resolved.pension.employee).toBe(750);
-    expect(resolved.pension.participation_total).toBe(1875);
-    expect(resolved.pension.employer).toBe(1125);
+    expect(resolved.pension.employer).toBe(1875);
+    expect(resolved.pension.participation_total).toBe(2625);
     expect(resolved.study.employee).toBe(250);
-    expect(resolved.study.participation_total).toBe(500);
-    expect(resolved.study.employer).toBe(250);
+    expect(resolved.study.employer).toBe(500);
+    expect(resolved.study.participation_total).toBe(750);
     expect(warnings).toEqual([]);
   });
 
@@ -129,14 +130,14 @@ describe('payslipOcrContributions explicit deduction labels', () => {
     const splitResolved = resolveContributionCandidates(splitLines.store, splitLines.stats, []);
 
     expect(typoResolved.study.employee).toBe(250);
-    expect(typoResolved.study.participation_total).toBe(500);
-    expect(typoResolved.study.employer).toBe(250);
+    expect(typoResolved.study.employer).toBe(500);
+    expect(typoResolved.study.participation_total).toBe(750);
     expect(splitResolved.study.employee).toBe(250);
-    expect(splitResolved.study.participation_total).toBe(500);
-    expect(splitResolved.study.employer).toBe(250);
+    expect(splitResolved.study.employer).toBe(500);
+    expect(splitResolved.study.participation_total).toBe(750);
   });
 
-  it('reads June 2026 IDF payslip: employee deduction vs total participation', () => {
+  it('reads June 2026 IDF payslip: employee deduction vs employer participation', () => {
     const lines = [
       'ניכוי_לקרן_הפנסיה 2112.62',
       'השתתפות_בקרן_הפנסיה 3176.41',
@@ -149,11 +150,50 @@ describe('payslipOcrContributions explicit deduction labels', () => {
     const resolved = resolveContributionCandidates(collected.store, collected.stats, warnings);
 
     expect(resolved.pension.employee).toBe(2112.62);
-    expect(resolved.pension.participation_total).toBe(3176.41);
-    expect(resolved.pension.employer).toBe(1063.79);
+    expect(resolved.pension.employer).toBe(3176.41);
+    expect(resolved.pension.participation_total).toBe(5289.03);
     expect(resolved.study.employee).toBe(743.61);
-    expect(resolved.study.participation_total).toBe(1744.17);
-    expect(resolved.study.employer).toBe(1000.56);
+    expect(resolved.study.employer).toBe(1744.17);
+    expect(resolved.study.participation_total).toBe(2487.78);
+    expect(warnings).toEqual([]);
+  });
+
+  it('reads glued pay-period suffix on participation lines without treating 26 as employer', () => {
+    const lines = [
+      'צבא הגנה לישראל',
+      'ניכוי_לקרן_הפנסיה 1647.03',
+      'השתתפות בקרן הפנסיה 3,176.4101.06.26',
+      'ניכוי_לקרן__השתלמות 581.39',
+      'השתתפות_בקרן_ההשתלמו 1744.1701.06.26',
+    ];
+
+    const warnings = [];
+    const collected = collectContributionCandidates(lines);
+    const resolved = resolveContributionCandidates(collected.store, collected.stats, warnings);
+
+    expect(resolved.pension.employee).toBe(1647.03);
+    expect(resolved.pension.employer).toBe(3176.41);
+    expect(resolved.study.employee).toBe(581.39);
+    expect(resolved.study.employer).toBe(1744.17);
+    expect(warnings).toEqual([]);
+  });
+
+  it('reads study employee from OCR table row with pipe separator and merged prior/current amounts', () => {
+    const lines = [
+      'צבא הגנה לישראל',
+      'תוספת פעילות 3637.60 ניכוי לקרן פנסיה 2112.621647.03',
+      'השתתפות בקרן הפנסיה 3,176.4101.06.26',
+      'תוספת צבא הקבע 6508.23 נכוי לקרן | השתלמות 743.61581.39',
+      'השתתפות בקרן ההשתלמו 1,744.1701.06.26',
+    ];
+
+    const warnings = [];
+    const collected = collectContributionCandidates(lines);
+    const resolved = resolveContributionCandidates(collected.store, collected.stats, warnings);
+
+    expect(resolved.pension.employee).toBe(1647.03);
+    expect(resolved.study.employee).toBe(581.39);
+    expect(resolved.study.employer).toBe(1744.17);
     expect(warnings).toEqual([]);
   });
 });

@@ -558,6 +558,10 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson, expect
     // Malam Plus: credit points appear 2 lines after "קוד ב.לאומי..." label, before a date
     parseNumber(match1(full, /קוד\s*ב\.?\s*לאומי[^\n]*\n[\d,.]+\n(\d+(?:[.,]\d+)?)\n\d{2}\/\d{2}\/\d{4}/im)) ??
     parseNumber(match1(full, /נ\.?\s*זיכוי[:\s]+(\d+(?:[.,]\d+)?)/i));
+  const { extractTaxCreditPointsFromText } = require('../utils/taxCreditPoints');
+  if (tax_credit_points === undefined) {
+    tax_credit_points = extractTaxCreditPointsFromText(full) ?? undefined;
+  }
   const credit_resident = parseNumber(match1(full, /תושב\s*ישראל\s+(\d+(?:\.\d+)?)/i));
   const credit_woman =
     parseNumber(match1(full, /(?:אישה|אשה)\s+(\d+(?:\.\d+)?)/i)) ??
@@ -734,6 +738,12 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson, expect
 }
 
 async function extractPayslipFile(inputPath, options = {}) {
+  const { isVisionExtractionMode } = require('../config/payslipExtractionConfig');
+  if (isVisionExtractionMode()) {
+    const { extractPayslipViaVision } = require('./payslipVisionPipeline');
+    return extractPayslipViaVision(inputPath, options);
+  }
+
   const { password, userId } = options;
   let { expectedEmployeeName } = options;
   if (!expectedEmployeeName && userId) {

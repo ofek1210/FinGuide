@@ -209,6 +209,7 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                 { label: "מיסים", route: APP_ROUTES.taxAssistant },
                 { label: "תובנות", route: APP_ROUTES.insights },
                 { label: "תכנון פיננסי", route: APP_ROUTES.planning },
+                { label: "הוצאות שוטפות", route: APP_ROUTES.expenses },
               ].map(link => (
                 <button
                   key={link.route}

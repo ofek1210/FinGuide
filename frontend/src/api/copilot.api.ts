@@ -56,11 +56,38 @@ export interface CopilotGoal {
   progressPct: number;
 }
 
+export interface MonthlyExpensesBreakdown {
+  rent?: number | null;
+  arnona?: number | null;
+  vaadBayit?: number | null;
+  clothing?: number | null;
+  food?: number | null;
+  restaurants?: number | null;
+  childcare?: number | null;
+  tvInternet?: number | null;
+  electricity?: number | null;
+  water?: number | null;
+}
+
+export interface MonthlyExpensePeriodEntry {
+  breakdown?: MonthlyExpensesBreakdown | null;
+  monthlyDebts?: number | null;
+  otherEstimate?: number | null;
+  total?: number | null;
+}
+
+export interface PayslipPeriodSummary {
+  netSalary: number | null;
+  grossSalary: number | null;
+}
+
 export interface CopilotProfile {
   riskTolerance: RiskTolerance | null;
   monthlyExpenses: number | null;
   monthlyDebts: number | null;
   savings: number | null;
+  monthlyExpensesBreakdown: MonthlyExpensesBreakdown | null;
+  monthlyExpensesByPeriod?: Record<string, MonthlyExpensePeriodEntry>;
 }
 
 export interface CopilotAnalysis {
@@ -69,6 +96,7 @@ export interface CopilotAnalysis {
     grossSalary: number | null;
     netSalary: number | null;
   } | null;
+  payslipsByPeriod?: Record<string, PayslipPeriodSummary>;
   budgetAnalysis: BudgetAnalysis;
   investmentRecs: InvestmentRecs;
   healthScore: {
@@ -91,6 +119,9 @@ export const updateCopilotProfile = (body: Partial<{
   monthlyExpenses: number;
   monthlyDebts: number;
   savings: number;
+  monthlyExpensesBreakdown: MonthlyExpensesBreakdown;
+  expensePeriod: string;
+  otherEstimate: number;
 }>) =>
   apiJson<{ success: boolean }>("/api/copilot/profile", {
     method: "PUT",

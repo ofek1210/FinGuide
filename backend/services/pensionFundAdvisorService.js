@@ -98,17 +98,23 @@ function decideVerdict({
   const highFees = feeVsMarket === 'above_market' || feeVsMarket === 'high'
     || (userFee != null && marketFee != null && userFee > marketFee * NEGOTIATE_FEE_RATIO);
 
-  if (switchGainVsBest >= SWITCH_SAVINGS_THRESHOLD && returnPercentile != null && returnPercentile < 55) {
-    return VERDICT.SWITCH;
-  }
-  if (switchGainVsBest >= SWITCH_SAVINGS_THRESHOLD * 0.6 && highFees) {
-    return VERDICT.SWITCH;
+  if (highFees && negotiateGain > 15000
+    && (returnPercentile == null || returnPercentile >= 45)) {
+    return VERDICT.NEGOTIATE;
   }
   if (highFees && returnPercentile != null && returnPercentile >= 45 && negotiateGain > 15000) {
     return VERDICT.NEGOTIATE;
   }
   if (highFees && returnPercentile != null && returnPercentile >= 50 && matchConfidence >= 40) {
     return VERDICT.NEGOTIATE;
+  }
+
+  if (switchGainVsBest >= SWITCH_SAVINGS_THRESHOLD && returnPercentile != null && returnPercentile < 55) {
+    return VERDICT.SWITCH;
+  }
+  if (switchGainVsBest >= SWITCH_SAVINGS_THRESHOLD * 0.6 && highFees
+    && returnPercentile != null && returnPercentile < 45) {
+    return VERDICT.SWITCH;
   }
   if (returnPercentile != null && returnPercentile < 30 && !riskMismatch) {
     return VERDICT.SWITCH;

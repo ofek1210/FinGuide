@@ -47,7 +47,10 @@ const getEmployerName = doc => {
 };
 
 const isPayslipDocument = doc => {
-  if (doc?.status !== 'completed' || !doc.analysisData) {
+  if (
+    (doc?.status !== 'completed' && doc?.status !== 'needs_review') ||
+    !doc.analysisData
+  ) {
     return false;
   }
 

@@ -51,6 +51,18 @@ describe("selectRecentPayslipDocuments", () => {
     expect(recent.map(d => d._id)).toEqual(["feb", "new-jan"]);
   });
 
+  it("returns all payslips when limit is 0", () => {
+    const docs = [
+      makePayslipDoc("m", "2025-03", "2025-04-01T10:00:00Z"),
+      makePayslipDoc("j", "2025-01", "2025-04-03T10:00:00Z"),
+      makePayslipDoc("f", "2025-02", "2025-04-02T10:00:00Z"),
+      makePayslipDoc("old", "2024-11", "2025-05-01T10:00:00Z"),
+    ];
+
+    const recent = selectRecentPayslipDocuments(docs, 0);
+    expect(recent).toHaveLength(4);
+  });
+
   it("excludes failed documents from analysis", () => {
     const docs = [
       makePayslipDoc("ok", "2025-01", "2025-02-01T10:00:00Z"),
