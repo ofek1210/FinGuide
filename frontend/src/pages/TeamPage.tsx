@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight, Linkedin } from "lucide-react";
 import { APP_ROUTES } from "../types/navigation";
-import AppFooter from "../components/AppFooter";
+import PublicPageShell from "../components/landing/PublicPageShell";
+import "../components/landing/landing-team.css";
 
 type Tone = "yellow" | "pink" | "mint" | "purple";
 
@@ -55,65 +56,25 @@ const TEAM: TeamMember[] = [
 
 export default function TeamPage() {
   const navigate = useNavigate();
-  const hasToken = Boolean(localStorage.getItem("token"));
 
   return (
-    <div className="team-page landing-page" dir="ltr">
-      <header className="landing-nav landing-container" dir="rtl">
-        <button
-          type="button"
-          className="landing-logo team-logo-btn"
-          onClick={() => navigate(APP_ROUTES.home)}
-          aria-label="FinGuide — חזרה לדף הבית"
-        >
-          <span>FinGuide</span>
-        </button>
-        <div className="landing-nav-actions">
-          {hasToken ? (
-            <button
-              className="landing-primary landing-nav-primary"
-              type="button"
-              onClick={() => navigate(APP_ROUTES.documents)}
-            >
-              ללוח הבקרה
-            </button>
-          ) : (
-            <>
-              <button
-                className="landing-secondary"
-                type="button"
-                onClick={() => navigate(APP_ROUTES.login)}
-              >
-                התחברות
-              </button>
-              <button
-                className="landing-primary landing-nav-primary"
-                type="button"
-                onClick={() => navigate(APP_ROUTES.register)}
-              >
-                התחל עכשיו
-              </button>
-            </>
-          )}
-        </div>
-      </header>
-
+    <PublicPageShell contentClassName="team-page">
       <main className="team-main">
         <section className="team-hero">
           <div className="team-hero-inner landing-container">
-            <span className="team-hero-eyebrow">Meet The Team</span>
+            <span className="team-hero-eyebrow">הכר את הצוות</span>
             <h1 className="team-hero-title">
-              The people behind <strong>FinGuide</strong>
+              האנשים שמאחורי <strong>FinGuide</strong>
             </h1>
             <p className="team-hero-subtitle">
-              Building reliable, scalable, and user-focused
+              בונים טכנולוגיה פיננסית אמינה, סקלבילית וממוקדת משתמש —
               <br />
-              financial technology.
+              כדי שכל אחד יוכל להבין את הכסף שלו.
             </p>
           </div>
         </section>
 
-        <section className="team-founder landing-container" dir="rtl" aria-labelledby="founder-letter-title">
+        <section className="team-founder landing-container" aria-labelledby="founder-letter-title">
           <header className="team-founder-header">
             <span className="team-founder-eyebrow">
               <span aria-hidden="true">💬</span> דבר המנכ"ל
@@ -260,11 +221,10 @@ export default function TeamPage() {
               </footer>
             </article>
           </div>
-
         </section>
 
-        <section className="team-chapter landing-container" dir="rtl" aria-labelledby="team-chapter-title">
-          <span className="team-chapter-eyebrow">Meet The Team</span>
+        <section className="team-chapter landing-container" aria-labelledby="team-chapter-title">
+          <span className="team-chapter-eyebrow">הצוות</span>
           <h2 id="team-chapter-title" className="team-chapter-title">
             <span>5 מייסדים.</span>
             <strong>חזון אחד.</strong>
@@ -290,13 +250,10 @@ export default function TeamPage() {
           </div>
         </section>
 
-        <section className="team-grid-section landing-container" dir="rtl">
+        <section className="team-grid-section landing-container">
           <ul className="team-grid" role="list">
             {TEAM.map((member) => (
-              <li
-                key={member.name}
-                className={`team-card tone-${member.tone}`}
-              >
+              <li key={member.name} className={`team-card tone-${member.tone}`}>
                 <figure className="team-card-portrait">
                   <img
                     src={member.image}
@@ -327,9 +284,9 @@ export default function TeamPage() {
           </ul>
         </section>
 
-        <section className="team-cta landing-container" dir="rtl">
+        <section className="team-cta landing-container">
           <div className="team-cta-card">
-            <h2>בונים ביחד את עתיד הניהול הפיננסי האישי</h2>
+            <h2>בואו לעבוד איתנו</h2>
             <p>
               נשמח להכיר אנשים שמתלהבים מנתונים, מ-AI, ומלהפוך מסמכים פיננסיים
               לבהירות אמיתית. אם זה אתם — נשמח לדבר.
@@ -337,18 +294,14 @@ export default function TeamPage() {
             <button
               className="landing-primary team-cta-btn"
               type="button"
-              onClick={() =>
-                navigate(hasToken ? APP_ROUTES.hub : APP_ROUTES.register)
-              }
+              onClick={() => navigate(APP_ROUTES.careers)}
             >
-              להצטרפות ל-FinGuide
+              משרות פתוחות
               <ArrowUpRight aria-hidden="true" />
             </button>
           </div>
         </section>
       </main>
-
-      <AppFooter variant="guest" />
-    </div>
+    </PublicPageShell>
   );
 }

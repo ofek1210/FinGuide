@@ -626,18 +626,21 @@
   gap: 6px;
   padding: 11px 20px;
   border-radius: var(--r-pill);
-  background: var(--surface-ink);
-  color: var(--text-on-ink);
+  background: var(--tone-soft, var(--accent-soft));
+  color: var(--tone, var(--accent-strong));
+  border: 1px solid var(--tone-bar, var(--lav-300));
   font-weight: var(--fw-bold);
   font-size: var(--fs-sm);
   text-decoration: none;
-  box-shadow: var(--shadow-ink);
+  box-shadow: var(--shadow-soft);
   transition: transform var(--dur-fast) var(--ease),
-    box-shadow var(--dur-fast) var(--ease);
+    box-shadow var(--dur-fast) var(--ease),
+    background var(--dur-fast) var(--ease);
 }
 .careers-job-apply:hover {
   transform: translateY(-2px);
-  box-shadow: 0 22px 44px -18px rgba(18, 17, 24, 0.6);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-card);
 }
 .careers-job-apply:hover svg {
   transform: translate(3px, -3px);

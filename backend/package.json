@@ -22,6 +22,7 @@
     "eval:findings": "node scripts/evalFindings.js",
     "eval:ai-routing": "node scripts/evalAiRouting.js",
     "bench:upload-latency": "node scripts/benchUploadLatency.js",
+    "eval:ocr-path3": "node scripts/evalOcrPath3.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{js,json,md}\"",

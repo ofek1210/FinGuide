@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { APP_ROUTES } from "../types/navigation";
 import { useLandingAnimations } from "./landing/useLandingAnimations";
+import PublicFooter from "./landing/PublicFooter";
 import "./landing/landing.css";
 
 /**
@@ -829,46 +830,7 @@ export default function LandingPage() {
         <div className="cta-base" />
       </section>
 
-      {/* ============ FOOTER ============ */}
-      <footer>
-        <div className="wrap">
-          <div className="foot-top">
-            <div className="foot-brand">
-              <div className="brand">
-                <span className="dot">F</span>
-                <b>
-                  Fin<span style={{ color: "var(--lav-300)" }}>Guide</span>
-                </b>
-              </div>
-              <p>הכסף שמגיע לך, בלי בירוקרטיה. ניתוח פיננסי חכם מבוסס AI — תלושים, פנסיה וזכויות במקום אחד.</p>
-            </div>
-            <div className="fcol">
-              <h4>מוצר</h4>
-              <a href="#products">ניתוח תלושים</a>
-              <a href="#products">אופטימיזציית פנסיה</a>
-              <a href="#products">מימוש זכויות</a>
-              <a href="#products">תמחור</a>
-            </div>
-            <div className="fcol">
-              <h4>חברה</h4>
-              <a href="#">עלינו</a>
-              <a href="#">קריירה</a>
-              <a href="#">בלוג</a>
-              <a href="#">צור קשר</a>
-            </div>
-            <div className="fcol">
-              <h4>משפטי</h4>
-              <a href="#">תנאי שימוש</a>
-              <a href="#">מדיניות פרטיות</a>
-              <a href="#">אבטחת מידע</a>
-            </div>
-          </div>
-          <div className="foot-bot">
-            <span>© 2026 FinGuide. כל הזכויות שמורות.</span>
-            <span>נבנה באהבה בישראל 🇮🇱</span>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

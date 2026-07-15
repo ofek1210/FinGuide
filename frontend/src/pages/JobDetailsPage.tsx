@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
-import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams } from "react-router-dom";
 import { ArrowUpRight, ChevronLeft } from "lucide-react";
 import { APP_ROUTES } from "../types/navigation";
 import { getJobBySlug, getRelatedJobs } from "../data/careers";
 import { useDocumentMeta } from "../hooks/useDocumentMeta";
-import AppFooter from "../components/AppFooter";
+import PublicPageShell from "../components/landing/PublicPageShell";
+import "../components/landing/landing-job.css";
 import JobHeader from "../components/careers/JobHeader";
 import JobOverview from "../components/careers/JobOverview";
 import ResponsibilitiesSection from "../components/careers/ResponsibilitiesSection";
@@ -15,10 +16,8 @@ import RelatedJobs from "../components/careers/RelatedJobs";
 
 export default function JobDetailsPage() {
   const { slug } = useParams<{ slug: string }>();
-  const navigate = useNavigate();
   const job = slug ? getJobBySlug(slug) : undefined;
   const formRef = useRef<HTMLElement | null>(null);
-  const hasToken = Boolean(localStorage.getItem("token"));
 
   const shareUrl =
     typeof window !== "undefined"
@@ -59,46 +58,7 @@ export default function JobDetailsPage() {
   };
 
   return (
-    <div className="job-page landing-page" dir="rtl">
-      <header className="landing-nav landing-container">
-        <button
-          type="button"
-          className="landing-logo job-logo-btn"
-          onClick={() => navigate(APP_ROUTES.home)}
-          aria-label="FinGuide — חזרה לדף הבית"
-        >
-          <span>FinGuide</span>
-        </button>
-        <div className="landing-nav-actions">
-          {hasToken ? (
-            <button
-              className="landing-primary landing-nav-primary"
-              type="button"
-              onClick={() => navigate(APP_ROUTES.documents)}
-            >
-              ללוח הבקרה
-            </button>
-          ) : (
-            <>
-              <button
-                className="landing-secondary"
-                type="button"
-                onClick={() => navigate(APP_ROUTES.login)}
-              >
-                התחברות
-              </button>
-              <button
-                className="landing-primary landing-nav-primary"
-                type="button"
-                onClick={() => navigate(APP_ROUTES.register)}
-              >
-                התחל עכשיו
-              </button>
-            </>
-          )}
-        </div>
-      </header>
-
+    <PublicPageShell contentClassName="job-page">
       <main className="job-main">
         <nav className="job-breadcrumb landing-container" aria-label="Breadcrumb">
           <Link to={APP_ROUTES.careers}>
@@ -139,8 +99,6 @@ export default function JobDetailsPage() {
           </section>
         </div>
       </main>
-
-      <AppFooter variant="guest" />
-    </div>
+    </PublicPageShell>
   );
 }

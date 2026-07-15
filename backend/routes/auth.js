@@ -9,6 +9,7 @@ const {
   changePassword,
   forgotPassword,
   resetPassword,
+  markWelcomeShown,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
@@ -134,6 +135,7 @@ router.post(
   resetPassword
 );
 router.get('/me', protect, getMe);
+router.post('/welcome/complete', protect, markWelcomeShown);
 router.patch('/me', protect, updateMeValidation, validate, updateMe);
 router.post(
   '/change-password',

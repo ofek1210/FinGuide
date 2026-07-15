@@ -8,8 +8,9 @@ import {
   Search,
 } from "lucide-react";
 import { APP_ROUTES } from "../types/navigation";
-import AppFooter from "../components/AppFooter";
+import PublicPageShell from "../components/landing/PublicPageShell";
 import { useDocumentMeta } from "../hooks/useDocumentMeta";
+import "../components/landing/landing-careers.css";
 import {
   JOBS,
   DEPARTMENTS,
@@ -90,7 +91,6 @@ function StatCard({ stat }: { stat: Stat }) {
 
 export default function CareersPage() {
   const navigate = useNavigate();
-  const hasToken = Boolean(localStorage.getItem("token"));
 
   useDocumentMeta({
     title: "Careers · FinGuide",
@@ -122,46 +122,7 @@ export default function CareersPage() {
   };
 
   return (
-    <div className="careers-page landing-page" dir="rtl">
-      <header className="landing-nav landing-container">
-        <button
-          type="button"
-          className="landing-logo careers-logo-btn"
-          onClick={() => navigate(APP_ROUTES.home)}
-          aria-label="FinGuide — חזרה לדף הבית"
-        >
-          <span>FinGuide</span>
-        </button>
-        <div className="landing-nav-actions">
-          {hasToken ? (
-            <button
-              className="landing-primary landing-nav-primary"
-              type="button"
-              onClick={() => navigate(APP_ROUTES.documents)}
-            >
-              ללוח הבקרה
-            </button>
-          ) : (
-            <>
-              <button
-                className="landing-secondary"
-                type="button"
-                onClick={() => navigate(APP_ROUTES.login)}
-              >
-                התחברות
-              </button>
-              <button
-                className="landing-primary landing-nav-primary"
-                type="button"
-                onClick={() => navigate(APP_ROUTES.register)}
-              >
-                התחל עכשיו
-              </button>
-            </>
-          )}
-        </div>
-      </header>
-
+    <PublicPageShell contentClassName="careers-page">
       <main className="careers-main">
         {/* ── Hero ── */}
         <section className="careers-hero" aria-labelledby="careers-hero-title">
@@ -195,7 +156,7 @@ export default function CareersPage() {
                 className="careers-hero-ghost"
                 onClick={() => navigate(APP_ROUTES.team)}
               >
-                הכירו את הצוות
+                הכר את הצוות
                 <ArrowUpRight aria-hidden="true" />
               </button>
             </div>
@@ -449,8 +410,6 @@ export default function CareersPage() {
           </div>
         </section>
       </main>
-
-      <AppFooter variant="guest" />
-    </div>
+    </PublicPageShell>
   );
 }

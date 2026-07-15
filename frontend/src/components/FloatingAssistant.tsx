@@ -70,7 +70,15 @@ export default function FloatingAssistant() {
 
   // Show only for authenticated users, and not on the dedicated assistant page.
   if (auth.status !== "authenticated") return null;
-  if (location.pathname === APP_ROUTES.assistant || location.pathname === APP_ROUTES.aiAgents) return null;
+  if (
+    location.pathname === APP_ROUTES.assistant ||
+    location.pathname === APP_ROUTES.aiAgents ||
+    location.pathname === APP_ROUTES.welcome ||
+    location.pathname === APP_ROUTES.welcomeBack ||
+    location.pathname === "/dev/welcome"
+  ) {
+    return null;
+  }
 
   return (
     <div className="floating-assistant" dir="rtl">

@@ -545,7 +545,7 @@
 }
 
 /* ============================================================
-   TEAM GRID — portrait member cards, role accents via tone
+   TEAM LIST — full-width member rows, role accents via tone
    ============================================================ */
 .team-grid-section {
   display: block;
@@ -554,14 +554,18 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: clamp(16px, 2.4vw, 24px);
+  display: flex;
+  flex-direction: column;
+  gap: clamp(18px, 2.8vw, 28px);
 }
 
 .team-card {
+  position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: center;
+  gap: clamp(24px, 4vw, 48px);
+  padding: clamp(24px, 3.5vw, 36px);
   background: var(--surface-card);
   border: 1px solid var(--border-soft);
   border-radius: var(--r-card);
@@ -569,21 +573,31 @@
   overflow: hidden;
   transition: transform var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease);
 }
+.team-card::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 4px;
+  background: var(--tone-bar, var(--lav-300));
+}
 .team-card:hover {
-  transform: translateY(-5px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-card);
+  border-color: var(--tone-bar, var(--lav-300));
 }
 
 /* Portrait — soft tonal ring on a rounded frame */
 .team-card-portrait {
   margin: 0;
-  padding: clamp(18px, 2.4vw, 24px) clamp(18px, 2.4vw, 24px) 0;
+  padding: 0;
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
 }
 .team-card-portrait img {
-  width: 116px;
-  height: 116px;
+  width: clamp(112px, 12vw, 148px);
+  height: clamp(112px, 12vw, 148px);
   border-radius: var(--r-pill);
   object-fit: cover;
   background: var(--tone-soft, var(--accent-soft));
@@ -597,36 +611,41 @@
 .team-card-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: clamp(16px, 2.4vw, 22px);
-  text-align: center;
+  gap: 10px;
+  padding: 0;
+  text-align: start;
+  flex: 1;
+  min-width: 0;
 }
 .team-card-role {
   margin: 0;
   order: -1;
   display: inline-flex;
-  align-self: center;
-  padding: 4px 12px;
+  align-self: flex-start;
+  padding: 5px 14px;
   border-radius: var(--r-pill);
   background: var(--tone-soft, var(--accent-soft));
   color: var(--tone, var(--accent));
   font-weight: var(--fw-bold);
   font-size: var(--fs-xs);
   line-height: var(--lh-snug);
+  letter-spacing: 0.02em;
 }
 .team-card-name {
   margin: 0;
   font-family: var(--font-display);
   font-weight: var(--fw-extrabold);
-  font-size: var(--fs-h3);
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
   letter-spacing: var(--tracking-tight);
   color: var(--text-strong);
+  line-height: var(--lh-snug);
 }
 .team-card-description {
   margin: 0;
   color: var(--text-muted);
-  font-size: var(--fs-sm);
+  font-size: var(--fs-body);
   line-height: var(--lh-relaxed);
+  max-width: 62ch;
 }
 .team-card-linkedin {
   display: inline-flex;
@@ -745,6 +764,22 @@
   .team-founder-signature {
     flex-direction: column;
     align-items: flex-start;
+  }
+  .team-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 20px;
+  }
+  .team-card-body {
+    align-items: center;
+    text-align: center;
+  }
+  .team-card-role {
+    align-self: center;
+  }
+  .team-card-description {
+    max-width: none;
   }
 }
 

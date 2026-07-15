@@ -13,7 +13,7 @@ const SVG = path.join(__dirname, 'figures', 'fig10-ocr-results.svg');
 const FIELD_DATA = [
   { field: 'period_month', accuracy: 100 },
   { field: 'gross_total', accuracy: 100 },
-  { field: 'net_payable', accuracy: 100 },
+  { field: 'net_payable', accuracy: 85.7 },
   { field: 'employee_id', accuracy: 100 },
   { field: 'tax_credit_points', accuracy: 100 },
   { field: 'base_salary', accuracy: 100 },
