@@ -28,7 +28,6 @@ const AGENT_TONE: Record<AgentId, Tone> = {
   payslips: "lavender",
   insurance: "peach",
   pension: "mint",
-  expenses: "butter",
 };
 
 /* ── hooks ───────────────────────────────────────────────────── */
@@ -220,7 +219,6 @@ const AGENT_ORDINAL: Record<AgentId, string> = {
   payslips: "01",
   insurance: "02",
   pension: "03",
-  expenses: "04",
 };
 
 const DOT = "radial-gradient(rgba(123,95,214,.10) 1px,transparent 1px)";
@@ -239,7 +237,6 @@ const DOMAIN_LABEL: Record<AgentId, string> = {
   payslips: "תלושי שכר",
   insurance: "ביטוח",
   pension: "פנסיה",
-  expenses: "הוצאות",
 };
 
 /** interpolate a smooth growth series from a starting balance to a projected end */
@@ -351,7 +348,7 @@ export default function HubPage() {
 
   const findingsCount = findings.length;
   const domainCounts = useMemo(() => {
-    const c: Record<AgentId, number> = { payslips: 0, insurance: 0, pension: 0, expenses: 0 };
+    const c: Record<AgentId, number> = { payslips: 0, insurance: 0, pension: 0 };
     findings.forEach(f => { c[domainOf(f)]++; });
     return c;
   }, [findings]);
@@ -422,7 +419,6 @@ export default function HubPage() {
     payslips: payslipTrend,
     insurance: [],
     pension: pensionScoreTrend,
-    expenses: [],
   };
 
   const agentMetric: Record<AgentId, string> = {
@@ -435,7 +431,6 @@ export default function HubPage() {
     pension: pensionFundCount > 0
       ? (pensionRecs.length > 0 ? `${pensionRecs.length} המלצות` : `${pensionFundCount} קרנות במעקב`)
       : "טרם חובר מידע פנסיוני",
-    expenses: "תקציב חודשי והמלצות AI",
   };
 
   return (

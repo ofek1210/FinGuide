@@ -1,18 +1,25 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { FileText, Scale } from "lucide-react";
+import { FileText, Scale, Wallet } from "lucide-react";
 import { APP_ROUTES } from "../../types/navigation";
 
-type TabId = "payslips" | "tax";
+type TabId = "payslips" | "tax" | "expenses";
 
 const TABS: { id: TabId; label: string; route: string; Icon: typeof FileText }[] = [
   { id: "payslips", label: "ניתוח תלושים", route: APP_ROUTES.documents, Icon: FileText },
   { id: "tax", label: "עוזר מס", route: APP_ROUTES.taxAssistant, Icon: Scale },
+  { id: "expenses", label: "הוצאות שוטפות", route: APP_ROUTES.expenses, Icon: Wallet },
 ];
+
+function activeTab(pathname: string): TabId {
+  if (pathname === APP_ROUTES.taxAssistant) return "tax";
+  if (pathname === APP_ROUTES.expenses) return "expenses";
+  return "payslips";
+}
 
 export default function PayslipsAgentTabs() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
-  const active: TabId = pathname === APP_ROUTES.taxAssistant ? "tax" : "payslips";
+  const active = activeTab(pathname);
 
   return (
     <div style={{ maxWidth: 980, margin: "0 auto", padding: "16px 24px 0" }}>

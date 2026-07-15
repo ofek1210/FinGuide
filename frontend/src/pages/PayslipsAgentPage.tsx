@@ -19,6 +19,7 @@ import AppFooter from "../components/AppFooter";
 import DocumentsRibbonWave from "../components/documents/DocumentsRibbonWave";
 import PayslipsAgentTabs from "../components/payslips/PayslipsAgentTabs";
 import TaxAssistantPanel from "../components/payslips/TaxAssistantPanel";
+import ExpensesPanel from "../components/payslips/ExpensesPanel";
 import Loader from "../components/ui/Loader";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
@@ -101,12 +102,13 @@ export default function PayslipsAgentPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const forceUpload = searchParams.get("upload") === "1" || searchParams.get("step") === "upload";
-  const gmailResult = searchParams.get("gmail");
   const isTaxView = location.pathname === APP_ROUTES.taxAssistant;
+  const isExpensesView = location.pathname === APP_ROUTES.expenses;
+  const isSubView = isTaxView || isExpensesView;
 
   const [intake, setIntake] = useState<IntakeData>(EMPTY_INTAKE);
   const [step, setStep] = useState<WizardStep>("upload");
-  const [bootstrapping, setBootstrapping] = useState(!forceUpload);
+  const [bootstrapping, setBootstrapping] = useState(!forceUpload && !isSubView);
   const [resultsRefreshKey, setResultsRefreshKey] = useState(0);
   const [resultsSeedDocs, setResultsSeedDocs] = useState<DocumentItem[] | null>(null);
 
@@ -122,7 +124,7 @@ export default function PayslipsAgentPage() {
   }, []);
 
   useEffect(() => {
-    if (forceUpload) {
+    if (forceUpload || isSubView) {
       setBootstrapping(false);
       return;
     }
@@ -141,7 +143,7 @@ export default function PayslipsAgentPage() {
       });
 
     return () => { cancelled = true; };
-  }, [forceUpload]);
+  }, [forceUpload, isSubView]);
 
   if (bootstrapping) {
     return (
@@ -158,13 +160,15 @@ export default function PayslipsAgentPage() {
 
   return (
     <div data-agent="payslips" style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl", position: "relative" }}>
-      {!isTaxView && step === "upload" && <DocumentsRibbonWave />}
+      {!isSubView && step === "upload" && <DocumentsRibbonWave />}
       <div style={{ position: "relative", zIndex: 1 }}>
         <PrivateTopbar />
         <PayslipsAgentTabs />
 
         {isTaxView ? (
           <TaxAssistantPanel />
+        ) : isExpensesView ? (
+          <ExpensesPanel />
         ) : step === "upload" ? (
           <UploadStep
             intake={intake}
