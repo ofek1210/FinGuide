@@ -203,6 +203,15 @@
   --agent-contrast: #ffffff;
 }
 
+[data-agent="gemel"] {
+  --agent: var(--butter-ink);
+  --agent-strong: #96700F;
+  --agent-soft: var(--butter-soft);
+  --agent-ring: var(--butter);
+  --agent-bg: #FFFCF2;
+  --agent-contrast: #ffffff;
+}
+
 /* ---- Modal animations ---- */
 @keyframes mfFade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes mfRise { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: none; } }

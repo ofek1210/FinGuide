@@ -44,18 +44,20 @@ import DebateArena from "./DebateArena";
    one-click focused run of that agent.
    ============================================================ */
 
-type BackendAgentKey = "payslip" | "insurance" | "pension";
+type BackendAgentKey = "payslip" | "insurance" | "pension" | "gemel";
 
 const AGENT_KEY: Record<AgentId, BackendAgentKey> = {
   payslips: "payslip",
   insurance: "insurance",
   pension: "pension",
+  gemel: "gemel",
 };
 
 const DOMAIN_TO_AGENT: Record<string, AgentId> = {
   payslip: "payslips",
   insurance: "insurance",
   pension: "pension",
+  gemel: "gemel",
 };
 
 /** Chat router classifications (services/agents/orchestrator.js) → panel focus. */
@@ -64,6 +66,7 @@ const CLASSIFICATION_TO_FOCUS: Record<string, BackendAgentKey> = {
   financial_analysis: "payslip",
   insurance_benefits: "insurance",
   pension_advisor: "pension",
+  gemel_advisor: "gemel",
   financial_planning: "pension",
 };
 
@@ -72,6 +75,7 @@ const CLASSIFICATION_LABEL: Record<string, string> = {
   financial_analysis: "סוכן ניתוח פיננסי",
   insurance_benefits: "סוכן ביטוחים",
   pension_advisor: "סוכן פנסיה",
+  gemel_advisor: "סוכן קופות גמל",
   financial_planning: "סוכן תכנון פיננסי",
   general: "הסוכן הראשי",
 };
@@ -80,6 +84,7 @@ const FOCUS_LABEL: Record<BackendAgentKey, string> = {
   payslip: "תלושים",
   insurance: "ביטוחים",
   pension: "פנסיה",
+  gemel: "גמל והשתלמות",
 };
 
 type Phase = "idle" | "running" | "done" | "error";
@@ -160,6 +165,15 @@ function agentStats(id: AgentId, result: AgentResult | undefined): Array<{ k: st
     if (typeof health?.score === "number") stats.push({ k: "ציון פנסיה", v: `${health.score}` });
   }
 
+  if (id === "gemel") {
+    const balance = asNumber(d.totalBalance);
+    const monthly = asNumber(d.totalMonthlyContribution);
+    const funds = asNumber(d.fundCount);
+    if (balance != null && balance > 0) stats.push({ k: "צבירה כוללת", v: nis(balance) });
+    if (monthly != null && monthly > 0) stats.push({ k: "הפקדה חודשית", v: nis(monthly) });
+    if (funds != null && funds > 0) stats.push({ k: "קופות במעקב", v: String(funds) });
+  }
+
   return stats.slice(0, 3);
 }
 
@@ -170,7 +184,7 @@ function agentVerdict(id: AgentId, result: AgentResult | undefined): string | nu
     const advice = (d.fundAdvice ?? null) as { overallVerdictLabelHe?: string } | null;
     return asString(advice?.overallVerdictLabelHe);
   }
-  if (id === "insurance") {
+  if (id === "insurance" || id === "gemel") {
     const advice = (d.marketAdvice ?? null) as { overallVerdictLabelHe?: string } | null;
     return asString(advice?.overallVerdictLabelHe);
   }
@@ -181,6 +195,7 @@ function agentVerdict(id: AgentId, result: AgentResult | undefined): string | nu
 function agentQuickAction(id: AgentId): { label: string; Icon: typeof Upload; route: string } {
   if (id === "payslips") return { label: "העלה תלוש", Icon: Upload, route: APP_ROUTES.documents };
   if (id === "insurance") return { label: "ייבוא הר הביטוח", Icon: FileSpreadsheet, route: APP_ROUTES.insurance };
+  if (id === "gemel") return { label: "השוואת קופות גמל", Icon: FileSpreadsheet, route: APP_ROUTES.gemel };
   return { label: "סימולציית פרישה", Icon: Calculator, route: APP_ROUTES.pension };
 }
 

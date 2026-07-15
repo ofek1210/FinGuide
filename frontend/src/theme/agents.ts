@@ -1,16 +1,17 @@
-import { FileText, ShieldCheck, TrendingUp } from "lucide-react";
+import { FileText, PiggyBank, ShieldCheck, TrendingUp } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { APP_ROUTES } from "../types/navigation";
 
 /* ============================================================
    AGENT WAYFINDING — single source of truth
    ------------------------------------------------------------
-   FinGuide is organised around three AI agents. Each agent
+   FinGuide is organised around four AI agents. Each agent
    owns ONE accent colour so the user always knows which domain
    they're in:
      • payslips  → lavender (brand primary)
      • insurance → peach / orange
      • pension   → mint / green
+     • gemel     → butter / gold
 
    Every domain page should:
      1. belong to an agent via its route (see `routes` below), and
@@ -20,7 +21,7 @@ import { APP_ROUTES } from "../types/navigation";
         resolves to the current agent's colour.
    ============================================================ */
 
-export type AgentId = "payslips" | "insurance" | "pension";
+export type AgentId = "payslips" | "insurance" | "pension" | "gemel";
 
 export interface AgentTone {
   /** Primary accent (text / icon / line). */
@@ -97,6 +98,21 @@ export const AGENTS: AgentDef[] = [
       soft: "var(--mint-soft)",
       ring: "var(--mint)",
       bg: "#F2FBF6",
+    },
+  },
+  {
+    id: "gemel",
+    label: "קופות גמל והשתלמות",
+    sub: "השוואת קופות ודמי ניהול",
+    Icon: PiggyBank,
+    route: APP_ROUTES.gemel,
+    routes: [APP_ROUTES.gemel],
+    tone: {
+      accent: "var(--butter-ink)",
+      strong: "#96700F",
+      soft: "var(--butter-soft)",
+      ring: "var(--butter)",
+      bg: "#FFFCF2",
     },
   },
 ];

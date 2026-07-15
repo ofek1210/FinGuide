@@ -67,6 +67,7 @@ export type FullAnalysisResponse = {
     payslip: AgentResult;
     insurance: AgentResult;
     pension: AgentResult;
+    gemel: AgentResult;
     profile: AgentResult;
   };
   meta?: {
@@ -79,7 +80,7 @@ export type FullAnalysisResponse = {
 };
 
 export const runFullAnalysis = (params?: {
-  focus?: "all" | "payslip" | "insurance" | "pension";
+  focus?: "all" | "payslip" | "insurance" | "pension" | "gemel";
   skipLLM?: boolean;
   refreshGovData?: boolean;
   demo?: boolean;

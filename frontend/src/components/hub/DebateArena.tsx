@@ -14,6 +14,7 @@ const AGENT_KEY: Record<AgentId, string> = {
   payslips: "payslip",
   insurance: "insurance",
   pension: "pension",
+  gemel: "gemel",
 };
 
 const STANCE_LABEL = {
