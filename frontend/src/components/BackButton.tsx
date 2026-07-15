@@ -12,7 +12,6 @@ const SUPPRESS_ON: ReadonlyArray<string> = [
   APP_ROUTES.faq,
   APP_ROUTES.privacy,
   APP_ROUTES.terms,
-  APP_ROUTES.careers,
 ];
 
 export default function BackButton() {
@@ -26,11 +25,6 @@ export default function BackButton() {
 
   // Hide on the home page and on every other public page that has its own nav.
   if (SUPPRESS_ON.includes(location.pathname)) {
-    return null;
-  }
-
-  // Dynamic /careers/:slug also has its own nav.
-  if (location.pathname.startsWith("/careers/")) {
     return null;
   }
 

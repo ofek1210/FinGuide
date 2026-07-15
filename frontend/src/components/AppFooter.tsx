@@ -120,7 +120,6 @@ export default function AppFooter({ variant }: AppFooterProps) {
             <p style={COL_HEAD}>החברה</p>
             <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 9 }}>
               <FooterLink to={APP_ROUTES.team}>הכר את הצוות</FooterLink>
-              <FooterLink to={APP_ROUTES.careers}>קריירה</FooterLink>
               <FooterLink to={APP_ROUTES.contact}>צור קשר</FooterLink>
             </ul>
           </div>

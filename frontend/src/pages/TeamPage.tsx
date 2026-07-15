@@ -294,9 +294,9 @@ export default function TeamPage() {
             <button
               className="landing-primary team-cta-btn"
               type="button"
-              onClick={() => navigate(APP_ROUTES.careers)}
+              onClick={() => navigate(APP_ROUTES.contact)}
             >
-              משרות פתוחות
+              צור קשר
               <ArrowUpRight aria-hidden="true" />
             </button>
           </div>

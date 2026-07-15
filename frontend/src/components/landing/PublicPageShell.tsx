@@ -7,7 +7,7 @@ import "./landing-public-pages.css";
 
 interface PublicPageShellProps {
   children: ReactNode;
-  /** e.g. "team-page", "careers-page", "job-page" — enables marketing content styles */
+  /** e.g. "team-page" — enables marketing content styles */
   contentClassName?: string;
 }
 
@@ -52,13 +52,6 @@ export default function PublicPageShell({
                 onClick={() => navigate(APP_ROUTES.team)}
               >
                 הכר את הצוות
-              </button>
-              <button
-                type="button"
-                className="nav-ghost"
-                onClick={() => navigate(APP_ROUTES.careers)}
-              >
-                קריירה
               </button>
               <button
                 type="button"
