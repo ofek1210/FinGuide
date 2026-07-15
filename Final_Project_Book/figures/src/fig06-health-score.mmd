@@ -1,0 +1,14 @@
+flowchart TB
+  Total["Financial Health Score\nmax 100 points"]
+
+  Total --> Doc["Document completeness\nmax 25"]
+  Total --> Sal["Salary stability\nmax 20"]
+  Total --> Tax["Tax readiness\nmax 20"]
+  Total --> Pen["Pension consistency\nmax 20"]
+  Total --> Risk["Risk insurance\nmax 15"]
+
+  Doc --- DocDesc["Payslip months uploaded vs calendar year"]
+  Sal --- SalDesc["Month-over-month salary variance"]
+  Tax --- TaxDesc["Form 106 availability, tax anomalies"]
+  Pen --- PenDesc["Regular above-minimum contributions"]
+  Risk --- RiskDesc["Insurance profile questionnaire completion"]

@@ -89,6 +89,17 @@ function pickActualField(analysisData, field) {
 
 function compareField(field, expected, actual) {
   if (expected == null || expected === '') return { status: 'skipped' };
+
+  // Absent-on-payslip convention: expected 0 matches null/undefined/0 for tax fields
+  // that are legitimately missing when the employee is below the income-tax threshold.
+  if (
+    (field === 'income_tax' || field === 'personal_credit')
+    && Number(expected) === 0
+    && (actual == null || actual === '' || Number(actual) === 0)
+  ) {
+    return { status: 'match', expected: 0, actual: actual == null || actual === '' ? 0 : Number(actual) };
+  }
+
   if (actual == null || actual === '') return { status: 'missing', expected, actual: null };
 
   if (field === 'period_month') {

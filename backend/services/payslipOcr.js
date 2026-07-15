@@ -550,7 +550,7 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson, expect
 
   const taxable_income = matchAmountFlexible(full, /הכנסה\s*חייבת\s*במס\s+(\d[\d,]*(?:\.\d{1,2})?)/i);
   const marginal_tax_rate = parsePercent(match1(full, /אחוז\s*מס\s*שולי\s+(\d+(?:\.\d+)?)%/i));
-  const tax_credit_points =
+  let tax_credit_points =
     parseNumber(match1(full, /נקודות\s*זיכוי[:\s]+(\d+(?:[.,]\d+)?)/i)) ??
     parseNumber(match1(full, /נקודות\s*זיכוי\s+(\d+(?:[.,]\d+)?)/i)) ??
     parseNumber(match1(full, /(\d+(?:[.,]\d+)?)\s*נקודות\s*זיכוי/i)) ??

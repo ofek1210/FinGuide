@@ -1,0 +1,1642 @@
+[
+  {
+    "id": "apartment-male-18-01",
+    "insuranceType": "apartment",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1100000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 75,
+      "apartmentFloor": 2,
+      "city": "Haifa",
+      "addOns": [
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 81,
+    "yearlyPremiumNis": 972,
+    "deductibleNis": 900,
+    "coverageSummary": "structure only for 75 sqm apartment, asset value 1100000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-18-02",
+    "insuranceType": "apartment",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "contents_only",
+      "coverageAmount": null,
+      "assetValue": 1350000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 90,
+      "apartmentFloor": 5,
+      "city": "Beer Sheva",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 65,
+    "yearlyPremiumNis": 780,
+    "deductibleNis": 600,
+    "coverageSummary": "contents only for 90 sqm apartment, asset value 1350000 NIS",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-18-03",
+    "insuranceType": "apartment",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 1650000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 100,
+      "apartmentFloor": 7,
+      "city": "Jerusalem",
+      "addOns": [
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 166,
+    "yearlyPremiumNis": 1992,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 100 sqm apartment, asset value 1650000 NIS",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-18-04",
+    "insuranceType": "apartment",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 2300000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 125,
+      "apartmentFloor": 12,
+      "city": "Tel Aviv",
+      "addOns": [
+        "earthquake",
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 248,
+    "yearlyPremiumNis": 2976,
+    "deductibleNis": 850,
+    "coverageSummary": "structure contents for 125 sqm apartment, asset value 2300000 NIS",
+    "score": 81,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-18-05",
+    "insuranceType": "apartment",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1850000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 110,
+      "apartmentFloor": 3,
+      "city": "Rishon LeZion",
+      "addOns": [
+        "earthquake",
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 97,
+    "yearlyPremiumNis": 1164,
+    "deductibleNis": 1100,
+    "coverageSummary": "structure only for 110 sqm apartment, asset value 1850000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-18-01",
+    "insuranceType": "apartment",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1100000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 75,
+      "apartmentFloor": 2,
+      "city": "Givatayim",
+      "addOns": [
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 79,
+    "yearlyPremiumNis": 948,
+    "deductibleNis": 950,
+    "coverageSummary": "structure only for 75 sqm apartment, asset value 1100000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-18-02",
+    "insuranceType": "apartment",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "contents_only",
+      "coverageAmount": null,
+      "assetValue": 1350000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 90,
+      "apartmentFloor": 5,
+      "city": "Netanya",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 61,
+    "yearlyPremiumNis": 732,
+    "deductibleNis": 700,
+    "coverageSummary": "contents only for 90 sqm apartment, asset value 1350000 NIS",
+    "score": 73,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-18-03",
+    "insuranceType": "apartment",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 1650000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 100,
+      "apartmentFloor": 7,
+      "city": "Petah Tikva",
+      "addOns": [
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 158,
+    "yearlyPremiumNis": 1896,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 100 sqm apartment, asset value 1650000 NIS",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-18-04",
+    "insuranceType": "apartment",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 2300000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 125,
+      "apartmentFloor": 12,
+      "city": "Tel Aviv",
+      "addOns": [
+        "earthquake",
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 216,
+    "yearlyPremiumNis": 2592,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 125 sqm apartment, asset value 2300000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-18-05",
+    "insuranceType": "apartment",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1850000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 110,
+      "apartmentFloor": 3,
+      "city": "Givatayim",
+      "addOns": [
+        "earthquake",
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 95,
+    "yearlyPremiumNis": 1140,
+    "deductibleNis": 1150,
+    "coverageSummary": "structure only for 110 sqm apartment, asset value 1850000 NIS",
+    "score": 72,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-30-01",
+    "insuranceType": "apartment",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1100000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 75,
+      "apartmentFloor": 2,
+      "city": "Haifa",
+      "addOns": [
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 84,
+    "yearlyPremiumNis": 1008,
+    "deductibleNis": 850,
+    "coverageSummary": "structure only for 75 sqm apartment, asset value 1100000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-30-02",
+    "insuranceType": "apartment",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "contents_only",
+      "coverageAmount": null,
+      "assetValue": 1350000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 90,
+      "apartmentFloor": 5,
+      "city": "Beer Sheva",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 68,
+    "yearlyPremiumNis": 816,
+    "deductibleNis": 550,
+    "coverageSummary": "contents only for 90 sqm apartment, asset value 1350000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-30-03",
+    "insuranceType": "apartment",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 1650000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 100,
+      "apartmentFloor": 7,
+      "city": "Jerusalem",
+      "addOns": [
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 156,
+    "yearlyPremiumNis": 1872,
+    "deductibleNis": 1100,
+    "coverageSummary": "structure contents for 100 sqm apartment, asset value 1650000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-30-04",
+    "insuranceType": "apartment",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 2300000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 125,
+      "apartmentFloor": 12,
+      "city": "Tel Aviv",
+      "addOns": [
+        "earthquake",
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 220,
+    "yearlyPremiumNis": 2640,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 125 sqm apartment, asset value 2300000 NIS",
+    "score": 78,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-30-05",
+    "insuranceType": "apartment",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1850000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 110,
+      "apartmentFloor": 3,
+      "city": "Rishon LeZion",
+      "addOns": [
+        "earthquake",
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 98,
+    "yearlyPremiumNis": 1176,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure only for 110 sqm apartment, asset value 1850000 NIS",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-30-01",
+    "insuranceType": "apartment",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1100000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 75,
+      "apartmentFloor": 2,
+      "city": "Givatayim",
+      "addOns": [
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 77,
+    "yearlyPremiumNis": 924,
+    "deductibleNis": 950,
+    "coverageSummary": "structure only for 75 sqm apartment, asset value 1100000 NIS",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-30-02",
+    "insuranceType": "apartment",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "contents_only",
+      "coverageAmount": null,
+      "assetValue": 1350000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 90,
+      "apartmentFloor": 5,
+      "city": "Netanya",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 67,
+    "yearlyPremiumNis": 804,
+    "deductibleNis": 600,
+    "coverageSummary": "contents only for 90 sqm apartment, asset value 1350000 NIS",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-30-03",
+    "insuranceType": "apartment",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 1650000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 100,
+      "apartmentFloor": 7,
+      "city": "Petah Tikva",
+      "addOns": [
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 163,
+    "yearlyPremiumNis": 1956,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 100 sqm apartment, asset value 1650000 NIS",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-30-04",
+    "insuranceType": "apartment",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 2300000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 125,
+      "apartmentFloor": 12,
+      "city": "Tel Aviv",
+      "addOns": [
+        "earthquake",
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 213,
+    "yearlyPremiumNis": 2556,
+    "deductibleNis": 1100,
+    "coverageSummary": "structure contents for 125 sqm apartment, asset value 2300000 NIS",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-30-05",
+    "insuranceType": "apartment",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1850000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 110,
+      "apartmentFloor": 3,
+      "city": "Givatayim",
+      "addOns": [
+        "earthquake",
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 95,
+    "yearlyPremiumNis": 1140,
+    "deductibleNis": 1150,
+    "coverageSummary": "structure only for 110 sqm apartment, asset value 1850000 NIS",
+    "score": 72,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-40-01",
+    "insuranceType": "apartment",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1100000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 75,
+      "apartmentFloor": 2,
+      "city": "Haifa",
+      "addOns": [
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 81,
+    "yearlyPremiumNis": 972,
+    "deductibleNis": 900,
+    "coverageSummary": "structure only for 75 sqm apartment, asset value 1100000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-40-02",
+    "insuranceType": "apartment",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "contents_only",
+      "coverageAmount": null,
+      "assetValue": 1350000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 90,
+      "apartmentFloor": 5,
+      "city": "Beer Sheva",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 71,
+    "yearlyPremiumNis": 852,
+    "deductibleNis": 550,
+    "coverageSummary": "contents only for 90 sqm apartment, asset value 1350000 NIS",
+    "score": 78,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-40-03",
+    "insuranceType": "apartment",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 1650000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 100,
+      "apartmentFloor": 7,
+      "city": "Jerusalem",
+      "addOns": [
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 172,
+    "yearlyPremiumNis": 2064,
+    "deductibleNis": 950,
+    "coverageSummary": "structure contents for 100 sqm apartment, asset value 1650000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-40-04",
+    "insuranceType": "apartment",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 2300000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 125,
+      "apartmentFloor": 12,
+      "city": "Tel Aviv",
+      "addOns": [
+        "earthquake",
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 220,
+    "yearlyPremiumNis": 2640,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 125 sqm apartment, asset value 2300000 NIS",
+    "score": 78,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-40-05",
+    "insuranceType": "apartment",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1850000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 110,
+      "apartmentFloor": 3,
+      "city": "Rishon LeZion",
+      "addOns": [
+        "earthquake",
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 101,
+    "yearlyPremiumNis": 1212,
+    "deductibleNis": 1100,
+    "coverageSummary": "structure only for 110 sqm apartment, asset value 1850000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-40-01",
+    "insuranceType": "apartment",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1100000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 75,
+      "apartmentFloor": 2,
+      "city": "Givatayim",
+      "addOns": [
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 79,
+    "yearlyPremiumNis": 948,
+    "deductibleNis": 950,
+    "coverageSummary": "structure only for 75 sqm apartment, asset value 1100000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-40-02",
+    "insuranceType": "apartment",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "contents_only",
+      "coverageAmount": null,
+      "assetValue": 1350000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 90,
+      "apartmentFloor": 5,
+      "city": "Netanya",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 60,
+    "yearlyPremiumNis": 720,
+    "deductibleNis": 650,
+    "coverageSummary": "contents only for 90 sqm apartment, asset value 1350000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-40-03",
+    "insuranceType": "apartment",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 1650000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 100,
+      "apartmentFloor": 7,
+      "city": "Petah Tikva",
+      "addOns": [
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 156,
+    "yearlyPremiumNis": 1872,
+    "deductibleNis": 1100,
+    "coverageSummary": "structure contents for 100 sqm apartment, asset value 1650000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-40-04",
+    "insuranceType": "apartment",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 2300000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 125,
+      "apartmentFloor": 12,
+      "city": "Tel Aviv",
+      "addOns": [
+        "earthquake",
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 216,
+    "yearlyPremiumNis": 2592,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 125 sqm apartment, asset value 2300000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-40-05",
+    "insuranceType": "apartment",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1850000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 110,
+      "apartmentFloor": 3,
+      "city": "Givatayim",
+      "addOns": [
+        "earthquake",
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 95,
+    "yearlyPremiumNis": 1140,
+    "deductibleNis": 1150,
+    "coverageSummary": "structure only for 110 sqm apartment, asset value 1850000 NIS",
+    "score": 72,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-55-01",
+    "insuranceType": "apartment",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1100000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 75,
+      "apartmentFloor": 2,
+      "city": "Haifa",
+      "addOns": [
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 72,
+    "yearlyPremiumNis": 864,
+    "deductibleNis": 1100,
+    "coverageSummary": "structure only for 75 sqm apartment, asset value 1100000 NIS",
+    "score": 72,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-55-02",
+    "insuranceType": "apartment",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "contents_only",
+      "coverageAmount": null,
+      "assetValue": 1350000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 90,
+      "apartmentFloor": 5,
+      "city": "Beer Sheva",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 68,
+    "yearlyPremiumNis": 816,
+    "deductibleNis": 550,
+    "coverageSummary": "contents only for 90 sqm apartment, asset value 1350000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-55-03",
+    "insuranceType": "apartment",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 1650000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 100,
+      "apartmentFloor": 7,
+      "city": "Jerusalem",
+      "addOns": [
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 187,
+    "yearlyPremiumNis": 2244,
+    "deductibleNis": 850,
+    "coverageSummary": "structure contents for 100 sqm apartment, asset value 1650000 NIS",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-55-04",
+    "insuranceType": "apartment",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 2300000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 125,
+      "apartmentFloor": 12,
+      "city": "Tel Aviv",
+      "addOns": [
+        "earthquake",
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 209,
+    "yearlyPremiumNis": 2508,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 125 sqm apartment, asset value 2300000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-55-05",
+    "insuranceType": "apartment",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1850000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 110,
+      "apartmentFloor": 3,
+      "city": "Rishon LeZion",
+      "addOns": [
+        "earthquake",
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 97,
+    "yearlyPremiumNis": 1164,
+    "deductibleNis": 1100,
+    "coverageSummary": "structure only for 110 sqm apartment, asset value 1850000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-55-01",
+    "insuranceType": "apartment",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1100000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 75,
+      "apartmentFloor": 2,
+      "city": "Givatayim",
+      "addOns": [
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 75,
+    "yearlyPremiumNis": 900,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure only for 75 sqm apartment, asset value 1100000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-55-02",
+    "insuranceType": "apartment",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "contents_only",
+      "coverageAmount": null,
+      "assetValue": 1350000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 90,
+      "apartmentFloor": 5,
+      "city": "Netanya",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 65,
+    "yearlyPremiumNis": 780,
+    "deductibleNis": 600,
+    "coverageSummary": "contents only for 90 sqm apartment, asset value 1350000 NIS",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-55-03",
+    "insuranceType": "apartment",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 1650000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 100,
+      "apartmentFloor": 7,
+      "city": "Petah Tikva",
+      "addOns": [
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 177,
+    "yearlyPremiumNis": 2124,
+    "deductibleNis": 950,
+    "coverageSummary": "structure contents for 100 sqm apartment, asset value 1650000 NIS",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-55-04",
+    "insuranceType": "apartment",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 2300000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 125,
+      "apartmentFloor": 12,
+      "city": "Tel Aviv",
+      "addOns": [
+        "earthquake",
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 216,
+    "yearlyPremiumNis": 2592,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 125 sqm apartment, asset value 2300000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-55-05",
+    "insuranceType": "apartment",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1850000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 110,
+      "apartmentFloor": 3,
+      "city": "Givatayim",
+      "addOns": [
+        "earthquake",
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 95,
+    "yearlyPremiumNis": 1140,
+    "deductibleNis": 1150,
+    "coverageSummary": "structure only for 110 sqm apartment, asset value 1850000 NIS",
+    "score": 72,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-70-01",
+    "insuranceType": "apartment",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1100000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 75,
+      "apartmentFloor": 2,
+      "city": "Haifa",
+      "addOns": [
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 81,
+    "yearlyPremiumNis": 972,
+    "deductibleNis": 900,
+    "coverageSummary": "structure only for 75 sqm apartment, asset value 1100000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-70-02",
+    "insuranceType": "apartment",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "contents_only",
+      "coverageAmount": null,
+      "assetValue": 1350000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 90,
+      "apartmentFloor": 5,
+      "city": "Beer Sheva",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 71,
+    "yearlyPremiumNis": 852,
+    "deductibleNis": 550,
+    "coverageSummary": "contents only for 90 sqm apartment, asset value 1350000 NIS",
+    "score": 78,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-70-03",
+    "insuranceType": "apartment",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 1650000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 100,
+      "apartmentFloor": 7,
+      "city": "Jerusalem",
+      "addOns": [
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 172,
+    "yearlyPremiumNis": 2064,
+    "deductibleNis": 950,
+    "coverageSummary": "structure contents for 100 sqm apartment, asset value 1650000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-70-04",
+    "insuranceType": "apartment",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 2300000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 125,
+      "apartmentFloor": 12,
+      "city": "Tel Aviv",
+      "addOns": [
+        "earthquake",
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 220,
+    "yearlyPremiumNis": 2640,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 125 sqm apartment, asset value 2300000 NIS",
+    "score": 78,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-male-70-05",
+    "insuranceType": "apartment",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1850000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 110,
+      "apartmentFloor": 3,
+      "city": "Rishon LeZion",
+      "addOns": [
+        "earthquake",
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 101,
+    "yearlyPremiumNis": 1212,
+    "deductibleNis": 1100,
+    "coverageSummary": "structure only for 110 sqm apartment, asset value 1850000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-70-01",
+    "insuranceType": "apartment",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1100000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 75,
+      "apartmentFloor": 2,
+      "city": "Givatayim",
+      "addOns": [
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 79,
+    "yearlyPremiumNis": 948,
+    "deductibleNis": 950,
+    "coverageSummary": "structure only for 75 sqm apartment, asset value 1100000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-70-02",
+    "insuranceType": "apartment",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "contents_only",
+      "coverageAmount": null,
+      "assetValue": 1350000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 90,
+      "apartmentFloor": 5,
+      "city": "Netanya",
+      "addOns": [
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 60,
+    "yearlyPremiumNis": 720,
+    "deductibleNis": 650,
+    "coverageSummary": "contents only for 90 sqm apartment, asset value 1350000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-70-03",
+    "insuranceType": "apartment",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 1650000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 100,
+      "apartmentFloor": 7,
+      "city": "Petah Tikva",
+      "addOns": [
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 156,
+    "yearlyPremiumNis": 1872,
+    "deductibleNis": 1100,
+    "coverageSummary": "structure contents for 100 sqm apartment, asset value 1650000 NIS",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-70-04",
+    "insuranceType": "apartment",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_contents",
+      "coverageAmount": null,
+      "assetValue": 2300000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 125,
+      "apartmentFloor": 12,
+      "city": "Tel Aviv",
+      "addOns": [
+        "earthquake",
+        "water_damage",
+        "third_party_liability"
+      ]
+    },
+    "monthlyPremiumNis": 216,
+    "yearlyPremiumNis": 2592,
+    "deductibleNis": 1050,
+    "coverageSummary": "structure contents for 125 sqm apartment, asset value 2300000 NIS",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "apartment-female-70-05",
+    "insuranceType": "apartment",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": null
+    },
+    "parameters": {
+      "coverageType": "structure_only",
+      "coverageAmount": null,
+      "assetValue": 1850000,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": 110,
+      "apartmentFloor": 3,
+      "city": "Givatayim",
+      "addOns": [
+        "earthquake",
+        "water_damage"
+      ]
+    },
+    "monthlyPremiumNis": 95,
+    "yearlyPremiumNis": 1140,
+    "deductibleNis": 1150,
+    "coverageSummary": "structure only for 110 sqm apartment, asset value 1850000 NIS",
+    "score": 72,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  }
+]

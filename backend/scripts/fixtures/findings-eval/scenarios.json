@@ -1,0 +1,499 @@
+[
+  {
+    "id": "study_zero_deposit",
+    "documents": [
+      {
+        "_id": "doc1",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 5,
+          "periodYear": 2026
+        },
+        "analysisData": {
+          "period": {
+            "month": "2026-05"
+          },
+          "contributions": {
+            "study_fund": {
+              "base_salary_for_study_fund": 20800,
+              "employee": 0,
+              "employer": 0,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": true
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      }
+    ],
+    "onboarding": {},
+    "expectedFindingKinds": [
+      "deposit"
+    ]
+  },
+  {
+    "id": "pension_ok_no_finding",
+    "documents": [
+      {
+        "_id": "doc2",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 6,
+          "periodYear": 2024
+        },
+        "analysisData": {
+          "period": {
+            "month": "2024-06"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 26000,
+              "employee": 1560,
+              "employer": 1690,
+              "employee_rate_percent": 6,
+              "employer_rate_percent": 6.5,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": false
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      }
+    ],
+    "onboarding": {},
+    "expectedFindingKinds": []
+  },
+  {
+    "id": "pension_rate_gap",
+    "documents": [
+      {
+        "_id": "doc3",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 6,
+          "periodYear": 2024
+        },
+        "analysisData": {
+          "period": {
+            "month": "2024-06"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 26000,
+              "employee": 1400,
+              "employer": 1690,
+              "employee_rate_percent": 6,
+              "employer_rate_percent": 6.5,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": false
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      }
+    ],
+    "onboarding": {},
+    "expectedFindingKinds": [
+      "rate"
+    ]
+  },
+  {
+    "id": "continuity_gap",
+    "documents": [
+      {
+        "_id": "doc4a",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 1,
+          "periodYear": 2026
+        },
+        "analysisData": {
+          "period": {
+            "month": "2026-01"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 20000,
+              "employee": 1200,
+              "employer": 1300,
+              "employee_rate_percent": 6,
+              "employer_rate_percent": 6.5,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": false
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      },
+      {
+        "_id": "doc4b",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 3,
+          "periodYear": 2026
+        },
+        "analysisData": {
+          "period": {
+            "month": "2026-03"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 20000,
+              "employee": 1200,
+              "employer": 1300,
+              "employee_rate_percent": 6,
+              "employer_rate_percent": 6.5,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": false
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      }
+    ],
+    "onboarding": {},
+    "expectedFindingKinds": [
+      "continuity"
+    ]
+  },
+  {
+    "id": "pension_zero_deposit",
+    "documents": [
+      {
+        "_id": "doc5",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 4,
+          "periodYear": 2026
+        },
+        "analysisData": {
+          "period": {
+            "month": "2026-04"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 22000,
+              "employee": 0,
+              "employer": 0,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": true
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      }
+    ],
+    "onboarding": {
+      "data": {
+        "hasPension": true
+      }
+    },
+    "expectedFindingKinds": [
+      "deposit"
+    ]
+  },
+  {
+    "id": "pension_employer_below_minimum",
+    "documents": [
+      {
+        "_id": "doc6",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 7,
+          "periodYear": 2026
+        },
+        "analysisData": {
+          "period": {
+            "month": "2026-07"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 25000,
+              "employee": 1500,
+              "employer": 1000,
+              "employee_rate_percent": 6,
+              "employer_rate_percent": 4,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": false
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      }
+    ],
+    "onboarding": {},
+    "expectedFindingKinds": [
+      "rate"
+    ]
+  },
+  {
+    "id": "on_payslip_zero_month",
+    "documents": [
+      {
+        "_id": "doc7a",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 1,
+          "periodYear": 2026
+        },
+        "analysisData": {
+          "period": {
+            "month": "2026-01"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 20000,
+              "employee": 1200,
+              "employer": 1300,
+              "employee_rate_percent": 6,
+              "employer_rate_percent": 6.5,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": false
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      },
+      {
+        "_id": "doc7b",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 2,
+          "periodYear": 2026
+        },
+        "analysisData": {
+          "period": {
+            "month": "2026-02"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 20000,
+              "employee": 0,
+              "employer": 0,
+              "employee_rate_percent": 6,
+              "employer_rate_percent": 6.5,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": true
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      }
+    ],
+    "onboarding": {},
+    "expectedFindingKinds": [
+      "deposit"
+    ]
+  },
+  {
+    "id": "derived_malam_202512_pension_zero",
+    "source": "golden/malam-plus-202512 Path-1 analysisData.contributions",
+    "documents": [
+      {
+        "_id": "golden-malam-202512",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 12,
+          "periodYear": 2025
+        },
+        "analysisData": {
+          "period": {
+            "month": "2025-12"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 91025,
+              "base_for_severance": 91025,
+              "detection": {
+                "sectionDetected": true,
+                "employeeAmount": null,
+                "employerAmount": null,
+                "severanceAmount": null,
+                "noDeposit": true
+              }
+            },
+            "study_fund": {
+              "detection": {
+                "sectionDetected": false,
+                "employeeAmount": null,
+                "employerAmount": null,
+                "severanceAmount": null,
+                "noDeposit": true
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      }
+    ],
+    "onboarding": {},
+    "expectedFindingKinds": [
+      "deposit"
+    ]
+  },
+  {
+    "id": "derived_michpal_202210_pension_zero",
+    "source": "golden/michpal-202210 Path-1/ocr analysisData.contributions",
+    "documents": [
+      {
+        "_id": "golden-michpal-202210",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 10,
+          "periodYear": 2022
+        },
+        "analysisData": {
+          "period": {
+            "month": "2022-10"
+          },
+          "contributions": {
+            "pension": {
+              "detection": {
+                "sectionDetected": true,
+                "employeeAmount": null,
+                "employerAmount": null,
+                "severanceAmount": null,
+                "noDeposit": true
+              }
+            },
+            "study_fund": {
+              "detection": {
+                "sectionDetected": false,
+                "employeeAmount": null,
+                "employerAmount": null,
+                "severanceAmount": null,
+                "noDeposit": true
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      }
+    ],
+    "onboarding": {},
+    "expectedFindingKinds": [
+      "deposit"
+    ]
+  },
+  {
+    "id": "derived_michpal_continuity_oct_dec_2022",
+    "source": "golden michpal periods 2022-10 and 2022-12 (gap month 2022-11); deposit amounts set so timeline classifies hasDeposit",
+    "documents": [
+      {
+        "_id": "golden-michpal-202210-c",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 10,
+          "periodYear": 2022
+        },
+        "analysisData": {
+          "period": {
+            "month": "2022-10"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 4840,
+              "employee": 290,
+              "employer": 315,
+              "employee_rate_percent": 6,
+              "employer_rate_percent": 6.5,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": false
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      },
+      {
+        "_id": "golden-michpal-202212-c",
+        "status": "completed",
+        "metadata": {
+          "category": "payslip",
+          "periodMonth": 12,
+          "periodYear": 2022
+        },
+        "analysisData": {
+          "period": {
+            "month": "2022-12"
+          },
+          "contributions": {
+            "pension": {
+              "base_salary_for_pension": 6026,
+              "employee": 362,
+              "employer": 392,
+              "employee_rate_percent": 6,
+              "employer_rate_percent": 6.5,
+              "detection": {
+                "sectionDetected": true,
+                "noDeposit": false
+              }
+            }
+          },
+          "quality": {
+            "warning_categories": []
+          }
+        }
+      }
+    ],
+    "onboarding": {},
+    "expectedFindingKinds": [
+      "continuity"
+    ]
+  }
+]

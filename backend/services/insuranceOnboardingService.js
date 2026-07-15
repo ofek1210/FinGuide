@@ -93,8 +93,10 @@ async function loadContext(userId) {
 
 async function getSession(userId) {
   const { profile, report } = await loadContext(userId);
+  const onboarding = profile.insuranceOnboarding || {};
+  const hasImportedReport = Boolean(onboarding.lastReportAt);
 
-  if (report.policyCount === 0) {
+  if (report.policyCount === 0 && !hasImportedReport) {
     return {
       ready: false,
       message: 'יש להעלות דוח מהר הביטוח לפני תחילת האונבורדינג',
@@ -104,7 +106,6 @@ async function getSession(userId) {
     };
   }
 
-  const onboarding = profile.insuranceOnboarding || {};
   const ctx = {
     hasApartment: report.hasApartment,
     hasCar: report.hasCar,

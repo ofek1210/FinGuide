@@ -1,0 +1,1602 @@
+[
+  {
+    "id": "life-male-18-01",
+    "insuranceType": "life",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_500k",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 38,
+    "yearlyPremiumNis": 456,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-18-02",
+    "insuranceType": "life",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_500k_smoker",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading"
+      ]
+    },
+    "monthlyPremiumNis": 62,
+    "yearlyPremiumNis": 744,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage for smoker profile",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-18-03",
+    "insuranceType": "life",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_750k",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 53,
+    "yearlyPremiumNis": 636,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-18-04",
+    "insuranceType": "life",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_750k_smoker",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading",
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 101,
+    "yearlyPremiumNis": 1212,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage for smoker profile",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-18-05",
+    "insuranceType": "life",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 18,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_1m",
+      "coverageAmount": 1000000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims",
+        "premium_waiver"
+      ]
+    },
+    "monthlyPremiumNis": 66,
+    "yearlyPremiumNis": 792,
+    "deductibleNis": null,
+    "coverageSummary": "1000000 NIS term life coverage",
+    "score": 78,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-18-01",
+    "insuranceType": "life",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_500k",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 33,
+    "yearlyPremiumNis": 396,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-18-02",
+    "insuranceType": "life",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_500k_smoker",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading"
+      ]
+    },
+    "monthlyPremiumNis": 51,
+    "yearlyPremiumNis": 612,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage for smoker profile",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-18-03",
+    "insuranceType": "life",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_750k",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 44,
+    "yearlyPremiumNis": 528,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-18-04",
+    "insuranceType": "life",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_750k_smoker",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading",
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 77,
+    "yearlyPremiumNis": 924,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-18-05",
+    "insuranceType": "life",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 18,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_1m",
+      "coverageAmount": 1000000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims",
+        "premium_waiver"
+      ]
+    },
+    "monthlyPremiumNis": 56,
+    "yearlyPremiumNis": 672,
+    "deductibleNis": null,
+    "coverageSummary": "1000000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-30-01",
+    "insuranceType": "life",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_500k",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 72,
+    "yearlyPremiumNis": 864,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-30-02",
+    "insuranceType": "life",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_500k_smoker",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading"
+      ]
+    },
+    "monthlyPremiumNis": 118,
+    "yearlyPremiumNis": 1416,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage for smoker profile",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-30-03",
+    "insuranceType": "life",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_750k",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 90,
+    "yearlyPremiumNis": 1080,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-30-04",
+    "insuranceType": "life",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_750k_smoker",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading",
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 164,
+    "yearlyPremiumNis": 1968,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-30-05",
+    "insuranceType": "life",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "male",
+      "age": 30,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_1m",
+      "coverageAmount": 1000000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims",
+        "premium_waiver"
+      ]
+    },
+    "monthlyPremiumNis": 122,
+    "yearlyPremiumNis": 1464,
+    "deductibleNis": null,
+    "coverageSummary": "1000000 NIS term life coverage",
+    "score": 80,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-30-01",
+    "insuranceType": "life",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_500k",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 58,
+    "yearlyPremiumNis": 696,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-30-02",
+    "insuranceType": "life",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_500k_smoker",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading"
+      ]
+    },
+    "monthlyPremiumNis": 101,
+    "yearlyPremiumNis": 1212,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-30-03",
+    "insuranceType": "life",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_750k",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 82,
+    "yearlyPremiumNis": 984,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-30-04",
+    "insuranceType": "life",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_750k_smoker",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading",
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 138,
+    "yearlyPremiumNis": 1656,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage for smoker profile",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-30-05",
+    "insuranceType": "life",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 30,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_1m",
+      "coverageAmount": 1000000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims",
+        "premium_waiver"
+      ]
+    },
+    "monthlyPremiumNis": 103,
+    "yearlyPremiumNis": 1236,
+    "deductibleNis": null,
+    "coverageSummary": "1000000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-40-01",
+    "insuranceType": "life",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_500k",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 118,
+    "yearlyPremiumNis": 1416,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-40-02",
+    "insuranceType": "life",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_500k_smoker",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading"
+      ]
+    },
+    "monthlyPremiumNis": 208,
+    "yearlyPremiumNis": 2496,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage for smoker profile",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-40-03",
+    "insuranceType": "life",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_750k",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 168,
+    "yearlyPremiumNis": 2016,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-40-04",
+    "insuranceType": "life",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_750k_smoker",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading",
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 278,
+    "yearlyPremiumNis": 3336,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-40-05",
+    "insuranceType": "life",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 40,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_1m",
+      "coverageAmount": 1000000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims",
+        "premium_waiver"
+      ]
+    },
+    "monthlyPremiumNis": 211,
+    "yearlyPremiumNis": 2532,
+    "deductibleNis": null,
+    "coverageSummary": "1000000 NIS term life coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-40-01",
+    "insuranceType": "life",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_500k",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 101,
+    "yearlyPremiumNis": 1212,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-40-02",
+    "insuranceType": "life",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_500k_smoker",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading"
+      ]
+    },
+    "monthlyPremiumNis": 153,
+    "yearlyPremiumNis": 1836,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-40-03",
+    "insuranceType": "life",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_750k",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 133,
+    "yearlyPremiumNis": 1596,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-40-04",
+    "insuranceType": "life",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_750k_smoker",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading",
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 237,
+    "yearlyPremiumNis": 2844,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-40-05",
+    "insuranceType": "life",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 40,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_1m",
+      "coverageAmount": 1000000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims",
+        "premium_waiver"
+      ]
+    },
+    "monthlyPremiumNis": 174,
+    "yearlyPremiumNis": 2088,
+    "deductibleNis": null,
+    "coverageSummary": "1000000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-55-01",
+    "insuranceType": "life",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_500k",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 231,
+    "yearlyPremiumNis": 2772,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage",
+    "score": 75,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-55-02",
+    "insuranceType": "life",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_500k_smoker",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading"
+      ]
+    },
+    "monthlyPremiumNis": 439,
+    "yearlyPremiumNis": 5268,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage for smoker profile",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-55-03",
+    "insuranceType": "life",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_750k",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 402,
+    "yearlyPremiumNis": 4824,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-55-04",
+    "insuranceType": "life",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_750k_smoker",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading",
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 576,
+    "yearlyPremiumNis": 6912,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-55-05",
+    "insuranceType": "life",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "male",
+      "age": 55,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_1m",
+      "coverageAmount": 1000000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims",
+        "premium_waiver"
+      ]
+    },
+    "monthlyPremiumNis": 447,
+    "yearlyPremiumNis": 5364,
+    "deductibleNis": null,
+    "coverageSummary": "1000000 NIS term life coverage",
+    "score": 78,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-55-01",
+    "insuranceType": "life",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_500k",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 208,
+    "yearlyPremiumNis": 2496,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-55-02",
+    "insuranceType": "life",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_500k_smoker",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading"
+      ]
+    },
+    "monthlyPremiumNis": 364,
+    "yearlyPremiumNis": 4368,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage for smoker profile",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-55-03",
+    "insuranceType": "life",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_750k",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 331,
+    "yearlyPremiumNis": 3972,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-55-04",
+    "insuranceType": "life",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_750k_smoker",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading",
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 518,
+    "yearlyPremiumNis": 6216,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-55-05",
+    "insuranceType": "life",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 55,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_1m",
+      "coverageAmount": 1000000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims",
+        "premium_waiver"
+      ]
+    },
+    "monthlyPremiumNis": 381,
+    "yearlyPremiumNis": 4572,
+    "deductibleNis": null,
+    "coverageSummary": "1000000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-70-01",
+    "insuranceType": "life",
+    "companyName": "Harel",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_500k",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 741,
+    "yearlyPremiumNis": 8892,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-70-02",
+    "insuranceType": "life",
+    "companyName": "Phoenix",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_500k_smoker",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading"
+      ]
+    },
+    "monthlyPremiumNis": 1193,
+    "yearlyPremiumNis": 14316,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage for smoker profile",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-70-03",
+    "insuranceType": "life",
+    "companyName": "Migdal",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_750k",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 1059,
+    "yearlyPremiumNis": 12708,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage",
+    "score": 77,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-70-04",
+    "insuranceType": "life",
+    "companyName": "Clal",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_750k_smoker",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading",
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 1591,
+    "yearlyPremiumNis": 19092,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-male-70-05",
+    "insuranceType": "life",
+    "companyName": "Ayalon",
+    "userProfile": {
+      "gender": "male",
+      "age": 70,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_1m",
+      "coverageAmount": 1000000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims",
+        "premium_waiver"
+      ]
+    },
+    "monthlyPremiumNis": 1326,
+    "yearlyPremiumNis": 15912,
+    "deductibleNis": null,
+    "coverageSummary": "1000000 NIS term life coverage",
+    "score": 79,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-70-01",
+    "insuranceType": "life",
+    "companyName": "Menora Mivtachim",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_500k",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": []
+    },
+    "monthlyPremiumNis": 633,
+    "yearlyPremiumNis": 7596,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-70-02",
+    "insuranceType": "life",
+    "companyName": "Libra",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_500k_smoker",
+      "coverageAmount": 500000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading"
+      ]
+    },
+    "monthlyPremiumNis": 875,
+    "yearlyPremiumNis": 10500,
+    "deductibleNis": null,
+    "coverageSummary": "500000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-70-03",
+    "insuranceType": "life",
+    "companyName": "Direct Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_750k",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 838,
+    "yearlyPremiumNis": 10056,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage",
+    "score": 74,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-70-04",
+    "insuranceType": "life",
+    "companyName": "WeSure",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": true
+    },
+    "parameters": {
+      "coverageType": "term_life_750k_smoker",
+      "coverageAmount": 750000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "smoker_loading",
+        "accelerated_claims"
+      ]
+    },
+    "monthlyPremiumNis": 1356,
+    "yearlyPremiumNis": 16272,
+    "deductibleNis": null,
+    "coverageSummary": "750000 NIS term life coverage for smoker profile",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  },
+  {
+    "id": "life-female-70-05",
+    "insuranceType": "life",
+    "companyName": "Shlomo Insurance",
+    "userProfile": {
+      "gender": "female",
+      "age": 70,
+      "smoker": false
+    },
+    "parameters": {
+      "coverageType": "term_life_1m",
+      "coverageAmount": 1000000,
+      "assetValue": null,
+      "vehicleYear": null,
+      "vehicleType": null,
+      "apartmentSizeSqm": null,
+      "apartmentFloor": null,
+      "city": null,
+      "addOns": [
+        "accelerated_claims",
+        "premium_waiver"
+      ]
+    },
+    "monthlyPremiumNis": 1092,
+    "yearlyPremiumNis": 13104,
+    "deductibleNis": null,
+    "coverageSummary": "1000000 NIS term life coverage",
+    "score": 76,
+    "dataSourceType": "synthetic_calculator_sample",
+    "basedOn": "Simulated from official Israeli insurance calculator logic",
+    "isRealQuote": false,
+    "createdAt": "2026-07-08T00:00:00.000Z"
+  }
+]

@@ -1,0 +1,25 @@
+flowchart TD
+  Upload["POST /api/documents/upload\nMulter PDF validation"]
+  Pending["Document status: pending"]
+  P1["Path 1: pdf_text\npdftotext then pdf-parse"]
+  P1Gate{"Text >= 200 chars\nand Hebrew OK?"}
+  P1Qual{"gross_total and\nnet_payable extracted?"}
+  P2["Path 2: numeric rescue\nbroken Hebrew encoding"]
+  P3["Path 3: image OCR\npdftoppm, sharp, Tesseract"]
+  Extract["extractPayslipFinancialEN\nanalysisData schema v1.9"]
+  Done["completed"]
+  Review["needs_review"]
+  Password["needs_password"]
+  Failed["failed"]
+
+  Upload --> Pending --> P1 --> P1Gate
+  P1Gate -->|yes| P1Qual
+  P1Gate -->|no| P3
+  P1Qual -->|yes| Extract
+  P1Qual -->|partial| P2
+  P2 --> Extract
+  P3 --> Extract
+  Extract --> Done
+  Extract --> Review
+  Upload --> Password
+  Extract --> Failed

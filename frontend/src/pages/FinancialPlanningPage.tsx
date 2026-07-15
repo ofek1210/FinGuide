@@ -287,7 +287,7 @@ export default function FinancialPlanningPage() {
         <div style={{ flex: 1, minWidth: 260 }}>
           <h1 style={{ margin: 0, fontSize: "clamp(26px,3.2vw,38px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.05, color: "var(--text-strong)" }}>מרכז תכנון פיננסי</h1>
           <p style={{ margin: "8px 0 0", fontSize: 15.5, color: "var(--text-muted)", lineHeight: 1.55, maxWidth: 540, fontWeight: 500 }}>
-            כאן הכל לראות את התמונה הפיננסית המלאה שלך — תקציב, חיסכון, השקעות ויעדים. ככל שתזין יותר נתונים, התובנות יהפכו מדויקות יותר.
+            כאן תוכל לראות את התמונה הפיננסית המלאה שלך — תקציב, חיסכון, השקעות ויעדים. ככל שתזין יותר נתונים, התובנות יהפכו מדויקות יותר.
           </p>
         </div>
       </div>

@@ -27,6 +27,15 @@ describe('insuranceOnboardingQuestions', () => {
     expect(questions.some(q => q.id === 'life.explain')).toBe(false);
   });
 
+  it('does not ask a skipped question again', () => {
+    const ctx = { hasApartment: false, hasCar: false, hasLife: false, hasHealth: false, hasDisability: false };
+    const bank = buildQuestionBank(ctx);
+    const onboarding = { answers: {}, skippedIds: ['home.owns_home'] };
+    const questions = filterQuestions(bank, emptyProfile, onboarding, ctx);
+
+    expect(questions.some(q => q.id === 'home.owns_home')).toBe(false);
+  });
+
   it('buildReportProfile aggregates active policies', () => {
     const report = buildReportProfile([
       { type: 'health', provider: 'כלל', monthlyPremium: 200, status: 'active' },

@@ -2,6 +2,7 @@
 
 const InsurancePolicy = require('../models/InsurancePolicy');
 const { parseInsuranceExcel } = require('../services/insuranceExcelParser');
+const { isHarHaBituachBuffer } = require('../services/harHaBituachService');
 const { buildInsuranceAnalysis, importInsuranceExcel } = require('../services/insuranceImportService');
 const { buildMarketAdvice } = require('../services/insuranceMarketAdvisorService');
 const {
@@ -57,6 +58,27 @@ async function uploadInsuranceExcel(req, res) {
   const parsed = parseInsuranceExcel(req.file.buffer, req.file.originalname);
 
   if (parsed.length === 0) {
+    if (isHarHaBituachBuffer(req.file.buffer)) {
+      const analysis = await buildInsuranceAnalysis(req.user._id);
+      await markReportImported(req.user._id);
+
+      return res.json({
+        success: true,
+        message: 'הקובץ נקלט, אבל לא נמצאו בו פוליסות פעילות לייבוא.',
+        data: {
+          imported: 0,
+          merged: 0,
+          created: 0,
+          savingsDelta: 0,
+          healthScore: analysis.healthCheck?.score ?? null,
+          analysis: analysis.analysis,
+          healthCheck: analysis.healthCheck,
+          recommendations: analysis.recommendations,
+          policies: [],
+        },
+      });
+    }
+
     return res.status(400).json({
       success: false,
       message: 'לא הצלחנו לפרסר את הקובץ. ודא שזהו קובץ Har HaBituach תקין.',
@@ -125,7 +147,15 @@ async function getInsuranceOnboardingSession(req, res) {
 }
 
 async function postInsuranceOnboardingAnswer(req, res) {
-  const { questionId, value, skipped } = req.body || {};
+  let body = req.body || {};
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch {
+      body = {};
+    }
+  }
+  const { questionId, value, skipped } = body;
   if (!questionId) {
     return res.status(400).json({ success: false, message: 'חסר מזהה שאלה' });
   }

@@ -1,0 +1,11 @@
+**/node_modules
+**/.git
+**/coverage
+**/dist
+**/.work
+frontend
+Final_Project_Book
+.claude
+.cursor
+*.md
+.gitignore

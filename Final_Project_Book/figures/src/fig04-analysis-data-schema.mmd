@@ -1,0 +1,13 @@
+flowchart TB
+  Root["analysisData\nschema_version 1.9"]
+
+  Root --> Period["period\nmonth"]
+  Root --> Salary["salary\ngross_total, net_payable, components"]
+  Root --> Deductions["deductions.mandatory\nincome_tax, national_insurance, health_insurance"]
+  Root --> Contributions["contributions\npension, study_fund"]
+  Root --> Tax["tax\ncredit_points, personal_credit"]
+  Root --> Parties["parties\nemployer_name, employee_name, employee_id"]
+  Root --> Employment["employment\nstart_date, hmo"]
+  Root --> Summary["summary\nvalidation flags"]
+  Root --> Quality["quality\nextraction_path, confidence, warnings"]
+  Root --> Raw["raw\nocr metadata stripped in API"]

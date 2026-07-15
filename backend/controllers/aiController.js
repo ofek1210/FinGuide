@@ -1014,4 +1014,4 @@ function buildPersonalizedTips(ctx) {
   return tips.slice(0, 4);
 }
 
-module.exports = { chatWithAI, chatWithAIStream, getChatHistoryHandler, listConversations, getFinancialTips };
+module.exports = { chatWithAI, chatWithAIStream, getChatHistoryHandler, listConversations, getFinancialTips, detectIntent };

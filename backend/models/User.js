@@ -39,6 +39,15 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    welcomeShown: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    welcomeShownAt: {
+      type: Date,
+      default: null,
+    },
     passwordResetTokenHash: {
       type: String,
       default: null,

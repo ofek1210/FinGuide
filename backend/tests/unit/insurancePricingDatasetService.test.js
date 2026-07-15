@@ -37,6 +37,33 @@ describe('insurancePricingDatasetService', () => {
     expect(range.source.dataCollectionMethod).toBeTruthy();
   });
 
+  it('keeps coverage tiers separated for calculator samples', () => {
+    const basic = getFairPriceRange('car', { age: 26, gender: 'male', coverageTier: 'basic' });
+    const standard = getFairPriceRange('car', { age: 26, gender: 'male', coverageTier: 'standard' });
+    const enhanced = getFairPriceRange('car', { age: 26, gender: 'male', coverageTier: 'enhanced' });
+
+    expect(standard.average).toBeGreaterThan(basic.average);
+    expect(enhanced.average).toBeGreaterThan(standard.average);
+  });
+
+  it('uses nearest same-tier calculator band when an exact age band is missing', () => {
+    const standard = getFairPriceRange('car', { age: 35, gender: 'female', coverageTier: 'standard' });
+    const enhanced = getFairPriceRange('car', { age: 35, gender: 'female', coverageTier: 'enhanced' });
+
+    expect(enhanced.average).toBeGreaterThan(standard.average);
+    expect(enhanced.coverageTier).toBe('enhanced');
+    expect(enhanced.requestedCoverageTier).toBe('enhanced');
+  });
+
+  it('keeps synthetic health calculator age bands ordered by risk', () => {
+    const young = getFairPriceRange('health', { age: 26, gender: 'female', coverageTier: 'enhanced' });
+    const adult = getFairPriceRange('health', { age: 45, gender: 'female', coverageTier: 'enhanced' });
+    const senior = getFairPriceRange('health', { age: 70, gender: 'female', coverageTier: 'enhanced' });
+
+    expect(adult.average).toBeGreaterThan(young.average);
+    expect(senior.average).toBeGreaterThan(adult.average);
+  });
+
   it('compareUserPremium classifies above-market premium', () => {
     const cmp = compareUserPremium(2000, 'health', { age: 35 });
     expect(['high', 'very_high']).toContain(cmp.assessment);

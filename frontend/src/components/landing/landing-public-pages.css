@@ -1,0 +1,88 @@
+/* Public marketing pages (team) inside fg-landing shell */
+
+.fg-landing.fg-public {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.fg-landing.fg-public .fg-public-body {
+  flex: 1;
+  position: relative;
+  z-index: 2;
+}
+
+/* Nested marketing shells — avoid double background/padding */
+.fg-landing .fg-public-body.team-page {
+  min-height: auto;
+  padding: 0 clamp(16px, 4vw, 40px) clamp(32px, 5vw, 56px);
+  background: transparent;
+  gap: 0;
+  overflow-x: clip;
+}
+
+.fg-landing .fg-public-body.team-page::before,
+.fg-landing .fg-public-body.team-page::after {
+  display: none;
+}
+
+.fg-landing .landing-container {
+  max-width: var(--maxw);
+  margin-inline: auto;
+  padding-inline: 40px;
+}
+
+/* Bridge legacy marketing button classes used in team content */
+.fg-landing .landing-primary {
+  appearance: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+  background: var(--ink);
+  border: none;
+  border-radius: var(--r-btn);
+  padding: 12px 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--shadow-ink);
+  transition: transform 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  text-decoration: none;
+}
+
+.fg-landing .landing-primary:hover {
+  transform: translateY(-2px);
+}
+
+.fg-landing .landing-secondary {
+  appearance: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--ink-soft);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--r-btn);
+  padding: 11px 20px;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.fg-landing .landing-secondary:hover {
+  border-color: var(--lav-300);
+  color: var(--lav-600);
+}
+
+/* Tone accents (shared with marketing pages) */
+.fg-landing .tone-yellow { --tone: var(--butter-ink); --tone-soft: var(--butter-soft); --tone-bar: var(--butter); }
+.fg-landing .tone-pink   { --tone: var(--peach-ink);  --tone-soft: var(--peach-soft);  --tone-bar: var(--peach); }
+.fg-landing .tone-mint   { --tone: var(--mint-ink);   --tone-soft: var(--mint-soft);   --tone-bar: var(--mint); }
+.fg-landing .tone-purple { --tone: var(--lav-600);    --tone-soft: var(--lav-100);     --tone-bar: var(--lav-300); }
+
+@media (max-width: 900px) {
+  .fg-landing .landing-container {
+    padding-inline: 22px;
+  }
+}

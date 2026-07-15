@@ -97,6 +97,48 @@ describe('insuranceExcelParser', () => {
     expect(policies[1].annualPremium).toBe(1800);
   });
 
+  it('finds Har HaBituach data when the first workbook sheet is an intro sheet', () => {
+    const intro = XLSX.utils.aoa_to_sheet([
+      ['הר הביטוח'],
+      ['גיליון הסבר בלבד'],
+    ]);
+    const data = XLSX.utils.aoa_to_sheet([
+      ['כותרת מקדימה'],
+      [
+        'תעודת זהות',
+        'ענף ראשי',
+        'שם חברת הביטוח',
+        'סוג מוצר',
+        'ענף משני',
+        'תקופת ביטוח',
+        'פרמיה חודשית',
+        'סוג פרמיה',
+        'מספר פוליסה',
+      ],
+      [
+        '123456789',
+        'רכב',
+        'איילון',
+        'מקיף',
+        'רכב',
+        '01/01/2025 - 31/12/2025',
+        310,
+        'פרמיה חודשית',
+        'CAR-1',
+      ],
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, intro, 'הסבר');
+    XLSX.utils.book_append_sheet(wb, data, 'נתוני ביטוח');
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    const policies = parseInsuranceExcel(buffer, 'har-multisheet.xlsx');
+    expect(policies).toHaveLength(1);
+    expect(policies[0].provider).toBe('איילון');
+    expect(policies[0].type).toBe('car');
+    expect(policies[0].monthlyPremium).toBe(310);
+  });
+
   it('still parses simplified test fixture format', () => {
     const buffer = buildHarBituachExcel();
     const policies = parseInsuranceExcel(buffer, 'har-bituach-simple.xlsx');

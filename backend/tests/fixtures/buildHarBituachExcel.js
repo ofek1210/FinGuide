@@ -14,4 +14,29 @@ function buildHarBituachExcel(rows = DEFAULT_INSURANCE_ROWS) {
   return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 }
 
-module.exports = { buildHarBituachExcel, DEFAULT_INSURANCE_ROWS };
+function buildEmptyHarBituachExcel() {
+  const rows = [
+    [null, "התיק הביטוחי, הופק מאתר 'הר הביטוח' של משרד האוצר, בתאריך", null, null, null, '11/05/2026'],
+    [],
+    [
+      'תעודת זהות',
+      'ענף ראשי',
+      'ענף (משני)',
+      'סוג מוצר',
+      'חברה',
+      'תקופת ביטוח',
+      'פרטים נוספים',
+      'פרמיה בש"ח',
+      'סוג פרמיה',
+      'מספר פוליסה',
+      'סיווג תכנית',
+    ],
+    [null, 'תחום - בריאות ותאונות אישיות', '', '', '', '', null, '', '', '', ''],
+  ];
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, sheet, 'תיק ביטוחי');
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
+module.exports = { buildHarBituachExcel, buildEmptyHarBituachExcel, DEFAULT_INSURANCE_ROWS };

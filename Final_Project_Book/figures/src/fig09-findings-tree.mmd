@@ -1,0 +1,17 @@
+flowchart TD
+  Start["For each completed payslip"]
+  Q1{"Pension section\nidentified in extraction?"}
+  Skip1["Skip — no finding"]
+  Q2{"Employee plus employer\ndeposits sum to zero?"}
+  Skip2["Skip — deposits present"]
+  Q3{"missingLine warning\nabsent?"}
+  Skip3["Skip — section may be missing from OCR"]
+  Emit["Emit PENSION_MISSING_DEPOSIT\nfinding with meta.periods"]
+
+  Start --> Q1
+  Q1 -->|no| Skip1
+  Q1 -->|yes| Q2
+  Q2 -->|no| Skip2
+  Q2 -->|yes| Q3
+  Q3 -->|no| Skip3
+  Q3 -->|yes| Emit

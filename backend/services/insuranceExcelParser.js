@@ -35,7 +35,13 @@ function detectPolicyType(text) {
 }
 
 function safeNum(val) {
-  const n = parseFloat(String(val ?? '').replace(/[,₪\s]/g, ''));
+  if (val === null || val === undefined) return null;
+  if (typeof val === 'number') return Number.isFinite(val) ? val : null;
+  const str = String(val ?? '').trim();
+  if (!str) return null;
+  // Remove common currency symbols, spaces, commas
+  const cleaned = str.replace(/[,₪\s$€]/g, '');
+  const n = parseFloat(cleaned);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -102,32 +108,60 @@ function parseHarHaBituachImport(buffer, originalName) {
 
 function parseGenericInsuranceExcel(buffer, originalName) {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+  const sheets = workbook.SheetNames.map(sheetName => workbook.Sheets[sheetName]);
 
   const policies = [];
 
+  for (const sheet of sheets) {
+    const rows = XLSX.utils.sheet_to_json(sheet, { defval: null });
+    policies.push(...parseGenericRows(rows, originalName));
+  }
+
+  return aggregatePoliciesByPolicyNumber(policies);
+}
+
+function parseGenericRows(rows, originalName) {
+  const policies = [];
+
   for (const row of rows) {
+    // Skip empty rows
+    if (!row || Object.values(row).every(v => !v)) continue;
+
     const allText = Object.values(row).join(' ');
 
     const find = (...keys) => {
-      for (const key of keys) {
-        for (const col of Object.keys(row)) {
-          if (col.includes(key)) return row[col];
+      const searchKeys = keys.flatMap(k => [
+        String(k).toLowerCase(),
+        String(k).replace(/\s+/g, '').toLowerCase(),
+        String(k).trim().toLowerCase(),
+      ]);
+
+      for (const col of Object.keys(row)) {
+        const normalizedCol = String(col)
+          .toLowerCase()
+          .trim()
+          .replace(/[^א-תa-z0-9]/g, '');
+
+        for (const searchKey of searchKeys) {
+          const cleanSearchKey = String(searchKey)
+            .replace(/[^א-תa-z0-9]/g, '');
+          if (normalizedCol.includes(cleanSearchKey) || cleanSearchKey.includes(normalizedCol)) {
+            return row[col];
+          }
         }
       }
       return null;
     };
 
-    const premium = safeNum(find('פרמיה', 'premium', 'תשלום', 'סכום חודשי'));
-    const coverage = safeNum(find('סכום', 'coverage', 'ביטוח', 'כיסוי'));
-    const provider = String(find('חברה', 'מבטח', 'provider', 'חברת') || '').trim() || null;
-    const policyNum = String(find('פוליסה', 'מספר', 'policy') || '').trim() || null;
-    const startDate = safeDate(find('תחילה', 'start', 'תאריך תחילה'));
-    const endDate = safeDate(find('תפוגה', 'end', 'סיום', 'פקיעה'));
+    const premium = safeNum(find('פרמיה', 'premium', 'תשלום', 'סכום חודשי', 'עלות', 'payment'));
+    const coverage = safeNum(find('סכום', 'coverage', 'ביטוח', 'כיסוי', 'sum', 'amount'));
+    const provider = String(find('חברה', 'מבטח', 'provider', 'חברת', 'שם חברה', 'שם חברת הביטוח', 'company', 'insurer') || '').trim() || null;
+    const policyNum = String(find('פוליסה', 'מספר פוליסה', 'policy', 'policy number', 'מספר') || '').trim() || null;
+    const startDate = safeDate(find('תחילה', 'start', 'תאריך תחילה', 'start date', 'from'));
+    const endDate = safeDate(find('תפוגה', 'end', 'סיום', 'פקיעה', 'end date', 'expiry', 'to'));
 
-    if (!premium && !coverage && !provider) continue;
+    // Accept row if it has at least one meaningful field (including policy number)
+    if (!premium && !coverage && !provider && !policyNum) continue;
 
     policies.push({
       type: detectPolicyType(allText),

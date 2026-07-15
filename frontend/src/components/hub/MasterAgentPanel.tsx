@@ -1,6 +1,7 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ArrowLeft,
   BrainCircuit,
   Calculator,
   CheckCircle2,
@@ -604,7 +605,7 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
                       </p>
                     </div>
                   </div>
-                </>
+                </div>
               )}
 
               {/* two rubrics: cross-referenced action items · agent recommendations */}

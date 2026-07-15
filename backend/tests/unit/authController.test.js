@@ -22,6 +22,7 @@ const {
   register,
   getMe,
   googleLogin,
+  markWelcomeShown,
 } = require('../../controllers/authController');
 
 const resetUserModelMocks = () => {
@@ -72,6 +73,7 @@ describe('authController - register', () => {
       _id: 'user-id-1',
       name: 'Test User',
       email: 'test@test.com',
+      welcomeShown: false,
     };
     User.create.mockResolvedValue(createdUser);
     jwt.sign.mockReturnValue('test-token');
@@ -98,6 +100,7 @@ describe('authController - register', () => {
       name: 'Test User',
       email: 'test@test.com',
       onboardingCompleted: false,
+      welcomeShown: false,
     });
     expect(data.data.token).toBe('test-token');
     expect(next).not.toHaveBeenCalled();
@@ -226,6 +229,7 @@ describe('authController - googleLogin', () => {
           email: 'existing@example.com',
           avatarUrl: null,
           onboardingCompleted: false,
+          welcomeShown: true,
         },
         token: 'jwt-from-google',
       },
@@ -239,6 +243,7 @@ describe('authController - googleLogin', () => {
       name: 'New User',
       email: 'new@example.com',
       googleId: 'google-new-id',
+      welcomeShown: false,
     };
 
     mockGoogleVerifyIdToken.mockResolvedValue({
@@ -273,6 +278,7 @@ describe('authController - googleLogin', () => {
           email: 'new@example.com',
           avatarUrl: null,
           onboardingCompleted: false,
+          welcomeShown: false,
         },
         token: 'jwt-for-new-user',
       },
@@ -326,5 +332,78 @@ describe('authController - getMe', () => {
     expect(data.data.user.id).toBe('user-id-1');
     expect(data.data.user.name).toBe('Test User');
     expect(data.data.user.email).toBe('test@test.com');
+  });
+});
+
+describe('authController - markWelcomeShown', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resetUserModelMocks();
+  });
+
+  it('should mark welcome as shown and return updated user', async () => {
+    const user = {
+      _id: 'user-id-1',
+      name: 'Test User',
+      email: 'test@test.com',
+      welcomeShown: false,
+      onboarding: { completed: false },
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+      save: jest.fn().mockResolvedValue(true),
+    };
+
+    User.findById.mockResolvedValue(user);
+
+    const req = { user: { _id: 'user-id-1' } };
+    const res = {
+      statusCode: 200,
+      body: undefined,
+      status(code) {
+        this.statusCode = code;
+        return this;
+      },
+      json(payload) {
+        this.body = payload;
+        return this;
+      },
+      _getJSONData() {
+        return this.body;
+      },
+    };
+    const next = jest.fn();
+
+    await markWelcomeShown(req, res, next);
+
+    expect(user.welcomeShown).toBe(true);
+    expect(user.welcomeShownAt).toBeInstanceOf(Date);
+    expect(user.save).toHaveBeenCalled();
+    expect(res._getJSONData().data.user.welcomeShown).toBe(true);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('should treat legacy users without welcomeShown as already welcomed', async () => {
+    const userFromProtect = {
+      _id: 'legacy-user-id',
+      name: 'Legacy User',
+      email: 'legacy@test.com',
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    };
+
+    const req = { method: 'GET', url: '/api/auth/me', user: userFromProtect };
+    const res = {
+      statusCode: 200,
+      body: undefined,
+      json(payload) {
+        this.body = payload;
+        return this;
+      },
+      _getJSONData() {
+        return this.body;
+      },
+    };
+
+    await getMe(req, res);
+
+    expect(res._getJSONData().data.user.welcomeShown).toBe(true);
   });
 });

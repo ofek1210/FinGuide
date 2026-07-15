@@ -16,7 +16,6 @@ import FinancialPlanningPage from "./pages/FinancialPlanningPage";
 import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AIAgentsPage from "./pages/AIAgentsPage";
-import TaxAssistantPage from "./pages/TaxAssistantPage";
 import FinancialHealthPage from "./pages/FinancialHealthPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
@@ -24,6 +23,9 @@ import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import WelcomePage from "./pages/WelcomePage";
+import WelcomeBackPage from "./pages/WelcomeBackPage";
+import WelcomePagePreview from "./pages/WelcomePagePreview";
 import PensionPage from "./pages/PensionPage";
 import ExpensesPage from "./pages/ExpensesPage";
 import TeamPage from "./pages/TeamPage";
@@ -31,8 +33,6 @@ import ContactPage from "./pages/ContactPage";
 import FAQPage from "./pages/FAQPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
-import CareersPage from "./pages/CareersPage";
-import JobDetailsPage from "./pages/JobDetailsPage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
@@ -42,9 +42,6 @@ import { APP_ROUTES } from "./types/navigation";
 import "./App.css";
 import "./theme/overrides.css";
 import "./theme/marketing.css";
-import "./theme/marketing-team.css";
-import "./theme/marketing-careers.css";
-import "./theme/marketing-job.css";
 
 export default function App() {
   return (
@@ -95,6 +92,22 @@ export default function App() {
           }
         />
         <Route
+          path={APP_ROUTES.welcome}
+          element={
+            <RequireAuth>
+              <WelcomePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.welcomeBack}
+          element={
+            <RequireAuth>
+              <WelcomeBackPage />
+            </RequireAuth>
+          }
+        />
+        <Route
           path={APP_ROUTES.documents}
           element={
             <RequireAuth>
@@ -102,6 +115,15 @@ export default function App() {
             </RequireAuth>
           }
         />
+        <Route
+          path={APP_ROUTES.taxAssistant}
+          element={
+            <RequireAuth>
+              <PayslipsAgentPage />
+            </RequireAuth>
+          }
+        />
+        <Route path="/tax-assistant" element={<Navigate to={APP_ROUTES.taxAssistant} replace />} />
         <Route
           path="/documents/:id"
           element={
@@ -112,14 +134,6 @@ export default function App() {
         />
         {/* legacy — the findings page was removed; keep old URLs working */}
         <Route path="/findings" element={<Navigate to={APP_ROUTES.hub} replace />} />
-        <Route
-          path={APP_ROUTES.taxAssistant}
-          element={
-            <RequireAuth>
-              <TaxAssistantPage />
-            </RequireAuth>
-          }
-        />
         <Route
           path={APP_ROUTES.financialHealth}
           element={
@@ -269,12 +283,14 @@ export default function App() {
         <Route path={APP_ROUTES.faq} element={<FAQPage />} />
         <Route path={APP_ROUTES.privacy} element={<PrivacyPage />} />
         <Route path={APP_ROUTES.terms} element={<TermsPage />} />
-        <Route path={APP_ROUTES.careers} element={<CareersPage />} />
-        <Route path="/careers/:slug" element={<JobDetailsPage />} />
+        <Route path="/careers/*" element={<Navigate to={APP_ROUTES.home} replace />} />
         <Route path="/400" element={<Error400 />} />
         <Route path="/401" element={<Error401 />} />
         <Route path="/403" element={<Error403 />} />
         <Route path="/500" element={<Error500 />} />
+        {import.meta.env.DEV ? (
+          <Route path="/dev/welcome" element={<WelcomePagePreview />} />
+        ) : null}
         <Route path="*" element={<Error404 />} />
       </Routes>
       <FloatingAssistant />
