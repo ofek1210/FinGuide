@@ -13,7 +13,6 @@ const {
 const { benchmarkPortfolio } = require('./pensionBenchmarkService');
 const { runPensionHealthCheck } = require('./pensionHealthCheckService');
 const { buildFundAdvice } = require('./pensionFundAdvisorService');
-const { buildGemelMarketAdvice } = require('./gemelNetAdvisorService');
 const { generateClearinghouseInsightRecommendations } = require('./pensionClearinghouseInsights');
 
 const EMPTY_BENCHMARK = {
@@ -67,49 +66,15 @@ async function buildPensionAnalysis(userId) {
     retirementAge: summary.retirementAge,
   });
 
-  const gemelProducts = (summary.funds || []).map(f => ({
-    companyName: f.provider,
-    productName: f.fundName,
-    productType: f.fundType,
-    totalSavings: f.currentBalance,
-    depositFee: f.managementFeeDeposit != null
-      ? (f.managementFeeDeposit < 0.05 ? f.managementFeeDeposit * 100 : f.managementFeeDeposit)
-      : null,
-    assetFee: f.managementFeeAccumulation != null
-      ? (f.managementFeeAccumulation < 0.05 ? f.managementFeeAccumulation * 100 : f.managementFeeAccumulation)
-      : null,
-    status: 'פעיל',
-  }));
-
-  const gemelAdvice = await buildGemelMarketAdvice(gemelProducts, {
-    ...profile,
-    currentAge: summary.currentAge,
-  });
-
-  const govRecommendations = [];
-  for (const f of gemelAdvice.funds || []) {
-    if (f.verdict !== 'LEAVE') {
-      govRecommendations.push({
-        type: 'gemel_market',
-        title: `גמל/השתלמות — ${f.verdictLabelHe}`,
-        reason: f.summaryHe,
-        urgency: f.verdict === 'SWITCH' ? 'high' : 'medium',
-        financialImpact: f.annualSavingsEstimate
-          ? `~₪${f.annualSavingsEstimate.toLocaleString('he-IL')}/שנה`
-          : null,
-        confidenceScore: 0.78,
-      });
-    }
-  }
-
+  // Gemel/study funds are owned by the gemel agent (gemelAnalysisService) —
+  // getPensionSummary excludes them, so no gemel market pass runs here anymore.
   return {
     summary,
     projection: projection.available ? projection : null,
     benchmark,
     healthCheck,
-    recommendations: [...govRecommendations, ...recommendations],
+    recommendations,
     fundAdvice,
-    gemelAdvice,
     profile,
   };
 }

@@ -80,7 +80,7 @@ function domainPriority(domain, ctx) {
 /**
  * @param {string} userId
  * @param {object} [options]
- * @param {string} [options.focus] - all | payslip | insurance | pension
+ * @param {string} [options.focus] - all | payslip | insurance | pension | gemel
  */
 async function buildExecutionCanvas(userId, { focus = 'all' } = {}) {
   const [profile, payslipCount, policyCount, fundCount, gemelFundCount] = await Promise.all([
@@ -133,8 +133,8 @@ async function buildExecutionCanvas(userId, { focus = 'all' } = {}) {
       labelHe: 'פנסיה וחיסכון',
       enabled: focus === 'all' || focus === 'pension',
       priority: domainPriority('pension', ctx),
-      dataAvailable: fundCount > 0 || payslipCount > 0,
-      dataCount: fundCount,
+      dataAvailable: (fundCount - gemelFundCount) > 0 || payslipCount > 0,
+      dataCount: fundCount - gemelFundCount,
       tasks: buildDomainTasks('pension', ctx),
     },
     gemel: {

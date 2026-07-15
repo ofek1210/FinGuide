@@ -4,7 +4,7 @@
  * Pipeline (CrewAI-equivalent, Node.js):
  *   0. Execution Canvas — onboarding + data inventory → domain tasks
  *   0.5 Gov prefetch — warm data.gov.il caches (pension-net + service index)
- *   1. Domain agents in parallel — payslip, insurance, pension, profile
+ *   1. Domain agents in parallel — payslip, insurance, pension, gemel, profile
  *   2. Merge recommendations + global health score + action items
  *   3. Orchestrator LLM summary (or rule fallback)
  *

@@ -67,6 +67,13 @@ async function getPensionSummary(userId) {
   const ret = profile?.retirement || {};
   const personal = profile?.personal || {};
 
+  // Gemel-type funds (study/provident) are owned by the gemel agent —
+  // exclude them from pension balances/benchmarks but keep the study-fund flag.
+  const GEMEL_FUND_TYPES = ['study_fund', 'provident_fund'];
+  const allActiveFunds = funds.filter(f => f.status !== 'closed');
+  const hasStudyFund = allActiveFunds.some(f => f.fundType === 'study_fund')
+    || (ret.hasStudyFund ?? false);
+
   const grossSalary = s.grossSalary ?? null;
   const pensionEmployee = s.pensionEmployee ?? null;
   const pensionEmployer = s.pensionEmployer ?? null;
@@ -77,7 +84,7 @@ async function getPensionSummary(userId) {
   const expectedSeverance = grossSalary ? Math.round(grossSalary * 0.06) : null;
   const hasMissingPension = grossSalary && !pensionEmployee && !pensionEmployer;
 
-  const activeFunds = funds.filter(f => f.status !== 'closed');
+  const activeFunds = allActiveFunds.filter(f => !GEMEL_FUND_TYPES.includes(f.fundType));
   const hasImportedFunds = activeFunds.length > 0;
 
   if (hasImportedFunds) {
@@ -89,7 +96,6 @@ async function getPensionSummary(userId) {
     const totalMonthlyContribution = fundContribution || payslipContribution
       || ((expectedMinEmployee || 0) + (expectedMinEmployer || 0));
     const currentMgmtFee = weightedAvgMgmtFee(activeFunds) ?? ret.pensionMgmtFee ?? null;
-    const hasStudyFund = activeFunds.some(f => f.fundType === 'study_fund');
     const hasHarKesefSource = activeFunds.some(f => f.source === 'har_hakesef');
     const hasQuarterlySource = activeFunds.some(f => f.source === 'quarterly_report');
     const parseWarnings = [];

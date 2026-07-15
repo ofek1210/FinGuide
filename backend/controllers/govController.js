@@ -5,7 +5,7 @@ const { syncGemelNetDataset, getGemelNetStatus } = require('../services/gemelNet
 const { syncBituahNetDataset, getBituahNetStatus } = require('../services/bituahNetIngestionService');
 const { syncPensiaNetDataset } = require('../services/pensiaNetIngestionService');
 const { listGovFunds, getGovFundById, getLeadingGovFunds } = require('../services/govFundQueryService');
-const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
+const { buildGemelAnalysis } = require('../services/gemelAnalysisService');
 const { buildInsuranceAnalysis } = require('../services/insuranceAnalysisService');
 const { buildPayslipGovBenchmarkRecommendations } = require('../services/payslipGovBenchmarkService');
 
@@ -79,8 +79,8 @@ async function getLeadingFunds(req, res) {
 }
 
 async function getGemelAdvice(req, res) {
-  const analysis = await buildPensionAnalysis(req.user._id);
-  const data = analysis.gemelAdvice || { hasData: false, funds: [] };
+  const analysis = await buildGemelAnalysis(req.user._id);
+  const data = analysis.marketAdvice || { hasData: false, funds: [] };
   return res.json({ success: true, data });
 }
 
