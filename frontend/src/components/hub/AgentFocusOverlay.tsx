@@ -25,7 +25,6 @@ const COLORS: Record<AgentId, { main: string; glow: string; soft: string }> = {
   payslips: { main: "#B49BF0", glow: "rgba(155,127,232,.55)", soft: "rgba(155,127,232,.15)" },
   insurance: { main: "#F4A87E", glow: "rgba(218,111,68,.55)", soft: "rgba(218,111,68,.15)" },
   pension: { main: "#48C98B", glow: "rgba(47,156,98,.55)", soft: "rgba(47,156,98,.15)" },
-  expenses: { main: "#F0C14B", glow: "rgba(185,139,22,.55)", soft: "rgba(246,228,168,.35)" },
 };
 
 /** Domain-specific "collecting…" data noun per agent. */
@@ -33,7 +32,6 @@ const DATA_NOUN: Record<AgentId, string> = {
   payslips: "תלושי השכר",
   insurance: "הפוליסות",
   pension: "הקרנות ודמי הניהול",
-  expenses: "ההוצאות השוטפות",
 };
 
 export default function AgentFocusOverlay({ agentId, stage }: AgentFocusOverlayProps) {
