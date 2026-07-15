@@ -88,7 +88,9 @@ router.post('/onboarding/complete', (req, res, next) => {
 router.delete('/data', async (req, res, next) => {
   try {
     const InsurancePolicy = require('../models/InsurancePolicy');
+    const { resetOnboarding } = require('../services/insuranceOnboardingService');
     await InsurancePolicy.deleteMany({ user: req.user._id });
+    await resetOnboarding(req.user._id);
     return res.json({ success: true, message: 'כל נתוני הביטוח נמחקו' });
   } catch (err) { next(err); }
 });

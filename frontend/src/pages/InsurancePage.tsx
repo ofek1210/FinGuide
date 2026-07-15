@@ -69,18 +69,21 @@ export default function InsurancePage() {
     }
   }, []);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<number> => {
     setLoading(true);
     setAnalysisError(null);
     const res = await getInsuranceAnalysis();
+    let policyCount = 0;
     if (res.ok && res.data?.success && res.data.data) {
       setData(res.data.data);
+      policyCount = res.data.data.policies?.length ?? 0;
     } else if (!res.ok) {
       setAnalysisError(res.error?.message ?? "שגיאה בטעינת נתוני הביטוח");
     } else {
       setAnalysisError("שגיאה בטעינת נתוני הביטוח");
     }
     setLoading(false);
+    return policyCount;
   }, []);
 
   const flow = useGovReportDomainPage({
@@ -122,6 +125,9 @@ export default function InsurancePage() {
     if (step !== "landing" || loading) return;
     if (!data) return;
 
+    const policyCount = data?.policies?.length ?? 0;
+    if (policyCount === 0) return;
+
     void getInsuranceOnboardingSession().then(res => {
       if (res.ok && res.data?.success && res.data.data?.completed) {
         setStep("results");
@@ -134,7 +140,10 @@ export default function InsurancePage() {
     setDeletingId(id);
     await deleteInsurancePolicy(id);
     setDeletingId(null);
-    void load();
+    const policyCount = await load();
+    if (policyCount === 0) {
+      setStep("landing");
+    }
   };
 
   const continueAfterUpload = async () => {

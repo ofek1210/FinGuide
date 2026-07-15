@@ -306,11 +306,20 @@ async function markReportImported(userId) {
   await profile.save();
 }
 
+/** Clear onboarding progress so the user can restart the insurance agent flow. */
+async function resetOnboarding(userId) {
+  const profile = await UserProfile.findOrCreateForUser(userId);
+  profile.insuranceOnboarding = { answers: {}, skippedIds: [] };
+  profile.markModified('insuranceOnboarding');
+  await profile.save();
+}
+
 module.exports = {
   getSession,
   submitAnswer,
   completeOnboarding,
   markReportImported,
+  resetOnboarding,
   buildReportProfile,
   buildOnboardingAnalysis,
 };
