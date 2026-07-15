@@ -609,40 +609,6 @@ export default function HubPage() {
                 הכל <ArrowLeft size={15} strokeWidth={2.4} />
               </button>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {rankedFindings.length > 0 ? (
-                rankedFindings.map((f, i) => {
-                  const top = i === 0;
-                  const warn = f.severity === "warning";
-                  return (
-                    <button key={f.id} onClick={() => navigate(APP_ROUTES.financialHealth)}
-                      style={{ width: "100%", textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 13, padding: "13px 15px", borderRadius: "var(--r-md)", border: top ? "0" : "1px solid var(--border-hair)", background: top ? "linear-gradient(95deg,var(--peach) 0%,var(--lav-200) 55%,var(--mint) 100%)" : "var(--surface-sunken)" }}>
-                      <span style={{ width: 30, height: 30, borderRadius: 9, flex: "none", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 13, background: top ? "rgba(255,255,255,.6)" : "var(--card)", color: "var(--ink)", boxShadow: "var(--shadow-soft)" }}>#{i + 1}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.title}</div>
-                        <div style={{ fontSize: 12, color: top ? "var(--ink-soft)" : "var(--text-muted)" }}>{DOMAIN_LABEL[domainOf(f)]}</div>
-                      </div>
-                      <span style={{ flex: "none", fontWeight: 800, fontSize: 11.5, borderRadius: "var(--r-pill)", padding: "4px 10px", background: top ? "rgba(255,255,255,.6)" : warn ? "var(--peach-soft)" : "var(--mint-soft)", color: warn ? "var(--peach-ink)" : "var(--mint-ink)" }}>
-                        {warn ? "דורש טיפול" : "כדאי לדעת"}
-                      </span>
-                    </button>
-                  );
-                })
-              ) : (
-                <div style={{ display: "grid", placeItems: "center", minHeight: 160, textAlign: "center" }}>
-                  <div>
-                    <div style={{ fontSize: 14.5, fontWeight: 700, color: "var(--text-body)", marginBottom: 6 }}>
-                      {loading ? "טוענים ממצאים…" : completedDocs > 0 ? "אין ממצאים פעילים — הכל תקין 🎉" : "אין ממצאים עדיין"}
-                    </div>
-                    {!loading && completedDocs === 0 && (
-                      <button onClick={() => navigate(APP_ROUTES.documents)} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--lav-100)", color: "var(--lav-700)", border: "1px solid var(--lav-200)", borderRadius: "var(--r-btn)", padding: "10px 18px", fontFamily: "inherit", fontWeight: 800, fontSize: 13.5, cursor: "pointer" }}>
-                        העלאת תלוש ראשון <ArrowLeft size={15} strokeWidth={2.4} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
             {rankedFindings.length > 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {rankedFindings.map((f, i) => {
