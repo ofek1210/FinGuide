@@ -16,7 +16,6 @@ import FinancialPlanningPage from "./pages/FinancialPlanningPage";
 import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AIAgentsPage from "./pages/AIAgentsPage";
-import TaxAssistantPage from "./pages/TaxAssistantPage";
 import FinancialHealthPage from "./pages/FinancialHealthPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
@@ -102,6 +101,15 @@ export default function App() {
           }
         />
         <Route
+          path={APP_ROUTES.taxAssistant}
+          element={
+            <RequireAuth>
+              <PayslipsAgentPage />
+            </RequireAuth>
+          }
+        />
+        <Route path="/tax-assistant" element={<Navigate to={APP_ROUTES.taxAssistant} replace />} />
+        <Route
           path="/documents/:id"
           element={
             <RequireAuth>
@@ -111,14 +119,6 @@ export default function App() {
         />
         {/* legacy — the findings page was removed; keep old URLs working */}
         <Route path="/findings" element={<Navigate to={APP_ROUTES.hub} replace />} />
-        <Route
-          path={APP_ROUTES.taxAssistant}
-          element={
-            <RequireAuth>
-              <TaxAssistantPage />
-            </RequireAuth>
-          }
-        />
         <Route
           path={APP_ROUTES.financialHealth}
           element={
