@@ -11,7 +11,7 @@ export const APP_ROUTES = {
   documentsScan: "/documents/scan",
   documentsScanComplete: "/documents/scan/complete",
   payslipHistory: "/documents/history",
-  taxAssistant: "/tax-assistant",
+  taxAssistant: "/documents/tax",
   financialHealth: "/financial-health",
   copilot: "/copilot",
   insights: "/insights",

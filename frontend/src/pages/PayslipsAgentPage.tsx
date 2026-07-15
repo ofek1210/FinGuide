@@ -13,10 +13,12 @@ import {
   History, Plus, Lock, Wallet, TrendingUp, Landmark, ShieldCheck,
   PiggyBank, GraduationCap, CalendarDays, HeartPulse, type LucideIcon,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import DocumentsRibbonWave from "../components/documents/DocumentsRibbonWave";
+import PayslipsAgentTabs from "../components/payslips/PayslipsAgentTabs";
+import TaxAssistantPanel from "../components/payslips/TaxAssistantPanel";
 import Loader from "../components/ui/Loader";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
@@ -97,8 +99,10 @@ type WizardStep = "upload" | "results";
 ════════════════════════════════════════════════════════════════ */
 export default function PayslipsAgentPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const gmailResult = searchParams.get("gmail");
+  const isTaxView = location.pathname === APP_ROUTES.taxAssistant;
 
   const [intake, setIntake] = useState<IntakeData>(EMPTY_INTAKE);
   const [step, setStep] = useState<WizardStep>(gmailResult === "success" ? "results" : "upload");
@@ -122,11 +126,14 @@ export default function PayslipsAgentPage() {
 
   return (
     <div data-agent="payslips" style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl", position: "relative" }}>
-      {step === "upload" && <DocumentsRibbonWave />}
+      {!isTaxView && step === "upload" && <DocumentsRibbonWave />}
       <div style={{ position: "relative", zIndex: 1 }}>
         <PrivateTopbar />
+        <PayslipsAgentTabs />
 
-        {step === "upload" ? (
+        {isTaxView ? (
+          <TaxAssistantPanel />
+        ) : step === "upload" ? (
           <UploadStep
             intake={intake}
             onComplete={(analyzableCount, uploadedDocs) => {
