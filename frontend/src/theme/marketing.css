@@ -1,7 +1,7 @@
 /* ============================================================
    MARKETING & LEGAL — unified pastel theme
    Restyles the public pages (FAQ / Privacy / Terms / Contact /
-   Careers / Team / JobDetails) onto the FinGuide design system:
+   Team) onto the FinGuide design system:
    near-white surfaces, lavender/mint/butter/peach accents, white
    floating cards with purple-cast shadows, Heebo, gradient-text
    headlines, pill buttons. Loads after App.css so it wins over the
@@ -12,9 +12,7 @@
 /* ---- Page shells: reset the legacy dark base to pastel ---- */
 .legal-page,
 .contact-page,
-.careers-page,
-.team-page,
-.job-page {
+.team-page {
   position: relative;
   isolation: isolate;
   min-height: 100vh;
@@ -34,9 +32,7 @@
    with the viewport bottom, matching the footer on the app pages. */
 .legal-page > footer:last-child,
 .contact-page > footer:last-child,
-.careers-page > footer:last-child,
-.team-page > footer:last-child,
-.job-page > footer:last-child {
+.team-page > footer:last-child {
   margin-block-start: auto;
   margin-block-end: -40px;
   margin-inline: calc(-1 * clamp(16px, 4vw, 40px));
@@ -45,8 +41,7 @@
 /* Soft drifting blobs behind the content (skip if reduced-motion drift, but keep static) */
 .legal-page::before,
 .contact-page::before,
-.team-page::before,
-.job-page::before {
+.team-page::before {
   content: "";
   position: absolute;
   inset-block-start: -120px;
@@ -76,9 +71,7 @@
 /* ---- Shared nav (light) ---- */
 .legal-page .landing-nav,
 .contact-page .landing-nav,
-.careers-page .landing-nav,
-.team-page .landing-nav,
-.job-page .landing-nav {
+.team-page .landing-nav {
   position: sticky;
   top: 12px;
   z-index: 20;
@@ -91,7 +84,7 @@
   box-shadow: var(--shadow-soft);
 }
 
-:is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-logo {
+:is(.legal-page, .contact-page, .team-page) .landing-logo {
   font-family: var(--font-display);
   font-weight: var(--fw-extrabold);
   font-size: 20px;
@@ -105,7 +98,7 @@
 }
 
 /* Buttons → pills (ink primary, white secondary) */
-:is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-primary {
+:is(.legal-page, .contact-page, .team-page) .landing-primary {
   background: var(--surface-ink);
   color: var(--text-on-ink);
   border: none;
@@ -114,11 +107,11 @@
   font-weight: var(--fw-bold);
   transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
-:is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-primary:hover {
+:is(.legal-page, .contact-page, .team-page) .landing-primary:hover {
   transform: translateY(-2px);
   box-shadow: 0 22px 44px -18px rgba(18, 17, 24, 0.6);
 }
-:is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-secondary {
+:is(.legal-page, .contact-page, .team-page) .landing-secondary {
   background: var(--surface-card);
   color: var(--text-strong);
   border: 1px solid var(--border-soft);
@@ -126,7 +119,7 @@
   font-weight: var(--fw-semibold);
   box-shadow: var(--shadow-soft);
 }
-:is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-secondary:hover {
+:is(.legal-page, .contact-page, .team-page) .landing-secondary:hover {
   border-color: var(--lav-300);
   color: var(--accent-strong);
 }
@@ -470,7 +463,7 @@
   .legal-block,
   .faq-item,
   .contact-card,
-  :is(.legal-page, .contact-page, .careers-page, .team-page, .job-page) .landing-primary {
+  :is(.legal-page, .contact-page, .team-page) .landing-primary {
     transition: none;
   }
 }

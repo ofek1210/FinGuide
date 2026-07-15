@@ -16,7 +16,6 @@ import FinancialPlanningPage from "./pages/FinancialPlanningPage";
 import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AIAgentsPage from "./pages/AIAgentsPage";
-import TaxAssistantPage from "./pages/TaxAssistantPage";
 import FinancialHealthPage from "./pages/FinancialHealthPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
@@ -34,8 +33,6 @@ import ContactPage from "./pages/ContactPage";
 import FAQPage from "./pages/FAQPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import TermsPage from "./pages/TermsPage";
-import CareersPage from "./pages/CareersPage";
-import JobDetailsPage from "./pages/JobDetailsPage";
 import Error400 from "./pages/errors/Error400";
 import Error401 from "./pages/errors/Error401";
 import Error403 from "./pages/errors/Error403";
@@ -119,6 +116,24 @@ export default function App() {
           }
         />
         <Route
+          path={APP_ROUTES.taxAssistant}
+          element={
+            <RequireAuth>
+              <PayslipsAgentPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.expenses}
+          element={
+            <RequireAuth>
+              <PayslipsAgentPage />
+            </RequireAuth>
+          }
+        />
+        <Route path="/tax-assistant" element={<Navigate to={APP_ROUTES.taxAssistant} replace />} />
+        <Route path="/expenses" element={<Navigate to={APP_ROUTES.expenses} replace />} />
+        <Route
           path="/documents/:id"
           element={
             <RequireAuth>
@@ -128,14 +143,6 @@ export default function App() {
         />
         {/* legacy — the findings page was removed; keep old URLs working */}
         <Route path="/findings" element={<Navigate to={APP_ROUTES.hub} replace />} />
-        <Route
-          path={APP_ROUTES.taxAssistant}
-          element={
-            <RequireAuth>
-              <TaxAssistantPage />
-            </RequireAuth>
-          }
-        />
         <Route
           path={APP_ROUTES.financialHealth}
           element={
@@ -285,8 +292,7 @@ export default function App() {
         <Route path={APP_ROUTES.faq} element={<FAQPage />} />
         <Route path={APP_ROUTES.privacy} element={<PrivacyPage />} />
         <Route path={APP_ROUTES.terms} element={<TermsPage />} />
-        <Route path={APP_ROUTES.careers} element={<CareersPage />} />
-        <Route path="/careers/:slug" element={<JobDetailsPage />} />
+        <Route path="/careers/*" element={<Navigate to={APP_ROUTES.home} replace />} />
         <Route path="/400" element={<Error400 />} />
         <Route path="/401" element={<Error401 />} />
         <Route path="/403" element={<Error403 />} />

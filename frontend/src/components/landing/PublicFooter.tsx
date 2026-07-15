@@ -28,7 +28,6 @@ export default function PublicFooter() {
           <div className="fcol">
             <h4>חברה</h4>
             <Link to={APP_ROUTES.team}>הכר את הצוות</Link>
-            <Link to={APP_ROUTES.careers}>קריירה</Link>
             <Link to={APP_ROUTES.contact}>צור קשר</Link>
           </div>
           <div className="fcol">

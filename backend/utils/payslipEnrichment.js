@@ -1,4 +1,5 @@
 const { toFiniteNumber } = require('./payslipPeriod');
+const { readTaxCreditPoints } = require('./taxCreditPoints');
 
 function toPositiveSalary(value) {
   const n = toFiniteNumber(value);
@@ -117,6 +118,7 @@ function enrichSummary(document) {
     return Math.round((grossForNetCheck - mandatoryTotal - pensionEmployee) * 100) / 100;
   })();
   const netSalary = netIsPlausible ? rawNet : (derivedNet ?? rawNet);
+  const taxCreditPoints = readTaxCreditPoints(analysis);
 
   return {
     grossSalary,
@@ -136,7 +138,7 @@ function enrichSummary(document) {
       ?? toFiniteNumber(contributions?.pension?.severance),
     vacationDays: toFiniteNumber(summary.vacationDays),
     sickDays: toFiniteNumber(summary.sickDays),
-    taxCreditPoints: toFiniteNumber(summary.taxCreditPoints) ?? toFiniteNumber(tax.tax_credit_points),
+    taxCreditPoints,
   };
 }
 
@@ -151,8 +153,18 @@ const MONEY_FLOW_LABELS = [
   { key: 'nationalInsurance', label: 'ביטוח לאומי' },
   { key: 'healthInsurance', label: 'מס בריאות' },
   { key: 'pensionEmployee', label: 'הפקדה לפנסיה (עובד)' },
+  { key: 'pensionEmployer', label: 'הפקדה לפנסיה (מעסיק)' },
   { key: 'studyFundEmployee', label: 'קרן השתלמות (עובד)' },
+  { key: 'studyFundEmployer', label: 'קרן השתלמות (מעסיק)' },
 ];
+
+function sumField(values, key) {
+  const total = values.reduce((sum, e) => {
+    const v = e[key];
+    return Number.isFinite(v) && v > 0 ? sum + v : sum;
+  }, 0);
+  return Math.round(total);
+}
 
 function buildMoneyFlow(enrichedList) {
   const valid = enrichedList.filter(e => Number.isFinite(e.grossSalary) && Number.isFinite(e.netSalary));
@@ -162,37 +174,43 @@ function buildMoneyFlow(enrichedList) {
   const avgNet = avgField(valid, 'netSalary');
   if (!Number.isFinite(avgGross) || !Number.isFinite(avgNet)) return null;
 
-  const totalWithheld = Math.round(avgGross - avgNet);
+  const totalGross = Math.round(valid.reduce((s, e) => s + e.grossSalary, 0));
+  const totalWithheld = Math.round(
+    valid.reduce((s, e) => s + (e.grossSalary - e.netSalary), 0),
+  );
   const items = MONEY_FLOW_LABELS
     .map(({ key, label }) => {
-      const avgAmount = avgField(valid, key);
-      if (!Number.isFinite(avgAmount) || avgAmount <= 0) return null;
+      const totalAmount = sumField(valid, key);
+      if (totalAmount <= 0) return null;
       return {
         label,
-        avgAmount,
-        pctOfGross: Math.round((avgAmount / avgGross) * 1000) / 10,
-        pctOfGap: totalWithheld > 0 ? Math.round((avgAmount / totalWithheld) * 1000) / 10 : 0,
+        totalAmount,
+        avgAmount: totalAmount,
+        pctOfGross: totalGross > 0 ? Math.round((totalAmount / totalGross) * 1000) / 10 : 0,
+        pctOfGap: totalWithheld > 0 ? Math.round((totalAmount / totalWithheld) * 1000) / 10 : 0,
       };
     })
     .filter(Boolean);
 
-  const itemised = items.reduce((s, i) => s + i.avgAmount, 0);
+  const itemised = items.reduce((s, i) => s + i.totalAmount, 0);
   const remainder = totalWithheld - itemised;
   if (remainder > 50) {
     items.push({
       label: 'ניכויים נוספים / אחר',
+      totalAmount: Math.round(remainder),
       avgAmount: Math.round(remainder),
-      pctOfGross: Math.round((remainder / avgGross) * 1000) / 10,
+      pctOfGross: totalGross > 0 ? Math.round((remainder / totalGross) * 1000) / 10 : 0,
       pctOfGap: totalWithheld > 0 ? Math.round((remainder / totalWithheld) * 1000) / 10 : 0,
     });
   }
 
-  items.sort((a, b) => b.avgAmount - a.avgAmount);
+  items.sort((a, b) => b.totalAmount - a.totalAmount);
 
   return {
     payslipCount: valid.length,
     avgGross,
     avgNet,
+    totalGross,
     totalWithheld,
     items,
   };

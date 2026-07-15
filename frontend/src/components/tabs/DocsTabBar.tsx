@@ -11,7 +11,7 @@ export default function DocsTabBar() {
       <button
         type="button"
         className={`page-tab-btn${!isHistory ? " is-active" : ""}`}
-        onClick={() => navigate(APP_ROUTES.documents)}
+        onClick={() => navigate(APP_ROUTES.documentsUpload)}
       >
         העלאת מסמכים
       </button>

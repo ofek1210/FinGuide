@@ -12,10 +12,26 @@ export interface AIInsight {
   financialImpactLabel?: string | null;
 }
 
+export interface TaxCreditsSummary {
+  expectedPoints: number | null;
+  actualPoints: number | null;
+  gap: number | null;
+  monthlyValue: number | null;
+  annualValue: number | null;
+  estimatedAnnualRefund: number | null;
+  breakdown: Array<{
+    id: string;
+    label: string;
+    points: number;
+    action?: string | null;
+  }>;
+}
+
 export interface PayslipInsightsData {
   insights: AIInsight[];
   narrative: string;
   moneyFlow?: MoneyFlowData | null;
+  taxCredits?: TaxCreditsSummary | null;
   meta: {
     payslipCount: number;
     latestGross?: number;
@@ -25,6 +41,9 @@ export interface PayslipInsightsData {
     avgNet?: number;
     avgTax?: number;
     profileAge?: number;
+    taxCreditPointsExpected?: number;
+    taxCreditPointsActual?: number;
+    recoverableSavingsAnnual?: number;
   };
 }
 
@@ -32,9 +51,11 @@ export interface MoneyFlowData {
   payslipCount: number;
   avgGross: number;
   avgNet: number;
+  totalGross?: number;
   totalWithheld: number;
   items: Array<{
     label: string;
+    totalAmount?: number;
     avgAmount: number;
     pctOfGross: number;
     pctOfGap: number;

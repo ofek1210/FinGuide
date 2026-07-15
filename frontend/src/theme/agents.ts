@@ -52,13 +52,14 @@ export const AGENTS: AgentDef[] = [
   {
     id: "payslips",
     label: "תלושים ומסמכים",
-    sub: "ניתוח שכר ומיסים",
+    sub: "ניתוח שכר, מס והוצאות",
     Icon: FileText,
     route: APP_ROUTES.documents,
     routes: [
       APP_ROUTES.documents,
       APP_ROUTES.payslipHistory,
       APP_ROUTES.taxAssistant,
+      APP_ROUTES.expenses,
       APP_ROUTES.documentsScan,
       APP_ROUTES.documentsScanComplete,
     ],

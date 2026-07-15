@@ -3,6 +3,7 @@ import type { PayslipDetail } from "../types/payslip";
 import {
   documentToPayslipDetail,
   isPayslipDocument,
+  parseCanonicalPeriod,
   sortPayslipDocuments,
 } from "./documentToPayslip";
 import {
@@ -28,10 +29,13 @@ export type PayslipAnalysisSummary = {
   avgHealthInsurance: number | null;
   avgPensionEmployee: number | null;
   avgPensionEmployer: number | null;
+  avgPensionTotal: number | null;
   avgStudyFundEmployee: number | null;
+  avgStudyFundEmployer: number | null;
+  avgStudyFundTotal: number | null;
   avgVacationDays: number | null;
   avgSickDays: number | null;
-  breakdown: Array<{ label: string; avgAmount: number }>;
+  breakdown: Array<{ label: string; totalAmount: number }>;
   moneyFlow: MoneyFlow | null;
   rows: PayslipRow[];
 };
@@ -59,13 +63,14 @@ function displayLabelFor(doc: DocumentItem, detail: PayslipDetail): string {
 }
 
 function periodKeyFromDoc(doc: DocumentItem): string | null {
+  const parsed = parseCanonicalPeriod(
+    (doc.analysisData as { period?: { month?: string } } | undefined)?.period?.month,
+  );
+  if (parsed) return parsed.canonical;
+
   const meta = doc.metadata;
   if (meta?.periodYear && meta?.periodMonth) {
     return `${meta.periodYear}-${String(meta.periodMonth).padStart(2, "0")}`;
-  }
-  const month = (doc.analysisData as { period?: { month?: string } } | undefined)?.period?.month;
-  if (typeof month === "string" && /^\d{4}-\d{2}$/.test(month)) {
-    return month;
   }
   return null;
 }
@@ -104,10 +109,32 @@ export function selectRecentPayslipDocuments(docs: DocumentItem[], limit = 3): D
 
   const deduped = sortPayslipDocuments([...byPeriod.values()]);
   const fallback = [...withoutPeriod].sort((a, b) => docUploadTime(b) - docUploadTime(a));
-  return [...deduped, ...fallback].slice(0, limit);
+  const merged = [...deduped, ...fallback];
+  if (limit == null || limit <= 0) return merged;
+  return merged.slice(0, limit);
 }
 
-export function buildAnalysisSummary(docs: DocumentItem[], limit = 3): PayslipAnalysisSummary {
+function avgContributionTotal(
+  enriched: ReturnType<typeof enrichPayslipFromDoc>[],
+  employeeKey: "pensionEmployee" | "studyFundEmployee",
+  employerKey: "pensionEmployer" | "studyFundEmployer",
+): number | null {
+  const totals = enriched
+    .map(e => {
+      const employee = e[employeeKey];
+      const employer = e[employerKey];
+      if (employee == null && employer == null) return null;
+      return Math.round(((employee ?? 0) + (employer ?? 0)) * 100) / 100;
+    })
+    .filter((v): v is number => v != null);
+  if (!totals.length) return null;
+  return Math.round((totals.reduce((sum, v) => sum + v, 0) / totals.length) * 100) / 100;
+}
+
+/** Use all analyzable payslips (no cap) for dashboard KPIs. */
+export const PAYSLIP_ANALYSIS_ALL = 0;
+
+export function buildAnalysisSummary(docs: DocumentItem[], limit = PAYSLIP_ANALYSIS_ALL): PayslipAnalysisSummary {
   const recent = selectRecentPayslipDocuments(docs, limit);
   const enriched = recent.map(enrichPayslipFromDoc);
   const moneyFlow = buildMoneyFlow(enriched);
@@ -130,7 +157,7 @@ export function buildAnalysisSummary(docs: DocumentItem[], limit = 3): PayslipAn
   }
 
   const breakdown = moneyFlow
-    ? moneyFlow.items.map(i => ({ label: i.label, avgAmount: i.avgAmount }))
+    ? moneyFlow.items.map(i => ({ label: i.label, totalAmount: i.totalAmount }))
     : [];
 
   return {
@@ -142,7 +169,10 @@ export function buildAnalysisSummary(docs: DocumentItem[], limit = 3): PayslipAn
     avgHealthInsurance: avgEnriched(enriched, "healthInsurance"),
     avgPensionEmployee: avgEnriched(enriched, "pensionEmployee"),
     avgPensionEmployer: avgEnriched(enriched, "pensionEmployer"),
+    avgPensionTotal: avgContributionTotal(enriched, "pensionEmployee", "pensionEmployer"),
     avgStudyFundEmployee: avgEnriched(enriched, "studyFundEmployee"),
+    avgStudyFundEmployer: avgEnriched(enriched, "studyFundEmployer"),
+    avgStudyFundTotal: avgContributionTotal(enriched, "studyFundEmployee", "studyFundEmployer"),
     avgVacationDays: avgEnriched(enriched, "vacationDays"),
     avgSickDays: avgEnriched(enriched, "sickDays"),
     breakdown,
@@ -151,7 +181,7 @@ export function buildAnalysisSummary(docs: DocumentItem[], limit = 3): PayslipAn
   };
 }
 
-export async function fetchLastPayslipAnalysis(limit = 3): Promise<PayslipAnalysisSummary> {
+export async function fetchLastPayslipAnalysis(limit = PAYSLIP_ANALYSIS_ALL): Promise<PayslipAnalysisSummary> {
   const { listRecentPayslips } = await import("../api/documents.api");
   const response = await listRecentPayslips(limit);
   if (response.success && response.data?.documents) {

@@ -1,0 +1,31 @@
+{
+  "_note": "IDF payslip May 2026 — ground truth from Paycheck May 2026.pdf. Pension employer from השתתפות בקרן הפנסיה column (not employee+employer derived).",
+  "schema_version": "1.9",
+  "period": { "month": "2026-05" },
+  "salary": {
+    "gross_total": 24963.93
+  },
+  "deductions": {
+    "mandatory": {
+      "total": 6571.4,
+      "income_tax": 3550.71,
+      "national_insurance": 2301.01,
+      "health_insurance": 719.68
+    }
+  },
+  "contributions": {
+    "pension": {
+      "employee": 2112.62,
+      "employer": 4074.31,
+      "participation_total": 6186.93
+    },
+    "study_fund": {
+      "employee": 743.61,
+      "employer": 2314.19,
+      "participation_total": 3057.8
+    }
+  },
+  "parties": {
+    "employer_name": "צבא הגנה לישראל"
+  }
+}

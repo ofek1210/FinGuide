@@ -167,7 +167,12 @@ export default function PayslipDetailPage() {
   const needsReview = p.extractionStatus === "needs_review";
   const tax = findDeduction(p, "מס הכנסה");
   const ni = findDeduction(p, "ביטוח לאומי");
-  const pension = findDeduction(p, "פנסיה");
+  const pensionEmployee = p.pensionEmployee ?? findDeduction(p, "פנסיה (עובד)");
+  const pensionEmployer = p.pensionEmployer ?? findDeduction(p, "פנסיה (מעסיק)");
+  const pensionTotal =
+    pensionEmployee != null && pensionEmployer != null
+      ? Math.round((pensionEmployee + pensionEmployer) * 100) / 100
+      : p.pensionTotal ?? pensionEmployee ?? pensionEmployer ?? null;
 
   // data-completeness health score (honest: how much of the payslip was extracted)
   const checks = [p.grossSalary != null, p.netSalary != null, Boolean(p.employerName), Boolean(p.periodLabel && p.periodLabel !== "לא זוהה"), p.deductions.length > 0, p.earnings.length > 0];
@@ -177,13 +182,13 @@ export default function PayslipDetailPage() {
     { label: "ברוטו", val: nis(p.grossSalary), x: 40, y: 44, color: "#7C5FD6", bend: -1 },
     { label: "מס הכנסה", val: nis(tax), x: 262, y: 40, color: "#DA6F44", bend: 1 },
     { label: "ביטוח לאומי", val: nis(ni), x: 30, y: 216, color: "#B98B16", bend: 1 },
-    { label: "פנסיה", val: nis(pension), x: 270, y: 214, color: "#2F9C62", bend: -1 },
+    { label: "פנסיה (עובד)", val: nis(pensionEmployee), x: 270, y: 214, color: "#2F9C62", bend: -1 },
   ];
 
   const breakdown = [
     { label: "נטו לחשבון", value: p.netSalary ?? 0, color: "var(--mint-ink)" },
     { label: "מס הכנסה", value: tax ?? 0, color: "var(--peach-ink)" },
-    { label: "פנסיה והפרשות", value: pension ?? 0, color: "var(--lav-600)" },
+    { label: "פנסיה (עובד)", value: pensionEmployee ?? 0, color: "var(--lav-600)" },
     { label: "ביטוח לאומי", value: ni ?? 0, color: "var(--butter-ink)" },
   ].filter(b => b.value > 0);
   const bSum = breakdown.reduce((s, b) => s + b.value, 0) || 1;
@@ -276,6 +281,32 @@ export default function PayslipDetailPage() {
             </div>
           </div>
         </div>
+
+        {(pensionEmployee != null || pensionEmployer != null) && (
+          <div style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)", padding: "20px 24px", marginBottom: 18 }}>
+            <div style={{ fontSize: 14, fontWeight: 800, marginBottom: 14, color: "var(--text-strong)" }}>הפרשות לפנסיה — פירוט</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: "14px 18px" }}>
+              {pensionEmployee != null && (
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-faint)", fontWeight: 600, marginBottom: 4 }}>הפרשת עובד</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{nis(pensionEmployee)}</div>
+                </div>
+              )}
+              {pensionEmployer != null && (
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-faint)", fontWeight: 600, marginBottom: 4 }}>הפרשת מעסיק</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{nis(pensionEmployer)}</div>
+                </div>
+              )}
+              {pensionTotal != null && (
+                <div>
+                  <div style={{ fontSize: 12, color: "var(--text-faint)", fontWeight: 600, marginBottom: 4 }}>סה״כ לקרן הפנסיה</div>
+                  <div style={{ fontSize: 18, fontWeight: 900, color: "var(--mint-ink)", fontVariantNumeric: "tabular-nums" }}>{nis(pensionTotal)}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* where the money goes */}
         {breakdown.length > 0 && (

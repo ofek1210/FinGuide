@@ -9,7 +9,7 @@ const {
 const { getDepositContinuityConfig } = require('../config/depositContinuityConfig');
 
 const isPayslipDocument = doc =>
-  doc?.status === 'completed' &&
+  (doc?.status === 'completed' || doc?.status === 'needs_review') &&
   doc?.analysisData &&
   typeof doc.analysisData === 'object' &&
   (doc.metadata?.category === 'payslip' || !doc.metadata?.category);

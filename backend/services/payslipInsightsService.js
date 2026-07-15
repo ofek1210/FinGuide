@@ -9,6 +9,12 @@ const UserProfile = require('../models/UserProfile');
 const { analyzeWithAI } = require('./aiProviderService');
 const { enrichSummary, buildMoneyFlow, avgField } = require('../utils/payslipEnrichment');
 const { selectRecentPayslipDocuments } = require('../utils/selectRecentPayslipDocuments');
+const {
+  buildTaxCreditInsights,
+  formatTaxCreditsForLLM,
+} = require('./expectedTaxCreditsService');
+const { calculateAnnualTaxAdjustment } = require('./taxAdjustmentRulesService');
+const { computeRecoverableSavingsAnnual } = require('../utils/recoverableSavings');
 
 const MIN_PENSION_EMPLOYEE_RATE = 0.075;
 const MIN_PENSION_EMPLOYER_RATE = 0.065;
@@ -37,14 +43,19 @@ function getSummary(doc) {
 
 function buildMoneyFlowNarrative(moneyFlow) {
   if (!moneyFlow) return '';
+  const totalGross = moneyFlow.totalGross ?? (moneyFlow.avgGross * moneyFlow.payslipCount);
+  const pctWithheld = totalGross > 0
+    ? Math.round((moneyFlow.totalWithheld / totalGross) * 100)
+    : 0;
   const lines = [
     `ברוטו ממוצע: ₪${moneyFlow.avgGross.toLocaleString('he-IL')} → נטו ממוצע: ₪${moneyFlow.avgNet.toLocaleString('he-IL')}`,
-    `סה"כ ניכוי מהברוטו: ₪${moneyFlow.totalWithheld.toLocaleString('he-IL')} (${Math.round((moneyFlow.totalWithheld / moneyFlow.avgGross) * 100)}%)`,
+    `סה"כ ניכויים מכל התלושים: ₪${moneyFlow.totalWithheld.toLocaleString('he-IL')} (${pctWithheld}% מהברוטו המצטבר)`,
     '',
-    'פירוט לאן הולך הכסף (ממוצע חודשי):',
+    'פירוט ניכויים מצטבר (סה"כ מכל התלושים):',
   ];
   moneyFlow.items.forEach((item) => {
-    lines.push(`• ${item.label}: ₪${item.avgAmount.toLocaleString('he-IL')} (${item.pctOfGross}% מהברוטו, ${item.pctOfGap}% מההפרש)`);
+    const amount = item.totalAmount ?? item.avgAmount;
+    lines.push(`• ${item.label}: ₪${amount.toLocaleString('he-IL')} (${item.pctOfGross}% מהברוטו המצטבר)`);
   });
   return lines.join('\n');
 }
@@ -85,10 +96,10 @@ function buildInsights(profile, enrichedList, moneyFlow) {
       severity: 'info',
       category: 'payslip',
       title: `מ-₪${moneyFlow.avgGross.toLocaleString('he-IL')} ברוטו ל-₪${moneyFlow.avgNet.toLocaleString('he-IL')} נטו`,
-      description: `₪${moneyFlow.totalWithheld.toLocaleString('he-IL')} ניכויים בחודש בממוצע. ${top ? `הגורם הגדול: ${top.label} (₪${top.avgAmount.toLocaleString('he-IL')}).` : ''}`,
+      description: `₪${moneyFlow.totalWithheld.toLocaleString('he-IL')} ניכויים מצטברים. ${top ? `הגורם הגדול: ${top.label} (₪${(top.totalAmount ?? top.avgAmount).toLocaleString('he-IL')} סה"כ).` : ''}`,
       recommendation: 'ראה את הפירוט המלא למטה — וודא שכל ניכוי תואם את תנאי ההעסקה שלך.',
-      financialImpact: moneyFlow.totalWithheld,
-      financialImpactLabel: `₪${moneyFlow.totalWithheld.toLocaleString('he-IL')}/חודש ניכויים`,
+      financialImpact: null,
+      financialImpactLabel: null,
     });
   }
 
@@ -210,8 +221,8 @@ function buildInsights(profile, enrichedList, moneyFlow) {
         recommendation: change < 0
           ? 'בדוק אם השינוי נובע מעבודה חלקית, בונוס שהסתיים, או שינוי תנאים.'
           : 'עדכן את הפרשות הפנסיה/קרן ההשתלמות בהתאם.',
-        financialImpact: Math.abs(Math.round(last - first)),
-        financialImpactLabel: `₪${Math.abs(Math.round(last - first)).toLocaleString('he-IL')} שינוי חודשי`,
+        financialImpact: null,
+        financialImpactLabel: `₪${Math.abs(Math.round(last - first)).toLocaleString('he-IL')} שינוי חודשי (לא חיסכון)`,
       });
     }
   }
@@ -233,7 +244,7 @@ function buildInsights(profile, enrichedList, moneyFlow) {
   return insights;
 }
 
-function buildPayslipContextForLLM(profile, payslips, enrichedList, moneyFlow) {
+function buildPayslipContextForLLM(profile, payslips, enrichedList, moneyFlow, taxAnalysis) {
   const lines = [];
   const p = profile || {};
   const personal = p.personal || {};
@@ -242,20 +253,28 @@ function buildPayslipContextForLLM(profile, payslips, enrichedList, moneyFlow) {
 
   lines.push('=== פרופיל המשתמש ===');
   if (personal.age) lines.push(`גיל: ${personal.age}`);
+  if (personal.gender) {
+    const genderMap = { male: 'זכר', female: 'נקבה', other: 'אחר' };
+    lines.push(`מין: ${genderMap[personal.gender] || personal.gender}`);
+  }
   if (personal.maritalStatus) {
     const statusMap = { single: 'רווק/ה', married: 'נשוי/ה', divorced: 'גרוש/ה', widowed: 'אלמן/ה' };
     lines.push(`מצב משפחתי: ${statusMap[personal.maritalStatus] || personal.maritalStatus}`);
   }
+  if (personal.residenceCity) lines.push(`עיר מגורים: ${personal.residenceCity}`);
   if (personal.childrenCount != null) lines.push(`ילדים: ${personal.childrenCount}`);
+  if (personal.educationLevel) lines.push(`השכלה: ${personal.educationLevel}`);
   if (personal.isSmoker != null) lines.push(`מעשן/ת: ${personal.isSmoker ? 'כן' : 'לא'}`);
   if (assets.ownsApartment != null) lines.push(`דירה בבעלות: ${assets.ownsApartment ? 'כן' : 'לא, שוכר/ת'}`);
+  if (employment.employmentType) lines.push(`סוג תעסוקה: ${employment.employmentType}`);
   if (employment.hasMultipleEmployers) lines.push('מספר מעסיקים: כן');
+  if (employment.hasTaxCoordination) lines.push('תיאום מס פעיל: כן');
   if (employment.expectedMonthlyGross) {
     lines.push(`שכר חודשי משוער (פרופיל): ₪${employment.expectedMonthlyGross.toLocaleString('he-IL')}`);
   }
 
-  lines.push('', '=== 3 תלושים אחרונים (פרטני) ===');
-  payslips.slice(0, 3).forEach((doc, i) => {
+  lines.push('', `=== ${payslips.length} תלושים (פרטני) ===`);
+  payslips.slice(0, 12).forEach((doc, i) => {
     const e = enrichedList[i];
     const s = getSummary(doc);
     const label = s.period || `תלוש ${i + 1}`;
@@ -263,6 +282,7 @@ function buildPayslipContextForLLM(profile, payslips, enrichedList, moneyFlow) {
     if (e.grossSalary) parts.push(`ברוטו: ₪${e.grossSalary.toLocaleString('he-IL')}`);
     if (e.netSalary) parts.push(`נטו: ₪${e.netSalary.toLocaleString('he-IL')}`);
     if (e.tax) parts.push(`מס: ₪${e.tax.toLocaleString('he-IL')}`);
+    if (e.taxCreditPoints != null) parts.push(`נקודות זיכוי: ${e.taxCreditPoints}`);
     if (e.nationalInsurance) parts.push(`ביטוח לאומי: ₪${e.nationalInsurance.toLocaleString('he-IL')}`);
     if (e.pensionEmployee) parts.push(`פנסיה עובד: ₪${e.pensionEmployee.toLocaleString('he-IL')}`);
     if (e.studyFundEmployee) parts.push(`קה"ש: ₪${e.studyFundEmployee.toLocaleString('he-IL')}`);
@@ -273,30 +293,35 @@ function buildPayslipContextForLLM(profile, payslips, enrichedList, moneyFlow) {
     lines.push('', buildMoneyFlowNarrative(moneyFlow));
   }
 
+  if (taxAnalysis) {
+    lines.push('', formatTaxCreditsForLLM(taxAnalysis));
+  }
+
   return lines.join('\n');
 }
 
-async function generateNarrative(profile, payslips, enrichedList, moneyFlow, insights) {
-  const context = buildPayslipContextForLLM(profile, payslips, enrichedList, moneyFlow);
+async function generateNarrative(profile, payslips, enrichedList, moneyFlow, insights, taxAnalysis) {
+  const context = buildPayslipContextForLLM(profile, payslips, enrichedList, moneyFlow, taxAnalysis);
   const insightSummary = insights
     .map(i => `- ${i.title}: ${i.recommendation}`)
     .join('\n');
 
-  const systemPrompt = `אתה יועץ שכר, מס ופנסיה ישראלי מומחה של FinGuide.
-משימתך: מחקר מעמיק ("deep dive") על תלושי השכר — במיוחד לענות: "מאיפה נעלם ההפרש בין ברוטו לנטו?"
+  const systemPrompt = `אתה יועץ מס, שכר ופנסיה ישראלי מומחה של FinGuide.
+משימתך: ניתוח מעמיק לחיסכון במס ובניכויים — לענות: "האם אתה משלם יותר מס ממה שמגיע לך?" ו"איך לשפר את הנטו?"
 
 הניתוח חייב לכלול:
-1. פתיחה ברורה: "ברוטו ממוצע X ₪ → נטו ממוצע Y ₪ — הפרש Z ₪ (W%)"
-2. פירוט שורה-שורה: לאן הולך כל שקל — מס הכנסה, ביטוח לאומי, מס בריאות, פנסיה, קרן השתלמות — עם סכומים ואחוזים מהברוטו
-3. השוואה: האם הניכויים סבירים לפרופיל (גיל, מצב משפחתי, שכר) בישראל 2024-2025?
-4. תובנות: החזרי מס אפשריים, חיסכון פנסיוני, קרן השתלמות, חריגות
-5. מסקנה והמלצה מעשית — מה לעשות עכשיו
+1. פתיחה: ברוטו ממוצע → נטו ממוצע, וסה"כ ניכויים מצטברים
+2. נקודות זיכוי: השווה נקודות בתלוש מול זכאות לפי פרופיל (ילדים, תואר, מגורים בפריפריה כמו דימונה, אישה, הורה יחיד)
+3. פעולות מעשיות לחיסכון במס: עדכון טופס 101, תיאום מס 116, החזר מס שנתי, בדיקת עצמאי/בעל עסק
+4. פירוט ניכויים: מס הכנסה, ביטוח לאומי, פנסיה, קרן השתלמות — עם סכומים
+5. הערכת החזר מס אפשרי בשקלים רק אם זוהה פער ממשי (נקודות זיכוי, תיאום מס) — אל תציג את סך הניכויים כ"חיסכון"
+6. מסקנה — 2-3 צעדים קונקרטיים לביצוע השבוע
 
-כתוב בעברית, 5-7 פסקאות, ישיר ("שכרך", "ההפרשה שלך"). ציין מספרים מדויקים מהנתונים.`;
+כתוב בעברית, 6-8 פסקאות, ישיר ("שכרך", "מגיע לך"). ציין מספרים מדויקים מהנתונים. אל תמציא זכויות שלא מופיעות בפרופיל.`;
 
-  const userPrompt = `${context}\n\n=== תובנות שהתגלו ===\n${insightSummary || 'לא התגלו חריגות מיוחדות.'}\n\nכתוב ניתוח מחקר מעמיק — התמקד בשאלה: לאן הולכים הכספים מהברוטו לנטו?`;
+  const userPrompt = `${context}\n\n=== תובנות שהתגלו ===\n${insightSummary || 'לא התגלו חריגות מיוחדות.'}\n\nכתוב ניתוח מעמיק — התמקד בחיסכון במס, נקודות זיכוי חסרות, והחזרי מס אפשריים.`;
 
-  const result = await analyzeWithAI(systemPrompt, userPrompt, { maxTokens: 1200, temperature: 0.35 });
+  const result = await analyzeWithAI(systemPrompt, userPrompt, { maxTokens: 1400, temperature: 0.35 });
   return result || buildFallbackNarrative(insights, moneyFlow);
 }
 
@@ -313,26 +338,76 @@ async function getPayslipInsights(userId) {
     UserProfile.findOne({ user: userId }).lean(),
   ]);
 
-  const payslips = selectRecentPayslipDocuments(allDocs, 3);
+  const payslips = selectRecentPayslipDocuments(allDocs, 0);
 
   if (!payslips.length) {
     return {
       insights: [],
       narrative: 'לא נמצאו תלושי שכר מנותחים. העלה תלושים כדי לקבל תובנות.',
       moneyFlow: null,
+      taxCredits: null,
       meta: { payslipCount: 0 },
     };
   }
 
   const enrichedList = payslips.map(enrichSummary);
   const moneyFlow = buildMoneyFlow(enrichedList);
-  const insights = buildInsights(profile, enrichedList, moneyFlow);
-  const narrative = await generateNarrative(profile, payslips, enrichedList, moneyFlow, insights);
+  const taxAnalysis = buildTaxCreditInsights(profile, enrichedList);
+  const taxInsights = taxAnalysis.insights || [];
+
+  const currentYear = new Date().getFullYear();
+  const yearGross = enrichedList.reduce((s, e) => s + (e.grossSalary || 0), 0);
+  const yearTax = enrichedList.reduce((s, e) => s + (e.tax || 0), 0);
+  const annualAdjustment = calculateAnnualTaxAdjustment({
+    year: currentYear,
+    grossTotal: yearGross,
+    taxPaidTotal: yearTax,
+    monthsPresent: payslips.map(d => d.metadata?.periodMonth).filter(Boolean),
+    taxCreditPointsAverage: taxAnalysis.actualPoints ?? taxAnalysis.expected?.totalPoints,
+  });
+
+  let insights = buildInsights(profile, enrichedList, moneyFlow);
+  insights = [...taxInsights, ...insights];
+
+  if (annualAdjustment.estimatedRefundOrDue > 500) {
+    insights.push({
+      id: 'annual_tax_refund_estimate',
+      severity: 'info',
+      category: 'payslip',
+      title: `הערכה: ייתכן החזר מס שנתי של ~₪${annualAdjustment.estimatedRefundOrDue.toLocaleString('he-IL')}`,
+      description: `לפי ${payslips.length} תלושים בשנת ${currentYear}, שילמת ~₪${yearTax.toLocaleString('he-IL')} מס לעומת חבות משוערת של ~₪${annualAdjustment.expectedAnnualTax.toLocaleString('he-IL')}.`,
+      recommendation: 'בדוק דוח שנתי, תיאום מס, ונקודות זיכוי חסרות. שקול הגשה דרך רשות המסים או יועץ מס.',
+      financialImpact: annualAdjustment.estimatedRefundOrDue,
+      financialImpactLabel: `~₪${annualAdjustment.estimatedRefundOrDue.toLocaleString('he-IL')} החזר משוער`,
+    });
+  }
+
+  const narrative = await generateNarrative(
+    profile,
+    payslips,
+    enrichedList,
+    moneyFlow,
+    insights,
+    taxAnalysis,
+  );
+
+  const recoverableSavingsAnnual = computeRecoverableSavingsAnnual(insights);
 
   return {
     insights,
     narrative,
     moneyFlow,
+    taxCredits: {
+      expectedPoints: taxAnalysis.expected?.totalPoints ?? null,
+      actualPoints: taxAnalysis.actualPoints,
+      gap: taxAnalysis.gap,
+      monthlyValue: taxAnalysis.expected?.monthlyCreditValue ?? null,
+      annualValue: taxAnalysis.expected?.annualCreditValue ?? null,
+      breakdown: taxAnalysis.expected?.breakdown ?? [],
+      estimatedAnnualRefund: annualAdjustment.estimatedRefundOrDue > 0
+        ? annualAdjustment.estimatedRefundOrDue
+        : null,
+    },
     meta: {
       payslipCount: payslips.length,
       latestGross: enrichedList[0]?.grossSalary,
@@ -341,6 +416,9 @@ async function getPayslipInsights(userId) {
       avgNet: moneyFlow?.avgNet ?? avgField(enrichedList, 'netSalary'),
       avgTax: avgField(enrichedList, 'tax'),
       profileAge: profile?.personal?.age,
+      taxCreditPointsExpected: taxAnalysis.expected?.totalPoints,
+      taxCreditPointsActual: taxAnalysis.actualPoints,
+      recoverableSavingsAnnual,
     },
   };
 }

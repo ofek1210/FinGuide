@@ -39,7 +39,7 @@ function matchesContributionLabel(raw, pattern) {
 const PENSION_EMPLOYEE_DEDUCTION_LABEL =
   /ניכוי\s+(?:ל\s*)?(?:קרן\s*)?פנסיה|ניכוי\s+עובד\s+(?:ל\s*)?(?:קרן\s*)?פנסיה|ניכוי\s+(?:ל\s*)?(?:קרן\s*)?גמל|ניכוי\s+(?:ל\s*)?קופ["״']?ג/i;
 const STUDY_EMPLOYEE_DEDUCTION_LABEL =
-  /ניכוי\s+(?:ל\s*)?(?:קרן\s*)?השתלמות|ניכוי\s+עובד\s+(?:ל\s*)?(?:קרן\s*)?השתלמות/i;
+  /ניכוי\s+(?:ל\s*)?(?:קרן\s*)?[\s|"'״']*(?:ה+)?שתלמות|ניכוי\s+עובד\s+(?:ל\s*)?(?:קרן\s*)?[\s|"'״']*(?:ה+)?שתלמ/i;
 const PENSION_EMPLOYER_CONTRIBUTION_LABEL =
   /הפרש(?:ה|ת)\s+(?:מעסיק|מעביד)\s+(?:ל\s*)?(?:קרן\s*)?פנסיה|הפקד(?:ה|ת)\s+(?:מעסיק|מעביד)\s+(?:ל\s*)?(?:קרן\s*)?פנסיה/i;
 const STUDY_EMPLOYER_CONTRIBUTION_LABEL =
@@ -49,7 +49,7 @@ const STUDY_EMPLOYER_CONTRIBUTION_LABEL =
 const PENSION_EMPLOYEE_DEDUCTION_LABEL_IDF =
   /ניכוי\s+(?:ל\s*)?(?:קרן\s*)?ה+פנסיה/i;
 const STUDY_EMPLOYEE_DEDUCTION_LABEL_IDF =
-  /ניכוי\s+(?:ל\s*)?(?:קרן\s*)?ה+שתלמ/i;
+  /ניכוי\s+(?:ל\s*)?(?:קרן\s*)?[\s|"'״']*(?:ה+)?שתלמ/i;
 const PENSION_PARTICIPATION_LABEL =
   /השתתפות\s+(?:ב\s*)?(?:קרן\s*)?ה*פנסיה/i;
 const STUDY_PARTICIPATION_LABEL =
@@ -201,7 +201,11 @@ function determineContributionKind(entry, activeKind) {
   return activeKind;
 }
 
-function pickContributionDeductionAmount(raw, nums, { min = 50, max = 60000 } = {}) {
+function pickContributionDeductionAmount(
+  raw,
+  nums,
+  { min = 50, max = 60000, preferLast = false, preferFirstSubstantial = false } = {},
+) {
   const amounts = nums.filter(value => value >= min && value <= max);
   if (!amounts.length) {
     return undefined;
@@ -216,12 +220,62 @@ function pickContributionDeductionAmount(raw, nums, { min = 50, max = 60000 } = 
     return nonRateAmounts[0];
   }
   if (nonRateAmounts.length > 1) {
-    return Math.max(...nonRateAmounts);
+    if (preferFirstSubstantial) {
+      const substantial = nonRateAmounts.filter(value => value >= 50);
+      if (substantial.length) {
+        return substantial[0];
+      }
+    }
+    return preferLast ? nonRateAmounts[nonRateAmounts.length - 1] : Math.max(...nonRateAmounts);
   }
   return amounts[amounts.length - 1];
 }
 
+function findExplicitContributionLabelEnd(raw) {
+  const labelPatterns = [
+    PENSION_EMPLOYEE_DEDUCTION_LABEL,
+    PENSION_EMPLOYEE_DEDUCTION_LABEL_IDF,
+    STUDY_EMPLOYEE_DEDUCTION_LABEL,
+    STUDY_EMPLOYEE_DEDUCTION_LABEL_IDF,
+    PENSION_PARTICIPATION_LABEL,
+    STUDY_PARTICIPATION_LABEL,
+    PENSION_EMPLOYER_CONTRIBUTION_LABEL,
+    STUDY_EMPLOYER_CONTRIBUTION_LABEL,
+  ];
+
+  for (const pattern of labelPatterns) {
+    const match = String(raw || '').match(pattern);
+    if (match && match.index !== undefined) {
+      return match.index + match[0].length;
+    }
+  }
+
+  return -1;
+}
+
+function contributionAmountPickMode(raw) {
+  if (isPensionParticipationLabel(raw) || isStudyParticipationLabel(raw)) {
+    return { preferFirstSubstantial: true };
+  }
+  if (isPensionEmployeeDeductionLabel(raw) || isStudyEmployeeDeductionLabel(raw)) {
+    return { preferLast: true };
+  }
+  return {};
+}
+
 function pickAmountForContributionEntry(entry, entries) {
+  const labelEnd = findExplicitContributionLabelEnd(entry.raw);
+  if (labelEnd >= 0) {
+    const anchoredAmount = pickContributionDeductionAmount(
+      entry.raw,
+      extractAllNumericTokens(entry.raw.slice(labelEnd)),
+      contributionAmountPickMode(entry.raw),
+    );
+    if (anchoredAmount !== undefined) {
+      return { amount: anchoredAmount, lineIndex: entry.index, adjacent: false };
+    }
+  }
+
   const ownAmount = pickContributionDeductionAmount(entry.raw, extractAllNumericTokens(entry.raw));
   if (ownAmount !== undefined) {
     return { amount: ownAmount, lineIndex: entry.index, adjacent: false };
@@ -797,6 +851,10 @@ function collectContributionCandidates(input) {
 }
 
 function deriveEmployerFromParticipation(employee, employer, participation, field, { idfProfile = false } = {}) {
+  if (idfProfile) {
+    return employer;
+  }
+
   if (participation?.value == null || employee?.value == null) {
     return employer;
   }
@@ -810,17 +868,6 @@ function deriveEmployerFromParticipation(employee, employer, participation, fiel
   const max = limits[field] ?? 60000;
   if (derived > max) {
     return employer;
-  }
-
-  if (idfProfile) {
-    return {
-      value: derived,
-      score: 0.99,
-      source: 'idf_participation_derived',
-      reason: 'IDF payslip: employer share = השתתפות total minus employee ניכוי.',
-      section: 'contributions',
-      evidenceCategory: 'idf_participation_derived',
-    };
   }
 
   if (employer?.value != null) {
@@ -837,6 +884,35 @@ function deriveEmployerFromParticipation(employee, employer, participation, fiel
   };
 }
 
+/** IDF payslips: "השתתפות בקרן" is the employer share, not a combined total. */
+function resolveIdfEmployerContribution(participationColumn) {
+  if (participationColumn?.value == null) {
+    return null;
+  }
+
+  return {
+    value: participationColumn.value,
+    score: participationColumn.score ?? 0.99,
+    source: 'idf_employer_participation_line',
+    reason: 'תלוש צה"ל: השתתפות בקרן = הפרשת המעסיק.',
+    section: 'contributions',
+    evidenceCategory: 'idf_employer',
+  };
+}
+
+function resolveParticipationTotal(employeeVal, employerVal, rawParticipationVal, idfProfile) {
+  if (idfProfile && employeeVal != null && employerVal != null) {
+    return +(employeeVal + employerVal).toFixed(2);
+  }
+  if (rawParticipationVal != null) {
+    return rawParticipationVal;
+  }
+  if (employeeVal != null && employerVal != null) {
+    return +(employeeVal + employerVal).toFixed(2);
+  }
+  return null;
+}
+
 function resolveContributionCandidates(store, stats, warnings) {
   const studyBase = resolveBestNumericCandidate('study_base', store.study_base, { minScore: 0.45 });
   const studyEmployee = resolveBestNumericCandidate('study_employee', store.study_employee, { minScore: 0.5 });
@@ -846,13 +922,18 @@ function resolveContributionCandidates(store, stats, warnings) {
     { minScore: 0.5 },
   );
   let studyEmployer = resolveBestNumericCandidate('study_employer', store.study_employer, { minScore: 0.5 });
-  studyEmployer = deriveEmployerFromParticipation(
-    studyEmployee,
-    studyEmployer,
-    studyParticipation,
-    'study_employer',
-    { idfProfile: stats.idfProfileDetected },
-  );
+  if (stats.idfProfileDetected) {
+    studyEmployer =
+      resolveIdfEmployerContribution(studyParticipation) ?? studyEmployer;
+  } else {
+    studyEmployer = deriveEmployerFromParticipation(
+      studyEmployee,
+      studyEmployer,
+      studyParticipation,
+      'study_employer',
+      { idfProfile: false },
+    );
+  }
 
   const pensionBase = resolveBestNumericCandidate('pension_base', store.pension_base, { minScore: 0.45 });
   const pensionEmployee = resolveBestNumericCandidate('pension_employee', store.pension_employee, { minScore: 0.5 });
@@ -862,13 +943,18 @@ function resolveContributionCandidates(store, stats, warnings) {
     { minScore: 0.5 },
   );
   let pensionEmployer = resolveBestNumericCandidate('pension_employer', store.pension_employer, { minScore: 0.5 });
-  pensionEmployer = deriveEmployerFromParticipation(
-    pensionEmployee,
-    pensionEmployer,
-    pensionParticipation,
-    'pension_employer',
-    { idfProfile: stats.idfProfileDetected },
-  );
+  if (stats.idfProfileDetected) {
+    pensionEmployer =
+      resolveIdfEmployerContribution(pensionParticipation) ?? pensionEmployer;
+  } else {
+    pensionEmployer = deriveEmployerFromParticipation(
+      pensionEmployee,
+      pensionEmployer,
+      pensionParticipation,
+      'pension_employer',
+      { idfProfile: false },
+    );
+  }
   const pensionSeverance = resolveBestNumericCandidate('pension_severance', store.pension_severance, { minScore: 0.5 });
 
   if (!stats.studyLinesFound) {
@@ -911,7 +997,12 @@ function resolveContributionCandidates(store, stats, warnings) {
       base: studyBase?.value,
       employee: studyEmployee?.value,
       employer: studyEmployer?.value,
-      participation_total: studyParticipation?.value,
+      participation_total: resolveParticipationTotal(
+        studyEmployee?.value,
+        studyEmployer?.value,
+        studyParticipation?.value,
+        stats.idfProfileDetected,
+      ),
       employeeRate: studyRates.employeeRate,
       employerRate: studyRates.employerRate,
       debug_line: stats.studyDebugLine,
@@ -930,7 +1021,12 @@ function resolveContributionCandidates(store, stats, warnings) {
       base: pensionBase?.value,
       employee: pensionEmployee?.value,
       employer: pensionEmployer?.value,
-      participation_total: pensionParticipation?.value,
+      participation_total: resolveParticipationTotal(
+        pensionEmployee?.value,
+        pensionEmployer?.value,
+        pensionParticipation?.value,
+        stats.idfProfileDetected,
+      ),
       severance: pensionSeverance?.value,
       base_for_severance: pensionBase?.value,
       employeeRate: pensionRates.employeeRate,

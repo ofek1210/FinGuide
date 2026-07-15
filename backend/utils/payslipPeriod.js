@@ -3,14 +3,42 @@ function toFiniteNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-function parseYearMonth(value) {
+function isValidYearMonth(year, month) {
+  return year >= 2000 && year <= 2100 && month >= 1 && month <= 12;
+}
+
+/** Parse period.month in YYYY-MM or MM/YYYY (also accepts M/YYYY). */
+function parsePeriodMonth(value) {
   if (!value || typeof value !== 'string') return null;
-  const m = value.match(/^(\d{4})-(\d{2})$/);
-  if (!m) return null;
-  const year = Number(m[1]);
-  const month = Number(m[2]);
-  if (year < 2000 || year > 2100 || month < 1 || month > 12) return null;
-  return { year, month };
+  const trimmed = value.trim();
+
+  const ymd = trimmed.match(/^(\d{4})-(\d{1,2})$/);
+  if (ymd) {
+    const year = Number(ymd[1]);
+    const month = Number(ymd[2]);
+    if (!isValidYearMonth(year, month)) return null;
+    return { year, month };
+  }
+
+  const mY = trimmed.match(/^(\d{1,2})\/(\d{4})$/);
+  if (mY) {
+    const month = Number(mY[1]);
+    const year = Number(mY[2]);
+    if (!isValidYearMonth(year, month)) return null;
+    return { year, month };
+  }
+
+  return null;
+}
+
+function parseYearMonth(value) {
+  return parsePeriodMonth(value);
+}
+
+function canonicalPeriodMonth(value) {
+  const parsed = parsePeriodMonth(value);
+  if (!parsed) return null;
+  return monthKey(parsed.year, parsed.month);
 }
 
 function parseDateLike(value) {
@@ -36,6 +64,18 @@ function parseDateLike(value) {
   return null;
 }
 
+/** Sync document.metadata.periodYear/Month from extracted analysis period. */
+function syncPayslipPeriodMetadata(document, analysisData = document?.analysisData) {
+  const parsed = parsePeriodMonth(analysisData?.period?.month);
+  if (!parsed) return false;
+  if (!document.metadata) document.metadata = {};
+  const prevYear = toFiniteNumber(document.metadata.periodYear);
+  const prevMonth = toFiniteNumber(document.metadata.periodMonth);
+  document.metadata.periodYear = parsed.year;
+  document.metadata.periodMonth = parsed.month;
+  return prevYear !== parsed.year || prevMonth !== parsed.month;
+}
+
 function resolvePayslipPeriod(document) {
   const metadataYear = toFiniteNumber(document?.metadata?.periodYear);
   const metadataMonth = toFiniteNumber(document?.metadata?.periodMonth);
@@ -48,7 +88,7 @@ function resolvePayslipPeriod(document) {
     };
   }
 
-  const analysisPeriod = parseYearMonth(document?.analysisData?.period?.month);
+  const analysisPeriod = parsePeriodMonth(document?.analysisData?.period?.month);
   if (analysisPeriod) {
     return {
       ...analysisPeriod,
@@ -122,8 +162,11 @@ function formatYearMonthLabel(year, month) {
 
 module.exports = {
   toFiniteNumber,
+  parsePeriodMonth,
   parseYearMonth,
+  canonicalPeriodMonth,
   parseDateLike,
+  syncPayslipPeriodMetadata,
   resolvePayslipPeriod,
   monthKey,
   compareYearMonth,

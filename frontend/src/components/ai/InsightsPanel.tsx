@@ -6,6 +6,7 @@ import type {
   InsuranceInsightsData,
   PensionInsightsData,
   AIInsight,
+  TaxCreditsSummary,
 } from "../../api/aiInsights.api";
 import {
   getPayslipAIInsights,
@@ -80,16 +81,26 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
     }
   }
 
-  const insights: AIInsight[] = (data as any)?.insights || [];
-  const narrative: string = (data as any)?.narrative || "";
+  const insights: AIInsight[] = (data as PayslipInsightsData | InsuranceInsightsData | PensionInsightsData)?.insights || [];
+  const narrative: string = (data as { narrative?: string })?.narrative || "";
+  const payslipTaxCredits = agent === "payslip" ? (data as PayslipInsightsData)?.taxCredits : null;
+  const payslipMeta = agent === "payslip" ? (data as PayslipInsightsData)?.meta : null;
   const pensionMeta = agent === "pension" ? (data as PensionInsightsData)?.meta : null;
   const insuranceMeta = agent === "insurance" ? (data as InsuranceInsightsData)?.meta : null;
 
-  const totalSavings = pensionMeta?.totalPotentialSavings && pensionMeta.totalPotentialSavings > 0
-    ? pensionMeta.totalPotentialSavings
-    : insuranceMeta?.annualSavings && insuranceMeta.annualSavings > 0
-      ? insuranceMeta.annualSavings
-      : insights.reduce((sum, i) => sum + (i.financialImpact || 0), 0);
+  const totalSavings = (() => {
+    if (pensionMeta?.totalPotentialSavings && pensionMeta.totalPotentialSavings > 0) {
+      return pensionMeta.totalPotentialSavings;
+    }
+    if (insuranceMeta?.annualSavings && insuranceMeta.annualSavings > 0) {
+      return insuranceMeta.annualSavings;
+    }
+    if (agent === "payslip") {
+      const annual = payslipMeta?.recoverableSavingsAnnual;
+      return annual != null && annual > 0 ? annual : 0;
+    }
+    return insights.reduce((sum, i) => sum + (i.financialImpact || 0), 0);
+  })();
 
   // Keep the loading animation mounted through the real fetch, and let it
   // finish to 100% once the answer is in (data present) before revealing.
@@ -181,7 +192,7 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
           />
           {totalSavings > 0 && (
             <StatBadge
-              label="פוטנציאל חיסכון"
+              label="פוטנציאל חיסכון שנתי (הערכה)"
               value={`₪${totalSavings.toLocaleString("he-IL")}`}
               color="#2d7d46"
             />
@@ -213,6 +224,10 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
             color="#e53e3e"
           />
         </div>
+      )}
+
+      {agent === "payslip" && payslipTaxCredits && (
+        <TaxCreditsPanel taxCredits={payslipTaxCredits} />
       )}
 
       {/* Insights list */}
@@ -377,6 +392,70 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
           <span style={{ marginRight: 8, color: "#a0aec0" }}>| 050-1234567</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function TaxCreditsPanel({ taxCredits }: { taxCredits: TaxCreditsSummary }) {
+  const hasComparison = taxCredits.expectedPoints != null && taxCredits.actualPoints != null;
+  const gap = taxCredits.gap;
+  const gapPositive = gap != null && gap >= 0.25;
+
+  return (
+    <div
+      style={{
+        marginBottom: 16,
+        padding: "16px",
+        background: "var(--butter-50, #fffbeb)",
+        borderRadius: 10,
+        border: "1px solid var(--butter-200, #fde68a)",
+      }}
+    >
+      <div style={{ fontWeight: 800, fontSize: 15, color: "var(--peach-ink, #c2410c)", marginBottom: 10 }}>
+        נקודות זיכוי במס — ניתוח לפי הפרופיל שלך
+      </div>
+
+      {hasComparison && (
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+          <StatBadge label="צפוי בפרופיל" value={String(taxCredits.expectedPoints)} color="#7c3aed" />
+          <StatBadge label="ממוצע בתלוש" value={String(taxCredits.actualPoints)} color="#4a5568" />
+          {gap != null && Math.abs(gap) >= 0.25 && (
+            <StatBadge
+              label={gapPositive ? "חסר בתלוש" : "עודף בתלוש"}
+              value={String(Math.abs(gap))}
+              color={gapPositive ? "#e53e3e" : "#2d7d46"}
+            />
+          )}
+          {taxCredits.estimatedAnnualRefund != null && taxCredits.estimatedAnnualRefund > 0 && (
+            <StatBadge
+              label="החזר שנתי משוער"
+              value={`₪${taxCredits.estimatedAnnualRefund.toLocaleString("he-IL")}`}
+              color="#2d7d46"
+            />
+          )}
+        </div>
+      )}
+
+      {taxCredits.breakdown.length > 0 && (
+        <div style={{ fontSize: 13, color: "#4a5568", lineHeight: 1.6 }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>זכאויות לפי הפרופיל:</div>
+          <ul style={{ margin: 0, paddingRight: 18 }}>
+            {taxCredits.breakdown.map((item) => (
+              <li key={item.id}>
+                {item.label} — <strong>{item.points}</strong> נקודות
+                {item.action ? ` · ${item.action}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {gapPositive && taxCredits.monthlyValue != null && (
+        <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: "#c2410c" }}>
+          ייתכן שאתה משלם עד ₪{Math.round((gap ?? 0) * 242).toLocaleString("he-IL")} מס עודף בחודש —
+          עדכן טופס 101 או בקש תיאום מס.
+        </div>
+      )}
     </div>
   );
 }

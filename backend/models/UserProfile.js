@@ -16,6 +16,7 @@ const STRING_ENUMS = {
   salaryType: ['global', 'hourly'],
   gender: ['male', 'female', 'other'],
   maritalStatus: ['single', 'married', 'divorced', 'widowed', 'partnered'],
+  educationLevel: ['none', 'high_school', 'first_degree', 'second_degree', 'vocational', 'student'],
   salaryRange: [
     'under_5k',
     '5k_10k',
@@ -48,8 +49,31 @@ const personalSchema = new mongoose.Schema(
     },
     childrenCount: { type: Number, default: null, min: 0, max: 20 },
     childrenAges: { type: [Number], default: [] },
+    residenceCity: { type: String, default: null, trim: true, maxlength: 80 },
+    educationLevel: {
+      type: String,
+      enum: [...STRING_ENUMS.educationLevel, null],
+      default: null,
+    },
+    hasCompletedMilitaryService: { type: Boolean, default: null },
     spouseWorks: { type: Boolean, default: null },
     isSmoker: { type: Boolean, default: null },
+  },
+  { _id: false }
+);
+
+const monthlyExpensesBreakdownSchema = new mongoose.Schema(
+  {
+    rent: { type: Number, default: null, min: 0, max: 1000000 },
+    arnona: { type: Number, default: null, min: 0, max: 1000000 },
+    vaadBayit: { type: Number, default: null, min: 0, max: 1000000 },
+    clothing: { type: Number, default: null, min: 0, max: 1000000 },
+    food: { type: Number, default: null, min: 0, max: 1000000 },
+    restaurants: { type: Number, default: null, min: 0, max: 1000000 },
+    childcare: { type: Number, default: null, min: 0, max: 1000000 },
+    tvInternet: { type: Number, default: null, min: 0, max: 1000000 },
+    electricity: { type: Number, default: null, min: 0, max: 1000000 },
+    water: { type: Number, default: null, min: 0, max: 1000000 },
   },
   { _id: false }
 );
@@ -62,6 +86,20 @@ const financialSchema = new mongoose.Schema(
       default: null,
     },
     monthlyExpensesEstimate: { type: Number, default: null, min: 0, max: 1000000 },
+    monthlyExpensesBreakdown: { type: monthlyExpensesBreakdownSchema, default: null },
+    monthlyExpensesByPeriod: {
+      type: Map,
+      of: new mongoose.Schema(
+        {
+          breakdown: { type: monthlyExpensesBreakdownSchema, default: null },
+          monthlyDebts: { type: Number, default: null, min: 0, max: 500000 },
+          otherEstimate: { type: Number, default: null, min: 0, max: 1000000 },
+          total: { type: Number, default: null, min: 0, max: 1000000 },
+        },
+        { _id: false },
+      ),
+      default: () => new Map(),
+    },
     savingsEstimate: { type: Number, default: null, min: 0, max: 100000000 },
     monthlyDebts: { type: Number, default: null, min: 0, max: 500000 },
     riskTolerance: {

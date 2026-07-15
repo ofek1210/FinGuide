@@ -219,11 +219,11 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.deductions.voluntary.health_insurance).toBe(120);
     expect(result.deductions.voluntary.disability_insurance).toBe(65);
     expect(result.contributions.pension.employee).toBe(2112.62);
-    expect(result.contributions.pension.participation_total).toBe(3176.41);
-    expect(result.contributions.pension.employer).toBe(1063.79);
+    expect(result.contributions.pension.employer).toBe(3176.41);
+    expect(result.contributions.pension.participation_total).toBe(5289.03);
     expect(result.contributions.study_fund.employee).toBe(743.61);
-    expect(result.contributions.study_fund.participation_total).toBe(1744.17);
-    expect(result.contributions.study_fund.employer).toBe(1000.56);
+    expect(result.contributions.study_fund.employer).toBe(1744.17);
+    expect(result.contributions.study_fund.participation_total).toBe(2487.78);
   });
 
   it('extracts May 2026 IDF payslip: gross from שוטפים column, net separate, pension total from השתתפות', async () => {
@@ -239,11 +239,11 @@ describe('extractPayslipFinancialEN - regression coverage', () => {
     expect(result.salary.net_payable).toBe(22847.5);
     expect(result.salary.gross_total).not.toBe(result.salary.net_payable);
     expect(result.contributions.pension.employee).toBe(2112.62);
-    expect(result.contributions.pension.participation_total).toBe(3176.41);
-    expect(result.contributions.pension.employer).toBe(1063.79);
+    expect(result.contributions.pension.employer).toBe(3176.41);
+    expect(result.contributions.pension.participation_total).toBe(5289.03);
     expect(result.contributions.study_fund.employee).toBe(743.61);
-    expect(result.contributions.study_fund.participation_total).toBe(1744.17);
-    expect(result.contributions.study_fund.employer).toBe(1000.56);
+    expect(result.contributions.study_fund.employer).toBe(1744.17);
+    expect(result.contributions.study_fund.participation_total).toBe(2487.78);
   });
 
   it('extracts June gross when label and amount are on separate lines', async () => {

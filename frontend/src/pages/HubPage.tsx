@@ -466,7 +466,7 @@ export default function HubPage() {
                 <div style={{ fontSize: "clamp(26px,3vw,38px)", fontWeight: 900, letterSpacing: "-.03em", lineHeight: 1.15, maxWidth: 420 }}>
                   העלו תלוש שכר ראשון — והסוכנים יתחילו לחפש עבורך הזדמנויות לחיסכון.
                 </div>
-                <button onClick={() => navigate(APP_ROUTES.documents)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
+                <button onClick={() => navigate(APP_ROUTES.documentsUpload)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
                   onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
                   onMouseLeave={e => e.currentTarget.style.transform = "none"}>
                   <Upload size={17} strokeWidth={2.4} /> העלאת תלוש ראשון
