@@ -295,7 +295,10 @@ export default function PensionAdvisor({
             <div style={{ padding: "14px 14px 12px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)", border: "1px dashed var(--border-soft)", marginBottom: 12, animation: "paRise .3s var(--ease)" }}>
               <input value={form.fundName} onChange={e => setForm(s => ({ ...s, fundName: e.target.value }))} placeholder="שם הקרן (למשל: הפניקס פנסיה)" style={addInput} />
               <select value={form.fundType} onChange={e => setForm(s => ({ ...s, fundType: e.target.value }))} style={{ ...addInput, cursor: "pointer" }}>
-                {Object.entries(FUND_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                {/* gemel types (study/provident) are added on the gemel page */}
+                {Object.entries(FUND_TYPE_LABELS)
+                  .filter(([v]) => v !== "study_fund" && v !== "provident_fund")
+                  .map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
               <input value={form.currentBalance || ""} onChange={e => setForm(s => ({ ...s, currentBalance: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 }))} inputMode="numeric" placeholder="יתרה נוכחית (₪)" style={addInput} />
               {saveMsg && <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8, color: saveMsg.type === "error" ? "var(--danger)" : "var(--mint-ink)" }}>{saveMsg.text}</div>}

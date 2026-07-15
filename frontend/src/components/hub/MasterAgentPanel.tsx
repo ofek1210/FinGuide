@@ -107,9 +107,9 @@ const QUICK_PROMPTS = [
 /** localStorage key for the persisted command-chat transcript. */
 const CHAT_STORAGE_KEY = "fg_hub_agent_chat";
 
-/** Blended accent of all three agents (lavender → peach → mint), used to frame
- *  the unified summary as "all agents together". */
-const AGENT_GRADIENT = "linear-gradient(90deg,#B49BF0 0%,#F4A87E 52%,#48C98B 100%)";
+/** Blended accent of all four agents (lavender → peach → mint → gold), used to
+ *  frame the unified summary as "all agents together". */
+const AGENT_GRADIENT = "linear-gradient(90deg,#B49BF0 0%,#F4A87E 36%,#48C98B 68%,#E5C35C 100%)";
 
 /** Map a merged recommendation's agentId to a display tag. */
 function recAgentTag(agentId: string): { label: string; color: string } {

@@ -360,6 +360,7 @@ export default function HubPage() {
     if (domainCounts.payslips) rows.push(["ממצאים בתלושי שכר", `${domainCounts.payslips}`]);
     if (domainCounts.insurance) rows.push(["ממצאי ביטוח", `${domainCounts.insurance}`]);
     if (domainCounts.pension) rows.push(["ממצאי פנסיה", `${domainCounts.pension}`]);
+    if (domainCounts.gemel) rows.push(["ממצאי גמל והשתלמות", `${domainCounts.gemel}`]);
     if (pensionRecs.length) rows.push(["המלצות פנסיה", `${pensionRecs.length}`]);
     return rows.slice(0, 3);
   }, [domainCounts, pensionRecs.length]);
