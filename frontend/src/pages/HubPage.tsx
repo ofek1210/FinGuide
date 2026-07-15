@@ -463,7 +463,7 @@ export default function HubPage() {
               <div>
                 <div style={{ fontSize: 13.5, color: "rgba(255,255,255,.6)", fontWeight: 600, marginBottom: 12 }}>עוד אין לנו מספיק נתונים</div>
                 <div style={{ fontSize: "clamp(26px,3vw,38px)", fontWeight: 900, letterSpacing: "-.03em", lineHeight: 1.15, maxWidth: 420 }}>
-                  העלו תלוש שכר ראשון — ושלושת הסוכנים יתחילו לחפש עבורך הזדמנויות לחיסכון.
+                  העלו תלוש שכר ראשון — והסוכנים יתחילו לחפש עבורך הזדמנויות לחיסכון.
                 </div>
                 <button onClick={() => navigate(APP_ROUTES.documents)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
                   onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}

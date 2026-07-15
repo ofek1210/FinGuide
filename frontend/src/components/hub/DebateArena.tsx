@@ -118,7 +118,7 @@ export default function DebateArena({ disabled = false }: Props) {
             הוויכוח הגלוי — מי צודק קודם?
           </h3>
           <p style={{ margin: "8px 0 0", fontSize: 13.5, color: "rgba(255,255,255,.65)", maxWidth: 480, lineHeight: 1.5 }}>
-            שלושת הסוכנים מציגים עמדות, מתווכחים על סדר העדיפויות, והשופט מסכם פסיקה ממוספרת.
+            הסוכנים מציגים עמדות, מתווכחים על סדר העדיפויות, והשופט מסכם פסיקה ממוספרת.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8 }}>

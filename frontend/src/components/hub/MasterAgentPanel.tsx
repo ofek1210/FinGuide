@@ -31,7 +31,7 @@ import DebateArena from "./DebateArena";
 
 /* ============================================================
    Master Agent Panel — the Hub's mission-control console.
-   One master agent (the orchestrator) runs the three domain
+   One master agent (the orchestrator) runs the four domain
    agents in parallel via POST /api/ai/full-analysis, then
    cross-references their outputs: action items, verdicts,
    global score and a unified Hebrew summary.
@@ -101,6 +101,7 @@ const QUICK_PROMPTS = [
   "מה מצב התלושים שלי?",
   "יש לי כפל ביטוחי?",
   "כמה אצבור לפנסיה?",
+  "מה מצב קרן ההשתלמות שלי?",
 ];
 
 /** localStorage key for the persisted command-chat transcript. */
@@ -390,14 +391,14 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
   }, [chatInput, chatBusy, chatMessages]);
 
   const statusLine = useMemo(() => {
-    if (phase === "running") return "מריץ שלושה סוכנים במקביל ומצליב תוצאות...";
+    if (phase === "running") return "מריץ ארבעה סוכנים במקביל ומצליב תוצאות...";
     if (focusKey) return `מריץ את סוכן ה${FOCUS_LABEL[focusKey]} בלבד...`;
     if (phase === "done" && result?.meta) {
       const secs = (result.meta.durationMs / 1000).toFixed(1);
       return `הניתוח הושלם · ${result.meta.successCount}/${result.meta.agentCount} סוכנים · ${secs} שניות`;
     }
     if (phase === "error") return "הניתוח נכשל — נסה שוב בעוד רגע.";
-    return "שלושה סוכנים מחכים לפקודה. הרצה אחת — תמונה מלאה.";
+    return "ארבעה סוכנים מחכים לפקודה. הרצה אחת — תמונה מלאה.";
   }, [phase, focusKey, result]);
 
   const actionItems = result?.actionItems ?? [];
@@ -425,7 +426,7 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
           הסוכן הראשי
         </span>
         <h2 style={{ margin: "10px 0 0", fontSize: "clamp(26px,3vw,36px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>
-          סוכן ראשי אחד. שלושה מומחים. תמונה אחת.
+          סוכן ראשי אחד. ארבעה מומחים. תמונה אחת.
         </h2>
         <p style={{ margin: "12px auto 0", maxWidth: 520, fontSize: 16, color: "var(--text-muted)", fontWeight: 500, lineHeight: 1.55 }}>
           הסוכן הראשי מפעיל את סוכני התלושים, הביטוח והפנסיה במקביל — ומצליב את כל הממצאים לדוח מאוחד.
