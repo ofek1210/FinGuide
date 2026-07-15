@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Check, FileText, Loader2, Save, X } from "lucide-react";
-import { fetchPayslipDetail } from "../../services/payslip.service";
-import { downloadDocument, updateDocumentFields, type ManualPayslipFields } from "../../api/documents.api";
+import { AlertTriangle, Check, FileText, Loader2, RefreshCw, Save, X } from "lucide-react";
+import { getPayslipMissingFieldKeys } from "../../utils/payslipMissingFields";
+import { fetchPayslipDetail, reprocessPayslip } from "../../services/payslip.service";
+import { downloadDocument, getDocument, updateDocumentFields, type ManualPayslipFields } from "../../api/documents.api";
 import type { PayslipDetail } from "../../types/payslip";
 
 type FieldDef = { label: string; apiKey: keyof ManualPayslipFields; type: "text" | "month" | "date" | "number"; placeholder?: string };
@@ -16,8 +17,6 @@ const FIELD_DEFS: Record<string, FieldDef> = {
   netSalary: { label: "שכר נטו (₪)", apiKey: "netSalary", type: "number", placeholder: "0" },
 };
 
-const isMissingText = (v: unknown) => typeof v !== "string" || v.trim().length === 0;
-
 /**
  * Modal for completing payslip fields the OCR/LLM could not extract.
  * Shows the original PDF inline (left) and a manual-entry form for the missing
@@ -31,12 +30,14 @@ export default function MissingFieldsModal({
   onSaved?: () => void;
 }) {
   const [payslip, setPayslip] = useState<PayslipDetail | null>(null);
+  const [processingError, setProcessingError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [reprocessing, setReprocessing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -51,7 +52,11 @@ export default function MissingFieldsModal({
   useEffect(() => {
     let alive = true;
     setLoading(true); setError(null);
-    void fetchPayslipDetail(docId).then(d => { if (alive) setPayslip(d ?? null); })
+    void Promise.all([fetchPayslipDetail(docId), getDocument(docId)]).then(([detail, docRes]) => {
+      if (!alive) return;
+      setPayslip(detail ?? null);
+      setProcessingError(docRes.success ? (docRes.data?.processingError ?? null) : null);
+    })
       .catch(() => { if (alive) setError("לא הצלחנו לטעון את פרטי התלוש."); })
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
@@ -68,21 +73,33 @@ export default function MissingFieldsModal({
     return () => { alive = false; if (url) window.URL.revokeObjectURL(url); };
   }, [docId]);
 
-  const missingKeys = useMemo<string[]>(() => {
-    if (!payslip) return [];
-    const keys: string[] = [];
-    if (isMissingText(payslip.periodLabel) || payslip.periodLabel === "לא זוהה") keys.push("periodLabel");
-    if (isMissingText(payslip.employerName)) keys.push("employerName");
-    if (isMissingText(payslip.employeeName)) keys.push("employeeName");
-    if (isMissingText(payslip.employeeId)) keys.push("employeeId");
-    if (isMissingText(payslip.paymentDate)) keys.push("paymentDate");
-    if (payslip.grossSalary == null) keys.push("grossSalary");
-    if (payslip.netSalary == null) keys.push("netSalary");
-    return keys;
-  }, [payslip]);
+  const missingKeys = useMemo<string[]>(() => (
+    payslip ? getPayslipMissingFieldKeys(payslip) : []
+  ), [payslip]);
 
   const filledCount = missingKeys.filter(k => (values[k] ?? "").trim() !== "").length;
   const hasMissing = missingKeys.length > 0;
+  const systemReviewOnly = !hasMissing && payslip?.extractionStatus === "needs_review";
+
+  const handleReprocess = useCallback(async () => {
+    if (reprocessing) return;
+    setReprocessing(true); setSaveError(null);
+    try {
+      const refreshed = await reprocessPayslip(docId);
+      if (!refreshed) { setSaveError("חילוץ מחדש נכשל."); return; }
+      setPayslip(refreshed);
+      const docRes = await getDocument(docId);
+      setProcessingError(docRes.success ? (docRes.data?.processingError ?? null) : null);
+      if (refreshed.extractionStatus === "completed") {
+        setSaved(true);
+        onSaved?.();
+      }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "חילוץ מחדש נכשל.");
+    } finally {
+      setReprocessing(false);
+    }
+  }, [reprocessing, docId, onSaved]);
 
   const handleSave = useCallback(async () => {
     if (saving) return;
@@ -145,9 +162,30 @@ export default function MissingFieldsModal({
               </div>
 
               {!hasMissing ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 16, borderRadius: "var(--r-md)", background: "var(--mint-soft)", color: "var(--mint-ink)", fontWeight: 700, fontSize: 14 }}>
-                  <Check size={18} strokeWidth={3} /> כל הפרטים הקריטיים זוהו.
-                </div>
+                systemReviewOnly ? (
+                  <div>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: 16, borderRadius: "var(--r-md)", background: "var(--butter-soft)", border: "1px solid var(--butter)", color: "var(--butter-ink)", fontWeight: 600, fontSize: 13.5, lineHeight: 1.55, marginBottom: 14 }}>
+                      <AlertTriangle size={18} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} />
+                      <div>
+                        <div style={{ fontWeight: 800, marginBottom: 6 }}>אין שדות להשלמה ידנית</div>
+                        <div>התלוש סומן לבדיקה בגלל בעיה טכנית בחילוץ (לא בגלל פרטים חסרים). אפשר לנסות חילוץ מחדש מה‑PDF.</div>
+                        {processingError && (
+                          <div style={{ marginTop: 8, fontSize: 12, opacity: 0.85 }}>{processingError}</div>
+                        )}
+                      </div>
+                    </div>
+                    {saveError && <div style={{ marginBottom: 12, fontSize: 13, fontWeight: 600, color: "var(--danger)" }}>{saveError}</div>}
+                    <button onClick={() => void handleReprocess()} disabled={reprocessing}
+                      style={{ width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 9, padding: "13px", borderRadius: "var(--r-btn)", border: "none", cursor: reprocessing ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 15, color: "#fff", background: "var(--ink)", boxShadow: "var(--shadow-ink)" }}>
+                      {reprocessing ? <Loader2 size={16} style={{ animation: "spin .8s linear infinite" }} /> : <RefreshCw size={16} />}
+                      {reprocessing ? "מחלץ מחדש..." : "חילוץ מחדש מה‑PDF"}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: 16, borderRadius: "var(--r-md)", background: "var(--mint-soft)", color: "var(--mint-ink)", fontWeight: 700, fontSize: 14 }}>
+                    <Check size={18} strokeWidth={3} /> כל הפרטים הקריטיים זוהו.
+                  </div>
+                )
               ) : saved ? (
                 <div style={{ textAlign: "center", padding: "24px 8px" }}>
                   <span style={{ width: 54, height: 54, borderRadius: "50%", background: "var(--mint-soft)", color: "var(--mint-ink)", display: "grid", placeItems: "center", margin: "0 auto 14px" }}><Check size={26} strokeWidth={3} /></span>

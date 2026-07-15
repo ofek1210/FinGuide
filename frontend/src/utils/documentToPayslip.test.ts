@@ -5,6 +5,29 @@ import {
 } from "./documentToPayslip";
 
 describe("documentToPayslip", () => {
+  it("formats MM/YYYY period labels in Hebrew", () => {
+    const document = {
+      _id: "doc-mm-yyyy",
+      status: "completed",
+      uploadedAt: "2026-07-15T00:00:00.000Z",
+      analysisData: {
+        period: { month: "07/2026" },
+        salary: { gross_total: 24000, net_payable: 21000 },
+        deductions: { mandatory: { total: 3000 } },
+        contributions: { pension: {}, study_fund: {} },
+        parties: {},
+        summary: {},
+      },
+    } as any;
+
+    expect(documentToPayslipDetail(document)).toEqual(
+      expect.objectContaining({
+        periodLabel: "יולי 2026",
+        periodDate: "2026-07-01",
+      }),
+    );
+  });
+
   it("does not auto-swap gross and net salaries in UI mapping", () => {
     const document = {
       _id: "doc-1",

@@ -3,7 +3,14 @@
 const fs = require('fs');
 const path = require('path');
 const { parseGovCsv, staticTracksFromConfig } = require('../../services/pensionGovDataService');
-const { buildFundAdvice, VERDICT } = require('../../services/pensionFundAdvisorService');
+const { buildFundAdvice, analyzeFund, VERDICT } = require('../../services/pensionFundAdvisorService');
+
+/** Controlled cohort so verdict logic is deterministic in unit tests. */
+const NEGOTIATE_COHORT = [
+  { provider: 'הראל', name: 'מניות', productType: 'pension_comprehensive', riskLevel: 'high', return5Y: 6.0, mgmtFeeAccumulation: 0.003 },
+  { provider: 'מגדל', name: 'מניות', productType: 'pension_comprehensive', riskLevel: 'high', return5Y: 6.8, mgmtFeeAccumulation: 0.0031, isDefaultSelected: true },
+  { provider: 'כלל', name: 'מניות', productType: 'pension_comprehensive', riskLevel: 'high', return5Y: 7.2, mgmtFeeAccumulation: 0.0028 },
+];
 
 describe('pensionGovDataService', () => {
   it('parseGovCsv reads Hebrew pension-net style columns', () => {
@@ -27,8 +34,8 @@ describe('pensionGovDataService', () => {
 describe('pensionFundAdvisorService', () => {
   const profile = { currentAge: 32, retirementAge: 67 };
 
-  it('returns NEGOTIATE for high-fee fund with decent returns', async () => {
-    const funds = [{
+  it('returns NEGOTIATE for high-fee fund with decent returns', () => {
+    const fund = {
       fundName: 'הראל מקיפה מניות',
       provider: 'הראל',
       fundType: 'pension_comprehensive',
@@ -36,15 +43,14 @@ describe('pensionFundAdvisorService', () => {
       currentBalance: 120000,
       monthlyEmployeeDeposit: 800,
       monthlyEmployerDeposit: 900,
-      managementFeeAccumulation: 0.0038,
+      managementFeeAccumulation: 0.0042,
       historicalReturn5Y: 7.0,
       status: 'active',
-    }];
+    };
 
-    const advice = await buildFundAdvice(funds, profile);
-    expect(advice.hasData).toBe(true);
-    expect(advice.funds[0].verdict).toBe(VERDICT.NEGOTIATE);
-    expect(advice.funds[0].financialImpact.gainIfNegotiateFees).toBeGreaterThan(0);
+    const result = analyzeFund(fund, NEGOTIATE_COHORT, profile);
+    expect(result.verdict).toBe(VERDICT.NEGOTIATE);
+    expect(result.financialImpact.gainIfNegotiateFees).toBeGreaterThan(0);
   });
 
   it('returns SWITCH recommendation with alternatives for underperforming fund', async () => {

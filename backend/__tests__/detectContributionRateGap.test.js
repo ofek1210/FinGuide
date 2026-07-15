@@ -107,8 +107,8 @@ describe('analyzeContributionRates', () => {
         contributions: {
           pension: {
             employee: 2112.62,
-            employer: 1063.79,
-            participation_total: 3176.41,
+            employer: 3176.41,
+            participation_total: 5289.03,
             detection: { sectionDetected: true, noDeposit: false },
           },
         },
@@ -121,7 +121,7 @@ describe('analyzeContributionRates', () => {
     const employerSide = result.sides.find(side => side.role === 'employer');
     expect(employeeSide.base).toBe(30391.26);
     expect(employeeSide.impliedPercent).toBeCloseTo((2112.62 / 30391.26) * 100, 2);
-    expect(employerSide.impliedPercent).toBeCloseTo((1063.79 / 30391.26) * 100, 2);
+    expect(employerSide.impliedPercent).toBeCloseTo((3176.41 / 30391.26) * 100, 2);
   });
 
   test('detects below minimum using implied percent only', () => {

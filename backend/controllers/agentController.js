@@ -14,6 +14,7 @@ const UserProfile = require('../models/UserProfile');
 const Insight = require('../models/Insight');
 const Recommendation = require('../models/Recommendation');
 const { orchestrate, getAgentList } = require('../services/agents');
+const { buildPayslipsByPeriod } = require('../utils/payslipsByPeriod');
 const { indexKnowledgeBase, indexPayslipDocument, getRAGStats, isKnowledgeBaseIndexed } = require('../services/embeddings');
 const { selectRecentPayslipDocuments } = require('../utils/selectRecentPayslipDocuments');
 
@@ -52,6 +53,8 @@ async function buildAgentUserContext(userId) {
     trainingFundEmployee: p.analysisData?.summary?.trainingFundEmployee ?? null,
   }));
 
+  const payslipsByPeriod = buildPayslipsByPeriod(documents);
+
   return {
     grossSalary: summary.grossSalary ?? null,
     netSalary: summary.netSalary ?? null,
@@ -76,6 +79,7 @@ async function buildAgentUserContext(userId) {
     marginalTaxRate: fullAnalysis.tax?.marginal_tax_rate_percent ?? null,
     salaryComponents: fullAnalysis.salary?.components ?? null,
     payslipHistory,
+    payslipsByPeriod,
     profile,
     insights,
     recommendations,

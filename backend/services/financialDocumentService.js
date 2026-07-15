@@ -5,8 +5,9 @@ const { promisify } = require('util');
 const { randomUUID } = require('crypto');
 const Document = require('../models/Document');
 const { extractPayslipFile } = require('./payslipOcr');
-const { validatePayslipAnalysis, buildFieldsMeta } = require('../schemas/payslipAnalysis.schema');
+const { validatePayslipAnalysis, buildFieldsMeta, normalizePayslipAnalysis } = require('../schemas/payslipAnalysis.schema');
 const { normalizeDocumentMetadataInput } = require('../utils/documentMetadata');
+const { syncPayslipPeriodMetadata } = require('../utils/payslipPeriod');
 const { PdfPasswordRequiredError, isPdfPasswordError } = require('../utils/pdfPassword');
 const { parseHarHaBituach } = require('./harHaBituachService');
 const { isForm106, parseForm106Text } = require('./form106Service');
@@ -58,16 +59,17 @@ const resolveDocumentMetadata = (source, metadata) => {
 
 const applyExtractionToDocument = async (document, { password, userId } = {}) => {
   try {
-    const { data } = await extractPayslipFile(document.filePath, { password, userId });
+    const { data: extracted } = await extractPayslipFile(document.filePath, { password, userId });
 
+    const data = normalizePayslipAnalysis(extracted);
     const fieldsMeta = buildFieldsMeta(data);
     if (fieldsMeta) {
       data.fields_meta = fieldsMeta;
     }
-
     const validation = validatePayslipAnalysis(data);
     document.analysisData = data;
     document.processedAt = new Date();
+    syncPayslipPeriodMetadata(document, data);
     if (validation.ok) {
       document.status = 'completed';
       document.processingError = null;

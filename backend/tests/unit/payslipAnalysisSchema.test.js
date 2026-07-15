@@ -23,6 +23,18 @@ describe('validatePayslipAnalysis', () => {
     expect(result.data.salary.gross_total).toBe(6504.40);
   });
 
+  it('derives mandatory.total from deduction components when total is missing', () => {
+    const payload = validPayload();
+    delete payload.deductions.mandatory.total;
+    payload.deductions.mandatory.income_tax = 3550.71;
+    payload.deductions.mandatory.national_insurance = 750.48;
+    payload.deductions.mandatory.health_insurance = 719.68;
+    const result = validatePayslipAnalysis(payload);
+    expect(result.ok).toBe(true);
+    expect(result.data.deductions.mandatory.total).toBe(5020.87);
+    expect(result.data.deductions.mandatory.total_is_derived).toBe(true);
+  });
+
   it('rejects when period.month is missing', () => {
     const payload = validPayload();
     delete payload.period.month;
@@ -92,6 +104,15 @@ describe('validatePayslipAnalysis', () => {
     expect(() => validatePayslipAnalysis(null)).not.toThrow();
     const result = validatePayslipAnalysis({});
     expect(result.ok).toBe(false);
+  });
+
+  it('rejects when quality.flaggedInconsistencies is non-empty', () => {
+    const result = validatePayslipAnalysis({
+      ...validPayload(),
+      quality: { flaggedInconsistencies: ['pension: employee + employer mismatch'] },
+    });
+    expect(result.ok).toBe(false);
+    expect(result.crossFieldIssues).toContain('pension: employee + employer mismatch');
   });
 });
 

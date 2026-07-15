@@ -56,7 +56,6 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
 
   const handleLogout = () => { setUserMenuOpen(false); logoutWithConfirm(navigate); };
   const goToSettings = () => { setUserMenuOpen(false); navigate(APP_ROUTES.settings); };
-  const goToHelp = () => { setUserMenuOpen(false); navigate(APP_ROUTES.help); };
 
   return (
     <header
@@ -204,6 +203,32 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                 </button>
               );
             })}
+
+            <div style={{ borderTop: "1px solid var(--border-hair)", marginTop: 8, padding: "10px 14px 4px", display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                { label: "מיסים", route: APP_ROUTES.taxAssistant },
+                { label: "תובנות", route: APP_ROUTES.insights },
+                { label: "תכנון פיננסי", route: APP_ROUTES.planning },
+                { label: "הוצאות שוטפות", route: APP_ROUTES.expenses },
+              ].map(link => (
+                <button
+                  key={link.route}
+                  onClick={() => { setAssistantOpen(false); navigate(link.route); }}
+                  style={{
+                    padding: "5px 12px", borderRadius: "var(--r-pill)",
+                    background: "var(--accent-soft)",
+                    border: "1px solid var(--lav-200)",
+                    color: "var(--accent)", fontFamily: "inherit",
+                    fontSize: 12, fontWeight: 600,
+                    cursor: "pointer", transition: "all var(--dur-fast) var(--ease)",
+                  }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--lav-100)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent-soft)"; }}
+                >
+                  {link.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </nav>
@@ -258,15 +283,6 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                   onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
                 >
                   הגדרות פרופיל
-                </button>
-                <button
-                  type="button"
-                  onClick={goToHelp}
-                  style={{ width: "100%", padding: "9px 12px", borderRadius: 10, background: "none", border: "none", cursor: "pointer", textAlign: "right", fontFamily: "inherit", fontSize: 13.5, color: "var(--text-body)", fontWeight: 500, transition: "background var(--dur-fast) var(--ease)" }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent-soft)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
-                >
-                  עזרה ותמיכה
                 </button>
                 <button
                   type="button"

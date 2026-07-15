@@ -22,12 +22,13 @@ import type { FullAnalysisGlobalScore } from "../api/fullAnalysis.api";
    Faithful implementation of the design-system Hub (ui_kits/app/Hub.jsx).
    ============================================================ */
 
-type Tone = "lavender" | "peach" | "mint";
+type Tone = "lavender" | "peach" | "mint" | "butter";
 
 const AGENT_TONE: Record<AgentId, Tone> = {
   payslips: "lavender",
   insurance: "peach",
   pension: "mint",
+  expenses: "butter",
 };
 
 /* ── hooks ───────────────────────────────────────────────────── */
@@ -148,7 +149,10 @@ function RadialGauge({ value, max = 100, sub, tone = "lavender", size = 148, onD
   const [ref, seen] = useInView<HTMLDivElement>();
   const id = useRef(uid()).current;
   const grads: Record<Tone, [string, string]> = {
-    lavender: ["#9B7FE8", "#6F8BE8"], mint: ["#48C98B", "#2F9C62"], peach: ["#F4A87E", "#DA6F44"],
+    lavender: ["#9B7FE8", "#6F8BE8"],
+    mint: ["#48C98B", "#2F9C62"],
+    peach: ["#F4A87E", "#DA6F44"],
+    butter: ["#F0C14B", "#B98B16"],
   };
   const [g1, g2] = grads[tone];
   const s = size, r = s / 2 - 13, c = 2 * Math.PI * r, frac = Math.min(value / max, 1);
@@ -190,7 +194,12 @@ function Sparkline({ points, tone = "mint", w = 78, h = 30 }: { points: number[]
   const id = useRef(uid()).current;
   const max = Math.max(...points), min = Math.min(...points);
   const pts = points.map((v, i) => [(i / (points.length - 1)) * w, h - ((v - min) / (max - min || 1)) * (h - 8) - 4]);
-  const cols: Record<Tone, [string, string]> = { mint: ["#48C98B", "#2F9C62"], peach: ["#F4A87E", "#DA6F44"], lavender: ["#B49BF0", "#7C5FD6"] };
+  const cols: Record<Tone, [string, string]> = {
+    mint: ["#48C98B", "#2F9C62"],
+    peach: ["#F4A87E", "#DA6F44"],
+    lavender: ["#B49BF0", "#7C5FD6"],
+    butter: ["#F0C14B", "#B98B16"],
+  };
   const [c1, c2] = cols[tone];
   const area = smooth(pts) + ` L ${pts[pts.length - 1][0]} ${h} L ${pts[0][0]} ${h} Z`;
   return (
@@ -207,7 +216,12 @@ function Sparkline({ points, tone = "mint", w = 78, h = 30 }: { points: number[]
 }
 
 /* ── static display bits ─────────────────────────────────────── */
-const AGENT_ORDINAL: Record<AgentId, string> = { payslips: "01", insurance: "02", pension: "03" };
+const AGENT_ORDINAL: Record<AgentId, string> = {
+  payslips: "01",
+  insurance: "02",
+  pension: "03",
+  expenses: "04",
+};
 
 const DOT = "radial-gradient(rgba(123,95,214,.10) 1px,transparent 1px)";
 
@@ -225,6 +239,7 @@ const DOMAIN_LABEL: Record<AgentId, string> = {
   payslips: "תלושי שכר",
   insurance: "ביטוח",
   pension: "פנסיה",
+  expenses: "הוצאות",
 };
 
 /** interpolate a smooth growth series from a starting balance to a projected end */
@@ -336,7 +351,7 @@ export default function HubPage() {
 
   const findingsCount = findings.length;
   const domainCounts = useMemo(() => {
-    const c: Record<AgentId, number> = { payslips: 0, insurance: 0, pension: 0 };
+    const c: Record<AgentId, number> = { payslips: 0, insurance: 0, pension: 0, expenses: 0 };
     findings.forEach(f => { c[domainOf(f)]++; });
     return c;
   }, [findings]);
@@ -407,6 +422,7 @@ export default function HubPage() {
     payslips: payslipTrend,
     insurance: [],
     pension: pensionScoreTrend,
+    expenses: [],
   };
 
   const agentMetric: Record<AgentId, string> = {
@@ -419,6 +435,7 @@ export default function HubPage() {
     pension: pensionFundCount > 0
       ? (pensionRecs.length > 0 ? `${pensionRecs.length} המלצות` : `${pensionFundCount} קרנות במעקב`)
       : "טרם חובר מידע פנסיוני",
+    expenses: "תקציב חודשי והמלצות AI",
   };
 
   return (
@@ -458,7 +475,7 @@ export default function HubPage() {
                 <div style={{ fontSize: "clamp(26px,3vw,38px)", fontWeight: 900, letterSpacing: "-.03em", lineHeight: 1.15, maxWidth: 420 }}>
                   העלו תלוש שכר ראשון — ושלושת הסוכנים יתחילו לחפש עבורך הזדמנויות לחיסכון.
                 </div>
-                <button onClick={() => navigate(APP_ROUTES.documents)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
+                <button onClick={() => navigate(APP_ROUTES.documentsUpload)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
                   onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
                   onMouseLeave={e => e.currentTarget.style.transform = "none"}>
                   <Upload size={17} strokeWidth={2.4} /> העלאת תלוש ראשון
@@ -528,7 +545,7 @@ export default function HubPage() {
           </div>
           <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 15, fontWeight: 500, maxWidth: 300, textWrap: "balance" }}>כל סוכן מנהל את התחום שלו — לחץ כדי לצלול פנימה.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 20, marginBottom: 46 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 46 }}>
           {AGENTS.map(a => {
             const tone = AGENT_TONE[a.id];
             const c1 = a.tone.soft, c2 = a.tone.accent;

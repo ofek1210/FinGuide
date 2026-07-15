@@ -75,6 +75,7 @@ interface DocumentPayslipAnalysis {
     workingHours?: number;
     vacationDays?: number;
     sickDays?: number;
+    taxCreditPoints?: number | null;
   };
 }
 
@@ -102,10 +103,9 @@ export function isPayslipDocument(doc: DocumentItem): boolean {
 // ---------------------------------------------------------------------------
 
 function parsePeriodMonth(month?: string): number {
-  if (!month || typeof month !== "string") return 0;
-  const [y, m] = month.split("-").map(Number);
-  if (!Number.isFinite(y) || !Number.isFinite(m)) return 0;
-  return y * 12 + (m - 1);
+  const parsed = parseCanonicalPeriod(month);
+  if (!parsed) return 0;
+  return parsed.year * 12 + (parsed.month - 1);
 }
 
 export function sortPayslipDocuments(docs: DocumentItem[]): DocumentItem[] {
@@ -128,12 +128,37 @@ export function sortPayslipDocuments(docs: DocumentItem[]): DocumentItem[] {
 const FALLBACK_PERIOD_LABEL = "תלוש משכורת";
 const PERIOD_LOCALE = "he-IL";
 
-/** Format "YYYY-MM" as Hebrew month + year (e.g. "מרץ 2025"). Invalid/missing → fallback label. */
+type ParsedPeriod = { year: number; month: number; canonical: string };
+
+/** Parse period.month in YYYY-MM or MM/YYYY. */
+export function parseCanonicalPeriod(month?: string): ParsedPeriod | null {
+  if (!month || typeof month !== "string") return null;
+  const trimmed = month.trim();
+
+  const ymd = trimmed.match(/^(\d{4})-(\d{1,2})$/);
+  if (ymd) {
+    const year = Number(ymd[1]);
+    const m = Number(ymd[2]);
+    if (!Number.isFinite(year) || !Number.isFinite(m) || m < 1 || m > 12) return null;
+    return { year, month: m, canonical: `${year}-${String(m).padStart(2, "0")}` };
+  }
+
+  const mY = trimmed.match(/^(\d{1,2})\/(\d{4})$/);
+  if (mY) {
+    const m = Number(mY[1]);
+    const year = Number(mY[2]);
+    if (!Number.isFinite(year) || !Number.isFinite(m) || m < 1 || m > 12) return null;
+    return { year, month: m, canonical: `${year}-${String(m).padStart(2, "0")}` };
+  }
+
+  return null;
+}
+
+/** Format canonical period as Hebrew month + year (e.g. "יולי 2026"). */
 export function formatPeriodLabel(month?: string): string {
-  if (!month || typeof month !== "string") return FALLBACK_PERIOD_LABEL;
-  const [y, m] = month.split("-").map(Number);
-  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return FALLBACK_PERIOD_LABEL;
-  const date = new Date(y, m - 1, 1);
+  const parsed = parseCanonicalPeriod(month);
+  if (!parsed) return FALLBACK_PERIOD_LABEL;
+  const date = new Date(parsed.year, parsed.month - 1, 1);
   if (Number.isNaN(date.getTime())) return FALLBACK_PERIOD_LABEL;
   return new Intl.DateTimeFormat(PERIOD_LOCALE, {
     month: "long",
@@ -141,13 +166,11 @@ export function formatPeriodLabel(month?: string): string {
   }).format(date);
 }
 
-/** "YYYY-MM" → "YYYY-MM-01" for periodDate. Invalid/missing → "". */
+/** Canonical period → "YYYY-MM-01" for periodDate. */
 export function periodMonthToDate(month?: string): string {
-  if (!month || typeof month !== "string") return "";
-  const [y, m] = month.split("-").map(Number);
-  if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return "";
-  const mm = String(m).padStart(2, "0");
-  return `${y}-${mm}-01`;
+  const parsed = parseCanonicalPeriod(month);
+  if (!parsed) return "";
+  return `${parsed.canonical}-01`;
 }
 
 // ---------------------------------------------------------------------------
@@ -295,7 +318,8 @@ export function documentToPayslipItem(doc: DocumentItem, index: number): Payslip
   const metadataPeriod = metadataYear && metadataMonth
     ? `${metadataYear}-${String(metadataMonth).padStart(2, "0")}`
     : undefined;
-  const month = analysis.period?.month || metadataPeriod;
+  const parsedPeriod = parseCanonicalPeriod(analysis.period?.month);
+  const month = parsedPeriod?.canonical || metadataPeriod;
   const periodLabel = formatPeriodLabel(month);
   const periodDate = periodMonthToDate(month) || "";
   const enriched = enrichPayslipFromAnalysis(analysis);
@@ -312,8 +336,8 @@ export function documentToPayslipItem(doc: DocumentItem, index: number): Payslip
     periodLabel,
     periodDate,
     periodMonth: month,
-    periodYear: month ? Number(month.split("-")[0]) : metadataYear,
-    periodMonthNumber: month ? Number(month.split("-")[1]) : metadataMonth,
+    periodYear: parsedPeriod?.year ?? metadataYear,
+    periodMonthNumber: parsedPeriod?.month ?? metadataMonth,
     netSalary,
     grossSalary,
     isLatest,
@@ -341,7 +365,13 @@ function normalizePaymentDate(month?: string, summaryDate?: string): string | un
 export function documentToPayslipDetail(doc: DocumentItem): PayslipDetail | null {
   if (!isPayslipDocument(doc)) return null;
   const analysis = getAnalysisData(doc)!;
-  const month = analysis.period?.month;
+  const metadataYear = doc.metadata?.periodYear;
+  const metadataMonth = doc.metadata?.periodMonth;
+  const metadataPeriod = metadataYear && metadataMonth
+    ? `${metadataYear}-${String(metadataMonth).padStart(2, "0")}`
+    : undefined;
+  const parsedPeriod = parseCanonicalPeriod(analysis.period?.month);
+  const month = parsedPeriod?.canonical || metadataPeriod;
   const enriched = enrichPayslipFromAnalysis(analysis);
   const gross = enriched.grossSalary;
   const net = enriched.netSalary;
@@ -387,7 +417,13 @@ export function documentToPayslipDetail(doc: DocumentItem): PayslipDetail | null
     deductions: mapDeductions(analysis),
     grossSalary: gross,
     netSalary: net,
-    taxCreditPoints: analysis.tax?.tax_credit_points ?? null,
+    pensionEmployee: enriched.pensionEmployee,
+    pensionEmployer: enriched.pensionEmployer,
+    pensionTotal:
+      enriched.pensionEmployee != null && enriched.pensionEmployer != null
+        ? Math.round((enriched.pensionEmployee + enriched.pensionEmployer) * 100) / 100
+        : enriched.pensionEmployee ?? enriched.pensionEmployer ?? null,
+    taxCreditPoints: analysis.tax?.tax_credit_points ?? analysis.summary?.taxCreditPoints ?? null,
     personalCredit: analysis.tax?.personal_credit ?? null,
     downloadUrl: null,
   };

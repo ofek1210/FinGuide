@@ -1,0 +1,32 @@
+{
+  "_note": "IDF payslip June 2026 — ground truth from Paycheck Jun 2026 (1).pdf. Employee pension = rightmost amount on ניכוי לקרן הפנסיה line (1647.03); employer = השתתפות בקרן הפנסיה (3176.41).",
+  "schema_version": "1.9",
+  "period": { "month": "2026-06" },
+  "salary": {
+    "gross_total": 23529.03,
+    "net_payable": 20934.17
+  },
+  "deductions": {
+    "mandatory": {
+      "total": 8228.19,
+      "income_tax": 5207.5,
+      "national_insurance": 2301.01,
+      "health_insurance": 719.68
+    }
+  },
+  "contributions": {
+    "pension": {
+      "employee": 1647.03,
+      "employer": 3176.41,
+      "participation_total": 4823.44
+    },
+    "study_fund": {
+      "employee": 581.39,
+      "employer": 1744.17,
+      "participation_total": 2325.56
+    }
+  },
+  "parties": {
+    "employer_name": "צבא הגנה לישראל"
+  }
+}

@@ -53,6 +53,7 @@ function selectRecentPayslipDocuments(documents, limit = 3) {
   });
 
   const merged = [...deduped, ...fallbackByUpload];
+  if (limit == null || limit <= 0) return merged;
   return merged.slice(0, limit);
 }
 

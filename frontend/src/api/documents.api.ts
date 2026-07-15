@@ -235,7 +235,7 @@ export const listDocuments = async () => {
   return result.data || ({ success: false, message: "תגובה לא תקינה." } as ListDocumentsResponse);
 };
 
-export const listRecentPayslips = async (limit = 3) => {
+export const listRecentPayslips = async (limit = 0) => {
   const token = getToken();
   if (!token) {
     return { success: false, message: "אין הרשאה. נא להתחבר." } as RecentPayslipsResponse;
