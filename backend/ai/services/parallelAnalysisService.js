@@ -19,7 +19,7 @@ const { runFullAnalysis } = require('../agents/orchestratorAgent');
 async function runParallelAnalysis(userId, { focus = 'all', skipLLM = false, refreshGovData = false } = {}) {
   if (!userId) throw new Error('userId is required');
 
-  const validFocusValues = ['all', 'payslip', 'insurance', 'pension'];
+  const validFocusValues = ['all', 'payslip', 'insurance', 'pension', 'gemel'];
   const safeFocus = validFocusValues.includes(focus) ? focus : 'all';
 
   const result = await runFullAnalysis(userId.toString(), {

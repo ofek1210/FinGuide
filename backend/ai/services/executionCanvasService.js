@@ -8,10 +8,11 @@ const UserProfile = require('../../models/UserProfile');
 const Document = require('../../models/Document');
 const InsurancePolicy = require('../../models/InsurancePolicy');
 const PensionFund = require('../../models/PensionFund');
+const { GEMEL_FUND_TYPES } = require('../tools/gemelTools');
 
 function buildDomainTasks(domain, ctx) {
   const tasks = [];
-  const { personal, employment, assets, insurance } = ctx.profile || {};
+  const { personal, employment, assets, insurance, retirement } = ctx.profile || {};
 
   if (domain === 'payslip') {
     if (ctx.payslipCount === 0) tasks.push({ id: 'upload_payslips', label: 'העלאת 3 תלושי שכר אחרונים', priority: 'high' });
@@ -51,6 +52,19 @@ function buildDomainTasks(domain, ctx) {
     }
   }
 
+  if (domain === 'gemel') {
+    if (ctx.gemelFundCount === 0 && ctx.payslipCount === 0) {
+      tasks.push({ id: 'import_gemel', label: 'ייבוא דוח הר הכסף או הזנת קופות גמל', priority: 'high' });
+    }
+    if (ctx.gemelFundCount > 0 || ctx.payslipCount > 0) {
+      tasks.push({ id: 'gemel_fee_benchmark', label: 'השוואת דמי ניהול מול גמל-נט', priority: 'high' });
+      tasks.push({ id: 'study_fund_utilization', label: 'בדיקת ניצול הטבת המס בקרן השתלמות', priority: 'medium' });
+    }
+    if (retirement?.hasStudyFund === false || retirement?.hasStudyFund == null) {
+      tasks.push({ id: 'study_fund_eligibility', label: 'בדיקת זכאות לקרן השתלמות מול המעסיק', priority: 'medium' });
+    }
+  }
+
   return tasks;
 }
 
@@ -58,6 +72,7 @@ function domainPriority(domain, ctx) {
   if (domain === 'payslip' && ctx.payslipCount === 0) return 'high';
   if (domain === 'insurance' && ctx.policyCount === 0) return 'high';
   if (domain === 'pension' && ctx.fundCount === 0 && ctx.payslipCount === 0) return 'high';
+  if (domain === 'gemel' && ctx.gemelFundCount === 0 && ctx.payslipCount === 0) return 'high';
   if (domain === 'payslip' && ctx.payslipCount > 0) return 'medium';
   return 'medium';
 }
@@ -68,7 +83,7 @@ function domainPriority(domain, ctx) {
  * @param {string} [options.focus] - all | payslip | insurance | pension
  */
 async function buildExecutionCanvas(userId, { focus = 'all' } = {}) {
-  const [profile, payslipCount, policyCount, fundCount] = await Promise.all([
+  const [profile, payslipCount, policyCount, fundCount, gemelFundCount] = await Promise.all([
     UserProfile.findOne({ user: userId }).lean(),
     Document.countDocuments({
       user: userId,
@@ -80,13 +95,19 @@ async function buildExecutionCanvas(userId, { focus = 'all' } = {}) {
     }),
     InsurancePolicy.countDocuments({ user: userId, status: { $nin: ['cancelled', 'expired'] } }),
     PensionFund.countDocuments({ user: userId, status: { $ne: 'closed' }, isActive: { $ne: false } }),
+    PensionFund.countDocuments({
+      user: userId,
+      fundType: { $in: GEMEL_FUND_TYPES },
+      status: { $ne: 'closed' },
+      isActive: { $ne: false },
+    }),
   ]);
 
   const personal = profile?.personal || {};
   const employment = profile?.employment || {};
   const assets = profile?.assets || {};
 
-  const ctx = { profile, payslipCount, policyCount, fundCount };
+  const ctx = { profile, payslipCount, policyCount, fundCount, gemelFundCount };
 
   const allDomains = {
     payslip: {
@@ -116,6 +137,15 @@ async function buildExecutionCanvas(userId, { focus = 'all' } = {}) {
       dataCount: fundCount,
       tasks: buildDomainTasks('pension', ctx),
     },
+    gemel: {
+      id: 'gemel',
+      labelHe: 'גמל והשתלמות',
+      enabled: focus === 'all' || focus === 'gemel',
+      priority: domainPriority('gemel', ctx),
+      dataAvailable: gemelFundCount > 0 || payslipCount > 0,
+      dataCount: gemelFundCount,
+      tasks: buildDomainTasks('gemel', ctx),
+    },
   };
 
   const domains = Object.fromEntries(
@@ -144,6 +174,7 @@ async function buildExecutionCanvas(userId, { focus = 'all' } = {}) {
       payslipCount,
       policyCount,
       fundCount,
+      gemelFundCount,
       profileComplete: Boolean(profile?.completedAt),
     },
     domains,
@@ -152,6 +183,7 @@ async function buildExecutionCanvas(userId, { focus = 'all' } = {}) {
       payslipCount ? `${payslipCount} תלושים` : 'אין תלושים',
       policyCount ? `${policyCount} פוליסות` : 'אין ביטוח',
       fundCount ? `${fundCount} קרנות` : 'אין פנסיה',
+      gemelFundCount ? `${gemelFundCount} קופות גמל` : 'אין גמל',
     ].join(' · '),
   };
 }

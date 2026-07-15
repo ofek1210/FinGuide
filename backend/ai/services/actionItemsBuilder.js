@@ -2,6 +2,12 @@
 
 const PENSION_VERDICT_PRIORITY = { SWITCH: 'high', NEGOTIATE: 'medium', LEAVE: 'low' };
 const INSURANCE_VERDICT = { SWITCH: 'high', REVIEW: 'medium', STAY: 'low' };
+const DOMAIN_ACTION_URL = {
+  pension: '/pension',
+  insurance: '/insurance',
+  gemel: '/gemel',
+  payslip: '/documents',
+};
 
 /**
  * Merge orchestrator outputs into prioritized action items for the UI.
@@ -27,6 +33,19 @@ function buildActionItems({ canvas, recommendations = [], agentResults = {}, glo
         || 'בדוק מסלול, דמי ניהול והשוואה מול השוק',
       actionUrl: '/pension',
       source: 'pension_fund_advisor',
+    });
+  }
+
+  const gemelAdvice = agentResults.gemel?.data?.marketAdvice;
+  if (gemelAdvice?.overallVerdict && gemelAdvice.overallVerdict !== 'LEAVE') {
+    push({
+      priority: PENSION_VERDICT_PRIORITY[gemelAdvice.overallVerdict] || 'medium',
+      domain: 'gemel',
+      title: `גמל והשתלמות: ${gemelAdvice.overallVerdictLabelHe || gemelAdvice.overallVerdict}`,
+      description: gemelAdvice.funds?.[0]?.summaryHe
+        || 'בדוק דמי ניהול ותשואות מול גמל-נט',
+      actionUrl: '/gemel',
+      source: 'gemel_market_advisor',
     });
   }
 
@@ -60,7 +79,7 @@ function buildActionItems({ canvas, recommendations = [], agentResults = {}, glo
       title: rec.title,
       description: rec.reason,
       financialImpact: rec.financialImpact || null,
-      actionUrl: rec.agentId === 'pension' ? '/pension' : rec.agentId === 'insurance' ? '/insurance' : '/documents',
+      actionUrl: DOMAIN_ACTION_URL[rec.agentId] || '/documents',
       source: 'agent_recommendation',
     });
   }
@@ -96,7 +115,7 @@ function buildActionItems({ canvas, recommendations = [], agentResults = {}, glo
           domain: domain.id,
           title: uploadTask.label,
           description: `חסרים נתונים ב-${domain.labelHe}`,
-          actionUrl: domain.id === 'payslip' ? '/documents' : domain.id === 'insurance' ? '/insurance' : '/pension',
+          actionUrl: DOMAIN_ACTION_URL[domain.id] || '/pension',
           source: 'execution_canvas',
         });
       }
