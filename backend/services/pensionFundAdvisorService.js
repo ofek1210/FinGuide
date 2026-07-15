@@ -21,7 +21,7 @@ const VERDICT = {
 
 const VERDICT_HE = {
   LEAVE: 'הישאר בקרן הנוכחית',
-  NEGOTIATE: 'נהל משא ומרת',
+  NEGOTIATE: 'נהל משא ומתן',
   SWITCH: 'שקול קרן',
 };
 
@@ -128,7 +128,7 @@ function buildVerdictNarrative(verdict, ctx) {
     return `הקרן "${fundName}" מדורגת באחוזון ${returnPercentile ?? '—'} מול השוק, עם דמי ניהול ${feePct} (ממוצע: ${marketPct}). אין הצדקה מספקת להחלפת מעבר עלויות — מומלץ להישאר, לעקוב אחרי ביצועים ולוודא התאמת מסלול סיכון.`;
   }
   if (verdict === VERDICT.NEGOTIATE) {
-    return `הקרן "${fundName}" מציגה ביצועים סבירים (אחוזון ${returnPercentile ?? '—'}), אך דמי הניהול ${feePct} גבוהים מהממוצע ${marketPct}. ניתן לחסוך עד ₪${Math.round(ctx.negotiateGain).toLocaleString('he-IL')} עד פרישה במשא ומרת על דמי הניהול — ללא חייבים לעבור קרן.`;
+    return `הקרן "${fundName}" מציגה ביצועים סבירים (אחוזון ${returnPercentile ?? '—'}), אך דמי הניהול ${feePct} גבוהים מהממוצע ${marketPct}. ניתן לחסוך עד ₪${Math.round(ctx.negotiateGain).toLocaleString('he-IL')} עד פרישה במשא ומתן על דמי הניהול — ללא חייבים לעבור קרן.`;
   }
   const altNames = (alternatives || []).map(a => `${a.provider} — ${a.fundName}`).join('; ');
   return `הקרן "${fundName}" מתחת לממוצע (${returnPercentile ?? '—'} אחוזון) ו/או דמי ניהול גבוהים. מעבר לעבור, שקלי: ${altNames || 'קרן ברירת מחדל במסלול מתאים'}. פוטנציאל לשיפור צבירה: ₪${Math.round(switchGainVsBest).toLocaleString('he-IL')} עד פרישה.`;
