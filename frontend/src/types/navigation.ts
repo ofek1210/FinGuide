@@ -29,7 +29,6 @@ export const APP_ROUTES = {
   faq: "/faq",
   privacy: "/privacy",
   terms: "/terms",
-  careers: "/careers",
   error400: "/400",
   error401: "/401",
   error403: "/403",

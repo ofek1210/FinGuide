@@ -1,4 +1,4 @@
-/* Public marketing pages (team / careers / job) inside fg-landing shell */
+/* Public marketing pages (team) inside fg-landing shell */
 
 .fg-landing.fg-public {
   display: flex;
@@ -13,9 +13,7 @@
 }
 
 /* Nested marketing shells — avoid double background/padding */
-.fg-landing .fg-public-body.team-page,
-.fg-landing .fg-public-body.careers-page,
-.fg-landing .fg-public-body.job-page {
+.fg-landing .fg-public-body.team-page {
   min-height: auto;
   padding: 0 clamp(16px, 4vw, 40px) clamp(32px, 5vw, 56px);
   background: transparent;
@@ -24,11 +22,7 @@
 }
 
 .fg-landing .fg-public-body.team-page::before,
-.fg-landing .fg-public-body.team-page::after,
-.fg-landing .fg-public-body.careers-page::before,
-.fg-landing .fg-public-body.careers-page::after,
-.fg-landing .fg-public-body.job-page::before,
-.fg-landing .fg-public-body.job-page::after {
+.fg-landing .fg-public-body.team-page::after {
   display: none;
 }
 
@@ -38,7 +32,7 @@
   padding-inline: 40px;
 }
 
-/* Bridge legacy marketing button classes used in team/careers content */
+/* Bridge legacy marketing button classes used in team content */
 .fg-landing .landing-primary {
   appearance: none;
   cursor: pointer;
