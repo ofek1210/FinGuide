@@ -9,10 +9,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /usr/src/app
 
-COPY package*.json ./
-RUN npm install
+# Monorepo layout — backend depends on "finguide-monorepo": "file:.."
+COPY package.json package-lock.json ./
+COPY backend/package.json backend/package-lock.json ./backend/
+RUN npm install --prefix backend
 
-COPY . .
+WORKDIR /usr/src/app/backend
+COPY backend/ .
 
 ENV NODE_ENV=development
 ENV PORT=5000
@@ -20,4 +23,3 @@ ENV PORT=5000
 EXPOSE 5000
 
 CMD ["npm", "run", "dev"]
-

@@ -11,7 +11,8 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     depends_on:
       - mongo
@@ -24,6 +25,7 @@ services:
       JWT_EXPIRE: "7d"
       CLIENT_URL: "http://localhost:5173"
       MAX_UPLOAD_SIZE_MB: "10"
+      GOOGLE_CLIENT_ID: "757872744940-rvibdtmd65cif13ia19tm78npjdn8i7l.apps.googleusercontent.com"
     ports:
       - "5001:5000"
     volumes:

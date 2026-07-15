@@ -65,6 +65,7 @@ describe('Auth routes integration', () => {
       expect(res.statusCode).toBe(201);
       expect(res.body.success).toBe(true);
       expect(res.body.data.user.email).toBe('test@example.com');
+      expect(res.body.data.user.welcomeShown).toBe(false);
       expect(res.body.data.token).toBeDefined();
     });
 
@@ -146,6 +147,7 @@ describe('Auth routes integration', () => {
       expect(res.statusCode).toBe(200);
       expect(res.body.success).toBe(true);
       expect(res.body.data.user.email).toBe(email);
+      expect(res.body.data.user.welcomeShown).toBe(false);
     });
 
     it('should return 401 when no token is provided', async () => {
@@ -230,6 +232,39 @@ describe('Auth routes integration', () => {
       expect(res.statusCode).toBe(401);
       expect(res.body.success).toBe(false);
       expect(res.body.message).toBe('Google credential לא תקף');
+    });
+  });
+
+  describe('POST /api/auth/welcome/complete', () => {
+    it('should mark welcome as shown for a newly registered user', async () => {
+      const registerRes = await request(app).post('/api/auth/register').send({
+        name: 'Welcome User',
+        email: 'welcome@test.com',
+        password: 'Test123',
+      });
+
+      const token = registerRes.body.data.token;
+
+      const res = await request(app)
+        .post('/api/auth/welcome/complete')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.user.welcomeShown).toBe(true);
+
+      const meRes = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(meRes.body.data.user.welcomeShown).toBe(true);
+    });
+
+    it('should return 401 when no token is provided', async () => {
+      const res = await request(app).post('/api/auth/welcome/complete');
+
+      expect(res.statusCode).toBe(401);
+      expect(res.body.success).toBe(false);
     });
   });
 });

@@ -66,6 +66,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/** Dev/preview shell — bypasses API auth for static UI inspection */
+export function PreviewAuthProvider({
+  children,
+  user = {
+    id: "preview-user",
+    name: "Shahar",
+    email: "preview@finguide.local",
+    welcomeShown: false,
+    onboardingCompleted: false,
+  },
+}: {
+  children: ReactNode;
+  user?: AuthUser;
+}) {
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      status: "authenticated",
+      user,
+      error: "",
+      refresh: async () => true,
+    }),
+    [user],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
   if (!ctx) {

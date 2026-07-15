@@ -24,6 +24,9 @@ import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OnboardingPage from "./pages/OnboardingPage";
+import WelcomePage from "./pages/WelcomePage";
+import WelcomeBackPage from "./pages/WelcomeBackPage";
+import WelcomePagePreview from "./pages/WelcomePagePreview";
 import PensionPage from "./pages/PensionPage";
 import TeamPage from "./pages/TeamPage";
 import ContactPage from "./pages/ContactPage";
@@ -41,9 +44,6 @@ import { APP_ROUTES } from "./types/navigation";
 import "./App.css";
 import "./theme/overrides.css";
 import "./theme/marketing.css";
-import "./theme/marketing-team.css";
-import "./theme/marketing-careers.css";
-import "./theme/marketing-job.css";
 
 export default function App() {
   return (
@@ -90,6 +90,22 @@ export default function App() {
           element={
             <RequireAuth>
               <OnboardingPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.welcome}
+          element={
+            <RequireAuth>
+              <WelcomePage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.welcomeBack}
+          element={
+            <RequireAuth>
+              <WelcomeBackPage />
             </RequireAuth>
           }
         />
@@ -266,6 +282,9 @@ export default function App() {
         <Route path="/401" element={<Error401 />} />
         <Route path="/403" element={<Error403 />} />
         <Route path="/500" element={<Error500 />} />
+        {import.meta.env.DEV ? (
+          <Route path="/dev/welcome" element={<WelcomePagePreview />} />
+        ) : null}
         <Route path="*" element={<Error404 />} />
       </Routes>
       <FloatingAssistant />

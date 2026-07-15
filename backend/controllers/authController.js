@@ -21,6 +21,10 @@ const SHARED_GOOGLE_CLIENT_ID =
 const PASSWORD_RESET_SUCCESS_MESSAGE =
   'אם החשבון קיים, שלחנו קישור לאיפוס סיסמה.';
 
+/** Legacy users without the field are treated as already welcomed. */
+const serializeWelcomeShown = user =>
+  user.welcomeShown == null ? true : Boolean(user.welcomeShown);
+
 const buildCurrentUserResponse = user => ({
   success: true,
   data: {
@@ -30,6 +34,7 @@ const buildCurrentUserResponse = user => ({
       email: user.email,
       avatarUrl: user.avatarUrl || null,
       onboardingCompleted: Boolean(user.onboarding?.completed),
+      welcomeShown: serializeWelcomeShown(user),
       createdAt: user.createdAt,
     },
   },
@@ -103,6 +108,7 @@ const buildAuthResponse = user => ({
       email: user.email,
       avatarUrl: user.avatarUrl || null,
       onboardingCompleted: Boolean(user.onboarding?.completed),
+      welcomeShown: serializeWelcomeShown(user),
     },
   },
   message: 'התחברות בוצעה בהצלחה',
@@ -144,6 +150,7 @@ const register = async (req, res, next) => {
           name: user.name,
           email: user.email,
           onboardingCompleted: Boolean(user.onboarding?.completed),
+          welcomeShown: serializeWelcomeShown(user),
         },
         token,
       },
@@ -524,6 +531,34 @@ const updateProfileImage = async (req, res, next) => {
   }
 };
 
+/**
+ * @route   POST /api/auth/welcome/complete
+ * @desc    סימון מסך ברכת המנכ"ל כמוצג (משתמש חדש)
+ * @access  Private
+ */
+const markWelcomeShown = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'משתמש לא נמצא',
+      });
+    }
+
+    if (!user.welcomeShown) {
+      user.welcomeShown = true;
+      user.welcomeShownAt = new Date();
+      await user.save();
+    }
+
+    return res.json(buildCurrentUserResponse(user));
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -534,4 +569,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   updateProfileImage,
+  markWelcomeShown,
 };
