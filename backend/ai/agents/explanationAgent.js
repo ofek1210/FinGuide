@@ -76,6 +76,11 @@ function buildFallbackSummary(results) {
   if (results.pension?.data?.projection?.monthlyPensionEstimate) {
     parts.push(`פנסיה: ₪${results.pension.data.projection.monthlyPensionEstimate.toLocaleString('he-IL')} חזויים`);
   }
+  if (results.gemel?.data?.totalBalance > 0) {
+    parts.push(`גמל והשתלמות: ₪${results.gemel.data.totalBalance.toLocaleString('he-IL')} צבורים`);
+  } else if (results.gemel?.data?.marketAdvice?.overallVerdictLabelHe) {
+    parts.push(`גמל והשתלמות: ${results.gemel.data.marketAdvice.overallVerdictLabelHe}`);
+  }
   return parts.join(' | ') || 'ניתוח הושלם.';
 }
 

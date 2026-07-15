@@ -17,6 +17,7 @@ type Message = {
 const AGENT_LABELS: Record<string, { label: string; icon: string }> = {
   payslip_analysis: { label: "סוכן ניתוח תלוש", icon: "📄" },
   pension_advisor: { label: "יועץ פנסיוני", icon: "🏦" },
+  gemel_advisor: { label: "סוכן קופות גמל", icon: "💰" },
   financial_analysis: { label: "מנתח פיננסי", icon: "📊" },
   financial_planning: { label: "מתכנן פיננסי", icon: "🎯" },
   insurance_benefits: { label: "יועץ ביטוח", icon: "🛡️" },
@@ -26,6 +27,7 @@ const AGENT_LABELS: Record<string, { label: string; icon: string }> = {
 const QUICK_PROMPTS = [
   { text: "תסביר לי את התלוש שלי", agent: "payslip_analysis" },
   { text: "האם הפנסיה שלי תקינה?", agent: "pension_advisor" },
+  { text: "מה מצב קרן ההשתלמות שלי?", agent: "gemel_advisor" },
   { text: "תן לי ניתוח פיננסי", agent: "financial_analysis" },
   { text: "איך אני יכול לחסוך יותר?", agent: "financial_planning" },
   { text: "אילו ביטוחים אני צריך?", agent: "insurance_benefits" },

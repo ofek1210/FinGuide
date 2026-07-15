@@ -59,6 +59,7 @@ FinGuide uses a **multi-agent AI architecture** with **RAG (Retrieval-Augmented 
 | **Orchestrator**       | `services/agents/orchestrator.js`           | Routes queries, classifies intent           |
 | **Payslip Analysis**   | `services/agents/payslipAgent.js`           | Explains salary slip fields, detects issues |
 | **Pension Advisor**    | `services/agents/pensionAgent.js`           | Pension contributions, legal minimums       |
+| **Gemel Advisor**      | `services/agents/gemelAgent.js`             | Provident/study funds, Gemel-Net comparison |
 | **Financial Analysis** | `services/agents/financialAnalysisAgent.js` | Trends, anomalies, benchmarks               |
 | **Financial Planning** | `services/agents/financialPlanningAgent.js` | Savings, budget, retirement                 |
 | **Insurance Benefits** | `services/agents/insuranceAgent.js`         | Insurance recommendations                   |

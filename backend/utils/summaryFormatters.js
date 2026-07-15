@@ -19,6 +19,13 @@ function formatDomainHealthLines(unified) {
     }
     lines.push(line);
   }
+  if (unified?.gemel?.hasData) {
+    let line = `גמל והשתלמות: ₪${Math.round(unified.gemel.totalBalance || 0).toLocaleString('he-IL')} צבורים`;
+    if (unified.gemel.overallVerdictLabelHe) {
+      line += ` · ${unified.gemel.overallVerdictLabelHe}`;
+    }
+    lines.push(line);
+  }
   return lines;
 }
 
@@ -38,6 +45,9 @@ function formatDomainHealthLinesWhatsApp(unified) {
   }
   if (unified?.insurance?.healthScore != null) {
     lines.push(`🛡️ ציון בריאות ביטוח: ${unified.insurance.healthScore}/100`);
+  }
+  if (unified?.gemel?.hasData && unified.gemel.totalBalance > 0) {
+    lines.push(`💰 גמל והשתלמות: ₪${Math.round(unified.gemel.totalBalance).toLocaleString('he-IL')} צבורים`);
   }
   return lines;
 }

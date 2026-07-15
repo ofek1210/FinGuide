@@ -14,6 +14,7 @@ const { getClient, callOllama } = require('./baseAgent');
 const llmBudget = require('../llmBudget');
 const payslipAgent = require('./payslipAgent');
 const pensionAgent = require('./pensionAgent');
+const gemelAgent = require('./gemelAgent');
 const financialAnalysisAgent = require('./financialAnalysisAgent');
 const financialPlanningAgent = require('./financialPlanningAgent');
 const insuranceAgent = require('./insuranceAgent');
@@ -24,6 +25,7 @@ const CHAT_MODEL = process.env.CHAT_MODEL || 'claude-haiku-4-5';
 const AGENTS = {
   payslip_analysis: payslipAgent,
   pension_advisor: pensionAgent,
+  gemel_advisor: gemelAgent,
   financial_analysis: financialAnalysisAgent,
   financial_planning: financialPlanningAgent,
   insurance_benefits: insuranceAgent,
@@ -48,10 +50,19 @@ async function classifyIntent(query) {
     return 'payslip_analysis';
   }
 
+  // Gemel — provident/study funds (before pension; skipped when pension is explicitly mentioned)
+  const mentionsGemel =
+    q.includes('קופת גמל') || q.includes('קופות גמל') || q.includes('גמל להשקעה') ||
+    q.includes('קרן השתלמות') || q.includes('השתלמות') || q.includes('study fund') ||
+    q.includes('provident') || q.includes('gemel');
+  if (mentionsGemel && !q.includes('פנסיה') && !q.includes('pension')) {
+    return 'gemel_advisor';
+  }
+
   // Pension
   if (
-    q.includes('פנסיה') || q.includes('pension') || q.includes('קרן השתלמות') ||
-    q.includes('study fund') || q.includes('הפרשה') || q.includes('הפרשות') ||
+    q.includes('פנסיה') || q.includes('pension') ||
+    q.includes('הפרשה') || q.includes('הפרשות') ||
     q.includes('פיצויים') || q.includes('severance') || q.includes('דמי ניהול')
   ) {
     return 'pension_advisor';
@@ -87,7 +98,8 @@ async function classifyIntent(query) {
   // LLM-based classification as fallback
   const classificationSystemPrompt = `סווג את השאלה הבאה לאחת מהקטגוריות:
 - payslip_analysis: שאלות על תלוש שכר, הסבר שדות, סיכום תלוש
-- pension_advisor: פנסיה, קרן השתלמות, הפרשות, פיצויים
+- pension_advisor: פנסיה, הפרשות פנסיוניות, פיצויים
+- gemel_advisor: קופות גמל, קרן השתלמות, גמל להשקעה
 - financial_analysis: ניתוח מגמות, חריגות, השוואות
 - financial_planning: תכנון פיננסי, חיסכון, תקציב, פרישה
 - insurance_benefits: ביטוחים, כיסויים, המלצות ביטוח

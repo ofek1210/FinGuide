@@ -19,7 +19,7 @@ const VERDICT = {
 
 const VERDICT_HE = {
   LEAVE: 'הישאר במסלול',
-  NEGOTIATE: 'נהל משא ומרת',
+  NEGOTIATE: 'נהל משא ומתן',
   SWITCH: 'שקול מעבר',
   REVIEW: 'בדוק מחדש',
 };

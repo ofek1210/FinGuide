@@ -6,6 +6,7 @@ const UserProfile = require('../models/UserProfile');
 const InsurancePolicy = require('../models/InsurancePolicy');
 const Recommendation = require('../models/Recommendation');
 const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
+const { buildGemelAnalysis } = require('../services/gemelAnalysisService');
 const { buildInsuranceAnalysis } = require('../services/insuranceAnalysisService');
 const { isDemoRequest } = require('../utils/demoMode');
 
@@ -100,8 +101,28 @@ async function getDashboardSummary(req, res) {
     pensionScore = Math.min(100, score);
   }
 
+  // ── Gemel score (0-100) — provident/study funds ───────────────────────────
+  let gemelScore = null;
+  try {
+    const gemelAnalysis = await buildGemelAnalysis(userId);
+    if (gemelAnalysis?.summary?.hasData) {
+      const s = gemelAnalysis.summary;
+      let score = 0;
+      if (s.hasStudyFund) score += 45;
+      if (s.hasProvidentFund) score += 10;
+      if (s.fundCount > 0) score += 15;
+      if (!s.depositMismatch) score += 10;
+      const verdict = gemelAnalysis.marketAdvice?.overallVerdict;
+      if (verdict === 'LEAVE') score += 20;
+      else if (verdict === 'NEGOTIATE' || verdict === 'REVIEW') score += 10;
+      gemelScore = Math.min(100, score);
+    }
+  } catch {
+    // no gemel score without data
+  }
+
   // ── Overall health score ──────────────────────────────────────────────────
-  const validScores = [payslipScore, insuranceScore, pensionScore].filter(s => s != null);
+  const validScores = [payslipScore, insuranceScore, pensionScore, gemelScore].filter(s => s != null);
   const overallScore = validScores.length > 0
     ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length)
     : null;
@@ -121,6 +142,7 @@ async function getDashboardSummary(req, res) {
         payslip: payslipScore,
         insurance: insuranceScore,
         pension: pensionScore,
+        gemel: gemelScore,
       },
       documents: {
         total: docs.length,

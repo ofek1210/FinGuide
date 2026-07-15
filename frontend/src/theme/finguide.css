@@ -203,12 +203,12 @@
   --agent-contrast: #ffffff;
 }
 
-[data-agent="expenses"] {
+[data-agent="gemel"] {
   --agent: var(--butter-ink);
   --agent-strong: #96700F;
   --agent-soft: var(--butter-soft);
   --agent-ring: var(--butter);
-  --agent-bg: #FFFBF0;
+  --agent-bg: #FFFCF2;
   --agent-contrast: #ffffff;
 }
 

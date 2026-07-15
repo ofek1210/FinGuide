@@ -97,7 +97,7 @@ backend/services/embeddings/ ← שכבת RAG (embedding + vector store + knowle
 
 | # | מערכת | מיקום | נקודת כניסה | מטרה | סגנון |
 |---|--------|-------|--------------|-------|--------|
-| **A** | מנוע ניתוח רב-סוכני | `backend/ai/` | `POST /api/ai/full-analysis` | דוח ניתוח מלא: 4 סוכני דומיין רצים **במקביל** ומחזירים DTO מובנה | Pipeline דטרמיניסטי + LLM לניסוח בלבד |
+| **A** | מנוע ניתוח רב-סוכני | `backend/ai/` | `POST /api/ai/full-analysis` | דוח ניתוח מלא: 5 סוכני דומיין רצים **במקביל** ומחזירים DTO מובנה | Pipeline דטרמיניסטי + LLM לניסוח בלבד |
 | **B** | סוכני צ'אט מתמחים + RAG | `backend/services/agents/` | `POST /api/agents/ask` | שאלות-תשובות: סיווג כוונה → ניתוב לסוכן מומחה → תשובת LLM עם הקשר RAG | Router של שיחה, LLM במרכז |
 | **C** | צ'אט היברידי | `controllers/aiController.js` | `POST /api/ai/chat` (+`/stream`) | הצ'אט הראשי ב-UI: intent rules דטרמיניסטיים, אחרת Claude/Ollama | Rule-first, LLM fallback |
 
@@ -155,8 +155,8 @@ POST /api/ai/full-analysis   body: { focus?, skipLLM?, refreshGovData?, demo? }
   │ prefetchGovMarketData — מחמם cache של פנסיה-נט + מדד השירות        │
   │ (data.gov.il); buildFinancialHealthScore(userId, year).            │
   └────────────────────────────────────────────────────────────────────┘
-  ┌─ שלב 1: 4 סוכני דומיין במקביל (Promise.allSettled) ────────────────┐
-  │ payslip · insurance · pension · profile                            │
+  ┌─ שלב 1: 5 סוכני דומיין במקביל (Promise.allSettled) ────────────────┐
+  │ payslip · insurance · pension · gemel · profile                            │
   │ focus יכול לדלג: 'pension' → רק pension רץ, וכו'.                  │
   │ סוכן שנכשל → { status: 'error' }, השאר ממשיכים.                    │
   └────────────────────────────────────────────────────────────────────┘

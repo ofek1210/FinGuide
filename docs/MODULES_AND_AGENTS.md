@@ -58,9 +58,9 @@ POST /api/ai/full-analysis
 
 [`orchestratorAgent.runFullAnalysis`](../backend/ai/agents/orchestratorAgent.js):
 
-1. **מריץ 4 סוכני דומיין במקביל** (`Promise.allSettled`): `payslip`, `insurance`,
-   `pension`, `profile`. פרמטר `focus` (`all`/`payslip`/`insurance`/`pension`) יכול
-   לדלג על חלקם.
+1. **מריץ 5 סוכני דומיין במקביל** (`Promise.allSettled`): `payslip`, `insurance`,
+   `pension`, `gemel`, `profile`. פרמטר `focus` (`all`/`payslip`/`insurance`/`pension`/`gemel`)
+   יכול לדלג על חלקם.
 2. **ממזג המלצות** — `mergeRecommendations`: deduplication לפי `type`, מיון לפי
    `urgency` (`high` → `medium` → `low`).
 3. **סיכום עברית** — אם `!skipLLM && ANTHROPIC_API_KEY`: `askClaude` עם
@@ -76,10 +76,11 @@ POST /api/ai/full-analysis
 | `agents/payslipAgent.js` | `runPayslipAgent` — ניתוח תלושים |
 | `agents/insuranceAgent.js` | `runInsuranceAgent` — ניתוח ביטוח |
 | `agents/pensionAgent.js` | `runPensionAgent` — ניתוח פנסיה |
+| `agents/gemelAgent.js` | `runGemelAgent` — קופות גמל והשתלמות (השוואה מול גמל-נט) |
 | `agents/financialProfileAgent.js` | `runFinancialProfileAgent` — פרופיל פיננסי |
 | `agents/explanationAgent.js` | `generateHebSummary` — סיכום עברית (rule fallback) |
 | `engines/calculationEngine.js`, `ruleEngine.js` | חישובים וכללים דטרמיניסטיים |
-| `tools/{payslip,insurance,pension,profile}Tools.js` | פונקציות עזר לכל דומיין |
+| `tools/{payslip,insurance,pension,gemel,profile}Tools.js` | פונקציות עזר לכל דומיין |
 | `prompts/*.js` | system prompts לכל סוכן + orchestrator |
 | `services/parallelAnalysisService.js` | `runParallelAnalysis` — מעטפת + sanitization |
 
@@ -167,7 +168,7 @@ POST /api/ai/full-analysis
 | `/api/pension` | `PensionFund` | pensionController + ai/agents/pensionAgent |
 | `/api/insurance` | `InsurancePolicy` | harHaBituachService, insurancePricingTables |
 | `/api/score-agent` | מצרפי (read) | scoreGapService |
-| `/api/ai/full-analysis` | `AgentRunLog` (לוג) | ai/services/parallelAnalysisService + 4 הסוכנים |
+| `/api/ai/full-analysis` | `AgentRunLog` (לוג) | ai/services/parallelAnalysisService + 5 הסוכנים |
 
 ---
 

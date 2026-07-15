@@ -23,6 +23,19 @@ function toInsuranceSummary(analysis) {
   };
 }
 
+function toGemelSummary(analysis) {
+  if (!analysis?.summary?.hasData) return null;
+  const s = analysis.summary;
+  return {
+    totalBalance: s.totalBalance ?? 0,
+    fundCount: s.fundCount ?? 0,
+    hasStudyFund: Boolean(s.hasStudyFund),
+    overallVerdictLabelHe: analysis.marketAdvice?.overallVerdictLabelHe ?? null,
+    topRecs: (analysis.recommendations || []).slice(0, 3).map(r => r.title),
+    hasData: true,
+  };
+}
+
 function toPayslipSummary(payslip) {
   if (!payslip) return { latestGross: null, insightCount: 0, topInsights: [], hasData: false };
   return {
@@ -33,7 +46,7 @@ function toPayslipSummary(payslip) {
   };
 }
 
-function buildNarrativeHints(pension, insurance, payslipSummary) {
+function buildNarrativeHints(pension, insurance, payslipSummary, gemel) {
   const hints = [];
   if (pension?.healthScore != null && pension.healthScore < 50) {
     hints.push(`ציון בריאות פנסיונית: ${pension.healthScore}/100`);
@@ -46,6 +59,12 @@ function buildNarrativeHints(pension, insurance, payslipSummary) {
   }
   if (payslipSummary?.latestGross) {
     hints.push(`ברוטו ממוצע: ₪${Math.round(payslipSummary.latestGross).toLocaleString('he-IL')}`);
+  }
+  if (gemel?.hasData && gemel.totalBalance > 0) {
+    hints.push(`צבירה בגמל והשתלמות: ₪${Math.round(gemel.totalBalance).toLocaleString('he-IL')}`);
+  }
+  if (gemel?.overallVerdictLabelHe && gemel.overallVerdictLabelHe !== 'הישאר') {
+    hints.push(`גמל והשתלמות: ${gemel.overallVerdictLabelHe}`);
   }
   return hints;
 }
@@ -83,6 +102,7 @@ function buildUnifiedSummaryFromInsights({ pension, insurance, payslip }) {
 module.exports = {
   toPensionSummary,
   toInsuranceSummary,
+  toGemelSummary,
   toPayslipSummary,
   buildNarrativeHints,
   buildUnifiedSummaryFromInsights,

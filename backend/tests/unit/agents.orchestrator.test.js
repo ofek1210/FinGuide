@@ -14,6 +14,11 @@ jest.mock('../../services/agents/pensionAgent', () => ({
   description: 'pension',
   run: jest.fn(),
 }));
+jest.mock('../../services/agents/gemelAgent', () => ({
+  name: 'gemel_advisor',
+  description: 'gemel',
+  run: jest.fn(),
+}));
 jest.mock('../../services/agents/financialAnalysisAgent', () => ({
   name: 'financial_analysis',
   description: 'analysis',
@@ -50,6 +55,10 @@ describe('classifyIntent (rule-based routing)', () => {
   it.each([
     ['הסבר את התלוש שלי', 'payslip_analysis'],
     ['מה המצב עם הפנסיה שלי?', 'pension_advisor'],
+    ['כמה כסף יש לי בקופת גמל?', 'gemel_advisor'],
+    ['מה זה קרן השתלמות?', 'gemel_advisor'],
+    ['האם כדאי לי גמל להשקעה?', 'gemel_advisor'],
+    ['קרן השתלמות ופנסיה — מה ההבדל?', 'pension_advisor'],
     ['האם כדאי לי ביטוח חיים?', 'insurance_benefits'],
     ['עזור לי בתכנון חיסכון', 'financial_planning'],
     ['מהי המגמה בהוצאות שלי?', 'financial_analysis'],
@@ -64,14 +73,15 @@ describe('classifyIntent (rule-based routing)', () => {
 });
 
 describe('getAgentList', () => {
-  it('lists all five specialist agents with id/name/description', () => {
+  it('lists all six specialist agents with id/name/description', () => {
     const list = getAgentList();
-    expect(list).toHaveLength(5);
+    expect(list).toHaveLength(6);
     const ids = list.map((a) => a.id);
     expect(ids).toEqual(
       expect.arrayContaining([
         'payslip_analysis',
         'pension_advisor',
+        'gemel_advisor',
         'financial_analysis',
         'financial_planning',
         'insurance_benefits',

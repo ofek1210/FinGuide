@@ -27,6 +27,7 @@ import WelcomePage from "./pages/WelcomePage";
 import WelcomeBackPage from "./pages/WelcomeBackPage";
 import WelcomePagePreview from "./pages/WelcomePagePreview";
 import PensionPage from "./pages/PensionPage";
+import GemelPage from "./pages/GemelPage";
 import TeamPage from "./pages/TeamPage";
 import ContactPage from "./pages/ContactPage";
 import FAQPage from "./pages/FAQPage";
@@ -187,6 +188,14 @@ export default function App() {
           element={
             <RequireAuth>
               <PensionPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path={APP_ROUTES.gemel}
+          element={
+            <RequireAuth>
+              <GemelPage />
             </RequireAuth>
           }
         />

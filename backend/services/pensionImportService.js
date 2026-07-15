@@ -30,10 +30,17 @@ async function syncProfileRetirement(userId) {
 }
 
 async function savePensionImportSnapshot(userId, source, sourceFile, analysis) {
+  // Count ALL tracked funds (incl. gemel types) — the Har HaKesef report imports
+  // them together even though the pension analysis itself excludes gemel funds.
+  const fundCount = await PensionFund.countDocuments({
+    user: userId,
+    status: { $ne: 'closed' },
+    isActive: { $ne: false },
+  });
   await saveImportSnapshot(PensionImportSnapshot, userId, {
     source,
     sourceFile,
-    fundCount: analysis.summary?.fundCount || 0,
+    fundCount,
     totalPotentialSavings: analysis.benchmark?.summary?.totalPotentialSavings || 0,
     healthScore: analysis.healthCheck?.score ?? null,
     avgRankPercentile: analysis.benchmark?.summary?.avgRankPercentile ?? null,

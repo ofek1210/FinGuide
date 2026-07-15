@@ -15,7 +15,7 @@ function buildOrchestratorSystemPrompt(context) {
     '- Prioritize actionItems and high-urgency recommendations first.',
     '- Mention globalScore when available.',
     '- Reference govData sources (data.gov.il vs static fallback) if relevant.',
-    '- Note pension verdicts (LEAVE/NEGOTIATE/SWITCH) and insurance (STAY/REVIEW/SWITCH).',
+    '- Note pension/gemel verdicts (LEAVE/NEGOTIATE/SWITCH) and insurance (STAY/REVIEW/SWITCH).',
     '- Write in clear Hebrew, second person.',
     '',
     'Output format:',

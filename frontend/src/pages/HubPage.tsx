@@ -28,6 +28,7 @@ const AGENT_TONE: Record<AgentId, Tone> = {
   payslips: "lavender",
   insurance: "peach",
   pension: "mint",
+  gemel: "butter",
 };
 
 /* ── hooks ───────────────────────────────────────────────────── */
@@ -148,10 +149,7 @@ function RadialGauge({ value, max = 100, sub, tone = "lavender", size = 148, onD
   const [ref, seen] = useInView<HTMLDivElement>();
   const id = useRef(uid()).current;
   const grads: Record<Tone, [string, string]> = {
-    lavender: ["#9B7FE8", "#6F8BE8"],
-    mint: ["#48C98B", "#2F9C62"],
-    peach: ["#F4A87E", "#DA6F44"],
-    butter: ["#F0C14B", "#B98B16"],
+    lavender: ["#9B7FE8", "#6F8BE8"], mint: ["#48C98B", "#2F9C62"], peach: ["#F4A87E", "#DA6F44"], butter: ["#E5C35C", "#B98B16"],
   };
   const [g1, g2] = grads[tone];
   const s = size, r = s / 2 - 13, c = 2 * Math.PI * r, frac = Math.min(value / max, 1);
@@ -193,12 +191,7 @@ function Sparkline({ points, tone = "mint", w = 78, h = 30 }: { points: number[]
   const id = useRef(uid()).current;
   const max = Math.max(...points), min = Math.min(...points);
   const pts = points.map((v, i) => [(i / (points.length - 1)) * w, h - ((v - min) / (max - min || 1)) * (h - 8) - 4]);
-  const cols: Record<Tone, [string, string]> = {
-    mint: ["#48C98B", "#2F9C62"],
-    peach: ["#F4A87E", "#DA6F44"],
-    lavender: ["#B49BF0", "#7C5FD6"],
-    butter: ["#F0C14B", "#B98B16"],
-  };
+  const cols: Record<Tone, [string, string]> = { mint: ["#48C98B", "#2F9C62"], peach: ["#F4A87E", "#DA6F44"], lavender: ["#B49BF0", "#7C5FD6"], butter: ["#E5C35C", "#B98B16"] };
   const [c1, c2] = cols[tone];
   const area = smooth(pts) + ` L ${pts[pts.length - 1][0]} ${h} L ${pts[0][0]} ${h} Z`;
   return (
@@ -215,11 +208,7 @@ function Sparkline({ points, tone = "mint", w = 78, h = 30 }: { points: number[]
 }
 
 /* ── static display bits ─────────────────────────────────────── */
-const AGENT_ORDINAL: Record<AgentId, string> = {
-  payslips: "01",
-  insurance: "02",
-  pension: "03",
-};
+const AGENT_ORDINAL: Record<AgentId, string> = { payslips: "01", insurance: "02", pension: "03", gemel: "04" };
 
 const DOT = "radial-gradient(rgba(123,95,214,.10) 1px,transparent 1px)";
 
@@ -229,6 +218,7 @@ const PENSION_KINDS = new Set(["pension_health_low", "fee_above_market", "risk_w
 function domainOf(f: FindingItem): AgentId {
   const kind = String(f.meta?.findingKind || "");
   if (kind.startsWith("insurance_")) return "insurance";
+  if (kind.startsWith("study_fund") || kind.startsWith("gemel") || f.meta?.fundType === "study_fund") return "gemel";
   if (PENSION_KINDS.has(kind) || f.meta?.fundType === "pension") return "pension";
   return "payslips";
 }
@@ -237,6 +227,7 @@ const DOMAIN_LABEL: Record<AgentId, string> = {
   payslips: "תלושי שכר",
   insurance: "ביטוח",
   pension: "פנסיה",
+  gemel: "גמל והשתלמות",
 };
 
 /** interpolate a smooth growth series from a starting balance to a projected end */
@@ -348,7 +339,7 @@ export default function HubPage() {
 
   const findingsCount = findings.length;
   const domainCounts = useMemo(() => {
-    const c: Record<AgentId, number> = { payslips: 0, insurance: 0, pension: 0 };
+    const c: Record<AgentId, number> = { payslips: 0, insurance: 0, pension: 0, gemel: 0 };
     findings.forEach(f => { c[domainOf(f)]++; });
     return c;
   }, [findings]);
@@ -369,6 +360,7 @@ export default function HubPage() {
     if (domainCounts.payslips) rows.push(["ממצאים בתלושי שכר", `${domainCounts.payslips}`]);
     if (domainCounts.insurance) rows.push(["ממצאי ביטוח", `${domainCounts.insurance}`]);
     if (domainCounts.pension) rows.push(["ממצאי פנסיה", `${domainCounts.pension}`]);
+    if (domainCounts.gemel) rows.push(["ממצאי גמל והשתלמות", `${domainCounts.gemel}`]);
     if (pensionRecs.length) rows.push(["המלצות פנסיה", `${pensionRecs.length}`]);
     return rows.slice(0, 3);
   }, [domainCounts, pensionRecs.length]);
@@ -419,6 +411,7 @@ export default function HubPage() {
     payslips: payslipTrend,
     insurance: [],
     pension: pensionScoreTrend,
+    gemel: [],
   };
 
   const agentMetric: Record<AgentId, string> = {
@@ -431,6 +424,9 @@ export default function HubPage() {
     pension: pensionFundCount > 0
       ? (pensionRecs.length > 0 ? `${pensionRecs.length} המלצות` : `${pensionFundCount} קרנות במעקב`)
       : "טרם חובר מידע פנסיוני",
+    gemel: domainCounts.gemel > 0
+      ? `${domainCounts.gemel} ממצאים פעילים`
+      : (pension?.summary.hasStudyFund ? "קרן השתלמות במעקב" : "טרם חוברו קופות גמל"),
   };
 
   return (
@@ -468,7 +464,7 @@ export default function HubPage() {
               <div>
                 <div style={{ fontSize: 13.5, color: "rgba(255,255,255,.6)", fontWeight: 600, marginBottom: 12 }}>עוד אין לנו מספיק נתונים</div>
                 <div style={{ fontSize: "clamp(26px,3vw,38px)", fontWeight: 900, letterSpacing: "-.03em", lineHeight: 1.15, maxWidth: 420 }}>
-                  העלו תלוש שכר ראשון — ושלושת הסוכנים יתחילו לחפש עבורך הזדמנויות לחיסכון.
+                  העלו תלוש שכר ראשון — והסוכנים יתחילו לחפש עבורך הזדמנויות לחיסכון.
                 </div>
                 <button onClick={() => navigate(APP_ROUTES.documentsUpload)} style={{ marginTop: 24, display: "inline-flex", alignItems: "center", gap: 9, background: "#fff", color: "var(--ink)", border: "none", borderRadius: "var(--r-btn)", padding: "14px 24px", fontFamily: "inherit", fontWeight: 800, fontSize: 15, cursor: "pointer", transition: "transform .2s var(--ease)" }}
                   onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
@@ -540,7 +536,7 @@ export default function HubPage() {
           </div>
           <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 15, fontWeight: 500, maxWidth: 300, textWrap: "balance" }}>כל סוכן מנהל את התחום שלו — לחץ כדי לצלול פנימה.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 20, marginBottom: 46 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 20, marginBottom: 46 }}>
           {AGENTS.map(a => {
             const tone = AGENT_TONE[a.id];
             const c1 = a.tone.soft, c2 = a.tone.accent;

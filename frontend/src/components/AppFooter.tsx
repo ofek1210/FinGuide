@@ -96,6 +96,7 @@ export default function AppFooter({ variant }: AppFooterProps) {
                   <FooterLink to={APP_ROUTES.documents}>תלושים ומסמכים</FooterLink>
                   <FooterLink to={APP_ROUTES.insurance}>ביטוח ופוליסות</FooterLink>
                   <FooterLink to={APP_ROUTES.pension}>פנסיה וחיסכון</FooterLink>
+                  <FooterLink to={APP_ROUTES.gemel}>קופות גמל והשתלמות</FooterLink>
                 </>
               ) : (
                 <>

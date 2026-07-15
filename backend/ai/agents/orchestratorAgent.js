@@ -4,7 +4,7 @@
  * Pipeline (CrewAI-equivalent, Node.js):
  *   0. Execution Canvas — onboarding + data inventory → domain tasks
  *   0.5 Gov prefetch — warm data.gov.il caches (pension-net + service index)
- *   1. Domain agents in parallel — payslip, insurance, pension, profile
+ *   1. Domain agents in parallel — payslip, insurance, pension, gemel, profile
  *   2. Merge recommendations + global health score + action items
  *   3. Orchestrator LLM summary (or rule fallback)
  *
@@ -18,6 +18,7 @@
 const { runPayslipAgent } = require('./payslipAgent');
 const { runInsuranceAgent } = require('./insuranceAgent');
 const { runPensionAgent } = require('./pensionAgent');
+const { runGemelAgent } = require('./gemelAgent');
 const { runFinancialProfileAgent } = require('./financialProfileAgent');
 const { generateHebSummary } = require('./explanationAgent');
 const { buildOrchestratorSystemPrompt } = require('../prompts/orchestratorPrompt');
@@ -32,13 +33,13 @@ const { buildFinancialHealthScore } = require('../../services/financialHealthSco
  * @param {string} userId
  * @param {object} [options]
  * @param {boolean} [options.skipLLM=false]
- * @param {string}  [options.focus] - 'payslip' | 'insurance' | 'pension' | 'all'
+ * @param {string}  [options.focus] - 'payslip' | 'insurance' | 'pension' | 'gemel' | 'all'
  * @param {boolean} [options.refreshGovData=false]
  */
 async function runFullAnalysis(userId, { skipLLM = false, focus = 'all', refreshGovData = false } = {}) {
   const startedAt = Date.now();
   const runId = `run_${userId}_${startedAt}`;
-  const safeFocus = ['all', 'payslip', 'insurance', 'pension'].includes(focus) ? focus : 'all';
+  const safeFocus = ['all', 'payslip', 'insurance', 'pension', 'gemel'].includes(focus) ? focus : 'all';
 
   // ── Step 0: Execution Canvas ───────────────────────────────────────────────
   const canvas = await buildExecutionCanvas(userId, { focus: safeFocus });
@@ -58,16 +59,12 @@ async function runFullAnalysis(userId, { skipLLM = false, focus = 'all', refresh
 
   // ── Step 1: Run domain agents in parallel ────────────────────────────────────
   const agentOptions = { skipLLM };
+  const shouldRun = domain => safeFocus === 'all' || safeFocus === domain;
   const agentPromises = {
-    payslip: safeFocus === 'insurance' || safeFocus === 'pension'
-      ? Promise.resolve(null)
-      : runPayslipAgent(userId, agentOptions),
-    insurance: safeFocus === 'payslip' || safeFocus === 'pension'
-      ? Promise.resolve(null)
-      : runInsuranceAgent(userId, agentOptions),
-    pension: safeFocus === 'payslip' || safeFocus === 'insurance'
-      ? Promise.resolve(null)
-      : runPensionAgent(userId, agentOptions),
+    payslip: shouldRun('payslip') ? runPayslipAgent(userId, agentOptions) : Promise.resolve(null),
+    insurance: shouldRun('insurance') ? runInsuranceAgent(userId, agentOptions) : Promise.resolve(null),
+    pension: shouldRun('pension') ? runPensionAgent(userId, agentOptions) : Promise.resolve(null),
+    gemel: shouldRun('gemel') ? runGemelAgent(userId, agentOptions) : Promise.resolve(null),
     profile: safeFocus === 'all' ? runFinancialProfileAgent(userId) : Promise.resolve(null),
   };
 

@@ -8,19 +8,24 @@
 const { runPayslipAgent } = require('./payslipAgent');
 const { runInsuranceAgent } = require('./insuranceAgent');
 const { runPensionAgent } = require('./pensionAgent');
+const { runGemelAgent } = require('./gemelAgent');
 const { askClaude } = require('../../services/claudeChatService');
 const {
   MOCK_PAYSLIP_AGENT_RESULT,
   MOCK_INSURANCE_AGENT_RESULT,
   MOCK_PENSION_AGENT_RESULT,
+  MOCK_GEMEL_AGENT_RESULT,
 } = require('../mock/mockData');
 
 const AGENT_META = {
   payslip: { labelHe: 'סוכן השכר', domainHe: 'תלושים' },
   insurance: { labelHe: 'סוכן הביטוח', domainHe: 'ביטוחים' },
   pension: { labelHe: 'סוכן הפנסיה', domainHe: 'פנסיה' },
+  gemel: { labelHe: 'סוכן הגמל', domainHe: 'גמל והשתלמות' },
   profile: { labelHe: 'סוכן הפרופיל', domainHe: 'פרופיל' },
 };
+
+const DEBATE_AGENT_IDS = ['payslip', 'insurance', 'pension', 'gemel'];
 
 const URGENCY_WEIGHT = { high: 3, medium: 2, low: 1 };
 
@@ -122,6 +127,24 @@ function buildRuleRebuttals(positions) {
     });
   }
 
+  if (byId.gemel?.priorityScore >= 2 && byId.pension) {
+    rebuttals.push({
+      fromAgent: 'gemel',
+      toAgent: 'pension',
+      stance: 'challenge',
+      text: 'קרן השתלמות היא ההטבה הנזילה היחידה שפטורה ממס רווחי הון — מיצוי התקרה או הוזלת דמי ניהול בגמל נותנים ערך מהיר יותר מאופטימיזציה פנסיונית ארוכת טווח.',
+    });
+  }
+
+  if (byId.pension?.priorityScore >= 2 && byId.gemel) {
+    rebuttals.push({
+      fromAgent: 'pension',
+      toAgent: 'gemel',
+      stance: 'neutral',
+      text: 'ניוד קופת גמל אינו אירוע מס — אפשר לטפל בגמל במקביל, בלי לדחות את תיקון ההפרשות הפנסיוניות.',
+    });
+  }
+
   return rebuttals;
 }
 
@@ -197,14 +220,15 @@ async function runAgentDebate(userId, { skipLLM = false } = {}) {
   const startedAt = Date.now();
   const debateId = `debate_${userId}_${startedAt}`;
 
-  const [payslip, insurance, pension] = await Promise.all([
+  const [payslip, insurance, pension, gemel] = await Promise.all([
     runPayslipAgent(userId, { skipLLM: true }),
     runInsuranceAgent(userId, { skipLLM: true }),
     runPensionAgent(userId, { skipLLM: true }),
+    runGemelAgent(userId, { skipLLM: true }),
   ]);
 
-  const agentResults = { payslip, insurance, pension };
-  const positions = ['payslip', 'insurance', 'pension'].map(id =>
+  const agentResults = { payslip, insurance, pension, gemel };
+  const positions = DEBATE_AGENT_IDS.map(id =>
     buildPosition(id, agentResults[id]),
   );
   const rebuttals = buildRuleRebuttals(positions);
@@ -234,8 +258,9 @@ function buildDemoDebate() {
     payslip: MOCK_PAYSLIP_AGENT_RESULT,
     insurance: MOCK_INSURANCE_AGENT_RESULT,
     pension: MOCK_PENSION_AGENT_RESULT,
+    gemel: MOCK_GEMEL_AGENT_RESULT,
   };
-  const positions = ['payslip', 'insurance', 'pension'].map(id =>
+  const positions = DEBATE_AGENT_IDS.map(id =>
     buildPosition(id, agentResults[id]),
   );
   const rebuttals = buildRuleRebuttals(positions);
@@ -290,14 +315,15 @@ async function streamAgentDebate(userId, { skipLLM = false, demo = false, onEven
 
   emit({ type: 'phase', phase: 'positions', labelHe: 'הסוכנים מנתחים נתונים…' });
 
-  const [payslip, insurance, pension] = await Promise.all([
+  const [payslip, insurance, pension, gemel] = await Promise.all([
     runPayslipAgent(userId, { skipLLM: true }),
     runInsuranceAgent(userId, { skipLLM: true }),
     runPensionAgent(userId, { skipLLM: true }),
+    runGemelAgent(userId, { skipLLM: true }),
   ]);
 
-  const agentResults = { payslip, insurance, pension };
-  const positions = ['payslip', 'insurance', 'pension'].map(id =>
+  const agentResults = { payslip, insurance, pension, gemel };
+  const positions = DEBATE_AGENT_IDS.map(id =>
     buildPosition(id, agentResults[id]),
   );
 

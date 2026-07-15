@@ -152,6 +152,10 @@ function detectIntent(message) {
     return 'training_fund';
   }
 
+  if (msg.includes('קופת גמל') || msg.includes('קופות גמל') || msg.includes('גמל להשקעה')) {
+    return 'gemel_fund';
+  }
+
   if (msg.includes('נטו') || msg.includes('net salary') || msg.includes('take home')) {
     return 'net_salary';
   }
@@ -455,6 +459,14 @@ function buildRuleBasedAnswer(intent, ctx) {
       if (empAmt) lines.push(`• עובד: ${empAmt}${empPct != null ? ` (${empPct}%)` : ''}`);
       if (emplAmt) lines.push(`• מעסיק: ${emplAmt}${emplPct != null ? ` (${emplPct}%)` : ''}`);
       return lines.join('\n');
+    }
+
+    case 'gemel_fund': {
+      return [
+        'קופת גמל היא אפיק חיסכון לטווח ארוך עם הטבות מס; קרן השתלמות נזילה אחרי 6 שנים ופטורה ממס רווחי הון עד התקרה השנתית (~20,520 ₪ לשכיר).',
+        'בעמוד "קופות גמל והשתלמות" תמצא השוואה של הקופות שלך מול נתוני גמל-נט הרשמיים — תשואות, דמי ניהול וחלופות.',
+        'לייעוץ מקצועי יש לפנות ליועץ פנסיוני מורשה.',
+      ].join('\n');
     }
 
     case 'net_salary': {

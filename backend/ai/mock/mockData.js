@@ -177,6 +177,63 @@ const MOCK_PENSION_AGENT_RESULT = {
 
 // ΓöÇΓöÇ Profile mock ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
+const MOCK_GEMEL_AGENT_RESULT = {
+  agentId: 'gemel',
+  status: 'success',
+  message: null,
+  data: {
+    grossSalary: DEMO_USER.grossSalary,
+    studyFundEmployee: 300,
+    studyFundEmployer: 900,
+    totalMonthlyContribution: 1200,
+    totalBalance: 96000,
+    studyFundBalance: 96000,
+    providentBalance: 0,
+    fundCount: 1,
+    studyFundCount: 1,
+    providentFundCount: 0,
+    hasStudyFund: true,
+    hasProvidentFund: false,
+    declaredStudyFund: true,
+    currentMgmtFee: 0.75,
+    salaryAboveCeiling: false,
+    annualTaxFreeDeposit: 20520,
+    marketAdvice: {
+      overallVerdict: 'NEGOTIATE',
+      overallVerdictLabelHe: 'נהל משא ומתן',
+      dataSource: 'gemelnet_db',
+      sourceName: 'גמל-נט (data.gov.il)',
+      funds: [
+        {
+          productName: 'קרן השתלמות כללי',
+          companyName: 'אלטשולר שחם',
+          verdict: 'NEGOTIATE',
+          verdictLabelHe: 'נהל משא ומתן',
+          returnPercentile: 52,
+          userFee: 0.75,
+          marketFee: 0.58,
+          annualSavingsEstimate: 163,
+          alternatives: [],
+          summaryHe: 'קרן השתלמות כללי — דמ"נ 0.75% מול ממוצע שוק 0.58% → NEGOTIATE, חיסכון ~₪163/שנה',
+        },
+      ],
+    },
+    payslipFindings: [],
+  },
+  recommendations: [
+    {
+      type: 'gemel_market_negotiate',
+      title: 'נהל משא ומתן — קרן השתלמות כללי',
+      reason: 'דמי הניהול בקרן ההשתלמות (0.75%) גבוהים מממוצע השוק (0.58%). שיחה אחת לגוף המנהל יכולה לחסוך ~₪163/שנה.',
+      urgency: 'medium',
+      financialImpact: '~₪163/שנה',
+      confidenceScore: 80,
+    },
+  ],
+  durationMs: 95,
+  explanation: 'קרן ההשתלמות פעילה ומנוצלת — דמי הניהול מעל ממוצע גמל-נט, שווה לנהל משא ומתן.',
+};
+
 const MOCK_PROFILE_AGENT_RESULT = {
   agentId: 'profile',
   status: 'success',
@@ -209,10 +266,10 @@ const MOCK_FULL_ANALYSIS_RESULT = {
   userId: 'demo',
   canvas: {
     focus: 'all',
-    summaryHe: '6 תלושים · 3 פוליסות · 2 קרנות',
+    summaryHe: '6 תלושים · 3 פוליסות · 2 קרנות · 1 קופות גמל',
     onboarding: { age: 34, hasDependents: true, onboardingCompleted: true },
-    dataInventory: { payslipCount: 6, policyCount: 3, fundCount: 2, profileComplete: true },
-    agentsToRun: ['payslip', 'insurance', 'pension', 'profile'],
+    dataInventory: { payslipCount: 6, policyCount: 3, fundCount: 2, gemelFundCount: 1, profileComplete: true },
+    agentsToRun: ['payslip', 'insurance', 'pension', 'gemel', 'profile'],
   },
   govData: {
     prefetchedAt: new Date().toISOString(),
@@ -233,17 +290,20 @@ const MOCK_FULL_ANALYSIS_RESULT = {
   actionItems: [
     { priority: 'high', domain: 'insurance', title: 'כיסוי אכ"ע חסר', description: 'אין ביטוח אובדן כושר עבודה', actionUrl: '/insurance', source: 'agent_recommendation' },
     { priority: 'high', domain: 'pension', title: 'דמי ניהול גבוהים', description: '0.6% — מעל ממוצע השוק', actionUrl: '/pension', source: 'pension_fund_advisor' },
+    { priority: 'medium', domain: 'gemel', title: 'גמל והשתלמות: נהל משא ומתן', description: 'דמי ניהול 0.75% מול ממוצע שוק 0.58%', actionUrl: '/gemel', source: 'gemel_market_advisor' },
   ],
   agents: {
     payslip: MOCK_PAYSLIP_AGENT_RESULT,
     insurance: MOCK_INSURANCE_AGENT_RESULT,
     pension: MOCK_PENSION_AGENT_RESULT,
+    gemel: MOCK_GEMEL_AGENT_RESULT,
     profile: MOCK_PROFILE_AGENT_RESULT,
   },
   recommendations: [
     { ...MOCK_INSURANCE_AGENT_RESULT.recommendations[0], agentId: 'insurance' },
     { ...MOCK_PENSION_AGENT_RESULT.recommendations[0], agentId: 'pension' },
     { ...MOCK_PENSION_AGENT_RESULT.recommendations[1], agentId: 'pension' },
+    { ...MOCK_GEMEL_AGENT_RESULT.recommendations[0], agentId: 'gemel' },
     { ...MOCK_PROFILE_AGENT_RESULT.recommendations[0], agentId: 'profile' },
     { ...MOCK_PAYSLIP_AGENT_RESULT.recommendations[1], agentId: 'payslip' },
     { ...MOCK_INSURANCE_AGENT_RESULT.recommendations[1], agentId: 'insurance' },
@@ -254,8 +314,8 @@ const MOCK_FULL_ANALYSIS_RESULT = {
   summarySource: 'demo',
   meta: {
     durationMs: 380,
-    agentCount: 4,
-    successCount: 4,
+    agentCount: 5,
+    successCount: 5,
     isDemo: true,
   },
 };
@@ -268,6 +328,7 @@ const MOCK_DASHBOARD_SUMMARY = {
     payslip: 78,
     insurance: 45,
     pension: 60,
+    gemel: 68,
   },
   documents: { total: 6, completed: 6, failed: 0, pending: 0 },
   profile: {
@@ -367,6 +428,7 @@ module.exports = {
   MOCK_PAYSLIP_AGENT_RESULT,
   MOCK_INSURANCE_AGENT_RESULT,
   MOCK_PENSION_AGENT_RESULT,
+  MOCK_GEMEL_AGENT_RESULT,
   MOCK_PROFILE_AGENT_RESULT,
   DEMO_USER,
 };

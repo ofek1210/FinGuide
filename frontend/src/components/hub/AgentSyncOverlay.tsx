@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { BrainCircuit } from "lucide-react";
-import { AGENTS } from "../../theme/agents";
+import { AGENTS, type AgentId } from "../../theme/agents";
 
 /* ============================================================
    Agent Sync Overlay — full-screen 3D "sync" sequence shown
    while the master agent runs a full analysis.
 
-   Pure CSS 3D: a glowing master core in the center, the three
+   Pure CSS 3D: a glowing master core in the center, the four
    domain agents orbiting it on a tilted ring (perspective +
    preserve-3d), data pulses flying between them. On `stage:
    "exit"` the satellites converge into the core, the core
@@ -22,17 +22,22 @@ type AgentSyncOverlayProps = {
 };
 
 /** Fixed palette for the dark overlay (matches the agents' tones). */
-const SAT_COLORS: Record<string, { main: string; soft: string }> = {
+const SAT_COLORS: Record<AgentId, { main: string; soft: string }> = {
   payslips: { main: "#B49BF0", soft: "rgba(155,127,232,.25)" },
   insurance: { main: "#F4A87E", soft: "rgba(218,111,68,.25)" },
   pension: { main: "#48C98B", soft: "rgba(47,156,98,.25)" },
+  gemel: { main: "#E5C35C", soft: "rgba(185,139,22,.25)" },
 };
+
+/** Orbit angle spacing — 360° divided across the agent satellites. */
+const SAT_STEP_DEG = 360 / AGENTS.length;
 
 const STEPS = [
   "מעיר את הסוכנים...",
   "סוכן התלושים אוסף נתוני שכר...",
   "סוכן הביטוחים סורק פוליסות...",
   "סוכן הפנסיה מחשב תחזיות...",
+  "סוכן הגמל משווה מול גמל-נט...",
   "הסוכן הראשי מצליב ממצאים...",
   "מסנכרן תוצאות...",
 ];
@@ -142,12 +147,15 @@ export default function AgentSyncOverlay({ stage }: AgentSyncOverlayProps) {
         .fgsync-sat-0 { animation: fgsyncOrbit0 7s linear infinite; }
         .fgsync-sat-1 { animation: fgsyncOrbit1 7s linear infinite; }
         .fgsync-sat-2 { animation: fgsyncOrbit2 7s linear infinite; }
+        .fgsync-sat-3 { animation: fgsyncOrbit3 7s linear infinite; }
         @keyframes fgsyncOrbit0 { from { transform: rotateY(0deg)   translateZ(160px) rotateY(0deg); }    to { transform: rotateY(360deg) translateZ(160px) rotateY(-360deg); } }
-        @keyframes fgsyncOrbit1 { from { transform: rotateY(120deg) translateZ(160px) rotateY(-120deg); } to { transform: rotateY(480deg) translateZ(160px) rotateY(-480deg); } }
-        @keyframes fgsyncOrbit2 { from { transform: rotateY(240deg) translateZ(160px) rotateY(-240deg); } to { transform: rotateY(600deg) translateZ(160px) rotateY(-600deg); } }
+        @keyframes fgsyncOrbit1 { from { transform: rotateY(90deg)  translateZ(160px) rotateY(-90deg); }  to { transform: rotateY(450deg) translateZ(160px) rotateY(-450deg); } }
+        @keyframes fgsyncOrbit2 { from { transform: rotateY(180deg) translateZ(160px) rotateY(-180deg); } to { transform: rotateY(540deg) translateZ(160px) rotateY(-540deg); } }
+        @keyframes fgsyncOrbit3 { from { transform: rotateY(270deg) translateZ(160px) rotateY(-270deg); } to { transform: rotateY(630deg) translateZ(160px) rotateY(-630deg); } }
         .fgsync-exiting .fgsync-sat-0,
         .fgsync-exiting .fgsync-sat-1,
-        .fgsync-exiting .fgsync-sat-2 { animation: fgsyncConverge .7s var(--ease, ease) both; }
+        .fgsync-exiting .fgsync-sat-2,
+        .fgsync-exiting .fgsync-sat-3 { animation: fgsyncConverge .7s var(--ease, ease) both; }
         @keyframes fgsyncConverge {
           0%   { transform: translateZ(150px) scale(1); opacity: 1; }
           100% { transform: translateZ(0) scale(.15); opacity: 0; }
@@ -215,7 +223,7 @@ export default function AgentSyncOverlay({ stage }: AgentSyncOverlayProps) {
 
         @media (prefers-reduced-motion: reduce) {
           .fgsync-stage, .fgsync-orbit, .fgsync-core-ring,
-          .fgsync-sat-0, .fgsync-sat-1, .fgsync-sat-2,
+          .fgsync-sat-0, .fgsync-sat-1, .fgsync-sat-2, .fgsync-sat-3,
           .fgsync-sat-body, .fgsync-pulse { animation-duration: 0.01s !important; animation-iteration-count: 1 !important; }
         }
       `}</style>
@@ -238,7 +246,7 @@ export default function AgentSyncOverlay({ stage }: AgentSyncOverlayProps) {
                     style={{
                       background: c.main,
                       boxShadow: `0 0 10px ${c.main}`,
-                      ["--ang" as string]: `${i * 120 + 18}deg`,
+                      ["--ang" as string]: `${i * SAT_STEP_DEG + 18}deg`,
                       animation: `fgsyncPulseOut 1.6s ${i * 0.35}s linear infinite`,
                     }}
                   />
@@ -247,7 +255,7 @@ export default function AgentSyncOverlay({ stage }: AgentSyncOverlayProps) {
                     style={{
                       background: c.main,
                       boxShadow: `0 0 10px ${c.main}`,
-                      ["--ang" as string]: `${i * 120 - 22}deg`,
+                      ["--ang" as string]: `${i * SAT_STEP_DEG - 22}deg`,
                       animation: `fgsyncPulseIn 1.6s ${0.8 + i * 0.35}s linear infinite`,
                     }}
                   />
@@ -255,7 +263,7 @@ export default function AgentSyncOverlay({ stage }: AgentSyncOverlayProps) {
               );
             })}
 
-            {/* the three agent satellites */}
+            {/* the agent satellites — one per domain agent */}
             {AGENTS.map((a, i) => {
               const c = SAT_COLORS[a.id] ?? SAT_COLORS.payslips;
               const Icon = a.Icon;

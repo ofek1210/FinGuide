@@ -211,7 +211,11 @@ async function uploadPensionData(req, res, listMode = false) {
   const userId = req.user._id;
 
   if (req.method === 'GET' || listMode) {
-    const funds = await PensionFund.find({ user: userId }).lean();
+    // Gemel-type funds (study/provident) live on /api/gemel/funds — the gemel agent owns them.
+    const funds = await PensionFund.find({
+      user: userId,
+      fundType: { $nin: ['study_fund', 'provident_fund'] },
+    }).lean();
     return res.json({
       success: true,
       data: funds.map(f => mapPensionFundToDto(f, { idField: '_id' })),
@@ -233,9 +237,10 @@ async function uploadPensionData(req, res, listMode = false) {
     return res.status(400).json({ success: false, message: 'שם הקרן נדרש' });
   }
 
-  const validTypes = ['pension_comprehensive', 'pension_old', 'managers_insurance', 'provident_fund', 'study_fund', 'other'];
+  // Gemel types are created via POST /api/gemel/funds
+  const validTypes = ['pension_comprehensive', 'pension_old', 'managers_insurance', 'other'];
   if (!validTypes.includes(fundType)) {
-    return res.status(400).json({ success: false, message: 'סוג קרן לא תקין' });
+    return res.status(400).json({ success: false, message: 'סוג קרן לא תקין — קופות גמל והשתלמות מנוהלות בעמוד הגמל' });
   }
 
   const fund = await PensionFund.findOneAndUpdate(

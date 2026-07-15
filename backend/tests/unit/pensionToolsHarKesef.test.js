@@ -63,9 +63,11 @@ describe('pensionTools with PensionFund data', () => {
 
     expect(summary.hasData).toBe(true);
     expect(summary.dataSource).toBe('har_hakesef');
-    expect(summary.currentAccumulation).toBe(263000);
-    expect(summary.totalMonthlyContribution).toBe(3380);
-    expect(summary.fundCount).toBe(2);
+    // Gemel-type funds are excluded from pension balances (owned by the gemel agent)
+    expect(summary.currentAccumulation).toBe(185000);
+    expect(summary.totalMonthlyContribution).toBe(2580);
+    expect(summary.fundCount).toBe(1);
+    // ...but the study-fund flag still reflects all holdings
     expect(summary.hasStudyFund).toBe(true);
     expect(summary.grossSalary).toBe(18000);
   });
