@@ -506,7 +506,7 @@ export default function LandingPage() {
             <div className="band-text">
               <span className="band-tag">ניהול פנסיה</span>
               <h2>לעבור לפנסיה עם AI, שיכולה להיות שווה לך הרבה יותר כסף בגיל הפרישה.</h2>
-              <p>אנחנו סורקים את כל המסלולים, מנתחים את התיק שלך, ומפיקים בשנייה תובנות מבוססות נתונים שישרדו לך את הפנסיה.</p>
+              <p>אנחנו סורקים את כל המסלולים, מנתחים את התיק שלך, ומפיקים בשנייה תובנות מבוססות נתונים שישדרגו לך את הפנסיה.</p>
               <div className="band-cta">
                 <button className="band-btn" onClick={toRegister}>
                   תראו לי איך
