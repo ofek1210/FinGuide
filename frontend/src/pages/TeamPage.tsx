@@ -31,10 +31,10 @@ const TEAM: TeamMember[] = [
     tone: "pink",
   },
   {
-    name: "Emily Belensky",
+    name: "Emily Belenky",
     role: "Co-Founder & Head of Reliability Engineering",
     description: "Building scalable, resilient, and highly available systems.",
-    image: "/team/EmilyBelensky.jpeg",
+    image: "/team/EmilyBelenky.jpeg",
     tone: "mint",
   },
   {
