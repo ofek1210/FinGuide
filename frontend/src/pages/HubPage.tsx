@@ -11,6 +11,7 @@ import { listFindings, type FindingItem } from "../api/findings.api";
 import { getPensionAnalysis, getPensionImportHistory, type PensionAnalysisData } from "../api/pension.api";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
 import { enrichPayslipFromDoc } from "../utils/payslipEnrichment";
+import { timeOfDayGreeting } from "../utils/timeGreeting";
 import { getInsuranceAnalysis } from "../api/insuranceAI.api";
 import type { FullAnalysisGlobalScore } from "../api/fullAnalysis.api";
 
@@ -376,6 +377,7 @@ export default function HubPage() {
   }, [projection, pension?.summary.currentAccumulation]);
 
   const firstName = user?.name?.split(" ")[0] ?? "שלום";
+  const greeting = timeOfDayGreeting();
   const reviewLabel = new Date().toLocaleDateString("he-IL", { month: "long", year: "numeric" });
   const retirementAge = pension?.summary.retirementAge ?? 67;
 
@@ -447,7 +449,7 @@ export default function HubPage() {
               <Sparkles size={17} color="var(--lav-500)" />
               <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: ".12em", color: "var(--lav-600)" }}>סקירה שבועית · {reviewLabel}</span>
             </div>
-            <h1 style={{ margin: 0, fontSize: "clamp(32px,4vw,48px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.04, color: "var(--text-strong)" }}>בוקר טוב, {firstName}.</h1>
+            <h1 style={{ margin: 0, fontSize: "clamp(32px,4vw,48px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.04, color: "var(--text-strong)" }}>{greeting}, {firstName}.</h1>
           </div>
           <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 16, fontWeight: 500, maxWidth: 280, textWrap: "balance" }}>{oppLine}</p>
         </div>
