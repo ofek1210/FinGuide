@@ -311,7 +311,7 @@ const syncGmailPayslips = async userId => {
 
         ({ filePath } = await saveIncomingPdfToUploads(buffer, attachment.filename));
 
-        const document = await processFinancialDocument({
+        const result = await processFinancialDocument({
           userId,
           filePath,
           originalName: attachment.filename || 'payslip.pdf',
@@ -327,7 +327,14 @@ const syncGmailPayslips = async userId => {
         });
 
         summary.imported += 1;
-        summary.documents.push(serializeDocument(document));
+        if (result?.routedTo) {
+          summary.documents.push({
+            routedTo: result.routedTo,
+            message: result.message,
+          });
+        } else {
+          summary.documents.push(serializeDocument(result));
+        }
       } catch (error) {
         console.error('[gmail] import attachment failed', {
           userId,

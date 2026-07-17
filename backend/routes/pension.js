@@ -64,7 +64,7 @@ router.post('/upload', (req, res, next) => {
 });
 
 router.post('/upload-file', fileUpload.single('file'), (req, res, next) => {
-  Promise.resolve(uploadPensionFile(req, res)).catch(next);
+  Promise.resolve(uploadPensionFile(req, res, next)).catch(next);
 });
 
 router.post('/upload-free-preview', fileUpload.single('file'), (req, res, next) => {

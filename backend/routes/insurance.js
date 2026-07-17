@@ -51,7 +51,7 @@ router.get('/import-history', (req, res, next) => {
 
 // POST /api/insurance/upload-excel — parse Har HaBituach Excel
 router.post('/upload-excel', excelUpload.single('file'), (req, res, next) => {
-  Promise.resolve(uploadInsuranceExcel(req, res)).catch(next);
+  Promise.resolve(uploadInsuranceExcel(req, res, next)).catch(next);
 });
 
 // DELETE /api/insurance/policies/:id

@@ -208,8 +208,6 @@ function Sparkline({ points, tone = "mint", w = 78, h = 30 }: { points: number[]
 }
 
 /* ── static display bits ─────────────────────────────────────── */
-const AGENT_ORDINAL: Record<AgentId, string> = { payslips: "01", insurance: "02", pension: "03", gemel: "04" };
-
 const DOT = "radial-gradient(rgba(123,95,214,.10) 1px,transparent 1px)";
 
 /* ── data mapping ────────────────────────────────────────────── */
@@ -547,10 +545,7 @@ export default function HubPage() {
                 onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-5px)"; e.currentTarget.style.boxShadow = "var(--shadow-card)"; }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.boxShadow = "var(--shadow-soft)"; }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
-                    <span style={{ width: 26, height: 26, borderRadius: 8, background: c2, color: "#fff", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 12, letterSpacing: "-.02em" }}>{AGENT_ORDINAL[a.id]}</span>
-                    <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: ".11em", color: c2 }}>סוכן AI</span>
-                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: c2 }}>{a.hubTitle}</span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: "var(--mint-ink)" }}>
                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--mint-ink)", boxShadow: "0 0 0 3px rgba(47,156,98,.18)" }} />פעיל
                   </span>

@@ -36,10 +36,19 @@ class FileUploadError extends AppError {
   }
 }
 
+class DuplicateUploadError extends AppError {
+  constructor(message = 'המסמך כבר קיים במערכת', existing = null) {
+    const details = existing ? [existing] : [];
+    super(message, 409, 'DuplicateUploadError', details);
+    this.existing = existing;
+  }
+}
+
 module.exports = {
   AppError,
   ValidationError,
   AuthError,
   NotFoundError,
   FileUploadError,
+  DuplicateUploadError,
 };

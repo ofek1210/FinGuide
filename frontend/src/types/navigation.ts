@@ -51,7 +51,6 @@ export const PRIVATE_ROUTES: AppRoute[] = [
   APP_ROUTES.financialHealth,
   APP_ROUTES.copilot,
   APP_ROUTES.insights,
-  APP_ROUTES.expenses,
   APP_ROUTES.insurance,
   APP_ROUTES.pension,
   APP_ROUTES.gemel,

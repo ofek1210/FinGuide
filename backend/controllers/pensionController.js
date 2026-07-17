@@ -20,6 +20,7 @@ const {
   importManualFundsFromPreview,
 } = require('../services/pensionClearinghouseImportService');
 const PensionImportSnapshot = require('../models/PensionImportSnapshot');
+const { computeBufferChecksum, assertUploadNotDuplicate } = require('../utils/duplicateUpload');
 
 const SNAPSHOT_CAP = 5;
 
@@ -144,14 +145,18 @@ async function simulateScenario(req, res) {
 /**
  * POST /api/pension/upload-file
  */
-async function uploadPensionFile(req, res) {
+async function uploadPensionFile(req, res, next) {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'לא קיבלנו קובץ' });
   }
 
-  const userId = req.user._id;
-  const ext = path.extname(req.file.originalname || '').toLowerCase();
-  const importSource = req.query.importSource === 'quarterly_report' ? 'quarterly_report' : 'har_hakesef';
+  try {
+    const userId = req.user._id;
+    const checksum = computeBufferChecksum(req.file.buffer);
+    await assertUploadNotDuplicate(userId, checksum);
+
+    const ext = path.extname(req.file.originalname || '').toLowerCase();
+    const importSource = req.query.importSource === 'quarterly_report' ? 'quarterly_report' : 'har_hakesef';
 
   let parsed;
   try {
@@ -177,8 +182,14 @@ async function uploadPensionFile(req, res) {
     });
   }
 
-  const result = await importPensionFile(userId, parsed.funds, importSource, req.file.originalname);
-  const {analysis} = result;
+  const result = await importPensionFile(
+    userId,
+    parsed.funds,
+    importSource,
+    req.file.originalname,
+    checksum,
+  );
+  const { analysis } = result;
 
   return res.json({
     success: true,
@@ -201,6 +212,9 @@ async function uploadPensionFile(req, res) {
       funds: result.funds.map(f => mapPensionFundToDto(f)),
     },
   });
+  } catch (err) {
+    return next(err);
+  }
 }
 
 /**

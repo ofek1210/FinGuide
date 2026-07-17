@@ -9,8 +9,11 @@ const { validatePayslipAnalysis, buildFieldsMeta, normalizePayslipAnalysis } = r
 const { normalizeDocumentMetadataInput } = require('../utils/documentMetadata');
 const { syncPayslipPeriodMetadata } = require('../utils/payslipPeriod');
 const { PdfPasswordRequiredError, isPdfPasswordError } = require('../utils/pdfPassword');
-const { parseHarHaBituach } = require('./harHaBituachService');
+const { parseHarHaBituach, isHarHaBituachBuffer } = require('./harHaBituachService');
 const { isForm106, parseForm106Text } = require('./form106Service');
+const { assertUploadNotDuplicate, assertPayslipPeriodNotDuplicate } = require('../utils/duplicateUpload');
+const { DuplicateUploadError } = require('../utils/appErrors');
+const { parsePeriodMonth } = require('../utils/payslipPeriod');
 
 const unlink = promisify(fs.unlink);
 
@@ -70,6 +73,23 @@ const applyExtractionToDocument = async (document, { password, userId } = {}) =>
     document.analysisData = data;
     document.processedAt = new Date();
     syncPayslipPeriodMetadata(document, data);
+
+    const period = parsePeriodMonth(data.period?.month)
+      || (document.metadata?.periodYear && document.metadata?.periodMonth
+        ? { year: document.metadata.periodYear, month: document.metadata.periodMonth }
+        : null);
+    if (userId && period) {
+      try {
+        await assertPayslipPeriodNotDuplicate(userId, period.year, period.month, document._id);
+      } catch (err) {
+        if (err instanceof DuplicateUploadError) {
+          await removeFileQuietly(document.filePath);
+          await Document.deleteOne({ _id: document._id });
+        }
+        throw err;
+      }
+    }
+
     if (validation.ok) {
       document.status = 'completed';
       document.processingError = null;
@@ -90,6 +110,9 @@ const applyExtractionToDocument = async (document, { password, userId } = {}) =>
 
     return { document, validation };
   } catch (extractionError) {
+    if (extractionError instanceof DuplicateUploadError) {
+      throw extractionError;
+    }
     if (
       extractionError instanceof PdfPasswordRequiredError ||
       extractionError?.code === 'PDF_PASSWORD_REQUIRED' ||
@@ -165,6 +188,7 @@ const applyForm106Extraction = async (document, text, { userId } = {}) => {
 
 /**
  * Shared pipeline for manual upload and Gmail import.
+ * May return a Document, or a routed import result for insurance/pension files.
  */
 const processFinancialDocument = async ({
   userId,
@@ -177,10 +201,58 @@ const processFinancialDocument = async ({
 }) => {
   const stats = await fs.promises.stat(filePath);
   const checksumSha256 = providedChecksum || (await computeFileChecksum(filePath));
-  const filename = path.basename(filePath);
-  const documentMetadata = resolveDocumentMetadata(source, metadata);
+  await assertUploadNotDuplicate(userId, checksumSha256);
+
   const ext = path.extname(originalName || filePath).toLowerCase();
   const isXlsx = ext === '.xlsx' || ext === '.xls';
+  const buffer = await fs.promises.readFile(filePath);
+
+  if (isXlsx && isHarHaBituachBuffer(buffer)) {
+    const { parseInsuranceExcel } = require('./insuranceExcelParser');
+    const { importInsuranceExcel } = require('./insuranceImportService');
+    const parsed = parseInsuranceExcel(buffer, originalName);
+    if (parsed.length > 0) {
+      const result = await importInsuranceExcel(userId, parsed, originalName, checksumSha256);
+      await removeFileQuietly(filePath);
+      return {
+        routedTo: 'insurance',
+        message: `זוהה דוח ביטוח — יובאו ${result.imported} פוליסות לדאשבורד הביטוחים`,
+        data: result,
+      };
+    }
+  }
+
+  if (isXlsx || ext === '.pdf') {
+    try {
+      const { parseHarHaKesef } = require('./harHaKesefService');
+      const parsed = await parseHarHaKesef(buffer, { ext, originalName });
+      if (parsed.funds?.length > 0) {
+        const { importPensionFile } = require('./pensionImportService');
+        const importSource = ext === '.pdf' ? 'quarterly_report' : 'har_hakesef';
+        const result = await importPensionFile(
+          userId,
+          parsed.funds,
+          importSource,
+          originalName,
+          checksumSha256,
+        );
+        await removeFileQuietly(filePath);
+        return {
+          routedTo: 'pension',
+          message: `זוהה דוח פנסיה — יובאו ${result.imported} קרנות לעוזר הפנסיוני`,
+          data: result,
+        };
+      }
+    } catch (routeErr) {
+      if (routeErr instanceof DuplicateUploadError) {
+        await removeFileQuietly(filePath);
+        throw routeErr;
+      }
+    }
+  }
+
+  const filename = path.basename(filePath);
+  const documentMetadata = resolveDocumentMetadata(source, metadata);
 
   const document = await Document.create({
     user: userId,

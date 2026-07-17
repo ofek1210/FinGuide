@@ -31,9 +31,10 @@ async function syncProfileInsurance(userId) {
   );
 }
 
-async function saveInsuranceImportSnapshot(userId, sourceFile, analysis) {
+async function saveInsuranceImportSnapshot(userId, sourceFile, analysis, fileChecksumSha256) {
   await saveImportSnapshot(InsuranceImportSnapshot, userId, {
     sourceFile,
+    fileChecksumSha256: fileChecksumSha256 || null,
     policyCount: analysis?.summary?.policyCount ?? 0,
     duplicateCount: analysis?.analysis?.duplicateCount ?? 0,
     totalMonthlyWaste: analysis?.analysis?.totalMonthlyWaste ?? 0,
@@ -42,14 +43,14 @@ async function saveInsuranceImportSnapshot(userId, sourceFile, analysis) {
   });
 }
 
-async function importInsuranceExcel(userId, parsedPolicies, sourceFile) {
+async function importInsuranceExcel(userId, parsedPolicies, sourceFile, fileChecksumSha256) {
   return runDomainImport({
     userId,
     buildAnalysisFn: buildInsuranceAnalysis,
     runUpsert: () => upsertImportedPolicies(userId, parsedPolicies, sourceFile),
     syncProfileFn: syncProfileInsurance,
     saveSnapshotFn: (uid, postAnalysis) =>
-      saveInsuranceImportSnapshot(uid, sourceFile, postAnalysis),
+      saveInsuranceImportSnapshot(uid, sourceFile, postAnalysis, fileChecksumSha256),
     extractSavingsDelta: (post, pre) =>
       (post.analysis?.savings?.annualSavings || 0)
       - (pre.analysis?.savings?.annualSavings || 0),
