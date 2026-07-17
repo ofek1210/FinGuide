@@ -8,7 +8,7 @@
 <strong>Ofek Dil</strong><br />
 <strong>Segev Partush</strong><br />
 <strong>Ofir Raz</strong><br />
-<strong>Emily Belensky</strong></p>
+<strong>Emily Belenky</strong></p>
 
 <p>Approved by the supervisor: Eliav Menashe</p>
 
