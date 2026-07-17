@@ -39,7 +39,7 @@ exports.uploadDocument = async (req, res, next) => {
 
     const checksumSha256 = await computeFileChecksum(req.file.path);
 
-    const document = await processFinancialDocument({
+    const result = await processFinancialDocument({
       userId: req.user.id,
       filePath: req.file.path,
       originalName: req.file.originalname,
@@ -48,9 +48,18 @@ exports.uploadDocument = async (req, res, next) => {
       checksumSha256,
     });
 
+    if (result?.routedTo) {
+      return res.status(201).json({
+        success: true,
+        routedTo: result.routedTo,
+        message: result.message,
+        data: result.data,
+      });
+    }
+
     const responseBody = {
       success: true,
-      data: enrichUploadResponse(serializeDocument(document)),
+      data: enrichUploadResponse(serializeDocument(result)),
     };
     res.status(201).json(responseBody);
   } catch (error) {

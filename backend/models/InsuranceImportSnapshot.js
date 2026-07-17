@@ -11,6 +11,7 @@ const insuranceImportSnapshotSchema = new mongoose.Schema(
       index: true,
     },
     sourceFile: { type: String, default: null },
+    fileChecksumSha256: { type: String, default: null, index: true },
     importedAt: { type: Date, default: Date.now },
     policyCount: { type: Number, default: 0 },
     duplicateCount: { type: Number, default: 0 },

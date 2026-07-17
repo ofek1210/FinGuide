@@ -148,7 +148,7 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
           }}>
             <div style={{ padding: "8px 14px 12px", borderBottom: "1px solid var(--border-hair)", marginBottom: 8 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-                בחר סוכן AI
+                בחר סוכן
               </div>
             </div>
 
@@ -188,7 +188,7 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                   </div>
                   <div style={{ flex: 1, textAlign: "right" }}>
                     <div style={{ fontWeight: 800, fontSize: 13.5, color: isActive ? a.tone.accent : "var(--text-strong)", letterSpacing: "-0.01em" }}>
-                      {a.label}
+                      {a.hubTitle}
                     </div>
                     <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
                       {a.sub}

@@ -101,7 +101,7 @@ export default function InsurancePage() {
         ? `יובאו ${imported} פוליסות בהצלחה — הסוכן מנתח...`
         : "הדוח נקלט בהצלחה — לא נמצאו בו פוליסות פעילות, הסוכן ממשיך לניתוח לפי השאלון.";
     },
-    reloadAfterUpload: load,
+    reloadAfterUpload: async () => { await load(); },
     reloadImportHistory: loadImportHistory,
     // keep the redesigned success state visible; the user advances via the
     // "צפה בתובנות הסוכן" button rather than an automatic timeout.

@@ -16,6 +16,7 @@ const pensionImportSnapshotSchema = new mongoose.Schema(
       required: true,
     },
     sourceFile: { type: String, default: null },
+    fileChecksumSha256: { type: String, default: null, index: true },
     importedAt: { type: Date, default: Date.now },
     fundCount: { type: Number, default: 0 },
     totalPotentialSavings: { type: Number, default: 0 },

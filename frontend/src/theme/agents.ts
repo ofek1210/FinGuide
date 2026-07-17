@@ -39,6 +39,8 @@ export interface AgentTone {
 export interface AgentDef {
   id: AgentId;
   label: string;
+  /** Short title shown on Hub agent cards */
+  hubTitle: string;
   sub: string;
   Icon: LucideIcon;
   /** Landing route for the agent. */
@@ -52,6 +54,7 @@ export const AGENTS: AgentDef[] = [
   {
     id: "payslips",
     label: "תלושים ומסמכים",
+    hubTitle: "סוכן תלושי שכר",
     sub: "ניתוח שכר, מס והוצאות",
     Icon: FileText,
     route: APP_ROUTES.documents,
@@ -74,6 +77,7 @@ export const AGENTS: AgentDef[] = [
   {
     id: "insurance",
     label: "ביטוחים",
+    hubTitle: "סוכן ביטוחים ופוליסות",
     sub: "פוליסות וכיסויים",
     Icon: ShieldCheck,
     route: APP_ROUTES.insurance,
@@ -89,6 +93,7 @@ export const AGENTS: AgentDef[] = [
   {
     id: "pension",
     label: "עוזר פנסיוני",
+    hubTitle: "סוכן פנסיוני",
     sub: "תחזית פרישה וצבירה",
     Icon: TrendingUp,
     route: APP_ROUTES.pension,
@@ -104,6 +109,7 @@ export const AGENTS: AgentDef[] = [
   {
     id: "gemel",
     label: "קופות גמל והשתלמות",
+    hubTitle: "סוכן קופות גמל והשתלמות",
     sub: "השוואת קופות ודמי ניהול",
     Icon: PiggyBank,
     route: APP_ROUTES.gemel,

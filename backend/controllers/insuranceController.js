@@ -5,6 +5,7 @@ const { parseInsuranceExcel } = require('../services/insuranceExcelParser');
 const { isHarHaBituachBuffer } = require('../services/harHaBituachService');
 const { buildInsuranceAnalysis, importInsuranceExcel } = require('../services/insuranceImportService');
 const { buildMarketAdvice } = require('../services/insuranceMarketAdvisorService');
+const { computeBufferChecksum, assertUploadNotDuplicate } = require('../utils/duplicateUpload');
 const {
   getSession,
   submitAnswer,
@@ -50,65 +51,77 @@ async function getInsuranceImportHistory(req, res) {
   });
 }
 
-async function uploadInsuranceExcel(req, res) {
+async function uploadInsuranceExcel(req, res, next) {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'לא קיבלנו קובץ Excel' });
   }
 
-  const parsed = parseInsuranceExcel(req.file.buffer, req.file.originalname);
+  try {
+    const checksum = computeBufferChecksum(req.file.buffer);
+    await assertUploadNotDuplicate(req.user._id, checksum);
 
-  if (parsed.length === 0) {
-    if (isHarHaBituachBuffer(req.file.buffer)) {
-      const analysis = await buildInsuranceAnalysis(req.user._id);
-      await markReportImported(req.user._id);
+    const parsed = parseInsuranceExcel(req.file.buffer, req.file.originalname);
 
-      return res.json({
-        success: true,
-        message: 'הקובץ נקלט, אבל לא נמצאו בו פוליסות פעילות לייבוא.',
-        data: {
-          imported: 0,
-          merged: 0,
-          created: 0,
-          savingsDelta: 0,
-          healthScore: analysis.healthCheck?.score ?? null,
-          analysis: analysis.analysis,
-          healthCheck: analysis.healthCheck,
-          recommendations: analysis.recommendations,
-          policies: [],
-        },
+    if (parsed.length === 0) {
+      if (isHarHaBituachBuffer(req.file.buffer)) {
+        const analysis = await buildInsuranceAnalysis(req.user._id);
+        await markReportImported(req.user._id);
+
+        return res.json({
+          success: true,
+          message: 'הקובץ נקלט, אבל לא נמצאו בו פוליסות פעילות לייבוא.',
+          data: {
+            imported: 0,
+            merged: 0,
+            created: 0,
+            savingsDelta: 0,
+            healthScore: analysis.healthCheck?.score ?? null,
+            analysis: analysis.analysis,
+            healthCheck: analysis.healthCheck,
+            recommendations: analysis.recommendations,
+            policies: [],
+          },
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: 'לא הצלחנו לפרסר את הקובץ. ודא שזהו קובץ Har HaBituach תקין.',
       });
     }
 
-    return res.status(400).json({
-      success: false,
-      message: 'לא הצלחנו לפרסר את הקובץ. ודא שזהו קובץ Har HaBituach תקין.',
+    const result = await importInsuranceExcel(
+      req.user._id,
+      parsed,
+      req.file.originalname,
+      checksum,
+    );
+    await markReportImported(req.user._id);
+
+    return res.json({
+      success: true,
+      message: `ייבאנו ${result.imported} פוליסות בהצלחה`,
+      data: {
+        imported: result.imported,
+        merged: result.merged,
+        created: result.created,
+        savingsDelta: result.savingsDelta,
+        healthScore: result.healthScore,
+        analysis: result.analysis.analysis,
+        healthCheck: result.analysis.healthCheck,
+        recommendations: result.analysis.recommendations,
+        policies: result.policies.map(p => ({
+          id: p._id.toString(),
+          type: p.type,
+          provider: p.provider,
+          monthlyPremium: p.monthlyPremium,
+          status: p.status,
+        })),
+      },
     });
+  } catch (err) {
+    return next(err);
   }
-
-  const result = await importInsuranceExcel(req.user._id, parsed, req.file.originalname);
-  await markReportImported(req.user._id);
-
-  return res.json({
-    success: true,
-    message: `ייבאנו ${result.imported} פוליסות בהצלחה`,
-    data: {
-      imported: result.imported,
-      merged: result.merged,
-      created: result.created,
-      savingsDelta: result.savingsDelta,
-      healthScore: result.healthScore,
-      analysis: result.analysis.analysis,
-      healthCheck: result.analysis.healthCheck,
-      recommendations: result.analysis.recommendations,
-      policies: result.policies.map(p => ({
-        id: p._id.toString(),
-        type: p.type,
-        provider: p.provider,
-        monthlyPremium: p.monthlyPremium,
-        status: p.status,
-      })),
-    },
-  });
 }
 
 async function deleteInsurancePolicy(req, res) {

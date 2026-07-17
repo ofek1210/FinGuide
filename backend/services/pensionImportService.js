@@ -29,7 +29,7 @@ async function syncProfileRetirement(userId) {
   );
 }
 
-async function savePensionImportSnapshot(userId, source, sourceFile, analysis) {
+async function savePensionImportSnapshot(userId, source, sourceFile, analysis, fileChecksumSha256) {
   // Count ALL tracked funds (incl. gemel types) — the Har HaKesef report imports
   // them together even though the pension analysis itself excludes gemel funds.
   const fundCount = await PensionFund.countDocuments({
@@ -40,6 +40,7 @@ async function savePensionImportSnapshot(userId, source, sourceFile, analysis) {
   await saveImportSnapshot(PensionImportSnapshot, userId, {
     source,
     sourceFile,
+    fileChecksumSha256: fileChecksumSha256 || null,
     fundCount,
     totalPotentialSavings: analysis.benchmark?.summary?.totalPotentialSavings || 0,
     healthScore: analysis.healthCheck?.score ?? null,
@@ -48,7 +49,7 @@ async function savePensionImportSnapshot(userId, source, sourceFile, analysis) {
   });
 }
 
-async function importPensionFile(userId, parsedFunds, importSource, sourceFile) {
+async function importPensionFile(userId, parsedFunds, importSource, sourceFile, fileChecksumSha256) {
   const docsPayload = parsedFunds.map(f => ({
     fundName: f.fundName,
     fundType: f.fundType,
@@ -77,7 +78,7 @@ async function importPensionFile(userId, parsedFunds, importSource, sourceFile) 
     runUpsert: () => upsertImportedFunds(userId, docsPayload, importSource, sourceFile),
     syncProfileFn: syncProfileRetirement,
     saveSnapshotFn: (uid, postAnalysis) =>
-      savePensionImportSnapshot(uid, importSource, sourceFile, postAnalysis),
+      savePensionImportSnapshot(uid, importSource, sourceFile, postAnalysis, fileChecksumSha256),
     extractSavingsDelta: (post, pre) =>
       (post.benchmark?.summary?.totalPotentialSavings || 0)
       - (pre.benchmark?.summary?.totalPotentialSavings || 0),
