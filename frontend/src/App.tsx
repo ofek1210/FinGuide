@@ -11,8 +11,6 @@ import ScanCompletePage from "./pages/ScanCompletePage";
 import PayslipHistoryPage from "./pages/PayslipHistoryPage";
 import PayslipDetailPage from "./pages/PayslipDetailPage";
 import PayslipMissingFieldsPage from "./pages/PayslipMissingFieldsPage";
-import InsightsPage from "./pages/InsightsPage";
-import FinancialPlanningPage from "./pages/FinancialPlanningPage";
 import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AIAgentsPage from "./pages/AIAgentsPage";
@@ -24,7 +22,6 @@ import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import WelcomePage from "./pages/WelcomePage";
-import WelcomeBackPage from "./pages/WelcomeBackPage";
 import WelcomePagePreview from "./pages/WelcomePagePreview";
 import PensionPage from "./pages/PensionPage";
 import GemelPage from "./pages/GemelPage";
@@ -99,14 +96,7 @@ export default function App() {
             </RequireAuth>
           }
         />
-        <Route
-          path={APP_ROUTES.welcomeBack}
-          element={
-            <RequireAuth>
-              <WelcomeBackPage />
-            </RequireAuth>
-          }
-        />
+        <Route path="/welcome-back" element={<Navigate to={APP_ROUTES.hub} replace />} />
         <Route
           path={APP_ROUTES.documents}
           element={
@@ -123,16 +113,9 @@ export default function App() {
             </RequireAuth>
           }
         />
-        <Route
-          path={APP_ROUTES.expenses}
-          element={
-            <RequireAuth>
-              <PayslipsAgentPage />
-            </RequireAuth>
-          }
-        />
         <Route path="/tax-assistant" element={<Navigate to={APP_ROUTES.taxAssistant} replace />} />
-        <Route path="/expenses" element={<Navigate to={APP_ROUTES.expenses} replace />} />
+        <Route path="/documents/expenses" element={<Navigate to={APP_ROUTES.documents} replace />} />
+        <Route path="/expenses" element={<Navigate to={APP_ROUTES.documents} replace />} />
         <Route
           path="/documents/:id"
           element={
@@ -151,30 +134,9 @@ export default function App() {
             </RequireAuth>
           }
         />
-        <Route
-          path={APP_ROUTES.copilot}
-          element={
-            <RequireAuth>
-              <Navigate to={APP_ROUTES.planning} replace />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={APP_ROUTES.insights}
-          element={
-            <RequireAuth>
-              <InsightsPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path={APP_ROUTES.planning}
-          element={
-            <RequireAuth>
-              <FinancialPlanningPage />
-            </RequireAuth>
-          }
-        />
+        <Route path="/copilot" element={<Navigate to={APP_ROUTES.hub} replace />} />
+        <Route path="/insights" element={<Navigate to={APP_ROUTES.hub} replace />} />
+        <Route path="/planning" element={<Navigate to={APP_ROUTES.hub} replace />} />
         <Route
           path={APP_ROUTES.insurance}
           element={

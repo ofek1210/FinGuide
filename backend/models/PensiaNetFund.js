@@ -19,6 +19,12 @@ const pensiaNetFundSchema = new mongoose.Schema(
     /** Average management fee from accumulation (%) — PensiaNet: SHIUR_D_NIHUL_MEANUAL / AHARON_TTVURAH */
     SHIUR_D_NIHUL_MEANUAL: { type: Number, default: null },
     SHIUR_D_NIHUL_AHARON_TTVURAH: { type: Number, default: null },
+    /** Alpha (annual) — from CKAN ALPHA field */
+    ALPHA: { type: Number, default: null },
+    /** 12-month trailing return (%) */
+    TSUA_12_HODASHIM: { type: Number, default: null },
+    /** 36-month trailing return (%) */
+    TSUA_36_HODASHIM: { type: Number, default: null },
     /** 5-year average annual return (%) — Engine B sort key */
     TSUA_SHNATIT_MEMUZAAT_5_SHANIM: { type: Number, default: null, index: true },
     /** 36-month standard deviation (%) */

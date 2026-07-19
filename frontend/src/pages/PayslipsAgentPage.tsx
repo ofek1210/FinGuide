@@ -19,7 +19,6 @@ import AppFooter from "../components/AppFooter";
 import DocumentsRibbonWave from "../components/documents/DocumentsRibbonWave";
 import PayslipsAgentTabs from "../components/payslips/PayslipsAgentTabs";
 import TaxAssistantPanel from "../components/payslips/TaxAssistantPanel";
-import ExpensesPanel from "../components/payslips/ExpensesPanel";
 import Loader from "../components/ui/Loader";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
@@ -103,8 +102,7 @@ export default function PayslipsAgentPage() {
   const [searchParams] = useSearchParams();
   const forceUpload = searchParams.get("upload") === "1" || searchParams.get("step") === "upload";
   const isTaxView = location.pathname === APP_ROUTES.taxAssistant;
-  const isExpensesView = location.pathname === APP_ROUTES.expenses;
-  const isSubView = isTaxView || isExpensesView;
+  const isSubView = isTaxView;
 
   const [intake, setIntake] = useState<IntakeData>(EMPTY_INTAKE);
   const [step, setStep] = useState<WizardStep>("upload");
@@ -167,8 +165,6 @@ export default function PayslipsAgentPage() {
 
         {isTaxView ? (
           <TaxAssistantPanel />
-        ) : isExpensesView ? (
-          <ExpensesPanel />
         ) : step === "upload" ? (
           <UploadStep
             intake={intake}

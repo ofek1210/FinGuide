@@ -95,6 +95,23 @@ async function getPayslipBenchmarks(req, res) {
   return res.json({ success: true, data: { recommendations } });
 }
 
+async function postPensiaCohortAnnual(req, res) {
+  if (!req.file?.buffer) {
+    return res.status(400).json({ success: false, message: 'חסר קובץ Excel' });
+  }
+  const { importPensiaNetCohortAnnualExcel } = require('../services/pensiaNetCohortAnnualImportService');
+  const data = await importPensiaNetCohortAnnualExcel(req.file.buffer, {
+    sourceFile: req.file.originalname,
+  });
+  return res.json({ success: true, data });
+}
+
+async function getPensiaCohortAnnual(req, res) {
+  const { getCohortAnnualSummary } = require('../services/pensiaNetCohortAnnualImportService');
+  const rows = await getCohortAnnualSummary();
+  return res.json({ success: true, data: rows });
+}
+
 module.exports = {
   getGovStatus,
   postGovSync,
@@ -106,4 +123,6 @@ module.exports = {
   getGemelAdvice,
   getBituahAdvice,
   getPayslipBenchmarks,
+  postPensiaCohortAnnual,
+  getPensiaCohortAnnual,
 };

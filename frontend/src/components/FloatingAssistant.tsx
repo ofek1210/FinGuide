@@ -74,7 +74,6 @@ export default function FloatingAssistant() {
     location.pathname === APP_ROUTES.assistant ||
     location.pathname === APP_ROUTES.aiAgents ||
     location.pathname === APP_ROUTES.welcome ||
-    location.pathname === APP_ROUTES.welcomeBack ||
     location.pathname === "/dev/welcome"
   ) {
     return null;
