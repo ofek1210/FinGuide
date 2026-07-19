@@ -14,6 +14,7 @@ import {
   Sparkles, Loader2, Trash2, type LucideIcon,
 } from "lucide-react";
 import PensionLeadingFundsTable from "./PensionLeadingFundsTable";
+import PensionStructuredInsightsPanel from "./PensionStructuredInsightsPanel";
 import { formatCurrencyOrDash } from "../../utils/formatters";
 import { FUND_TYPE_LABELS, RANK_BADGE, isPensionFundActive } from "../../utils/pensionDisplay";
 import type {
@@ -65,6 +66,9 @@ function RadialGauge({ value, sub }: { value: number; sub: string }) {
 type Props = {
   data: PensionAnalysisData | null;
   funds: PensionFundDTO[];
+  analysisLoading?: boolean;
+  analysisError?: string | null;
+  onRetryAnalysis?: () => void;
   showAddForm: boolean;
   setShowAddForm: React.Dispatch<React.SetStateAction<boolean>>;
   form: UploadPensionBody;
@@ -79,7 +83,8 @@ type Props = {
 };
 
 export default function PensionAdvisor({
-  data, funds, showAddForm, setShowAddForm, form, setForm, saving, saveMsg, deletingId,
+  data, funds, analysisLoading = false, analysisError = null, onRetryAnalysis,
+  showAddForm, setShowAddForm, form, setForm, saving, saveMsg, deletingId,
   onSaveFund, onDeleteFund, onReimport, onOpenChat,
 }: Props) {
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
@@ -102,6 +107,8 @@ export default function PensionAdvisor({
   const benchmark = data?.benchmark;
   const healthCheck = data?.healthCheck;
   const recs: PensionRecommendationDTO[] = data?.recommendations ?? [];
+  const structuredInsights = data?.structuredInsights;
+  const insightMeta = data?.insightMeta;
 
   const base = projection?.projectedAccumulation ?? summary?.currentAccumulation ?? 0;
   const optimistic = projection?.scenarios?.optimistic.accumulation ?? 0;
@@ -246,12 +253,23 @@ export default function PensionAdvisor({
         </div>
       )}
 
+      <PensionStructuredInsightsPanel
+        insights={structuredInsights}
+        meta={insightMeta}
+        loading={analysisLoading}
+        error={analysisError}
+        onRetry={onRetryAnalysis}
+        hasLegacyRecommendations={recs.length > 0}
+      />
+
       <PensionLeadingFundsTable />
 
-      {/* recommendations by impact */}
+      {/* recommendations by impact — legacy shape; shown when API has no structuredInsights or as supplement */}
       {recs.length > 0 && (
         <div style={{ marginBottom: 18 }}>
-          <h2 style={{ fontSize: 13, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".06em", margin: "0 2px 14px" }}>המלצות — מדורגות לפי השפעה כספית</h2>
+          <h2 style={{ fontSize: 13, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".06em", margin: "0 2px 14px" }}>
+            {structuredInsights?.length ? "המלצות נוספות" : "המלצות — מדורגות לפי השפעה כספית"}
+          </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {recs.map((r, i) => {
               const u = URGENCY[r.urgency] ?? URGENCY.low;

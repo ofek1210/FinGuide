@@ -1,6 +1,7 @@
 'use strict';
 
 const router = require('express').Router();
+const multer = require('multer');
 const { protect } = require('../middleware/auth');
 const {
   getGovStatus,
@@ -13,7 +14,18 @@ const {
   getGemelAdvice,
   getBituahAdvice,
   getPayslipBenchmarks,
+  postPensiaCohortAnnual,
+  getPensiaCohortAnnual,
 } = require('../controllers/govController');
+
+const excelUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = /\.(xls|xlsx)$/i.test(file.originalname || '');
+    cb(ok ? null : new Error('רק קבצי Excel'), ok);
+  },
+});
 
 router.use(protect);
 
@@ -40,6 +52,16 @@ router.get('/bituah/advice', (req, res, next) => {
 /** GET /api/gov/payslip/benchmarks — payslip × gov market recommendations */
 router.get('/payslip/benchmarks', (req, res, next) => {
   Promise.resolve(getPayslipBenchmarks(req, res)).catch(next);
+});
+
+/** GET /api/gov/pensia/cohort-annual — imported macro annual returns by fund type */
+router.get('/pensia/cohort-annual', (req, res, next) => {
+  Promise.resolve(getPensiaCohortAnnual(req, res)).catch(next);
+});
+
+/** POST /api/gov/pensia/cohort-annual — import tsuotHodPtihaRDL.xls from Pensia-Net UI */
+router.post('/pensia/cohort-annual', excelUpload.single('file'), (req, res, next) => {
+  Promise.resolve(postPensiaCohortAnnual(req, res)).catch(next);
 });
 
 /** GET /api/gov/:net/status — single net sync meta */

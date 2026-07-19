@@ -50,6 +50,8 @@ export default function PensionPage() {
   const [step, setStep] = useState<FlowStep>("landing");
   const [data, setData] = useState<PensionAnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [visitedSite, setVisitedSite] = useState(false);
 
   // Upload state
@@ -77,19 +79,31 @@ export default function PensionPage() {
   // Loads analysis data only — does NOT change the step, so the upload success
   // screen stays visible until the user clicks "צפה בניתוח הפנסיה".
   const loadAnalysis = useCallback(async () => {
+    setAnalysisLoading(true);
+    setAnalysisError(null);
     const res = await getPensionAnalysis();
-    if (res.ok && res.data?.success && res.data.data) setData(res.data.data);
+    setAnalysisLoading(false);
+    if (res.ok && res.data?.success && res.data.data) {
+      setData(res.data.data);
+      return res;
+    }
+    setAnalysisError(res.ok ? "לא התקבלו נתוני ניתוח מהשרת" : (res.error?.message ?? "שגיאה בטעינת הניתוח"));
     return res;
   }, []);
 
   useEffect(() => {
     void (async () => {
+      setAnalysisLoading(true);
+      setAnalysisError(null);
       const [analysisRes, fundsRes] = await Promise.all([getPensionAnalysis(), getPensionFunds()]);
+      setAnalysisLoading(false);
       setLoading(false);
       const fundList = fundsRes.ok && fundsRes.data?.data ? fundsRes.data.data : [];
       setFunds(fundList);
       if (analysisRes.ok && analysisRes.data?.success && analysisRes.data.data) {
         setData(analysisRes.data.data);
+      } else if (!analysisRes.ok) {
+        setAnalysisError(analysisRes.error?.message ?? "שגיאה בטעינת הניתוח");
       }
       if (fundList.length > 0) {
         setStep("results");
@@ -240,6 +254,9 @@ export default function PensionPage() {
           <PensionAdvisor
             data={data}
             funds={funds}
+            analysisLoading={analysisLoading}
+            analysisError={analysisError}
+            onRetryAnalysis={() => { void loadAnalysis(); }}
             showAddForm={showAddForm}
             setShowAddForm={setShowAddForm}
             form={form}

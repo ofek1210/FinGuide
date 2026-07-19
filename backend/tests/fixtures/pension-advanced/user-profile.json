@@ -1,0 +1,16 @@
+{
+  "personal": {
+    "age": 38,
+    "maritalStatus": "single",
+    "childrenCount": 0
+  },
+  "retirement": {
+    "plannedRetirementAge": 67
+  },
+  "financial": {
+    "riskTolerance": "medium"
+  },
+  "employment": {
+    "grossSalary": 18000
+  }
+}

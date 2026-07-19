@@ -204,29 +204,6 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
               );
             })}
 
-            <div style={{ borderTop: "1px solid var(--border-hair)", marginTop: 8, padding: "10px 14px 4px", display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {[
-                { label: "תובנות", route: APP_ROUTES.insights },
-                { label: "תכנון פיננסי", route: APP_ROUTES.planning },
-              ].map(link => (
-                <button
-                  key={link.route}
-                  onClick={() => { setAssistantOpen(false); navigate(link.route); }}
-                  style={{
-                    padding: "5px 12px", borderRadius: "var(--r-pill)",
-                    background: "var(--accent-soft)",
-                    border: "1px solid var(--lav-200)",
-                    color: "var(--accent)", fontFamily: "inherit",
-                    fontSize: 12, fontWeight: 600,
-                    cursor: "pointer", transition: "all var(--dur-fast) var(--ease)",
-                  }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--lav-100)"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent-soft)"; }}
-                >
-                  {link.label}
-                </button>
-              ))}
-            </div>
           </div>
         )}
       </nav>

@@ -45,6 +45,67 @@ export type PensionRecommendationDTO = {
   urgency: "high" | "medium" | "low";
   financialImpact: string | null;
   confidenceScore: number;
+  impactAmount?: number;
+};
+
+export type PensionInsightSeverity = "info" | "low" | "medium" | "high";
+
+export type PensionInsightBenchmarkDTO = {
+  group?: string | null;
+  average?: number | null;
+  median?: number | null;
+  percentile?: number | null;
+  return1YPercentile?: number | null;
+  feePercentile?: number | null;
+  riskPercentile?: number | null;
+  foreignMedian?: number | null;
+};
+
+export type PensionInsightEstimatedImpactDTO = {
+  annual?: number | null;
+  retirement?: number | null;
+  currency?: "ILS" | string;
+};
+
+export type PensionStructuredInsightDTO = {
+  id: string;
+  category: string;
+  severity: PensionInsightSeverity;
+  title: string;
+  finding: string;
+  personalDataUsed?: string[];
+  marketDataUsed?: string[];
+  benchmark?: PensionInsightBenchmarkDTO;
+  estimatedImpact?: PensionInsightEstimatedImpactDTO;
+  recommendedAction?: string;
+  confidence?: number;
+  assumptions?: string[];
+  limitations?: string[];
+  requiresLicensedAdvisor?: boolean;
+  disclaimer?: string;
+  fundId?: string;
+};
+
+export type PensionInsightMetaDTO = {
+  fundCount?: number;
+  analyzersRun?: string[];
+  marketMatches?: Array<{
+    fundId?: string;
+    matchConfidence?: number;
+    dataComplete?: boolean;
+    peerGroupSize?: number;
+  }>;
+  dataCompleteness?: {
+    hasOnboardingProfile?: boolean;
+    hasAge?: boolean;
+    hasRiskTolerance?: boolean;
+    hasMaritalStatus?: boolean;
+    marketMatchRate?: number;
+  };
+  generatedAt?: string;
+  disclaimer?: string;
+  durationMs?: number;
+  marketDataError?: string;
 };
 
 export type PensionBenchmarkFundDTO = {
@@ -100,6 +161,8 @@ export type PensionAnalysisData = {
   benchmark?: PensionBenchmarkDTO;
   healthCheck?: PensionHealthCheckDTO;
   recommendations: PensionRecommendationDTO[];
+  structuredInsights?: PensionStructuredInsightDTO[];
+  insightMeta?: PensionInsightMetaDTO | null;
 };
 
 export type PensionAnalysisResponse = {
