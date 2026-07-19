@@ -4,7 +4,7 @@ import type { FullAnalysisResponse } from "../../api/fullAnalysis.api";
 import { AGENTS } from "../../theme/agents";
 import { APP_ROUTES } from "../../types/navigation";
 import { AGENT_KEY, type BackendAgentKey } from "./masterAgentMerge";
-import { FOCUS_LABEL, SOURCE_LABEL, nis } from "./agentDisplay";
+import { FOCUS_LABEL, nis } from "./agentDisplay";
 import { RadialGauge } from "./hubViz";
 import { useCountUp, useInView } from "./hubVizCore";
 import type { Phase } from "./useMasterAgent";
@@ -58,7 +58,6 @@ export default function MasterBand({
     loading || potentialSavings > 0 ? "money" : opportunities > 0 ? "counts" : "empty";
 
   const score = result?.globalScore ?? null;
-  const summarySource = result?.summarySource ? SOURCE_LABEL[result.summarySource] : null;
 
   const healthRows: [string, number | null][] = score?.categories?.length
     ? score.categories.slice(0, 3).map(cat => [
@@ -103,27 +102,16 @@ export default function MasterBand({
               {heroMode === "money" ? nis(total) : heroMode === "counts" ? bigOpportunities : "✓"}
             </div>
 
-            {/* unified summary once a full run happened; pre-run — the count rows */}
-            {result?.summary ? (
-              <div style={{ marginTop: 20, maxWidth: 440 }}>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,.55)", fontWeight: 700, marginBottom: 6 }}>
-                  {summarySource ?? "כל הסוכנים בדוח אחד"}
-                  {score?.score != null ? ` · ציון ${score.score}/100` : ""}
+            {/* the cross-referenced count rows (the full unified summary gets its
+                own emphasized block right below the band) */}
+            <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 1, maxWidth: 380 }}>
+              {heroRows.map(([k, v]) => (
+                <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,.09)" }}>
+                  <span style={{ fontSize: 14, color: "rgba(255,255,255,.7)", fontWeight: 500 }}>{k}</span>
+                  <span style={{ fontSize: 15, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{v}</span>
                 </div>
-                <p style={{ margin: 0, fontSize: 14, lineHeight: 1.65, color: "rgba(255,255,255,.85)", fontWeight: 500, whiteSpace: "pre-line", borderInlineStart: "3px solid var(--lav-400)", paddingInlineStart: 14, display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                  {result.summary}
-                </p>
-              </div>
-            ) : (
-              <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 1, maxWidth: 380 }}>
-                {heroRows.map(([k, v]) => (
-                  <div key={k} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid rgba(255,255,255,.09)" }}>
-                    <span style={{ fontSize: 14, color: "rgba(255,255,255,.7)", fontWeight: 500 }}>{k}</span>
-                    <span style={{ fontSize: 15, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{v}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+              ))}
+            </div>
 
             {/* primary CTA — actually runs the full analysis */}
             <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>

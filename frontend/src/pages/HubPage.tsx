@@ -10,8 +10,10 @@ import { AGENT_KEY, DOMAIN_TO_AGENT } from "../components/hub/masterAgentMerge";
 import { useMasterAgent } from "../components/hub/useMasterAgent";
 import { useHubData } from "../components/hub/useHubData";
 import MasterBand from "../components/hub/MasterBand";
+import UnifiedSummary from "../components/hub/UnifiedSummary";
 import AgentSummaryCard from "../components/hub/AgentSummaryCard";
 import NextActions from "../components/hub/NextActions";
+import AiScoreCta from "../components/hub/AiScoreCta";
 import CommandBar from "../components/hub/CommandBar";
 import AgentSyncOverlay from "../components/hub/AgentSyncOverlay";
 import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
@@ -102,6 +104,9 @@ export default function HubPage() {
           onRunFull={master.runFull}
         />
 
+        {/* THE UNIFIED SUMMARY — the one cross-referenced takeaway (post-run) */}
+        {master.result && <UnifiedSummary result={master.result} />}
+
         {/* FOUR AGENT CARDS — status readout + gateway into each domain */}
         <div id="agent-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 20, marginBottom: 46, scrollMarginTop: 90 }}>
           {AGENTS.map((a, i) => {
@@ -131,6 +136,9 @@ export default function HubPage() {
           loading={data.loading}
           completedDocs={data.completedDocs}
         />
+
+        {/* AI SCORE NUDGE — only when a run left the score below 100% */}
+        <AiScoreCta score={master.result?.globalScore ?? null} />
 
         {/* FLOATING COMMAND BAR — talk to the master agent */}
         <CommandBar busy={master.busy} onRunFocused={master.runFocused} />

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { BrainCircuit, ChevronDown, Plus, Send, Sparkles, Zap } from "lucide-react";
 import { askAgent } from "../../api/agents.api";
 import { CLASSIFICATION_LABEL, CLASSIFICATION_TO_FOCUS, FOCUS_LABEL, QUICK_PROMPTS } from "./agentDisplay";
@@ -22,6 +22,19 @@ type ChatMsg = {
 
 /** localStorage key for the persisted command-chat transcript. */
 const CHAT_STORAGE_KEY = "fg_hub_agent_chat";
+
+/**
+ * Answers arrive as raw text with markdown leftovers ("**bold**").
+ * Render the `**…**` pairs as real bold, strip any orphan markers,
+ * and turn "- " / "* " line prefixes into clean bullets.
+ */
+function renderAnswer(text: string): ReactNode[] {
+  return text.split(/\*\*([^*]+)\*\*/g).map((part, i) =>
+    i % 2 === 1
+      ? <b key={i} style={{ fontWeight: 800, color: "var(--text-strong)" }}>{part}</b>
+      : part.replace(/\*\*/g, "").replace(/^[ \t]*[-*][ \t]+/gm, "• "),
+  );
+}
 
 function loadChat(): ChatMsg[] {
   try {
@@ -118,7 +131,7 @@ export default function CommandBar({ busy, onRunFocused }: CommandBarProps) {
               <div style={{ maxHeight: 220, overflowY: "auto", display: "flex", flexDirection: "column", gap: 8, marginBottom: 12, paddingInlineEnd: 4 }}>
                 {messages.slice(0, messages.length - (lastAssistant ? 1 : 0) - (lastUser ? 1 : 0)).map((m, i) => (
                   <div key={i} style={{ alignSelf: m.role === "user" ? "flex-end" : "flex-start", maxWidth: "82%", padding: "8px 12px", borderRadius: m.role === "user" ? "12px 12px 4px 12px" : "12px 12px 12px 4px", background: m.role === "user" ? "var(--lav-100)" : "var(--surface-sunken)", border: "1px solid var(--border-hair)", fontSize: 12.5, lineHeight: 1.55, fontWeight: 500, color: m.isError ? "var(--peach-ink)" : "var(--text-body)", whiteSpace: "pre-line" }}>
-                    {m.content}
+                    {m.role === "assistant" ? renderAnswer(m.content) : m.content}
                   </div>
                 ))}
               </div>
@@ -151,7 +164,7 @@ export default function CommandBar({ busy, onRunFocused }: CommandBarProps) {
                   </span>
                 )}
                 <div style={{ fontSize: 13.5, lineHeight: 1.65, fontWeight: 500, color: lastAssistant.isError ? "var(--peach-ink)" : "var(--text-body)", whiteSpace: "pre-line" }}>
-                  {lastAssistant.content}
+                  {renderAnswer(lastAssistant.content)}
                 </div>
                 {lastAssistant.taskFocus && (
                   <button
