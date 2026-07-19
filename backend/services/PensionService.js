@@ -96,6 +96,15 @@ function normalizeFinqFund(raw, riskCategory) {
     ),
     sharpeRatio: parseNumber(raw.sharpeRatio ?? raw.sharpe_ratio ?? raw.sharpe ?? raw.eftAvgStd),
     finqRank: parseNumber(raw.finqRank),
+    yield12Months: parseNumber(raw.yield12Months ?? raw.yield_12_months),
+    yield5Years: parseNumber(raw.yield60Months ?? raw.yield5Years ?? raw.yield_5_years),
+    yieldYtd: parseNumber(raw.yieldYtd ?? raw.yield_ytd),
+    // Finq sends equity exposure as a fraction (0.28 → 28%); store as percent.
+    equityExposurePct: (() => {
+      const v = parseNumber(raw.equityExposure ?? raw.equity_exposure);
+      return v == null ? null : Math.round(v * 1000) / 10;
+    })(),
+    logoPath: typeof raw.logoPath === 'string' ? raw.logoPath : '',
     riskCategory: raw.riskLevel ?? raw.risk_level ?? raw.finqRiskLevel ?? raw.risk ?? riskCategory,
     raw,
   };
@@ -166,8 +175,16 @@ async function finqFetch(url) {
   }
 }
 
+/**
+ * Bump when the normalized fund shape gains fields (rank, logos, extra
+ * yields...) — cohorts cached with an older shape refetch on next read
+ * instead of serving rows with the new columns empty.
+ */
+const CACHE_SCHEMA_VERSION = 2;
+
 function isCacheFresh(doc) {
   if (!doc?.updatedAt) return false;
+  if ((doc.schemaVersion ?? 1) !== CACHE_SCHEMA_VERSION) return false;
   return Date.now() - new Date(doc.updatedAt).getTime() < config.FINQ_CACHE_TTL_MS;
 }
 
@@ -186,6 +203,7 @@ async function writeCache(riskCategory, funds, { source = 'finq' } = {}) {
       updatedAt: now,
       finqFetchedAt: now,
       source,
+      schemaVersion: CACHE_SCHEMA_VERSION,
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   ).lean();
@@ -233,7 +251,9 @@ async function getLeadingFunds(risk, { forceRefresh = false } = {}) {
     const payload = await finqFetch(url);
     const normalized = extractFundList(payload)
       .map(item => normalizeFinqFund(item, riskCategory))
-      .filter(Boolean);
+      .filter(Boolean)
+      // Present in Finq's own ranking order (1 = leading); unranked last.
+      .sort((a, b) => (a.finqRank ?? Infinity) - (b.finqRank ?? Infinity));
 
     if (!normalized.length) {
       const stale = await readCache(riskCategory);
