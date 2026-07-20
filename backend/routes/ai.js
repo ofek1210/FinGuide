@@ -4,7 +4,6 @@ const router = express.Router();
 
 const { chatWithAI, chatWithAIStream, getChatHistoryHandler, listConversations, getFinancialTips } = require('../controllers/aiController');
 const { runFullAnalysisHandler } = require('../controllers/fullAnalysisController');
-const { runDebateHandler, streamDebateHandler } = require('../controllers/debateController');
 const { protect } = require('../middleware/auth');
 
 // כל הroutes כאן מוגנים - דורשים authentication
@@ -35,15 +34,6 @@ router.get('/financial-tips', (req, res, next) => {
 // Multi-agent full analysis — runs all agents in parallel
 router.post('/full-analysis', (req, res, next) => {
   Promise.resolve(runFullAnalysisHandler(req, res)).catch(next);
-});
-
-// Agent debate council — agents argue priorities, judge ranks them (SSE stream)
-router.post('/debate', (req, res, next) => {
-  Promise.resolve(runDebateHandler(req, res)).catch(next);
-});
-
-router.post('/debate/stream', (req, res, next) => {
-  Promise.resolve(streamDebateHandler(req, res)).catch(next);
 });
 
 module.exports = router;

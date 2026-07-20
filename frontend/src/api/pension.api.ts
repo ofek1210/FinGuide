@@ -229,7 +229,13 @@ export type PensionLeadingFundDTO = {
   id: string;
   fundName: string;
   managingBody: string;
+  finqRank?: number | null;
+  yield12Months?: number | null;
   yield3Years: number | null;
+  yield5Years?: number | null;
+  yieldYtd?: number | null;
+  equityExposurePct?: number | null;
+  logoPath?: string;
   managementFeeAccumulation: number | null;
   managementFeeDeposit: number | null;
   sharpeRatio: number | null;

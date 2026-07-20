@@ -7,7 +7,7 @@
  * Step "results"  — flagship pension advisor (PensionAdvisor.jsx design),
  *                   wired to /api/pension/* (analysis, funds).
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
@@ -28,11 +28,11 @@ import {
 } from "../api/pension.api";
 import { APP_ROUTES } from "../types/navigation";
 import { UPLOAD_PROGRESS_STEPS } from "../utils/pensionDisplay";
-import { GovReportImportFlow } from "../components/import/GovReportImportFlow";
-import { PENSION_IMPORT_CONFIG } from "../config/govReportImportConfig";
+import PensionLandingScreen from "../components/pension/PensionLandingScreen";
+import { PENSION_SITE_URL } from "../config/govReportImportConfig";
 import { useGovReportUploadProgress } from "../hooks/useGovReportUploadProgress";
 
-const HAR_HAKESEF_URL = PENSION_IMPORT_CONFIG.siteUrl;
+const HAR_HAKESEF_URL = PENSION_SITE_URL;
 
 const EMPTY_FORM: UploadPensionBody = {
   fundName: "", fundType: "pension_comprehensive", provider: "",
@@ -44,7 +44,6 @@ type FlowStep = "landing" | "onboarding" | "guide" | "upload" | "results";
 
 export default function PensionPage() {
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadProgressStep, start: startProgress, stop: stopProgress } = useGovReportUploadProgress(UPLOAD_PROGRESS_STEPS.length);
 
   const [step, setStep] = useState<FlowStep>("landing");
@@ -52,7 +51,6 @@ export default function PensionPage() {
   const [loading, setLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [visitedSite, setVisitedSite] = useState(false);
 
   // Upload state
   const [uploading, setUploading] = useState(false);
@@ -201,7 +199,7 @@ export default function PensionPage() {
       <PensionImportGuide
         onBack={() => setStep("landing")}
         onContinue={() => setStep("upload")}
-        onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); setVisitedSite(true); }}
+        onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); }}
       />,
     );
   }
@@ -267,7 +265,6 @@ export default function PensionPage() {
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
             onReimport={() => setStep("onboarding")}
-            onOpenChat={() => navigate(`${APP_ROUTES.hub}?chat=1`)}
           />
         </div>
       </>,
@@ -282,26 +279,10 @@ export default function PensionPage() {
         טוען נתוני פנסיה...
       </div>
     ) : (
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 24px 40px" }}>
-        <GovReportImportFlow
-          domain="pension"
-          step="landing"
-          progressSteps={UPLOAD_PROGRESS_STEPS}
-          onImport={() => setStep("onboarding")}
-          onManual={() => { setStep("results"); setShowAddForm(true); }}
-          visitedSite={visitedSite}
-          onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); setVisitedSite(true); }}
-          onContinue={() => setStep("upload")}
-          onBack={() => setStep("landing")}
-          fileInputRef={fileInputRef}
-          uploading={uploading}
-          uploadMsg={uploadMsg}
-          uploadProgressStep={uploadProgressStep}
-          isDragging={isDragging}
-          setIsDragging={setIsDragging}
-          onUpload={handleFileUpload}
-        />
-      </div>
+      <PensionLandingScreen
+        onImport={() => setStep("onboarding")}
+        onManual={() => { setStep("results"); setShowAddForm(true); }}
+      />
     ),
   );
 }

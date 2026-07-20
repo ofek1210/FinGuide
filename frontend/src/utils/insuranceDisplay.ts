@@ -1,6 +1,7 @@
 export const POLICY_TYPE_LABELS: Record<string, string> = {
   life: "חיים",
   health: "בריאות",
+  health_supplement: "בריאות משלים",
   disability: 'אכ"ע',
   apartment: "דירה",
   car: "רכב",
