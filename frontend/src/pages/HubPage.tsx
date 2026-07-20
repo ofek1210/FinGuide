@@ -14,6 +14,7 @@ import { enrichPayslipFromDoc } from "../utils/payslipEnrichment";
 import { timeOfDayGreeting } from "../utils/timeGreeting";
 import { getInsuranceAnalysis } from "../api/insuranceAI.api";
 import type { FullAnalysisGlobalScore } from "../api/fullAnalysis.api";
+import { useAiChat, useRegisterPageContext } from "../assistant/AiChatProvider";
 
 /* ============================================================
    Hub — editorial command center in the FinGuide design language:
@@ -268,17 +269,14 @@ export default function HubPage() {
   const [liveScore, setLiveScore] = useState<FullAnalysisGlobalScore | null>(null);
   const panelRef = useRef<MasterAgentPanelHandle>(null);
   const location = useLocation();
+  const { openPanel } = useAiChat();
 
-  // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
-  // scroll to the master-agent chat and focus its input.
+  // Deep-link (/hub?chat=1): open the floating financial assistant.
+  // Agent command chat stays in the Hub panel for analysis tasks.
   useEffect(() => {
     if (new URLSearchParams(location.search).get("chat") !== "1") return;
-    const t = setTimeout(() => {
-      document.getElementById("agent-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      (document.getElementById("agent-chat-input") as HTMLInputElement | null)?.focus({ preventScroll: true });
-    }, 350);
-    return () => clearTimeout(t);
-  }, [location.search]);
+    openPanel();
+  }, [location.search, openPanel]);
 
   const [loading, setLoading] = useState(true);
   const [findings, setFindings] = useState<FindingItem[]>([]);
@@ -335,6 +333,32 @@ export default function HubPage() {
     const order = { warning: 0, info: 1 } as const;
     return [...findings].sort((a, b) => order[a.severity] - order[b.severity]).slice(0, 3);
   }, [findings]);
+
+  const hubContextLabel = useMemo(() => {
+    const score = liveScore?.score;
+    if (typeof score === "number" && Number.isFinite(score)) {
+      return `לוח בקרה · ציון ${Math.round(score)}`;
+    }
+    return "לוח בקרה (Hub)";
+  }, [liveScore]);
+
+  const hubContextDetail = useMemo(() => {
+    const lines: string[] = [];
+    if (typeof liveScore?.score === "number" && Number.isFinite(liveScore.score)) {
+      lines.push(`ציון פיננסי מאוחד: ${Math.round(liveScore.score)}`);
+    }
+    if (findings.length) lines.push(`ממצאים פעילים: ${findings.length}`);
+    if (rankedFindings[0]?.title) {
+      lines.push(`ממצא מוביל: ${rankedFindings[0].title}`);
+    }
+    if (pension?.summary?.fundCount) {
+      lines.push(`קרנות פנסיה במעקב: ${pension.summary.fundCount}`);
+    }
+    if (importedPolicies > 0) lines.push(`פוליסות ביטוח מיובאות: ${importedPolicies}`);
+    return lines.length ? lines.join("\n") : null;
+  }, [liveScore, findings.length, rankedFindings, pension, importedPolicies]);
+
+  useRegisterPageContext(hubContextLabel, hubContextDetail);
 
   const findingsCount = findings.length;
   const domainCounts = useMemo(() => {

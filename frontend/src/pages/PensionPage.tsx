@@ -31,6 +31,7 @@ import { UPLOAD_PROGRESS_STEPS } from "../utils/pensionDisplay";
 import { GovReportImportFlow } from "../components/import/GovReportImportFlow";
 import { PENSION_IMPORT_CONFIG } from "../config/govReportImportConfig";
 import { useGovReportUploadProgress } from "../hooks/useGovReportUploadProgress";
+import { useAiChat, useRegisterPageContext } from "../assistant/AiChatProvider";
 
 const HAR_HAKESEF_URL = PENSION_IMPORT_CONFIG.siteUrl;
 
@@ -44,6 +45,7 @@ type FlowStep = "landing" | "onboarding" | "guide" | "upload" | "results";
 
 export default function PensionPage() {
   const navigate = useNavigate();
+  const { openPanel } = useAiChat();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadProgressStep, start: startProgress, stop: stopProgress } = useGovReportUploadProgress(UPLOAD_PROGRESS_STEPS.length);
 
@@ -113,6 +115,34 @@ export default function PensionPage() {
       }
     })();
   }, []);
+
+  const pensionContextLabel = (() => {
+    const score = data?.healthCheck?.score;
+    if (typeof score === "number" && Number.isFinite(score)) {
+      return `פנסיה · ציון ${Math.round(score)}`;
+    }
+    if (step === "results") return "פנסיה · ניתוח";
+    if (step === "upload" || step === "guide") return "פנסיה · ייבוא";
+    return "פנסיה";
+  })();
+
+  const pensionContextDetail = (() => {
+    const lines: string[] = [`שלב במסך: ${step}`];
+    if (typeof data?.healthCheck?.score === "number") {
+      lines.push(`ציון בריאות פנסיונית: ${Math.round(data.healthCheck.score)}/100`);
+    }
+    if (data?.summary?.fundCount != null) {
+      lines.push(`מספר קרנות: ${data.summary.fundCount}`);
+    }
+    const topRec = data?.recommendations?.[0];
+    if (topRec && typeof topRec === "object" && "title" in topRec && topRec.title) {
+      lines.push(`המלצה מובילה: ${String(topRec.title)}`);
+    }
+    if (funds.length) lines.push(`קרנות ברשימה: ${funds.length}`);
+    return lines.join("\n");
+  })();
+
+  useRegisterPageContext(pensionContextLabel, pensionContextDetail);
 
   const handleSaveFund = async () => {
     if (!form.fundName?.trim()) return;
@@ -267,7 +297,7 @@ export default function PensionPage() {
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
             onReimport={() => setStep("onboarding")}
-            onOpenChat={() => navigate(`${APP_ROUTES.hub}?chat=1`)}
+            onOpenChat={() => openPanel()}
           />
         </div>
       </>,

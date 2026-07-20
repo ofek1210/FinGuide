@@ -23,6 +23,7 @@ import {
   type FullAnalysisResponse,
 } from "../../api/fullAnalysis.api";
 import { askAgent } from "../../api/agents.api";
+import { useAiChat } from "../../assistant/AiChatProvider";
 import { AGENTS, type AgentId, type AgentDef } from "../../theme/agents";
 import { APP_ROUTES } from "../../types/navigation";
 import AgentSyncOverlay, { type SyncStage } from "./AgentSyncOverlay";
@@ -92,6 +93,8 @@ type ChatMsg = {
   content: string;
   agentLabel?: string;
   taskFocus?: BackendAgentKey | null;
+  /** When true, offer handoff to the floating financial assistant. */
+  floatingHandoff?: boolean;
   isError?: boolean;
 };
 
@@ -256,6 +259,7 @@ function loadChat(): ChatMsg[] {
 
 const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProps>(function MasterAgentPanel({ onResult }, ref) {
   const navigate = useNavigate();
+  const { openPanel, sendMessage: sendFloatingMessage } = useAiChat();
   const [phase, setPhase] = useState<Phase>("idle");
   const [focusKey, setFocusKey] = useState<BackendAgentKey | null>(null);
   const [result, setResult] = useState<FullAnalysisResponse | null>(null);
@@ -267,6 +271,7 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const chatListRef = useRef<HTMLDivElement>(null);
+  const lastUserQuestionRef = useRef<string>("");
 
   useEffect(() => {
     chatListRef.current?.scrollTo({ top: chatListRef.current.scrollHeight, behavior: "smooth" });
@@ -364,6 +369,7 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
     const message = (text ?? chatInput).trim();
     if (!message || chatBusy) return;
     setChatInput("");
+    lastUserQuestionRef.current = message;
     setChatMessages(prev => [...prev, { role: "user", content: message }]);
     setChatBusy(true);
 
@@ -372,11 +378,18 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
 
     if (res.ok && res.data?.data?.answer) {
       const { answer, classification } = res.data.data;
+      const taskFocus = CLASSIFICATION_TO_FOCUS[classification] ?? null;
+      const floatingHandoff =
+        classification === "general" ||
+        classification === "financial_analysis" ||
+        classification === "payslip_analysis" ||
+        !taskFocus;
       setChatMessages(prev => [...prev, {
         role: "assistant",
         content: answer,
         agentLabel: CLASSIFICATION_LABEL[classification] ?? "הסוכן הראשי",
-        taskFocus: CLASSIFICATION_TO_FOCUS[classification] ?? null,
+        taskFocus,
+        floatingHandoff,
       }]);
     } else {
       setChatMessages(prev => [...prev, {
@@ -387,6 +400,12 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
     }
     setChatBusy(false);
   }, [chatInput, chatBusy, chatMessages]);
+
+  const handoffToFloating = useCallback((question?: string) => {
+    const q = (question || lastUserQuestionRef.current || "").trim();
+    openPanel();
+    if (q) sendFloatingMessage(q);
+  }, [openPanel, sendFloatingMessage]);
 
   const statusLine = useMemo(() => {
     if (phase === "running") return "מריץ ארבעה סוכנים במקביל ומצליב תוצאות...";
@@ -426,8 +445,9 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
         <h2 style={{ margin: "10px 0 0", fontSize: "clamp(26px,3vw,36px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>
           סוכן ראשי אחד. ארבעה מומחים. תמונה אחת.
         </h2>
-        <p style={{ margin: "12px auto 0", maxWidth: 520, fontSize: 16, color: "var(--text-muted)", fontWeight: 500, lineHeight: 1.55 }}>
+        <p style={{ margin: "12px auto 0", maxWidth: 560, fontSize: 16, color: "var(--text-muted)", fontWeight: 500, lineHeight: 1.55 }}>
           הסוכן הראשי מפעיל את סוכני התלושים, הביטוח והפנסיה במקביל — ומצליב את כל הממצאים לדוח מאוחד.
+          לשאלות פיננסיות חופשיות השתמשו בעוזר הצף (✦); כאן מריצים משימות ניתוח לסוכנים.
         </p>
       </div>
 
@@ -713,8 +733,10 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
                 <BrainCircuit size={16} strokeWidth={2} />
               </span>
               <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 800, fontSize: 14 }}>דבר עם הסוכנים</div>
-                <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.55)", fontWeight: 600 }}>שאל שאלה — הסוכן הראשי ינתב אותה למומחה הנכון ויציע משימה</div>
+                <div style={{ fontWeight: 800, fontSize: 14 }}>פקודות לסוכנים</div>
+                <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.55)", fontWeight: 600 }}>
+                  משימות ניתוח והרצת סוכנים — לשאלות פיננסיות כלליות השתמשו בעוזר הצף (✦ למטה)
+                </div>
               </div>
               {/* new-chat: clears the saved transcript */}
               {chatMessages.length > 0 && (
@@ -775,6 +797,16 @@ const MasterAgentPanel = forwardRef<MasterAgentPanelHandle, MasterAgentPanelProp
                       >
                         <Zap size={13} strokeWidth={2.4} />
                         הטל משימה: הרץ ניתוח {FOCUS_LABEL[m.taskFocus]}
+                      </button>
+                    )}
+                    {m.role === "assistant" && m.floatingHandoff && (
+                      <button
+                        type="button"
+                        onClick={() => handoffToFloating()}
+                        style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(229,195,92,.16)", color: "#E5C35C", border: "1px solid rgba(229,195,92,.35)", borderRadius: 999, padding: "6px 13px", fontFamily: "inherit", fontWeight: 800, fontSize: 12, cursor: "pointer" }}
+                      >
+                        <Sparkles size={13} strokeWidth={2.4} />
+                        שאל את העוזר הצף
                       </button>
                     )}
                   </div>

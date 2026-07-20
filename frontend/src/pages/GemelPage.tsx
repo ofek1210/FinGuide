@@ -20,6 +20,7 @@ import {
   type UploadGemelFundBody,
 } from "../api/gemel.api";
 import { APP_ROUTES } from "../types/navigation";
+import { useAiChat, useRegisterPageContext } from "../assistant/AiChatProvider";
 
 const EMPTY_FORM: UploadGemelFundBody = {
   fundName: "", fundType: "study_fund", provider: "",
@@ -29,6 +30,7 @@ const EMPTY_FORM: UploadGemelFundBody = {
 
 export default function GemelPage() {
   const navigate = useNavigate();
+  const { openPanel } = useAiChat();
 
   const [data, setData] = useState<GemelAnalysisData | null>(null);
   const [funds, setFunds] = useState<GemelFundDTO[]>([]);
@@ -54,6 +56,25 @@ export default function GemelPage() {
       setLoading(false);
     })();
   }, [loadAll]);
+
+  const gemelLabel = data?.summary
+    ? `גמל והשתלמות · ${data.summary.fundCount ?? funds.length} קופות`
+    : "גמל והשתלמות";
+  const gemelDetail = [
+    data?.summary?.fundCount != null ? `מספר קופות: ${data.summary.fundCount}` : null,
+    data?.summary?.totalBalance != null
+      ? `צבירה כוללת: ₪${Math.round(Number(data.summary.totalBalance)).toLocaleString("he-IL")}`
+      : null,
+    funds.length ? `קרנות ברשימה: ${funds.length}` : null,
+    data?.recommendations?.[0] &&
+    typeof data.recommendations[0] === "object" &&
+    "title" in data.recommendations[0]
+      ? `המלצה מובילה: ${String((data.recommendations[0] as { title: string }).title)}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  useRegisterPageContext(gemelLabel, gemelDetail || null);
 
   const handleSaveFund = async () => {
     if (!form.fundName?.trim()) return;
@@ -100,7 +121,7 @@ export default function GemelPage() {
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
             onImport={() => navigate(APP_ROUTES.pension)}
-            onOpenChat={() => navigate(`${APP_ROUTES.hub}?chat=1`)}
+            onOpenChat={() => openPanel()}
           />
         </div>
       )}

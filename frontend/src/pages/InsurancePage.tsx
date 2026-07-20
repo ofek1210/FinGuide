@@ -8,7 +8,6 @@ import {
   Sparkles, RefreshCw, TrendingDown, Lightbulb,
   type LucideIcon,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import InsuranceRibbonWave from "../components/insurance/InsuranceRibbonWave";
@@ -34,7 +33,7 @@ import { getInsuranceOnboardingSession } from "../api/insuranceOnboarding.api";
 import { formatCurrencyOrDash } from "../utils/formatters";
 import { POLICY_TYPE_LABELS, UPLOAD_PROGRESS_STEPS } from "../utils/insuranceDisplay";
 import { INSURANCE_IMPORT_CONFIG } from "../config/govReportImportConfig";
-import { APP_ROUTES } from "../types/navigation";
+import { useAiChat, useRegisterPageContext } from "../assistant/AiChatProvider";
 import { useGovReportDomainPage } from "../hooks/useGovReportDomainPage";
 import { computeImportHistoryDelta } from "../utils/domainImportHistory";
 
@@ -53,8 +52,6 @@ function insuranceShell(children: React.ReactNode) {
 }
 
 export default function InsurancePage() {
-  const navigate = useNavigate();
-
   const [data, setData] = useState<InsuranceAnalysisResponse["data"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -167,6 +164,30 @@ export default function InsurancePage() {
   const recs = data?.recommendations ?? [];
   const totalPremium = policies.reduce((s, p) => s + (p.monthlyPremium ?? 0), 0);
 
+  const insuranceLabel =
+    healthCheck?.score != null
+      ? `ביטוח · ציון ${Math.round(healthCheck.score)}`
+      : step === "results"
+        ? "ביטוח · ניתוח"
+        : "ביטוח";
+  const insuranceDetail = [
+    `שלב במסך: ${step}`,
+    healthCheck?.score != null
+      ? `ציון בריאות ביטוח: ${Math.round(healthCheck.score)}/100`
+      : null,
+    policies.length ? `פוליסות: ${policies.length}` : null,
+    totalPremium > 0
+      ? `פרמיה חודשית: ₪${Math.round(totalPremium).toLocaleString("he-IL")}`
+      : null,
+    analysis && "duplicateCount" in analysis && Number(analysis.duplicateCount) > 0
+      ? `כפילויות: ${analysis.duplicateCount}`
+      : null,
+    recs[0]?.title ? `המלצה מובילה: ${recs[0].title}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  useRegisterPageContext(insuranceLabel, insuranceDetail || null);
+
   // Opening / empty state — the redesigned insurance agent landing.
   if (step === "landing") {
     return <InsuranceLandingScreen loading={loading} onImport={() => setStep("guide")} />;
@@ -230,7 +251,6 @@ export default function InsurancePage() {
       deletingId={deletingId}
       onDelete={handleDelete}
       onReimport={() => setStep("guide")}
-      navigate={navigate}
     />,
   );
 }
@@ -451,7 +471,7 @@ function InsuranceLandingScreen({ loading, onImport }: { loading: boolean; onImp
 function ResultsStep({
   loading, analysisError, onRetry,
   analysis, healthCheck, marketAdvice, importHistory, lastSavingsDelta,
-  policies, recs, totalPremium, deletingId, onDelete, onReimport, navigate,
+  policies, recs, totalPremium, deletingId, onDelete, onReimport,
 }: {
   loading: boolean;
   analysisError: string | null;
@@ -467,8 +487,8 @@ function ResultsStep({
   deletingId: string | null;
   onDelete: (id: string) => void;
   onReimport: () => void;
-  navigate: ReturnType<typeof useNavigate>;
 }) {
+  const { openPanel } = useAiChat();
   const historyDelta = computeImportHistoryDelta(importHistory, "annualSavings", lastSavingsDelta);
 
   useEffect(() => {
@@ -794,10 +814,10 @@ function ResultsStep({
       {/* ask agent */}
       <div style={{ textAlign: "center", background: "radial-gradient(120% 100% at 50% 0%,var(--peach-soft),var(--surface-card))", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "38px 28px", boxShadow: "var(--shadow-soft)", marginTop: 8 }}>
         <span style={{ width: 54, height: 54, borderRadius: 15, background: "var(--peach-ink)", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px" }}><Sparkles size={26} /></span>
-        <h3 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שאל את סוכן הביטוח</h3>
+        <h3 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שאל את העוזר הפיננסי</h3>
         <p style={{ margin: "0 auto 22px", maxWidth: 440, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>"האם אני צריך ביטוח חיים?" · "כמה אני משלם יותר מהממוצע?" · "מה הסיכון הכי גדול שלי?"</p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={() => navigate(`${APP_ROUTES.hub}?chat=1`)} style={inkBtn}><Sparkles size={17} /> פתח שיחה עם הסוכן</button>
+          <button onClick={() => openPanel()} style={inkBtn}><Sparkles size={17} /> פתח שיחה עם העוזר</button>
         </div>
         <p style={{ margin: "20px 0 0", fontSize: 12, color: "var(--text-faint)" }}>הניתוח מבוסס על נתוני הדוח שיובא ואינו מהווה ייעוץ ביטוחי מקצועי.</p>
       </div>
