@@ -1,4 +1,4 @@
-import { apiJson } from "./client";
+import { apiJson, apiBlob } from "./client";
 
 /* ============================================================
    Gemel API — קופות גמל וקרנות השתלמות (/api/gemel/*)
@@ -121,13 +121,83 @@ export type GemelRecommendationDTO = {
   urgency: "high" | "medium" | "low";
   financialImpact: string | null;
   confidenceScore: number;
+  insightId?: string;
+};
+
+export type FinancialStructuredInsightDTO = {
+  id: string;
+  code: string;
+  productType: "PENSION" | "GEMEL" | "HISHTALMUT";
+  category: string;
+  severity: "critical" | "high" | "medium" | "low" | "info";
+  priority?: number;
+  title: string;
+  reason: string;
+  suggestedAction: string;
+  evidence?: Record<string, unknown>;
+  financialImpact?: { amount?: number | null; currency?: string; period?: string | null; assumptions?: string[] };
+  confidence: number;
+  productId?: string | null;
+  productName?: string | null;
+  sources?: string[];
+  disclaimers?: string[];
+};
+
+export type FormattedRecommendationDTO = {
+  insightId: string;
+  title: string;
+  explanation: string;
+  whyItMatters?: string;
+  nextStep?: string;
+  financialImpact?: FinancialStructuredInsightDTO["financialImpact"];
+  evidence?: Record<string, unknown> | null;
+};
+
+export type GemelStructuredInsightDTO = {
+  id: string;
+  category: string;
+  severity: "critical" | "high" | "medium" | "low" | "info";
+  title: string;
+  finding: string;
+  recommendedAction?: string;
+  confidence?: number;
+  benchmark?: Record<string, unknown> | null;
+  estimatedImpact?: {
+    annual?: number | null;
+    retirement?: number | null;
+    currency?: string;
+  };
+  fundId?: string;
+};
+
+export type AdvisoryMarketDataDTO = {
+  source: string;
+  sourceLabel?: string;
+  latestReportPeriod: string | null;
+  lastSyncedAt: string | null;
+  isStale: boolean;
+  warnings?: string[];
 };
 
 export type GemelAnalysisData = {
+  productType?: "GEMEL" | "HISHTALMUT";
+  analysisId?: string | null;
   summary: GemelSummaryDTO;
   marketAdvice: GemelMarketAdviceDTO;
   payslipFindings: GemelFindingDTO[];
   recommendations: GemelRecommendationDTO[];
+  structuredInsights?: FinancialStructuredInsightDTO[];
+  primaryRecommendations?: FormattedRecommendationDTO[];
+  positiveFindings?: GemelStructuredInsightDTO[];
+  secondaryInsights?: FinancialStructuredInsightDTO[];
+  additionalInsights?: GemelStructuredInsightDTO[];
+  marketData?: AdvisoryMarketDataDTO | null;
+  dataQuality?: { uploadValid?: boolean; matchConfidence?: number | null; missingFields?: string[]; warnings?: string[] };
+  missingData?: Array<{ field: string; message: string }>;
+  llm?: { used: boolean; provider: string | null; fallbackUsed: boolean; summary?: string | null };
+  llmSummary?: string | null;
+  disclaimer?: string | null;
+  productDisclaimer?: string | null;
 };
 
 export type GemelLeadingFundDTO = {
@@ -200,4 +270,88 @@ export const getGemelLeadingFunds = (params?: { limit?: number; classification?:
   return apiJson<{ success: boolean; data?: GemelLeadingFundDTO[] }>(`/api/gemel/leading-funds${suffix}`, {
     auth: true,
   });
+};
+
+export type GemelAlternativeRankedDTO = {
+  rank: number;
+  fundCode: string;
+  fundName: string;
+  companyName: string;
+  trackName: string | null;
+  riskLevel: string;
+  suitabilityScore: number;
+  feeScore: number;
+  performanceScore: number;
+  reasons: string[];
+  tradeoffs: string[];
+};
+
+export type GemelAccountReportDTO = {
+  accountId: string;
+  productType: string;
+  fundName: string;
+  companyName: string | null;
+  trackName: string | null;
+  balance: number;
+  accountStatus: string;
+  fees: {
+    balancePct: number | null;
+    balanceClassification: string;
+    estimatedAnnualCost: number | null;
+    possibleSavings: number | null;
+  };
+  returns: { classification: string; percentile: number | null };
+  risk: { level: string; suitability: string };
+  match: { method: string; confidence: number; fundCode: string | null; warnings: string[] };
+  dataQuality: string;
+  whatToReview: string[];
+  alternatives: GemelAlternativeRankedDTO[];
+  plainLanguage: Record<string, string>;
+};
+
+export type GemelAdvisorReportDTO = {
+  status: "success" | "partial" | "no_data" | "failed";
+  generatedAt: string;
+  humanSummary: string;
+  summary: { accountCount: number; totalBalance: number; matchedAccounts: number };
+  accounts: GemelAccountReportDTO[];
+  recommendations: Array<{ title: string; explanation: string; severity: string; possibleSavings: number | null }>;
+  dataQuality: { matchedAccounts: number; unmatchedAccounts: number; totalAccounts: number; warnings: string[] };
+  disclaimer: string;
+};
+
+export const getGemelReport = (skipLLM = false) =>
+  apiJson<{ success: boolean; data?: { runId: string; report: GemelAdvisorReportDTO } }>(
+    `/api/gemel/report${skipLLM ? "?skipLLM=true" : ""}`,
+    { auth: true },
+  );
+
+export const analyzeGemel = (skipLLM = false) =>
+  apiJson<{ success: boolean; data?: { runId: string; report: GemelAdvisorReportDTO } }>(
+    `/api/gemel/analyze${skipLLM ? "?skipLLM=true" : ""}`,
+    { method: "POST", auth: true, body: {} },
+  );
+
+export const uploadGemelExcel = async (file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  return apiJson<{ success: boolean; data?: { imported: number; warnings: string[] } }>("/api/gemel/upload", {
+    method: "POST",
+    auth: true,
+    body: form,
+  });
+};
+
+export const downloadGemelReportPdf = async (runId: string) => {
+  const result = await apiBlob(`/api/gemel/report/pdf?runId=${encodeURIComponent(runId)}`, {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו להוריד את הדוח.",
+  });
+  if (!result.ok) {
+    return { success: false as const, message: result.error.message };
+  }
+  const disposition = result.response.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="([^"]+)"/);
+  const filename = match?.[1] || `FinGuide-Gemel-Report-${new Date().toISOString().slice(0, 10)}.pdf`;
+  return { success: true as const, blob: result.blob, filename };
 };

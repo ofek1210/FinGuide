@@ -14,6 +14,15 @@ import {
   Loader2, Trash2, Landmark, Percent, CalendarClock, type LucideIcon,
 } from "lucide-react";
 import GemelLeadingFundsTable from "./GemelLeadingFundsTable";
+import PensionCentralRecommendationsPanel from "../pension/PensionCentralRecommendationsPanel";
+import PensionStructuredInsightsPanel from "../pension/PensionStructuredInsightsPanel";
+import {
+  combinedRecommendationDisclaimer,
+  shouldShowLegacyRecommendations,
+  shouldShowStructuredInsightsPanel,
+  shouldShowUnifiedRecommendations,
+} from "../../utils/financialRecommendationDisplay";
+import { normalizeStructuredInsights } from "../../utils/financialInsightDisplay";
 import { formatCurrencyOrDash } from "../../utils/formatters";
 import type {
   GemelAnalysisData, GemelFundDTO, GemelMarketFundDTO,
@@ -91,6 +100,11 @@ export default function GemelAdvisor({
   const marketAdvice = data?.marketAdvice;
   const recs: GemelRecommendationDTO[] = data?.recommendations ?? [];
   const findings: GemelFindingDTO[] = data?.payslipFindings ?? [];
+  const structuredInsights = normalizeStructuredInsights(data?.structuredInsights);
+  const showUnified = shouldShowUnifiedRecommendations(data);
+  const showLegacy = shouldShowLegacyRecommendations(data);
+  const showStructuredPanel = shouldShowStructuredInsightsPanel(data);
+  const recommendationDisclaimer = combinedRecommendationDisclaimer(data);
   const marketFunds: GemelMarketFundDTO[] = marketAdvice?.hasData ? marketAdvice.funds ?? [] : [];
 
   const hasData = !!summary?.hasData;
@@ -258,34 +272,73 @@ export default function GemelAdvisor({
         </div>
       )}
 
-      {/* recommendations by impact */}
-      {recs.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <h2 style={sectionTitle}>המלצות — מדורגות לפי השפעה כספית</h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {recs.map((r, i) => {
-              const u = URGENCY[r.urgency] ?? URGENCY.low;
-              const [bg, fg] = REC_TONE[u.tone];
-              return (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
-                  <span style={{ width: 40, height: 40, borderRadius: "50%", flex: "none", background: bg, color: fg, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 16 }}>{i + 1}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 800, fontSize: 15.5, color: "var(--text-strong)" }}>{r.title}</span>
-                      <span style={{ fontSize: 10.5, fontWeight: 800, color: fg, background: bg, borderRadius: 999, padding: "2px 9px" }}>{u.tag}</span>
+      {showUnified ? (
+        <PensionCentralRecommendationsPanel
+          recommendations={data?.primaryRecommendations}
+          positiveFindings={data?.positiveFindings}
+          additionalInsights={data?.additionalInsights}
+          summary={data?.llmSummary ?? data?.llm?.summary}
+          disclaimer={recommendationDisclaimer}
+        />
+      ) : (
+        <>
+          {showStructuredPanel && (
+            <PensionStructuredInsightsPanel
+              insights={structuredInsights}
+              meta={data?.dataQuality ? {
+                fundCount: summary?.fundCount,
+                generatedAt: data?.marketData?.lastSyncedAt ?? undefined,
+                disclaimer: recommendationDisclaimer ?? marketAdvice?.disclaimer ?? undefined,
+              } : null}
+              hasLegacyRecommendations={showLegacy}
+            />
+          )}
+
+          {showLegacy && (
+            <div style={{ marginBottom: 18 }}>
+              <h2 style={sectionTitle}>המלצות — מדורגות לפי השפעה כספית</h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {recs.map((r, i) => {
+                  const u = URGENCY[r.urgency] ?? URGENCY.low;
+                  const [bg, fg] = REC_TONE[u.tone];
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
+                      <span style={{ width: 40, height: 40, borderRadius: "50%", flex: "none", background: bg, color: fg, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 16 }}>{i + 1}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4, flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 800, fontSize: 15.5, color: "var(--text-strong)" }}>{r.title}</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 800, color: fg, background: bg, borderRadius: 999, padding: "2px 9px" }}>{u.tag}</span>
+                        </div>
+                        <div style={{ fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{r.reason}</div>
+                      </div>
+                      {r.financialImpact && (
+                        <div style={{ textAlign: "center", flex: "none" }}>
+                          <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: "-.02em", color: "var(--butter-ink)", whiteSpace: "nowrap" }}>{r.financialImpact}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>פוטנציאל</div>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{r.reason}</div>
-                  </div>
-                  {r.financialImpact && (
-                    <div style={{ textAlign: "center", flex: "none" }}>
-                      <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: "-.02em", color: "var(--butter-ink)", whiteSpace: "nowrap" }}>{r.financialImpact}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>פוטנציאל</div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+              {recommendationDisclaimer && (
+                <p style={{ margin: "14px 2px 0", fontSize: 11.5, color: "var(--text-faint)", lineHeight: 1.5 }}>{recommendationDisclaimer}</p>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {!showUnified && data?.llm?.summary && (
+        <div style={{ marginBottom: 18, padding: "14px 16px", borderRadius: "var(--r-md)", background: "var(--butter-soft)", border: "1px solid rgba(229,195,92,.25)" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: "var(--butter-ink)", marginBottom: 6 }}>סיכום</div>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--text-body)", lineHeight: 1.55 }}>{data.llm.summary}</p>
+          {data.marketData?.latestReportPeriod && (
+            <div style={{ marginTop: 8, fontSize: 11.5, color: "var(--text-faint)" }}>
+              נתוני שוק: {data.marketData.sourceLabel ?? data.marketData.source} · תקופת דיווח {data.marketData.latestReportPeriod}
+              {data.marketData.isStale ? " · ייתכן שהנתונים אינם מעודכנים" : ""}
+            </div>
+          )}
         </div>
       )}
 

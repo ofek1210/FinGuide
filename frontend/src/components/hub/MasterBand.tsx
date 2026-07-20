@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CircleAlert, CircleDashed, Play, Upload } from "lucide-react";
+import { CircleAlert, CircleDashed, Play, Upload } from "lucide-react";
 import type { FullAnalysisResponse } from "../../api/fullAnalysis.api";
 import { AGENTS } from "../../theme/agents";
 import { APP_ROUTES } from "../../types/navigation";
@@ -125,9 +125,6 @@ export default function MasterBand({
                 {phase === "running"
                   ? <><CircleDashed size={16} style={{ animation: "fgSpin 1s linear infinite" }} /> מנתח...</>
                   : <><Play size={16} strokeWidth={2.4} /> הרץ ניתוח מלא</>}
-              </button>
-              <button onClick={() => navigate(APP_ROUTES.financialHealth)} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13.5, fontWeight: 700, color: "rgba(255,255,255,.65)" }}>
-                לכל הממצאים <ArrowLeft size={15} strokeWidth={2.4} />
               </button>
             </div>
 
