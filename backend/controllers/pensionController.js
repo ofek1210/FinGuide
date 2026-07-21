@@ -23,6 +23,7 @@ const { parsePensionFreeReport } = require('../services/pensionFreeReportParser'
 const {
   importClearinghouseFile,
   importManualFundsFromPreview,
+  clearClearinghouseData,
 } = require('../services/pensionClearinghouseImportService');
 const PensionImportSnapshot = require('../models/PensionImportSnapshot');
 const { computeBufferChecksum, assertUploadNotDuplicate } = require('../utils/duplicateUpload');
@@ -354,6 +355,18 @@ async function updatePensionFund(req, res) {
 }
 
 /**
+ * DELETE /api/pension/clearinghouse — delete clearinghouse import only (settings privacy zone).
+ */
+async function deleteClearinghouseData(req, res) {
+  const userId = req.user._id;
+
+  await clearClearinghouseData(userId);
+  await syncProfileRetirement(userId);
+
+  return res.json({ success: true, message: 'דוח המסלקה נמחק' });
+}
+
+/**
  * DELETE /api/pension/funds — delete ALL pension data for the user (settings privacy zone).
  */
 async function deleteAllPensionData(req, res) {
@@ -645,5 +658,6 @@ module.exports = {
   getMarketFundById,
   getPensionRecommendations,
   deleteAllPensionData,
+  deleteClearinghouseData,
   analyzePensionOnly,
 };
