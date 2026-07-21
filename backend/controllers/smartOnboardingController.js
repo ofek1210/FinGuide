@@ -88,6 +88,19 @@ exports.skipAgent = async (req, res, next) => {
   }
 };
 
+exports.resetAgent = async (req, res, next) => {
+  try {
+    const { agentId } = req.params;
+    if (!VALID_AGENTS.includes(agentId)) {
+      return res.status(400).json({ success: false, message: 'סוכן לא נתמך' });
+    }
+    const state = await smartOnboarding.resetLayer(req.user._id, agentId);
+    return res.json({ success: true, message: 'נתוני האונבורדינג נמחקו', data: state });
+  } catch (err) {
+    return next(err);
+  }
+};
+
 exports.getAgentContext = async (req, res, next) => {
   try {
     const { agentId } = req.params;

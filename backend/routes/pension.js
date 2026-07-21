@@ -25,6 +25,7 @@ const {
   getMarketFundById,
   getPensionRecommendations,
   deleteAllPensionData,
+  deleteClearinghouseData,
   analyzePensionOnly,
 } = require('../controllers/pensionController');
 const { getPensionInsights } = require('../services/pensionRiskAdvisor');
@@ -90,6 +91,10 @@ router.delete('/funds/:id', (req, res, next) => {
 
 router.patch('/funds/:id', (req, res, next) => {
   Promise.resolve(updatePensionFund(req, res)).catch(next);
+});
+
+router.delete('/clearinghouse', (req, res, next) => {
+  Promise.resolve(deleteClearinghouseData(req, res)).catch(next);
 });
 
 router.delete('/funds', (req, res, next) => {

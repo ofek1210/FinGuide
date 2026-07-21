@@ -129,6 +129,21 @@ function markLayerSkipped(profile, layer) {
   profile.markModified('smartOnboarding');
 }
 
+function resetAgentLayer(profile, layer) {
+  if (layer === 'general') {
+    profile.smartOnboarding = profile.smartOnboarding || { general: { answers: {} }, agents: new Map() };
+    profile.smartOnboarding.general = { answers: {} };
+    profile.markModified('smartOnboarding');
+    return;
+  }
+  if (!profile.smartOnboarding) profile.smartOnboarding = { general: { answers: {} }, agents: new Map() };
+  if (!(profile.smartOnboarding.agents instanceof Map)) {
+    profile.smartOnboarding.agents = new Map(Object.entries(profile.smartOnboarding.agents || {}));
+  }
+  profile.smartOnboarding.agents.delete(layer);
+  profile.markModified('smartOnboarding');
+}
+
 function exportAnswersForAgent(profile, agentId) {
   const general = profile.smartOnboarding?.general?.answers || {};
   const agentLayer = getAgentLayer(profile, agentId);
@@ -144,6 +159,7 @@ module.exports = {
   applyAnswerToProfile,
   markLayerComplete,
   markLayerSkipped,
+  resetAgentLayer,
   isLayerComplete,
   isLayerSkipped,
   exportAnswersForAgent,
