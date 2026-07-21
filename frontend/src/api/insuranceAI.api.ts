@@ -114,6 +114,32 @@ export type InsuranceMarketAdvice = {
   dataSource?: string;
 };
 
+export type InsuranceClearinghouseCoverageDTO = {
+  fundId: string;
+  fundName: string;
+  provider: string | null;
+  coverageType: string;
+  monthlyPremium: number | null;
+  coverageAmount: number | null;
+  source: "clearinghouse";
+};
+
+export type InsuranceDataSourceStatus = "missing" | "ready" | "empty";
+
+export type InsuranceDataSourcesDTO = {
+  clearinghouse: {
+    status: InsuranceDataSourceStatus;
+    labelHe: string;
+    coverageCount: number;
+    coverages: InsuranceClearinghouseCoverageDTO[];
+  };
+  harHabituach: {
+    status: InsuranceDataSourceStatus;
+    labelHe: string;
+    policyCount: number;
+  };
+};
+
 export type InsuranceAnalysisResponse = {
   success: boolean;
   data?: {
@@ -127,6 +153,7 @@ export type InsuranceAnalysisResponse = {
     summary?: InsuranceAnalysisSummary;
     hasImportedPolicies: boolean;
     marketAdvice?: InsuranceMarketAdvice;
+    dataSources?: InsuranceDataSourcesDTO;
   };
 };
 

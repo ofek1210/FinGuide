@@ -18,6 +18,8 @@ import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
 import { useRegisterPageContext } from "../assistant/AiChatProvider";
 import { getLatestExecutiveReport } from "../api/executiveReport.api";
 import HubReadinessPanel from "../components/hub/HubReadinessPanel";
+import HubDocumentCenter from "../components/hub/HubDocumentCenter";
+import { parseHubDocumentParam } from "../utils/hubDocuments";
 
 /* ============================================================
    Hub — the master agent's home. One editorial page in the
@@ -55,6 +57,9 @@ export default function HubPage() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  // Deep-link from agent pages or readiness panel (/hub?document=clearinghouse|insurance|payslips)
+  const focusDocument = parseHubDocumentParam(new URLSearchParams(location.search).get("document"));
 
   // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
   // scroll to the master-agent chat and focus its input.
@@ -147,6 +152,14 @@ export default function HubPage() {
           onRunFull={master.runFull}
           lastReport={lastReport}
           savedScore={data.healthScore}
+        />
+
+        <HubDocumentCenter
+          focusDocument={focusDocument}
+          clearinghouseFundCount={data.totalClearinghouseProducts}
+          insurancePolicyCount={data.importedPolicies}
+          completedPayslips={data.completedDocs}
+          onUploadComplete={data.reload}
         />
 
         <HubReadinessPanel

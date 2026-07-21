@@ -4,13 +4,14 @@
  */
 import { useMemo } from "react";
 import {
-  PiggyBank, TrendingUp, Upload, Plus, X, Check, AlertTriangle,
-  Trash2, Landmark, Percent, CalendarClock, FileSpreadsheet, type LucideIcon,
+  PiggyBank, TrendingUp, Plus, X, Check, AlertTriangle,
+  Trash2, Landmark, Percent, CalendarClock, type LucideIcon,
 } from "lucide-react";
 import GemelMarketComparisonTable from "./GemelMarketComparisonTable";
 import GemelLeadingFundsTable from "./GemelLeadingFundsTable";
 import ThreeCardSummary from "../financialAdvisory/ThreeCardSummary";
 import AgentInsightCta from "../ai/AgentInsightCta";
+import DocumentCenterCta from "../hub/DocumentCenterCta";
 import { SHOW_LEGACY_GEMEL_LEADING_FUNDS } from "../../config/featureFlags";
 import { isThreeCardAdvisory } from "../../api/financialAdvisory.types";
 import { sumAnnualSavings } from "../../utils/financialAdvisoryDisplay";
@@ -41,9 +42,6 @@ type Props = {
   analysisError?: string | null;
   onRetryAnalysis?: () => void;
   hasPayslipGemelData?: boolean;
-  onExcelUpload?: (file: File) => void;
-  excelUploading?: boolean;
-  uploadMsg?: string | null;
   showAddForm: boolean;
   setShowAddForm: React.Dispatch<React.SetStateAction<boolean>>;
   form: UploadGemelFundBody;
@@ -53,14 +51,13 @@ type Props = {
   deletingId: string | null;
   onSaveFund: () => void;
   onDeleteFund: (id: string) => void;
-  onImport: () => void;
 };
 
 export default function GemelAdvisor({
   data, funds, analysisLoading = false, analysisError = null, onRetryAnalysis,
-  hasPayslipGemelData = false, onExcelUpload, excelUploading = false, uploadMsg,
+  hasPayslipGemelData = false,
   showAddForm, setShowAddForm, form, setForm, saving, saveMsg: _saveMsg, deletingId: _deletingId,
-  onSaveFund, onDeleteFund, onImport,
+  onSaveFund, onDeleteFund,
 }: Props) {
   const summary = data?.summary;
   const findings: GemelFindingDTO[] = data?.payslipFindings ?? [];
@@ -90,28 +87,16 @@ export default function GemelAdvisor({
         <div style={{ maxWidth: 720, margin: "32px auto 0", padding: "0 24px", textAlign: "center" }}>
           <span style={{ width: 64, height: 64, borderRadius: 18, margin: "0 auto 18px", background: "var(--butter-soft)", color: "var(--butter-ink)", display: "grid", placeItems: "center" }}><PiggyBank size={30} /></span>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 900, color: "var(--text-strong)" }}>אין עדיין נתוני גמל והשתלמות</h1>
-          <p style={{ margin: "10px 0 22px", fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>ייבא דוח מהר הכסף או הוסף קופה ידנית.</p>
+          <p style={{ margin: "10px 0 22px", fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>ייבאו דוח מסלקה במרכז המסמכים או הוסיפו קופה ידנית.</p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
-            {onExcelUpload && (
-              <label style={{ ...btnPrimary, cursor: excelUploading ? "wait" : "pointer" }}>
-                <FileSpreadsheet size={16} />
-                {excelUploading ? "מעלה..." : "העלאת Excel"}
-                <input type="file" accept=".xlsx,.xls,.csv" hidden disabled={excelUploading} onChange={e => {
-                  const f = e.target.files?.[0];
-                  if (f) onExcelUpload(f);
-                  e.target.value = "";
-                }} />
-              </label>
-            )}
-            <button onClick={onImport} style={btnPrimary}><Upload size={16} /> ייבוא מהר הכסף</button>
+            <DocumentCenterCta documentId="clearinghouse" />
             <button onClick={() => setShowAddForm(true)} style={btnGhost}><Plus size={16} /> הוסף קופה ידנית</button>
           </div>
-          {uploadMsg ? <p style={{ margin: "16px 0 0", fontSize: 13, fontWeight: 600, color: "var(--butter-ink)" }}>{uploadMsg}</p> : null}
           {showPayslipOnly && (
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 16, marginTop: 20, borderRadius: "var(--radius)", background: "var(--butter-soft)", border: "1px solid var(--butter)", textAlign: "start" }}>
               <AlertTriangle size={20} style={{ flexShrink: 0, color: "var(--butter-ink)" }} />
               <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-strong)" }}>
-                זוהו הפקדות גמל/השתלמות מהתלוש — להשוואה מול השוק וניתוח מלא, העלה דוח Excel או ייבא דוח הר הכסף.
+                זוהו הפקדות גמל/השתלמות מהתלוש — להשוואה מול השוק וניתוח מלא, ייבאו דוח מסלקה במרכז המסמכים.
               </div>
             </div>
           )}
@@ -130,29 +115,17 @@ export default function GemelAdvisor({
           <h1 style={{ margin: 0, fontSize: "clamp(28px,3.6vw,42px)", fontWeight: 900, color: "var(--text-strong)" }}>ניתוח הגמל וההשתלמות שלך</h1>
         </div>
         <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
-          {onExcelUpload && (
-            <label style={{ ...btnGhost, cursor: excelUploading ? "wait" : "pointer" }}>
-              <FileSpreadsheet size={16} />
-              {excelUploading ? "מעלה..." : "העלאת Excel"}
-              <input type="file" accept=".xlsx,.xls,.csv" hidden disabled={excelUploading} onChange={e => {
-                const f = e.target.files?.[0];
-                if (f) onExcelUpload(f);
-                e.target.value = "";
-              }} />
-            </label>
-          )}
           <button onClick={() => setShowAddForm(v => !v)} style={btnGhost}><Plus size={16} /> הוסף קופה</button>
-          <button onClick={onImport} style={btnPrimary}><Upload size={16} /> ייבוא דוח</button>
+          <DocumentCenterCta documentId="clearinghouse" variant="ghost" label="למרכז המסמכים" />
         </div>
       </div>
-
-      {uploadMsg ? <p style={{ margin: "0 0 14px", fontSize: 13, fontWeight: 600, color: "var(--butter-ink)" }}>{uploadMsg}</p> : null}
 
       {showPayslipOnly && (
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 16, marginBottom: 18, borderRadius: "var(--radius)", background: "var(--butter-soft)", border: "1px solid var(--butter)" }}>
           <AlertTriangle size={20} style={{ flexShrink: 0, color: "var(--butter-ink)" }} />
           <div style={{ fontSize: 14, lineHeight: 1.6, color: "var(--text-strong)" }}>
-            זוהו הפקדות גמל/השתלמות מהתלוש — להשוואה מול השוק וניתוח מלא, העלה דוח Excel או ייבא דוח הר הכסף.
+            זוהו הפקדות גמל/השתלמות מהתלוש — להשוואה מול השוק וניתוח מלא, ייבאו דוח מסלקה במרכז המסמכים.
+            <div style={{ marginTop: 10 }}><DocumentCenterCta documentId="clearinghouse" /></div>
           </div>
         </div>
       )}

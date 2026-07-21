@@ -29,6 +29,30 @@ const { computeBufferChecksum, assertUploadNotDuplicate } = require('../utils/du
 
 const SNAPSHOT_CAP = 5;
 
+const PENSION_PRODUCT_TYPES = new Set([
+  'pension_comprehensive', 'pension_old', 'managers_insurance', 'other',
+]);
+const GEMEL_PRODUCT_TYPES = new Set(['study_fund', 'provident_fund']);
+
+function buildClearinghouseAgentReadiness(funds) {
+  let pensionFundCount = 0;
+  let gemelFundCount = 0;
+  let pensionCoverageCount = 0;
+  for (const fund of funds || []) {
+    if (PENSION_PRODUCT_TYPES.has(fund.fundType)) pensionFundCount += 1;
+    if (GEMEL_PRODUCT_TYPES.has(fund.fundType)) gemelFundCount += 1;
+    pensionCoverageCount += (fund.insuranceCoverages || []).length;
+  }
+  return {
+    pensionReady: pensionFundCount > 0,
+    gemelReady: gemelFundCount > 0,
+    pensionInsuranceReady: pensionCoverageCount > 0,
+    pensionFundCount,
+    gemelFundCount,
+    pensionCoverageCount,
+  };
+}
+
 function mapPensionFundToDto(f, { idField = '_id' } = {}) {
   const id = f[idField] ?? f.id;
   return {
@@ -599,6 +623,7 @@ async function uploadClearinghouse(req, res) {
       healthScore: result.healthScore,
       analysis: buildUploadAnalysisSnippet(analysis),
       funds: result.funds.map(f => mapPensionFundToDto(f)),
+      agentReadiness: buildClearinghouseAgentReadiness(result.funds),
     },
   });
 }

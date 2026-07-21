@@ -341,6 +341,14 @@ export type UploadPensionFileResponse = {
     warnings: string[];
     funds: PensionFundDTO[];
     summary?: { totalFunds: number; totalBalance: number | null; fundTypes: string[] };
+    agentReadiness?: {
+      pensionReady: boolean;
+      gemelReady: boolean;
+      pensionInsuranceReady: boolean;
+      pensionFundCount: number;
+      gemelFundCount: number;
+      pensionCoverageCount: number;
+    };
   };
 };
 

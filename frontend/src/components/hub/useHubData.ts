@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AgentId } from "../../theme/agents";
 import { listFindings, type FindingItem } from "../../api/findings.api";
 import { getPensionAnalysis, getPensionFunds, getPensionImportHistory, type PensionAnalysisData } from "../../api/pension.api";
@@ -63,9 +63,14 @@ export type HubData = {
   agentSpark: Record<AgentId, number[]>;
   documentInventory: DocumentInventoryItem[];
   advisorReadiness: AgentReadinessItem[];
+  totalClearinghouseProducts: number;
+  importedPolicies: number;
+  reload: () => void;
 };
 
 export function useHubData(): HubData {
+  const [reloadToken, setReloadToken] = useState(0);
+  const reload = useCallback(() => setReloadToken(t => t + 1), []);
   const [loading, setLoading] = useState(true);
   const [findings, setFindings] = useState<FindingItem[]>([]);
   const [pension, setPension] = useState<PensionAnalysisData | null>(null);
@@ -173,7 +178,7 @@ export function useHubData(): HubData {
       setLoading(false);
     });
     return () => { alive = false; };
-  }, []);
+  }, [reloadToken]);
 
   const completedDocs = useMemo(
     () => documents.filter(d => d.status === "completed" || d.status === "needs_review").length,
@@ -271,27 +276,29 @@ export function useHubData(): HubData {
         onboarding: onboardingByAgent.pension ?? null,
         hasDocument: pensionHasDoc,
         hasAnalysis: isThreeCardAdvisory(pension),
-        documentHint: "ייבאו דוח הר הכסף",
+        documentHint: "ייבאו דוח מסלקה במרכז המסמכים",
       }),
       computeAgentReadiness({
         agentId: "gemel",
         onboarding: onboardingByAgent.gemel ?? null,
         hasDocument: gemelHasDoc,
         hasAnalysis: hasGemelAnalysis,
-        documentHint: "ייבאו Excel או דוח הר הכסף",
+        documentHint: "ייבאו דוח מסלקה במרכז המסמכים",
       }),
       computeAgentReadiness({
         agentId: "insurance",
         onboarding: onboardingByAgent.insurance ?? null,
         hasDocument: insuranceHasDoc,
         hasAnalysis: importedPolicies > 0 && Boolean(onboardingByAgent.insurance?.complete),
-        documentHint: "ייבאו דוח הר הביטוח",
+        documentHint: "ייבאו דוח הר הביטוח במרכז המסמכים",
       }),
     ]);
   }, [
     completedDocs, processingDocs, effectivePensionFunds, importedPolicies,
     gemelFundCount, hasPayslipGemelSignal, hasGemelAnalysis, onboardingByAgent, pension,
   ]);
+
+  const totalClearinghouseProducts = effectivePensionFunds + gemelFundCount;
 
   return {
     loading,
@@ -309,5 +316,8 @@ export function useHubData(): HubData {
     agentSpark,
     documentInventory,
     advisorReadiness,
+    totalClearinghouseProducts,
+    importedPolicies,
+    reload,
   };
 }

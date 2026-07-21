@@ -10,12 +10,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import GemelAdvisor from "../components/gemel/GemelAdvisor";
+import AgentMissingDocumentPanel from "../components/hub/AgentMissingDocumentPanel";
 import {
   getGemelAnalysis,
   getGemelFunds,
   createGemelFund,
   deleteGemelFund,
-  uploadGemelExcel,
   type GemelAnalysisData,
   type GemelFundDTO,
   type UploadGemelFundBody,
@@ -42,8 +42,6 @@ export default function GemelPage() {
   const [loading, setLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [excelUploading, setExcelUploading] = useState(false);
-  const [uploadMsg, setUploadMsg] = useState<string | null>(null);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState<UploadGemelFundBody>(EMPTY_FORM);
@@ -87,7 +85,7 @@ export default function GemelPage() {
 
   useEffect(() => {
     if (searchParams.get("flow") === "import") {
-      navigate(APP_ROUTES.pension, { replace: true });
+      navigate(`${APP_ROUTES.hub}?document=clearinghouse`, { replace: true });
     }
   }, [searchParams, navigate]);
 
@@ -131,19 +129,6 @@ export default function GemelPage() {
     void loadAll();
   };
 
-  const handleExcelUpload = async (file: File) => {
-    setExcelUploading(true);
-    setUploadMsg(null);
-    const res = await uploadGemelExcel(file);
-    setExcelUploading(false);
-    if (res.ok && res.data?.success) {
-      setUploadMsg(`יובאו ${res.data.data?.imported ?? 0} חשבונות${res.data.data?.warnings?.length ? ` (${res.data.data.warnings.length} אזהרות)` : ""}`);
-      await loadAll();
-    } else {
-      setUploadMsg("שגיאה בהעלאת הקובץ");
-    }
-  };
-
   return (
     <div data-agent="gemel" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(185,139,22,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
       <AgentOnboardingModal
@@ -160,6 +145,12 @@ export default function GemelPage() {
           <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
           טוען נתוני גמל והשתלמות...
         </div>
+      ) : !hasGemelDocument ? (
+        <AgentMissingDocumentPanel
+          title="חסר דוח מסלקה לגמל והשתלמות"
+          body="קופות גמל וקרנות השתלמות נקלטות מדוח המסלקה הפנסיונית במרכז המסמכים. לאחר הייבוא, חזרו לכאן להשלמת האונבורדינג."
+          documentId="clearinghouse"
+        />
       ) : (
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "20px 24px 0" }}>
           <GemelAdvisor
@@ -169,9 +160,6 @@ export default function GemelPage() {
             analysisError={analysisError}
             onRetryAnalysis={() => void loadAll()}
             hasPayslipGemelData={hasPayslipGemelData}
-            onExcelUpload={handleExcelUpload}
-            excelUploading={excelUploading}
-            uploadMsg={uploadMsg}
             showAddForm={showAddForm}
             setShowAddForm={setShowAddForm}
             form={form}
@@ -181,7 +169,6 @@ export default function GemelPage() {
             deletingId={deletingId}
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
-            onImport={() => navigate(APP_ROUTES.pension)}
           />
         </div>
       )}

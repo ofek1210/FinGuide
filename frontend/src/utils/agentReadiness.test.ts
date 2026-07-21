@@ -41,9 +41,10 @@ describe("agentReadiness", () => {
       hasPayslipGemelSignal: true,
       hasGemelAnalysis: false,
     });
-    expect(items.find(i => i.id === "pension_report")?.status).toBe("ok");
+    expect(items.find(i => i.id === "clearinghouse")?.status).toBe("ok");
     expect(items.find(i => i.id === "har_habituach")?.status).toBe("missing");
-    expect(items.find(i => i.id === "gemel")?.status).toBe("partial");
+    expect(items.find(i => i.id === "payslips")?.status).toBe("ok");
+    expect(items.find(i => i.id === "clearinghouse")?.route).toContain("document=clearinghouse");
   });
 
   it("prefers onboarding over analysis when document exists", () => {

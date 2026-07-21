@@ -3,6 +3,7 @@ import type { SmartOnboardingStateDTO } from "../api/smartOnboarding.api";
 import type { AgentId as SmartAgentId } from "../api/smartOnboarding.api";
 import type { AgentId } from "../theme/agents";
 import { APP_ROUTES } from "../types/navigation";
+import { hubDocumentUrl } from "./hubDocuments";
 
 /** Canonical onboarding / analysis lifecycle per agent page. */
 export type AgentReadinessPhase =
@@ -70,15 +71,21 @@ type DocumentSignals = {
 };
 
 export function buildDocumentInventory(signals: DocumentSignals): DocumentInventoryItem[] {
+  const clearinghouseCount = Math.max(signals.pensionFundCount, signals.gemelFundCount);
+  const clearinghouseOk = clearinghouseCount > 0;
+  const clearinghousePartial = !clearinghouseOk && signals.hasPayslipGemelSignal;
+
   const items: DocumentInventoryItem[] = [
     {
-      id: "pension_report",
-      label: "דוח פנסיה / הר הכסף",
-      status: signals.pensionFundCount > 0 ? "ok" : "missing",
-      detail: signals.pensionFundCount > 0
-        ? `${signals.pensionFundCount} קרנות במעקב`
-        : "טרם יובא דוח",
-      route: `${APP_ROUTES.pension}?flow=import`,
+      id: "clearinghouse",
+      label: "דוח המסלקה הפנסיונית",
+      status: clearinghouseOk ? "ok" : clearinghousePartial ? "partial" : "missing",
+      detail: clearinghouseOk
+        ? `${clearinghouseCount} מוצרים במעקב`
+        : clearinghousePartial
+          ? "זוהו הפקדות מהתלוש — מומלץ להשלים דוח מסלקה"
+          : "טרם יובא דוח",
+      route: hubDocumentUrl("clearinghouse"),
     },
     {
       id: "har_habituach",
@@ -87,7 +94,7 @@ export function buildDocumentInventory(signals: DocumentSignals): DocumentInvent
       detail: signals.insurancePolicyCount > 0
         ? `${signals.insurancePolicyCount} פוליסות במעקב`
         : "טרם יובא דוח",
-      route: `${APP_ROUTES.insurance}?flow=import`,
+      route: hubDocumentUrl("insurance"),
     },
     {
       id: "payslips",
@@ -102,22 +109,7 @@ export function buildDocumentInventory(signals: DocumentSignals): DocumentInvent
         : signals.completedPayslips > 0
           ? `${signals.completedPayslips} תלושים נותחו`
           : "טרם הועלו תלושים",
-      route: APP_ROUTES.documentsUpload,
-    },
-    {
-      id: "gemel",
-      label: "קופות גמל / Excel",
-      status: signals.gemelFundCount > 0 || signals.hasGemelAnalysis
-        ? "ok"
-        : signals.hasPayslipGemelSignal
-          ? "partial"
-          : "missing",
-      detail: signals.gemelFundCount > 0
-        ? `${signals.gemelFundCount} קופות במעקב`
-        : signals.hasPayslipGemelSignal
-          ? "זוהו הפקדות מהתלוש — מומלץ להשלים דוח"
-          : "טרם חוברו קופות",
-      route: APP_ROUTES.gemel,
+      route: hubDocumentUrl("payslips"),
     },
   ];
   return items;
