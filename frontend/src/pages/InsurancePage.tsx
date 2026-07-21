@@ -14,6 +14,8 @@ import InsuranceRibbonWave from "../components/insurance/InsuranceRibbonWave";
 import InsuranceImportGuide from "../components/insurance/InsuranceImportGuide";
 import InsuranceUpload from "../components/insurance/InsuranceUpload";
 import InsuranceOnboardingWizard from "../components/insurance/InsuranceOnboardingWizard";
+import AgentOnboardingModal from "../components/onboarding/AgentOnboardingModal";
+import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import AIInsightsLoadingState from "../components/ai/AIInsightsLoadingState";
 import {
   getInsuranceAnalysis,
@@ -32,26 +34,35 @@ import {
 import { getInsuranceOnboardingSession } from "../api/insuranceOnboarding.api";
 import { formatCurrencyOrDash } from "../utils/formatters";
 import { POLICY_TYPE_LABELS, UPLOAD_PROGRESS_STEPS } from "../utils/insuranceDisplay";
-import { INSURANCE_IMPORT_CONFIG } from "../config/govReportImportConfig";
-import { useAiChat, useRegisterPageContext } from "../assistant/AiChatProvider";
+import { INSURANCE_SITE_URL } from "../config/govReportImportConfig";
 import { useGovReportDomainPage } from "../hooks/useGovReportDomainPage";
 import { computeImportHistoryDelta } from "../utils/domainImportHistory";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
-const HAR_HABITUACH_URL = INSURANCE_IMPORT_CONFIG.siteUrl;
+const HAR_HABITUACH_URL = INSURANCE_SITE_URL;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const fmt = formatCurrencyOrDash;
 
-function insuranceShell(children: React.ReactNode) {
-  return (
-    <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
-      <PrivateTopbar />
-      {children}
-      <AppFooter variant="private" />
-    </div>
-  );
-}
-
 export default function InsurancePage() {
+  const agentOnboarding = useAgentOnboarding("insurance");
+
+  function insuranceShell(children: React.ReactNode) {
+    return (
+      <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
+        <AgentOnboardingModal
+          open={agentOnboarding.showModal}
+          agentLabel="ביטוח"
+          estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+          questions={agentOnboarding.state?.missingQuestions || []}
+          onClose={agentOnboarding.dismiss}
+          onSubmit={agentOnboarding.submit}
+        />
+        <PrivateTopbar />
+        {children}
+        <AppFooter variant="private" />
+      </div>
+    );
+  }
   const [data, setData] = useState<InsuranceAnalysisResponse["data"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -488,7 +499,6 @@ function ResultsStep({
   onDelete: (id: string) => void;
   onReimport: () => void;
 }) {
-  const { openPanel } = useAiChat();
   const historyDelta = computeImportHistoryDelta(importHistory, "annualSavings", lastSavingsDelta);
 
   useEffect(() => {
@@ -811,16 +821,7 @@ function ResultsStep({
         </Section>
       )}
 
-      {/* ask agent */}
-      <div style={{ textAlign: "center", background: "radial-gradient(120% 100% at 50% 0%,var(--peach-soft),var(--surface-card))", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "38px 28px", boxShadow: "var(--shadow-soft)", marginTop: 8 }}>
-        <span style={{ width: 54, height: 54, borderRadius: 15, background: "var(--peach-ink)", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px" }}><Sparkles size={26} /></span>
-        <h3 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שאל את העוזר הפיננסי</h3>
-        <p style={{ margin: "0 auto 22px", maxWidth: 440, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>"האם אני צריך ביטוח חיים?" · "כמה אני משלם יותר מהממוצע?" · "מה הסיכון הכי גדול שלי?"</p>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={() => openPanel()} style={inkBtn}><Sparkles size={17} /> פתח שיחה עם העוזר</button>
-        </div>
-        <p style={{ margin: "20px 0 0", fontSize: 12, color: "var(--text-faint)" }}>הניתוח מבוסס על נתוני הדוח שיובא ואינו מהווה ייעוץ ביטוחי מקצועי.</p>
-      </div>
+      <p style={{ margin: "8px 0 0", textAlign: "center", fontSize: 12, color: "var(--text-faint)" }}>הניתוח מבוסס על נתוני הדוח שיובא ואינו מהווה ייעוץ ביטוחי מקצועי.</p>
     </>,
   );
 }

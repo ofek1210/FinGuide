@@ -2,10 +2,11 @@
 
 const cron = require('node-cron');
 const govConfig = require('../config/govDataConfig');
-const { syncPensiaNetDataset } = require('../services/pensiaNetIngestionService');
-const { syncGemelNetDataset } = require('../services/gemelNetIngestionService');
-const { syncBituahNetDataset } = require('../services/bituahNetIngestionService');
 const { getLatestSyncMeta } = require('../services/govCkanIngestionService');
+const {
+  runFullMarketDataSync,
+  getFullMarketDataStatus,
+} = require('../services/govMarketFullSyncService');
 const PensiaNetFund = require('../models/PensiaNetFund');
 const GemelNetFund = require('../models/GemelNetFund');
 const BituahNetFund = require('../models/BituahNetFund');
@@ -14,33 +15,25 @@ let scheduledTask = null;
 let isRunning = false;
 
 /**
- * Sync Pensia-Net + Gemel-Net + Bituah-Net from data.gov.il (or local CSV fallback).
+ * Sync Pensia-Net + Gemel-Net + Bituah-Net + track history + cohort macro.
+ * Downloads latest CSV from data.gov.il; falls back to CKAN API / local CSV.
  */
-async function runGovMarketMonthlySync() {
+async function runGovMarketMonthlySync(opts = {}) {
   if (isRunning) {
     console.warn('[govMarketCron] sync already in progress — skipping');
     return { skipped: true, reason: 'already_running' };
   }
 
   isRunning = true;
-  const started = Date.now();
-  console.log('[govMarketCron] starting gov market sync (pensia + gemel + bituah)…');
+  console.log('[govMarketCron] starting full gov market sync…');
 
   try {
-    const [pensia, gemel, bituah] = await Promise.allSettled([
-      syncPensiaNetDataset(),
-      syncGemelNetDataset(),
-      syncBituahNetDataset(),
-    ]);
-
-    const result = {
-      durationMs: Date.now() - started,
-      pensia: pensia.status === 'fulfilled' ? pensia.value : { error: pensia.reason?.message },
-      gemel: gemel.status === 'fulfilled' ? gemel.value : { error: gemel.reason?.message },
-      bituah: bituah.status === 'fulfilled' ? bituah.value : { error: bituah.reason?.message },
-    };
-
-    console.log('[govMarketCron] sync complete', result);
+    const result = await runFullMarketDataSync(opts);
+    console.log('[govMarketCron] sync complete', {
+      durationMs: result.durationMs,
+      pensiaFunds: result.pensia?.uniqueFunds,
+      gemelFunds: result.gemel?.uniqueFunds,
+    });
     return result;
   } finally {
     isRunning = false;
@@ -48,10 +41,11 @@ async function runGovMarketMonthlySync() {
 }
 
 async function getGovMarketStatus() {
-  const [pensia, gemel, bituah] = await Promise.all([
+  const [pensia, gemel, bituah, extended] = await Promise.all([
     getLatestSyncMeta(PensiaNetFund),
     getLatestSyncMeta(GemelNetFund),
     getLatestSyncMeta(BituahNetFund),
+    getFullMarketDataStatus(),
   ]);
 
   return {
@@ -61,6 +55,7 @@ async function getGovMarketStatus() {
       gemel: { sourceName: 'גמל-נט', ...gemel },
       bituah: { sourceName: 'ביטוח-נט', ...bituah },
     },
+    ...extended,
   };
 }
 
@@ -98,9 +93,23 @@ function stopGovMarketCron() {
   }
 }
 
+/**
+ * On cold start, seed market data if collections are empty.
+ */
+async function ensureGovMarketSeeded() {
+  const pensiaCount = await PensiaNetFund.estimatedDocumentCount();
+  if (pensiaCount > 0) {
+    return { skipped: true, reason: 'already_seeded', count: pensiaCount };
+  }
+
+  console.log('[govMarketCron] empty market collections — running initial full sync…');
+  return runGovMarketMonthlySync();
+}
+
 module.exports = {
   runGovMarketMonthlySync,
   getGovMarketStatus,
   startGovMarketCron,
   stopGovMarketCron,
+  ensureGovMarketSeeded,
 };
