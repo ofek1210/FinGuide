@@ -37,6 +37,7 @@ import { POLICY_TYPE_LABELS, UPLOAD_PROGRESS_STEPS } from "../utils/insuranceDis
 import { INSURANCE_SITE_URL } from "../config/govReportImportConfig";
 import { useGovReportDomainPage } from "../hooks/useGovReportDomainPage";
 import { computeImportHistoryDelta } from "../utils/domainImportHistory";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
 const HAR_HABITUACH_URL = INSURANCE_SITE_URL;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
@@ -173,6 +174,30 @@ export default function InsurancePage() {
   const policies = data?.policies ?? [];
   const recs = data?.recommendations ?? [];
   const totalPremium = policies.reduce((s, p) => s + (p.monthlyPremium ?? 0), 0);
+
+  const insuranceLabel =
+    healthCheck?.score != null
+      ? `ביטוח · ציון ${Math.round(healthCheck.score)}`
+      : step === "results"
+        ? "ביטוח · ניתוח"
+        : "ביטוח";
+  const insuranceDetail = [
+    `שלב במסך: ${step}`,
+    healthCheck?.score != null
+      ? `ציון בריאות ביטוח: ${Math.round(healthCheck.score)}/100`
+      : null,
+    policies.length ? `פוליסות: ${policies.length}` : null,
+    totalPremium > 0
+      ? `פרמיה חודשית: ₪${Math.round(totalPremium).toLocaleString("he-IL")}`
+      : null,
+    analysis && "duplicateCount" in analysis && Number(analysis.duplicateCount) > 0
+      ? `כפילויות: ${analysis.duplicateCount}`
+      : null,
+    recs[0]?.title ? `המלצה מובילה: ${recs[0].title}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  useRegisterPageContext(insuranceLabel, insuranceDetail || null);
 
   // Opening / empty state — the redesigned insurance agent landing.
   if (step === "landing") {

@@ -11,6 +11,7 @@ import { fetchPayslipDetail, reprocessPayslip } from "../services/payslip.servic
 import type { PayslipDetail } from "../types/payslip";
 import { APP_ROUTES } from "../types/navigation";
 import { formatCurrencyILS } from "../utils/formatters";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
 const nis = (n: number | null | undefined) => (n == null ? "—" : formatCurrencyILS(n));
 
@@ -150,6 +151,44 @@ export default function PayslipDetailPage() {
   const cGross = useCountUp(payslip?.grossSalary ?? 0, seen);
   const cNet = useCountUp(payslip?.netSalary ?? 0, seen);
   const cDed = useCountUp(deductionsTotal, seen);
+
+  const pageContextLabel = useMemo(() => {
+    if (!payslip) return null;
+    const period =
+      payslip.periodLabel && payslip.periodLabel !== "לא זוהה"
+        ? payslip.periodLabel
+        : null;
+    const employer = payslip.employerName?.trim() || null;
+    if (period && employer) return `צפייה בתלוש ${period} · ${employer}`;
+    if (period) return `צפייה בתלוש ${period}`;
+    if (employer) return `צפייה בתלוש · ${employer}`;
+    return "צפייה בתלוש שכר";
+  }, [payslip]);
+
+  const pageContextDetail = useMemo(() => {
+    if (!payslip) return null;
+    const lines: string[] = [`המשתמש צופה כעת בתלוש: ${pageContextLabel}`];
+    if (payslip.employerName) lines.push(`מעסיק: ${payslip.employerName}`);
+    if (payslip.periodLabel && payslip.periodLabel !== "לא זוהה") {
+      lines.push(`תקופה: ${payslip.periodLabel}`);
+    }
+    if (payslip.grossSalary != null) {
+      lines.push(`ברוטו: ${formatCurrencyILS(payslip.grossSalary)}`);
+    }
+    if (payslip.netSalary != null) {
+      lines.push(`נטו: ${formatCurrencyILS(payslip.netSalary)}`);
+    }
+    const tax = findDeduction(payslip, "מס הכנסה");
+    if (tax != null) lines.push(`מס הכנסה: ${formatCurrencyILS(tax)}`);
+    const pensionEmp =
+      payslip.pensionEmployee ?? findDeduction(payslip, "פנסיה (עובד)");
+    if (pensionEmp != null) {
+      lines.push(`פנסיה עובד: ${formatCurrencyILS(pensionEmp)}`);
+    }
+    return lines.join("\n");
+  }, [payslip, pageContextLabel]);
+
+  useRegisterPageContext(pageContextLabel, pageContextDetail);
 
   if (loading) {
     return <Shell><div style={{ minHeight: "55vh", display: "grid", placeItems: "center", color: "var(--lav-600)" }}><Loader2 size={28} style={{ animation: "spin .8s linear infinite" }} /></div></Shell>;

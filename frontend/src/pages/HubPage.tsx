@@ -15,6 +15,7 @@ import AgentSummaryCard from "../components/hub/AgentSummaryCard";
 import CommandBar from "../components/hub/CommandBar";
 import AgentSyncOverlay from "../components/hub/AgentSyncOverlay";
 import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
 /* ============================================================
    Hub — the master agent's home. One editorial page in the
@@ -45,6 +46,26 @@ export default function HubPage() {
     }, 350);
     return () => clearTimeout(t);
   }, [location.search]);
+
+  const hubContextLabel = data.loading
+    ? "לוח בקרה (Hub)"
+    : data.opportunities > 0
+      ? `לוח בקרה · ${data.opportunities} הזדמנויות`
+      : "לוח בקרה (Hub)";
+  const hubContextDetail = [
+    data.completedDocs > 0 ? `תלושים מעובדים: ${data.completedDocs}` : null,
+    data.findings.length ? `ממצאים פעילים: ${data.findings.length}` : null,
+    data.rankedFindings[0]?.title ? `ממצא מוביל: ${data.rankedFindings[0].title}` : null,
+    data.pension?.summary?.fundCount
+      ? `קרנות פנסיה במעקב: ${data.pension.summary.fundCount}`
+      : null,
+    typeof data.potentialSavings === "number" && data.potentialSavings > 0
+      ? `פוטנציאל חיסכון: ₪${Math.round(data.potentialSavings).toLocaleString("he-IL")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  useRegisterPageContext(hubContextLabel, hubContextDetail || null);
 
   const firstName = user?.name?.split(" ")[0] ?? "שלום";
   const greeting = timeOfDayGreeting();

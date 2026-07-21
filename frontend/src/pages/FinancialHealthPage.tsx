@@ -7,6 +7,7 @@ import Loader from "../components/ui/Loader";
 import ScoreAgentPanel from "../components/ScoreAgentPanel";
 import { useFinancialHealthScore } from "../hooks/useFinancialHealthScore";
 import type { HealthScoreCategory } from "../api/financialHealth.api";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
 const statusLabels = {
   good: "טוב",
@@ -49,6 +50,27 @@ export default function FinancialHealthPage() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [agentOpen, setAgentOpen] = useState(false);
   const { data, isLoading, error, reload } = useFinancialHealthScore(selectedYear);
+
+  const healthLabel =
+    data?.score != null
+      ? `ציון AI · ${Math.round(data.score)} (${selectedYear})`
+      : `ציון AI · ${selectedYear}`;
+  const healthDetail = data
+    ? [
+        `ציון מאוחד: ${Math.round(data.score)}/100`,
+        data.label ? `דרגה: ${data.label}` : null,
+        `שנה: ${data.year ?? selectedYear}`,
+        Array.isArray(data.categories)
+          ? `קטגוריות: ${data.categories
+              .slice(0, 4)
+              .map((c) => `${c.name} ${c.score}/${c.maxScore}`)
+              .join(", ")}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join("\n")
+    : `המשתמש במסך ציון AI לשנת ${selectedYear}`;
+  useRegisterPageContext(healthLabel, healthDetail);
 
   const circumference = 2 * Math.PI * 54;
   const offset = data ? circumference - (data.score / 100) * circumference : circumference;

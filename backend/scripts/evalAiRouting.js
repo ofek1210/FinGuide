@@ -50,7 +50,9 @@ function main() {
 }
 
 if (require.main === module) {
-  main();
+  const result = main();
+  // Fail CI on any misclassification (accuracy must be 100%).
+  process.exit(result.accuracy < 100 ? 1 : 0);
 }
 
 module.exports = { main };

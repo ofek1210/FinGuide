@@ -27,6 +27,7 @@ import GemelAdvisorSummary from "../components/gemel/GemelAdvisorSummary";
 import AgentOnboardingModal from "../components/onboarding/AgentOnboardingModal";
 import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import { APP_ROUTES } from "../types/navigation";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
 const EMPTY_FORM: UploadGemelFundBody = {
   fundName: "", fundType: "study_fund", provider: "",
@@ -74,6 +75,21 @@ export default function GemelPage() {
       setLoading(false);
     })();
   }, [loadAll]);
+
+  const gemelLabel = data?.summary
+    ? `גמל והשתלמות · ${data.summary.fundCount ?? funds.length} קופות`
+    : "גמל והשתלמות";
+  const gemelDetail = [
+    data?.summary?.fundCount != null ? `מספר קופות: ${data.summary.fundCount}` : null,
+    data?.summary?.totalBalance != null
+      ? `צבירה כוללת: ₪${Math.round(Number(data.summary.totalBalance)).toLocaleString("he-IL")}`
+      : null,
+    funds.length ? `קרנות ברשימה: ${funds.length}` : null,
+    advisorReport ? "דוח יועץ גמל זמין" : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  useRegisterPageContext(gemelLabel, gemelDetail || null);
 
   const handleSaveFund = async () => {
     if (!form.fundName?.trim()) return;

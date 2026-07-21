@@ -1,204 +1,419 @@
-import { useState, useRef, useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import { askAgent } from "../api/agents.api";
+import {
+  useAiChat,
+  isVoiceInputSupported,
+} from "../assistant/AiChatProvider";
 import { renderMarkdown } from "../utils/renderMarkdown";
 import "./AIAgentsPage.css";
 
-type Message = {
-  role: "user" | "assistant";
-  content: string;
-  agent?: string;
-  classification?: string;
-  sources?: Array<{ title?: string; category?: string; score: number }>;
-};
+function formatConversationPreview(
+  title: string | undefined,
+  preview: string,
+  updatedAt: string,
+): string {
+  const text = (title || preview || "שיחה").trim().slice(0, 42);
+  const date = updatedAt ? new Date(updatedAt) : null;
+  const dateLabel =
+    date && !Number.isNaN(date.getTime())
+      ? date.toLocaleDateString("he-IL", { day: "numeric", month: "short" })
+      : "";
+  return dateLabel ? `${text}${text.length >= 42 ? "…" : ""} · ${dateLabel}` : text;
+}
 
-const AGENT_LABELS: Record<string, { label: string; icon: string }> = {
-  payslip_analysis: { label: "סוכן ניתוח תלוש", icon: "📄" },
-  pension_advisor: { label: "יועץ פנסיוני", icon: "🏦" },
-  gemel_advisor: { label: "סוכן קופות גמל", icon: "💰" },
-  financial_analysis: { label: "מנתח פיננסי", icon: "📊" },
-  insurance_benefits: { label: "יועץ ביטוח", icon: "🛡️" },
-  orchestrator: { label: "עוזר כללי", icon: "🤖" },
-};
+function formatRateLimitWait(until: number | null): string | null {
+  if (!until) return null;
+  const sec = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+  if (sec <= 0) return null;
+  if (sec < 60) return `${sec} שניות`;
+  const min = Math.ceil(sec / 60);
+  return min === 1 ? "דקה" : `${min} דקות`;
+}
 
-const QUICK_PROMPTS = [
-  { text: "תסביר לי את התלוש שלי", agent: "payslip_analysis" },
-  { text: "האם הפנסיה שלי תקינה?", agent: "pension_advisor" },
-  { text: "מה מצב קרן ההשתלמות שלי?", agent: "gemel_advisor" },
-  { text: "תן לי ניתוח פיננסי", agent: "financial_analysis" },
-  { text: "אילו ביטוחים אני צריך?", agent: "insurance_benefits" },
-];
+function degradedBannerText(reason?: string): string | null {
+  if (!reason) return null;
+  if (reason === "budget_exhausted") {
+    return "חריגת תקציב Claude — התשובה הגיעה ממודל מקומי.";
+  }
+  if (
+    reason === "missing_anthropic_key" ||
+    reason === "provider_ollama" ||
+    reason === "claude_unavailable" ||
+    reason === "claude_empty" ||
+    reason === "claude_error"
+  ) {
+    return "מצב מקומי — Claude לא זמין כרגע; התשובה ממודל מקומי.";
+  }
+  return "מצב מדולדל — התשובה עשויה להיות פחות מדויקת.";
+}
 
+/**
+ * Full-page financial assistant — same AiChatProvider /chat/stream stack
+ * as the floating bubble (not /api/agents/ask).
+ */
 export default function AIAgentsPage() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const {
+    messages,
+    conversationId,
+    conversations,
+    isSending,
+    isListening,
+    error,
+    lastFailedUserMessage,
+    historyHydrated,
+    rateLimitedUntil,
+    suggestions,
+    sendMessage,
+    stopGeneration,
+    retryLastFailed,
+    clearChat,
+    selectConversation,
+    deleteConversation,
+    renameConversation,
+    rateMessage,
+    feedbackToast,
+    startVoiceInput,
+    stopVoiceInput,
+    pageContext,
+  } = useAiChat();
+
   const [input, setInput] = useState("");
-  const [isSending, setIsSending] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
+
+  const rateLimited = Boolean(rateLimitedUntil && Date.now() < rateLimitedUntil);
+  const rateLimitWait = formatRateLimitWait(rateLimitedUntil);
+  const showSuggestions =
+    historyHydrated &&
+    !isSending &&
+    messages.filter((m) => m.id !== "welcome").length === 0;
+  const latestAssistant = [...messages]
+    .reverse()
+    .find((m) => m.role === "assistant" && !m.isStreaming && m.source);
+  const degradedText = degradedBannerText(latestAssistant?.degradedReason);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isSending]);
 
-  const handleSend = async (text?: string) => {
-    const message = (text || input).trim();
-    if (!message || isSending) return;
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
-    const userMessage: Message = { role: "user", content: message };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsSending(true);
-
-    try {
-      const history = messages.map((m) => ({ role: m.role, content: m.content }));
-      const result = await askAgent(message, history);
-
-      if (result.ok && result.data.data) {
-        const { answer, agent, classification, sources } = result.data.data;
-        const assistantMessage: Message = {
-          role: "assistant",
-          content: answer,
-          agent,
-          classification,
-          sources,
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: "שגיאה בתקשורת עם מערכת הסוכנים. נסה שנית." },
-        ]);
+  useEffect(() => {
+    if (!historyOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (historyRef.current && !historyRef.current.contains(event.target as Node)) {
+        setHistoryOpen(false);
       }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "שגיאה בלתי צפויה. נסה שנית." },
-      ]);
-    } finally {
-      setIsSending(false);
-    }
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [historyOpen]);
+
+  const handleSend = (forced?: string) => {
+    const text = (forced ?? input).trim();
+    if (!text || isSending || rateLimited || !historyHydrated) return;
+    setInput("");
+    sendMessage(text);
   };
 
-  return (
-    <div className="private-layout" dir="rtl">
-      <PrivateTopbar />
-      <main className="private-main ai-agents-page">
-        <h1 className="ai-agents-title">עוזר AI פיננסי</h1>
-        <p className="ai-agents-subtitle">
-          שאל/י כל שאלה פיננסית — המערכת תנתב אותך אוטומטית לסוכן המתאים
-        </p>
+  const handleStartRename = useCallback(
+    (id: string, currentTitle: string | undefined, event: React.MouseEvent) => {
+      event.stopPropagation();
+      setRenamingId(id);
+      setRenameDraft(currentTitle || "");
+    },
+    [],
+  );
 
-        {/* Agent cards */}
-        <div className="ai-agents-grid">
-          {Object.entries(AGENT_LABELS).filter(([k]) => k !== "orchestrator").map(([key, { label, icon }]) => (
-            <div key={key} className="ai-agents-card">
-              <div className="ai-agents-card-icon">{icon}</div>
-              <div className="ai-agents-card-label">{label}</div>
+  const handleCommitRename = useCallback(
+    async (id: string) => {
+      const trimmed = renameDraft.trim();
+      setRenamingId(null);
+      if (!trimmed) return;
+      await renameConversation(id, trimmed);
+    },
+    [renameDraft, renameConversation],
+  );
+
+  return (
+    <div className="ai-agents-page" dir="rtl">
+      <PrivateTopbar />
+      <main className="ai-agents-main">
+        <header className="ai-agents-header">
+          <div>
+            <h1>עוזר AI פיננסי</h1>
+            <p>
+              אותה שיחה כמו בבועה הצפה — שאלות על שכר, פנסיה, ממצאים והמלצות.
+              להרצת סוכני ניתוח השתמשו ב-Hub.
+            </p>
+            {pageContext ? (
+              <div className="ai-agents-page-context">📍 {pageContext}</div>
+            ) : null}
+          </div>
+          <div className="ai-agents-header-actions">
+            <div className="ai-agents-history" ref={historyRef}>
+              <button
+                type="button"
+                className="ai-agents-clear"
+                onClick={() => setHistoryOpen((o) => !o)}
+                disabled={isSending}
+                aria-expanded={historyOpen}
+              >
+                שיחות
+              </button>
+              {historyOpen ? (
+                <div className="ai-agents-history-menu" role="listbox">
+                  <button
+                    type="button"
+                    className="ai-agents-history-new"
+                    onClick={() => {
+                      clearChat();
+                      setHistoryOpen(false);
+                    }}
+                  >
+                    ＋ שיחה חדשה
+                  </button>
+                  {conversations.length === 0 ? (
+                    <div className="ai-agents-history-empty">אין שיחות קודמות</div>
+                  ) : (
+                    conversations.map((c) => (
+                      <div
+                        key={c.conversationId}
+                        className={`ai-agents-history-row${
+                          c.conversationId === conversationId ? " is-active" : ""
+                        }`}
+                      >
+                        {renamingId === c.conversationId ? (
+                          <input
+                            className="ai-agents-history-rename-input"
+                            value={renameDraft}
+                            autoFocus
+                            aria-label="שם חדש לשיחה"
+                            onChange={(e) => setRenameDraft(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                void handleCommitRename(c.conversationId);
+                              }
+                              if (e.key === "Escape") setRenamingId(null);
+                            }}
+                            onBlur={() => void handleCommitRename(c.conversationId)}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className="ai-agents-history-item"
+                            onClick={() => {
+                              selectConversation(c.conversationId);
+                              setHistoryOpen(false);
+                            }}
+                          >
+                            {formatConversationPreview(c.title, c.preview, c.updatedAt)}
+                            {c.degraded || c.lastSource === "ollama" ? (
+                              <span className="ai-agents-history-meta"> מקומי</span>
+                            ) : null}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          aria-label="שנה שם"
+                          onClick={(e) => handleStartRename(c.conversationId, c.title, e)}
+                        >
+                          ✎
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="מחק שיחה"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!window.confirm("למחוק את השיחה לצמיתות?")) return;
+                            void deleteConversation(c.conversationId);
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : null}
+            </div>
+            <button type="button" className="ai-agents-clear" onClick={clearChat} disabled={isSending}>
+              שיחה חדשה
+            </button>
+          </div>
+        </header>
+
+        {degradedText ? (
+          <div className="ai-agents-degraded" role="status">
+            {degradedText}
+          </div>
+        ) : null}
+
+        {error ? (
+          <div className="ai-agents-error" role="alert">
+            <span>
+              {error}
+              {rateLimited && rateLimitWait ? ` (נותרו ${rateLimitWait})` : ""}
+            </span>
+            {lastFailedUserMessage ? (
+              <button
+                type="button"
+                onClick={retryLastFailed}
+                disabled={isSending || rateLimited}
+              >
+                נסה שוב
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {feedbackToast ? (
+          <div className="ai-agents-toast" role="status">
+            {feedbackToast}
+          </div>
+        ) : null}
+
+        {!historyHydrated ? (
+          <div className="ai-agents-loading" aria-live="polite">
+            טוען שיחה…
+          </div>
+        ) : null}
+
+        <div className="ai-agents-messages" aria-live="polite" aria-busy={isSending || !historyHydrated}>
+          {messages.map((m) => (
+            <div key={m.id} className={`ai-agents-msg ${m.role}`}>
+              {m.isStreaming && !m.content ? (
+                <span>מכין תשובה…</span>
+              ) : m.isStreaming ? (
+                <div className="ai-agents-stream-plain">{m.content}</div>
+              ) : (
+                <div dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }} />
+              )}
+              {m.role === "assistant" && !m.isStreaming && m.content ? (
+                <div className="ai-agents-msg-meta">
+                  {m.source ? <em>{m.source === "rule" ? "מיידי" : m.source}</em> : null}
+                  {m.latencyMs != null ? (
+                    <span>
+                      {m.latencyMs < 1000
+                        ? `${Math.round(m.latencyMs)}מ״ש`
+                        : `${(m.latencyMs / 1000).toFixed(1)}שנ׳`}
+                    </span>
+                  ) : null}
+                  {m.contextUsed?.length ? (
+                    <div className="ai-agents-context-used">
+                      מבוסס על: {m.contextUsed.join(" · ")}
+                    </div>
+                  ) : null}
+                  {m.citations?.length ? (
+                    <div className="ai-agents-citations">
+                      {m.citations.map((c) =>
+                        c.href ? (
+                          <a key={`${c.type}-${c.label}`} href={c.href}>
+                            {c.label}
+                          </a>
+                        ) : (
+                          <span key={`${c.type}-${c.label}`}>{c.label}</span>
+                        ),
+                      )}
+                    </div>
+                  ) : null}
+                  {m.id !== "welcome" && !m.id.startsWith("assistant-") ? (
+                    <span className="ai-feedback-btns">
+                      <button
+                        type="button"
+                        className={m.feedbackRating === 1 ? "is-active" : ""}
+                        aria-label="תשובה מועילה"
+                        title="מועיל"
+                        onClick={() => void rateMessage(m.id, 1)}
+                      >
+                        👍
+                      </button>
+                      <button
+                        type="button"
+                        className={m.feedbackRating === -1 ? "is-active" : ""}
+                        aria-label="תשובה לא מועילה"
+                        title="לא מועיל"
+                        onClick={() => void rateMessage(m.id, -1)}
+                      >
+                        👎
+                      </button>
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           ))}
+          <div ref={endRef} />
         </div>
 
-        {/* Quick prompts */}
-        {messages.length === 0 && (
-          <div className="ai-agents-prompts">
-            {QUICK_PROMPTS.map((prompt) => (
+        {showSuggestions ? (
+          <div className="ai-agents-suggestions">
+            {suggestions.map((s) => (
               <button
-                key={prompt.text}
-                onClick={() => handleSend(prompt.text)}
-                className="ai-agents-prompt-btn"
+                key={s}
+                type="button"
+                disabled={isSending || rateLimited || !historyHydrated}
+                onClick={() => handleSend(s)}
               >
-                {AGENT_LABELS[prompt.agent]?.icon} {prompt.text}
+                {s}
               </button>
             ))}
           </div>
-        )}
+        ) : null}
 
-        {/* Chat messages */}
-        <div className="ai-agents-chat">
-          {messages.length === 0 && (
-            <p className="ai-agents-empty">
-              👋 שלום! שאל אותי כל שאלה פיננסית — מערכת הסוכנים תנתב אותך לסוכן המתאים.
-            </p>
-          )}
-
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`ai-agents-msg ${msg.role === "user" ? "ai-agents-msg--user" : "ai-agents-msg--assistant"}`}
+        <div className="ai-agents-input">
+          {isVoiceInputSupported ? (
+            <button
+              type="button"
+              onClick={() => (isListening ? stopVoiceInput() : startVoiceInput(setInput))}
+              disabled={isSending || rateLimited}
+              aria-label={isListening ? "עצור קלט קולי" : "קלט קולי"}
             >
-              <div className="ai-agents-msg-bubble">
-                {msg.role === "assistant" ? (
-                  <div dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }} />
-                ) : (
-                  msg.content
-                )}
-              </div>
-
-              {/* Agent badge */}
-              {msg.agent && (
-                <div className="ai-agents-badge">
-                  <span>{AGENT_LABELS[msg.agent]?.icon || "🤖"}</span>
-                  <span>{AGENT_LABELS[msg.agent]?.label || msg.agent}</span>
-                  {msg.sources && msg.sources.length > 0 && (
-                    <span style={{ marginRight: 8 }}>
-                      | 📚 {msg.sources.length} מקורות
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* Sources detail */}
-              {msg.sources && msg.sources.length > 0 && (
-                <details className="ai-agents-sources">
-                  <summary>📚 מקורות מידע</summary>
-                  <ul>
-                    {msg.sources.map((s, i) => (
-                      <li key={i}>
-                        {s.title || s.category || "מאגר ידע"}
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              )}
-            </div>
-          ))}
-
-          {isSending && (
-            <div className="ai-agents-thinking">
-              ⏳ הסוכן חושב...
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSend();
-          }}
-          className="ai-agents-form"
-        >
+              {isListening ? "⏹" : "🎤"}
+            </button>
+          ) : null}
           <input
-            type="text"
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="שאל שאלה פיננסית..."
-            disabled={isSending}
-            className="ai-agents-input"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            placeholder={
+              rateLimited && rateLimitWait
+                ? `המתינו עוד ${rateLimitWait}…`
+                : !historyHydrated
+                  ? "טוען שיחה…"
+                  : "כתבו שאלה פיננסית…"
+            }
+            disabled={isSending || rateLimited || !historyHydrated}
           />
-          <button
-            type="submit"
-            disabled={isSending || !input.trim()}
-            className="ai-agents-send-btn"
-          >
-            שלח
-          </button>
-        </form>
-
-        <p className="ai-agents-disclaimer">
-          ⚠️ המידע ניתן לצורכי לימוד בלבד ואינו מהווה ייעוץ פיננסי מקצועי.
-        </p>
+          {isSending ? (
+            <button type="button" onClick={stopGeneration}>
+              עצור
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handleSend()}
+              disabled={rateLimited || !historyHydrated || !input.trim()}
+            >
+              שליחה
+            </button>
+          )}
+        </div>
       </main>
       <AppFooter variant="private" />
     </div>

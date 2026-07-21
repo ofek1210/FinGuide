@@ -41,6 +41,7 @@ import {
 } from "../utils/payslipAnalysisSummary";
 import { documentToPayslipDetail } from "../utils/documentToPayslip";
 import { formatCurrencyPositiveOrDash } from "../utils/formatters";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
 /* ── Types & helpers ─────────────────────────────────────────── */
 interface IntakeData {
@@ -447,6 +448,27 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
   const [passwordDoc, setPasswordDoc] = useState<DocumentItem | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [unlocking, setUnlocking] = useState(false);
+
+  const payslipLabel = summary
+    ? `סוכן תלושים · ${summary.count} תלושים`
+    : "סוכן תלושים";
+  const payslipDetail = summary
+    ? [
+        `מספר תלושים: ${summary.count}`,
+        summary.avgGross != null
+          ? `ברוטו ממוצע: ₪${Math.round(summary.avgGross).toLocaleString("he-IL")}`
+          : null,
+        summary.avgNet != null
+          ? `נטו ממוצע: ₪${Math.round(summary.avgNet).toLocaleString("he-IL")}`
+          : null,
+        summary.avgPensionTotal != null
+          ? `פנסיה ממוצעת: ₪${Math.round(summary.avgPensionTotal).toLocaleString("he-IL")}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
+  useRegisterPageContext(payslipLabel, payslipDetail);
 
   useEffect(() => {
     if (document.getElementById("res-anim")) return;

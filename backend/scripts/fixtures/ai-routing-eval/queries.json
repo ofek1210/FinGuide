@@ -37,5 +37,22 @@
   { "query": "האם כדאי לי להשקיע בשוק ההון?", "expectedIntent": "fallback", "route": "llm" },
   { "query": "מה ההבדל בין קופת גמל לביטוח מנהלים?", "expectedIntent": "fallback", "route": "llm" },
   { "query": "הפרשת עובד לפנסיה בתלוש", "expectedIntent": "pension_employee", "route": "rule" },
-  { "query": "הפרשת מעסיק לפנסיה בתלוש", "expectedIntent": "pension_employer", "route": "rule" }
+  { "query": "הפרשת מעסיק לפנסיה בתלוש", "expectedIntent": "pension_employer", "route": "rule" },
+  { "query": "אילו ביטוחים אני צריך?", "expectedIntent": "my_recommendations", "route": "rule" },
+  { "query": "מה הכי חשוב עכשיו?", "expectedIntent": "recommended_action", "route": "rule" },
+  { "query": "מה כדאי לשפר בפנסיה?", "expectedIntent": "fallback", "route": "llm" },
+  { "query": "כמה קרן השתלמות חסכתי?", "expectedIntent": "training_fund", "route": "rule" },
+  { "query": "מה מצב הפנסיה שלי?", "expectedIntent": "fallback", "route": "llm" },
+  { "query": "האם כדאי לי ביטוח חיים?", "expectedIntent": "fallback", "route": "llm" },
+  { "query": "יש פערי הפקדה לפנסיה?", "expectedIntent": "fallback", "route": "llm" },
+  { "query": "מה מצב קרן ההשתלמות?", "expectedIntent": "training_fund", "route": "rule" },
+  { "query": "כמה הפרשות פנסיה בתלוש?", "expectedIntent": "pension_total", "route": "rule" },
+  { "query": "יש חריגות או ממצאים בתלושים?", "expectedIntent": "anomaly_check", "route": "rule" },
+  { "query": "מה ההמלצות האישיות שלי?", "expectedIntent": "my_recommendations", "route": "rule" },
+  { "query": "יש חריגות וממצאים בתלוש?", "expectedIntent": "anomaly_check", "route": "rule" },
+  { "query": "מה הכי חשוב לעשות עם הביטוח?", "expectedIntent": "recommended_action", "route": "rule" },
+  { "query": "תן לי המלצה אישית על הפנסיה", "expectedIntent": "my_recommendations", "route": "rule" },
+  { "query": "כמה נטו בתלוש האחרון?", "expectedIntent": "net_salary", "route": "rule" },
+  { "query": "מה ההבדל בין פנסיה לביטוח מנהלים?", "expectedIntent": "fallback", "route": "llm" },
+  { "query": "יש חריגה בשכר שלי?", "expectedIntent": "anomaly_check", "route": "rule" }
 ]

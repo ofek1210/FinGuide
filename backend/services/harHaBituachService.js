@@ -177,11 +177,6 @@ function findHarSheetName(workbook) {
   }) || workbook.SheetNames[0];
 }
 
-function readWorkbookRows(workbook) {
-  const ws = workbook.Sheets[findHarSheetName(workbook)];
-  return XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
-}
-
 function parseHarHaBituachBuffer(buffer) {
   const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
   return parseHarHaBituachRows(readWorkbookRows(wb));
