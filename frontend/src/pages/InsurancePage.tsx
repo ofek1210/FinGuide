@@ -2,6 +2,7 @@
  * InsurancePage — guided Har HaBituach import flow
  */
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Shield, AlertCircle, CheckCircle, Trash2, Loader2,
   FileText, Lock, TrendingUp, ShieldCheck, AlertTriangle, BarChart3,
@@ -44,13 +45,14 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const fmt = formatCurrencyOrDash;
 
 export default function InsurancePage() {
+  const [searchParams] = useSearchParams();
   const agentOnboarding = useAgentOnboarding("insurance");
 
   function insuranceShell(children: React.ReactNode) {
     return (
       <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
         <AgentOnboardingModal
-          open={agentOnboarding.showModal}
+          open={agentOnboarding.showModal || forceOnboardingModal}
           agentLabel="ביטוח"
           estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
           questions={agentOnboarding.state?.missingQuestions || []}
@@ -127,21 +129,28 @@ export default function InsurancePage() {
     void loadImportHistory();
   }, [load, loadImportHistory]);
 
-  // On first load: skip to results when insurance onboarding is complete,
-  // even if Har HaBituach contained 0 active policies.
   useEffect(() => {
-    if (step !== "landing" || loading) return;
-    if (!data) return;
+    if (searchParams.get("flow") === "import" && step === "landing") {
+      setStep("guide");
+    }
+  }, [searchParams, step, setStep]);
 
-    const policyCount = data?.policies?.length ?? 0;
+  const hasInsuranceDocument = (data?.policies?.length ?? 0) > 0;
+  const forceOnboardingModal = hasInsuranceDocument && agentOnboarding.needsQuestions;
+
+  // When policies exist, route into onboarding or results — not the empty landing upload prompt.
+  useEffect(() => {
+    if (loading || !data) return;
+
+    const policyCount = data.policies?.length ?? 0;
     if (policyCount === 0) return;
+    if (step !== "landing" && step !== "onboarding") return;
 
     void getInsuranceOnboardingSession().then(res => {
-      if (res.ok && res.data?.success && res.data.data?.completed) {
-        setStep("results");
-      }
+      const completed = res.ok && res.data?.success && res.data.data?.completed;
+      setStep(completed ? "results" : "onboarding");
     });
-  }, [data, step, loading, setStep]);
+  }, [data, loading, step, setStep]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("למחוק פוליסה זו?")) return;

@@ -8,7 +8,7 @@
  *                   wired to /api/pension/* (analysis, funds).
  */
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import GlassCard from "../components/ui/GlassCard";
@@ -48,6 +48,7 @@ type FlowStep = "landing" | "onboarding" | "guide" | "upload" | "results";
 
 export default function PensionPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const agentOnboarding = useAgentOnboarding("pension");
   const { uploadProgressStep, start: startProgress, stop: stopProgress } = useGovReportUploadProgress(UPLOAD_PROGRESS_STEPS.length);
 
@@ -116,6 +117,15 @@ export default function PensionPage() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("flow") === "import") {
+      setStep("onboarding");
+    }
+  }, [searchParams]);
+
+  const hasPensionDocument = funds.length > 0;
+  const forceOnboardingModal = hasPensionDocument && agentOnboarding.needsQuestions;
 
   const pensionContextLabel = (() => {
     if (isThreeCardAdvisory(data)) return "פנסיה · ניתוח שלוש-כרטיסים";
@@ -202,7 +212,7 @@ export default function PensionPage() {
   const shell = (children: React.ReactNode) => (
     <div data-agent="pension" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(47,156,98,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
       <AgentOnboardingModal
-        open={agentOnboarding.showModal}
+        open={agentOnboarding.showModal || forceOnboardingModal}
         agentLabel="פנסיה"
         estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
         questions={agentOnboarding.state?.missingQuestions || []}

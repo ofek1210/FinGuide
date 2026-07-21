@@ -10,14 +10,14 @@ import { APP_ROUTES } from "../types/navigation";
 import { AGENT_KEY, DOMAIN_TO_AGENT } from "../components/hub/masterAgentMerge";
 import { useMasterAgent } from "../components/hub/useMasterAgent";
 import { useHubData } from "../components/hub/useHubData";
-import MasterBand from "../components/hub/MasterBand";
+import MasterBand, { type LastReportMeta } from "../components/hub/MasterBand";
 import AgentSummaryCard from "../components/hub/AgentSummaryCard";
 import CommandBar from "../components/hub/CommandBar";
 import AgentSyncOverlay from "../components/hub/AgentSyncOverlay";
 import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
 import { useRegisterPageContext } from "../assistant/AiChatProvider";
 import { getLatestExecutiveReport } from "../api/executiveReport.api";
-import type { LastReportMeta } from "../components/hub/MasterBand";
+import HubReadinessPanel from "../components/hub/HubReadinessPanel";
 
 /* ============================================================
    Hub — the master agent's home. One editorial page in the
@@ -149,6 +149,12 @@ export default function HubPage() {
           savedScore={data.healthScore}
         />
 
+        <HubReadinessPanel
+          loading={data.loading}
+          documents={data.documentInventory}
+          advisors={data.advisorReadiness}
+        />
+
         {/* FOUR AGENT CARDS — status readout + gateway into each domain */}
         <div id="agent-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 20, marginBottom: 46, scrollMarginTop: 90 }}>
           {AGENTS.map((a, i) => {
@@ -159,6 +165,7 @@ export default function HubPage() {
                 agent={a}
                 index={i}
                 metric={data.agentMetric[a.id]}
+                readinessDetail={data.advisorReadiness.find(r => r.agentId === a.id)?.detail}
                 spark={data.agentSpark[a.id]}
                 loading={data.loading}
                 agentResult={master.result?.agents?.[key]}

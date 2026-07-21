@@ -6,7 +6,7 @@
  * pension import flow; "ייבוא דוח" deep-links there.
  */
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import GemelAdvisor from "../components/gemel/GemelAdvisor";
@@ -34,6 +34,7 @@ const EMPTY_FORM: UploadGemelFundBody = {
 
 export default function GemelPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const agentOnboarding = useAgentOnboarding("gemel");
 
   const [data, setData] = useState<GemelAnalysisData | null>(null);
@@ -81,6 +82,14 @@ export default function GemelPage() {
     || (data?.summary?.fundCount ?? 0) > 0
     || (data?.summary?.totalMonthlyContribution ?? 0) > 0,
   );
+  const hasGemelDocument = funds.length > 0 || hasPayslipGemelData || Boolean(data?.summary?.hasData);
+  const forceOnboardingModal = hasGemelDocument && agentOnboarding.needsQuestions;
+
+  useEffect(() => {
+    if (searchParams.get("flow") === "import") {
+      navigate(APP_ROUTES.pension, { replace: true });
+    }
+  }, [searchParams, navigate]);
 
   const gemelLabel = isThreeCardAdvisory(data)
     ? "גמל והשתלמות · ניתוח שלוש-כרטיסים"
@@ -138,7 +147,7 @@ export default function GemelPage() {
   return (
     <div data-agent="gemel" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(185,139,22,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
       <AgentOnboardingModal
-        open={agentOnboarding.showModal}
+        open={agentOnboarding.showModal || forceOnboardingModal}
         agentLabel="גמל והשתלמות"
         estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
         questions={agentOnboarding.state?.missingQuestions || []}
