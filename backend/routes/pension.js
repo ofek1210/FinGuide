@@ -21,6 +21,7 @@ const {
   deletePensionFund,
   getFundAdvice,
   getLeadingFunds,
+  getLeadingFinqFunds,
   getMarketFundById,
   getPensionRecommendations,
   deleteAllPensionData,
@@ -138,6 +139,10 @@ router.post(
     Promise.resolve(getPensionRecommendations(req, res)).catch(next);
   },
 );
+
+router.get('/leading-funds/finq', (req, res, next) => {
+  Promise.resolve(getLeadingFinqFunds(req, res)).catch(next);
+});
 
 router.get('/leading-funds', (req, res, next) => {
   Promise.resolve(getLeadingFunds(req, res)).catch(next);

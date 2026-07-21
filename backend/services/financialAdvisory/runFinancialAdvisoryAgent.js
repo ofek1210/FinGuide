@@ -9,7 +9,10 @@ const { getMarketDataMeta, enrichMarketWarnings } = require('./marketDataMetaSer
 const { fromPensionMarketContext } = require('./productMatchingService');
 const { formatFinancialInsightsWithLLM } = require('./llmInsightFormatter');
 const { buildAdvisoryResponse, insightsToLegacyRecommendations } = require('./advisoryResponseBuilder');
+const { runThreeCardRecommendationEngine } = require('./recommendationCards/threeCardRecommendationEngine');
 const advisoryConfig = require('../../config/financialAdvisoryConfig');
+
+const USE_THREE_CARD_ENGINE = process.env.USE_THREE_CARD_RECOMMENDATIONS !== 'false';
 
 function logInsightTrace({ analysisId, userId, productType, insights, llm, marketData }) {
   for (const ins of insights || []) {
@@ -87,14 +90,43 @@ async function runFinancialAdvisoryAgent({
     : await runDeterministicEngine(userId, productType, options);
   const marketData = enrichMarketWarnings(marketMeta, engineResult.matchResults);
 
+  let threeCardResult = null;
+  if (USE_THREE_CARD_ENGINE) {
+    threeCardResult = await runThreeCardRecommendationEngine({
+      productType,
+      funds: options.funds || precomputed?.funds || [],
+      userContext: engineResult.engineMeta?.userContext,
+      marketContexts: engineResult.engineMeta?.marketContexts || [],
+      allInsights: engineResult.unifiedInsights,
+    });
+  }
+
   const prioritized = prioritizeFinancialInsights(engineResult.unifiedInsights, { productType });
 
-  const { formatted, llm } = await formatFinancialInsightsWithLLM({
-    productType,
-    structuredInsights: prioritized.centralRecommendations,
-    marketDataPeriod: marketData.latestReportPeriod,
-    skipLLM,
-  });
+  let formatted;
+  let llm = { used: false, provider: null, fallbackUsed: false, reason: 'three_card_engine' };
+
+  if (threeCardResult) {
+    formatted = {
+      primaryRecommendations: threeCardResult.primaryRecommendations,
+      summary: null,
+    };
+    prioritized.centralRecommendations = threeCardResult.centralRecommendations;
+    prioritized.additionalInsights = [
+      ...(prioritized.positiveFindings || []),
+      ...threeCardResult.moreFindings,
+      ...(prioritized.additionalInsights || []),
+    ];
+  } else {
+    const llmResult = await formatFinancialInsightsWithLLM({
+      productType,
+      structuredInsights: prioritized.centralRecommendations,
+      marketDataPeriod: marketData.latestReportPeriod,
+      skipLLM,
+    });
+    formatted = llmResult.formatted;
+    llm = llmResult.llm;
+  }
 
   if (process.env.NODE_ENV !== 'production') {
     console.log('[financialAdvisory]', {
@@ -127,6 +159,10 @@ async function runFinancialAdvisoryAgent({
     prioritized,
     formatted,
     marketData,
+    recommendationCards: threeCardResult?.recommendationCards ?? null,
+    moreFindings: threeCardResult?.moreFindings ?? null,
+    threeCardMeta: threeCardResult?.meta ?? null,
+    accountAnalyses: threeCardResult?.accountAnalyses ?? null,
     dataQuality: {
       uploadValid: true,
       matchConfidence: avgMatch,

@@ -8,7 +8,7 @@
  * POST   /api/gemel/funds         — manual gemel fund entry
  * PATCH  /api/gemel/funds/:id     — update a holding
  * DELETE /api/gemel/funds/:id     — remove a holding
- * GET    /api/gemel/leading-funds — top Gemel-Net market funds
+ * GET    /api/gemel/leading-funds — official GemelNet market comparison (product, risk, period)
  */
 
 const express = require('express');

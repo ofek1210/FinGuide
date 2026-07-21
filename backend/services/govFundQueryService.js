@@ -24,6 +24,8 @@ const PUBLIC_FIELDS = [
   'SHIUR_D_NIHUL_AHARON_HAFKADOT',
   'SHIUR_D_NIHUL_MEANUAL',
   'SHIUR_D_NIHUL_AHARON_TTVURAH',
+  'TSUA_12_HODASHIM',
+  'TSUA_36_HODASHIM',
   'TSUA_SHNATIT_MEMUZAAT_5_SHANIM',
   'STIAT_TEKEN_36_HODASHIM',
   'SHARPE_RATIO',
@@ -62,6 +64,8 @@ function buildFilter(query = {}) {
 
 function sortField(sort) {
   const allowed = {
+    return12m: 'TSUA_12_HODASHIM',
+    return36m: 'TSUA_36_HODASHIM',
     return5y: 'TSUA_SHNATIT_MEMUZAAT_5_SHANIM',
     fee: 'SHIUR_D_NIHUL_AHARON_TTVURAH',
     sharpe: 'SHARPE_RATIO',
@@ -132,6 +136,9 @@ function formatFundRow(row) {
     reportPeriod: row.TKUFAT_DUACH,
     depositFee: row.SHIUR_D_NIHUL_AHARON_HAFKADOT,
     assetFee: row.SHIUR_D_NIHUL_AHARON_TTVURAH ?? row.SHIUR_D_NIHUL_MEANUAL,
+    return12Months: row.TSUA_12_HODASHIM ?? null,
+    return36MonthsAnnualized: row.TSUA_36_HODASHIM ?? null,
+    return5YearsAnnualized: row.TSUA_SHNATIT_MEMUZAAT_5_SHANIM ?? null,
     return5Years: row.TSUA_SHNATIT_MEMUZAAT_5_SHANIM,
     standardDeviation: row.STIAT_TEKEN_36_HODASHIM,
     sharpeRatio: row.SHARPE_RATIO,

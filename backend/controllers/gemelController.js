@@ -8,7 +8,7 @@
 const PensionFund = require('../models/PensionFund');
 const { buildGemelAnalysis } = require('../services/gemelAnalysisService');
 const { runGemelAgent } = require('../ai/agents/gemelAgent');
-const { getLeadingGovFunds } = require('../services/govFundQueryService');
+const marketComparisonService = require('../services/marketComparison/marketComparisonService');
 const { GEMEL_FUND_TYPES } = require('../ai/tools/gemelTools');
 const {
   buildGemelAdvisorReport,
@@ -161,12 +161,15 @@ async function deleteGemelFund(req, res) {
 }
 
 /**
- * GET /api/gemel/leading-funds — top Gemel-Net market funds
+ * GET /api/gemel/leading-funds?product=gemel|hishtalmut|investment_gemel&risk=low|medium|high&period=12|36|5y|combined&limit=5
  */
 async function getGemelLeadingFunds(req, res) {
-  const data = await getLeadingGovFunds('gemel', {
-    limit: Number(req.query.limit) || 10,
-    classification: req.query.classification,
+  const data = await marketComparisonService.getGemelMarketComparison({
+    product: req.query.product,
+    risk: req.query.risk,
+    period: req.query.period,
+    limit: req.query.limit,
+    comparisonGroup: req.query.comparisonGroup || null,
   });
   return res.json({ success: true, data });
 }

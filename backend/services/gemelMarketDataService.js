@@ -20,6 +20,7 @@ function formatGemelRow(row) {
     depositFee: row.SHIUR_D_NIHUL_AHARON_HAFKADOT ?? row.SHIUR_D_NIHUL_MEANUAL ?? null,
     assetFee: row.SHIUR_D_NIHUL_AHARON_TTVURAH ?? row.SHIUR_D_NIHUL_MEANUAL ?? null,
     return1Y: row.TSUA_12_HODASHIM ?? null,
+    return3Y: row.TSUA_36_HODASHIM ?? null,
     return5Y: row.TSUA_SHNATIT_MEMUZAAT_5_SHANIM,
     standardDeviation36m: row.STIAT_TEKEN_36_HODASHIM,
     sharpeRatio: row.SHARPE_RATIO,
