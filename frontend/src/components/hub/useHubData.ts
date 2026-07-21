@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { AgentId } from "../../theme/agents";
 import { listFindings, type FindingItem } from "../../api/findings.api";
 import { getPensionAnalysis, getPensionImportHistory, type PensionAnalysisData } from "../../api/pension.api";
+import { isThreeCardAdvisory } from "../../api/financialAdvisory.types";
+import { sumAnnualSavings } from "../../utils/financialAdvisoryDisplay";
 import { listDocuments, type DocumentItem } from "../../api/documents.api";
 import { getInsuranceAnalysis } from "../../api/insuranceAI.api";
 import { getFinancialHealthScore } from "../../api/financialHealth.api";
@@ -119,7 +121,9 @@ export function useHubData(): HubData {
     [documents],
   );
   const pensionFundCount = pension?.summary.fundCount ?? 0;
-  const pensionRecs = pension?.recommendations ?? [];
+  const pensionRecs = isThreeCardAdvisory(pension)
+    ? (pension.primaryRecommendations ?? [])
+    : [];
 
   // ranked findings — warnings first, top 3
   const rankedFindings = useMemo(() => {
@@ -134,10 +138,9 @@ export function useHubData(): HubData {
   }, [findings]);
 
   // potential savings to retirement, from real pension analysis
-  const potentialSavings =
-    pension?.benchmark?.summary.totalPotentialSavings ??
-    pension?.projection?.mgmtFeeSavings?.savingsByRetirement ??
-    0;
+  const potentialSavings = isThreeCardAdvisory(pension)
+    ? sumAnnualSavings(pension) * 10
+    : (pension?.projection?.mgmtFeeSavings?.savingsByRetirement ?? 0);
   const opportunities = findings.length + pensionRecs.length;
 
   const heroRows = useMemo(() => {
@@ -167,7 +170,9 @@ export function useHubData(): HubData {
       ? (domainCounts.insurance > 0 ? `${domainCounts.insurance} ממצאים פעילים` : `${importedPolicies} פוליסות במעקב`)
       : "טרם יובאו פוליסות",
     pension: pensionFundCount > 0
-      ? (pensionRecs.length > 0 ? `${pensionRecs.length} המלצות` : `${pensionFundCount} קרנות במעקב`)
+      ? (isThreeCardAdvisory(pension)
+        ? `${pension.recommendationCards?.length ?? 3} כרטיסי המלצה`
+        : `${pensionFundCount} קרנות במעקב`)
       : "טרם חובר מידע פנסיוני",
     gemel: domainCounts.gemel > 0
       ? `${domainCounts.gemel} ממצאים פעילים`

@@ -1,4 +1,47 @@
 import { apiJson, apiBlob } from "./client";
+import type {
+  AccountAnalysis,
+  AdvisoryDataQuality,
+  AdvisoryLlmMeta,
+  AdvisoryMarketData,
+  AdvisoryMissingDataItem,
+  PrimaryRecommendation,
+  RecommendationCard,
+  ThreeCardAdvisoryData,
+  ThreeCardMeta,
+} from "./financialAdvisory.types";
+
+export type {
+  AccountAnalysis,
+  AdvisoryDataQuality,
+  AdvisoryLlmMeta,
+  AdvisoryMarketData,
+  AdvisoryMissingDataItem,
+  PrimaryRecommendation,
+  RecommendationCard,
+  ThreeCardAdvisoryData,
+  ThreeCardMeta,
+};
+
+export type RecommendationCardDTO = RecommendationCard;
+export type FormattedRecommendationDTO = PrimaryRecommendation;
+
+export type FinancialStructuredInsightDTO = {
+  id: string;
+  code: string;
+  productType: "PENSION" | "GEMEL" | "HISHTALMUT";
+  category: string;
+  severity: "critical" | "high" | "medium" | "low" | "info";
+  title: string;
+  reason: string;
+  suggestedAction: string;
+  evidence?: Record<string, unknown>;
+  financialImpact?: { amount?: number | null; currency?: string; period?: string | null };
+  confidence: number;
+  productId?: string | null;
+  sources?: string[];
+  disclaimers?: string[];
+};
 
 /* ============================================================
    Gemel API — קופות גמל וקרנות השתלמות (/api/gemel/*)
@@ -124,81 +167,13 @@ export type GemelRecommendationDTO = {
   insightId?: string;
 };
 
-export type FinancialStructuredInsightDTO = {
-  id: string;
-  code: string;
-  productType: "PENSION" | "GEMEL" | "HISHTALMUT";
-  category: string;
-  severity: "critical" | "high" | "medium" | "low" | "info";
-  priority?: number;
-  title: string;
-  reason: string;
-  suggestedAction: string;
-  evidence?: Record<string, unknown>;
-  financialImpact?: { amount?: number | null; currency?: string; period?: string | null; assumptions?: string[] };
-  confidence: number;
-  productId?: string | null;
-  productName?: string | null;
-  sources?: string[];
-  disclaimers?: string[];
-};
-
-export type FormattedRecommendationDTO = {
-  insightId: string;
-  title: string;
-  explanation: string;
-  whyItMatters?: string;
-  nextStep?: string;
-  financialImpact?: FinancialStructuredInsightDTO["financialImpact"];
-  evidence?: Record<string, unknown> | null;
-};
-
-export type GemelStructuredInsightDTO = {
-  id: string;
-  category: string;
-  severity: "critical" | "high" | "medium" | "low" | "info";
-  title: string;
-  finding: string;
-  recommendedAction?: string;
-  confidence?: number;
-  benchmark?: Record<string, unknown> | null;
-  estimatedImpact?: {
-    annual?: number | null;
-    retirement?: number | null;
-    currency?: string;
-  };
-  fundId?: string;
-};
-
-export type AdvisoryMarketDataDTO = {
-  source: string;
-  sourceLabel?: string;
-  latestReportPeriod: string | null;
-  lastSyncedAt: string | null;
-  isStale: boolean;
-  warnings?: string[];
-};
+export type AdvisoryMarketDataDTO = AdvisoryMarketData;
 
 export type GemelAnalysisData = {
-  productType?: "GEMEL" | "HISHTALMUT";
-  analysisId?: string | null;
   summary: GemelSummaryDTO;
-  marketAdvice: GemelMarketAdviceDTO;
-  payslipFindings: GemelFindingDTO[];
-  recommendations: GemelRecommendationDTO[];
-  structuredInsights?: FinancialStructuredInsightDTO[];
-  primaryRecommendations?: FormattedRecommendationDTO[];
-  positiveFindings?: GemelStructuredInsightDTO[];
-  secondaryInsights?: FinancialStructuredInsightDTO[];
-  additionalInsights?: GemelStructuredInsightDTO[];
-  marketData?: AdvisoryMarketDataDTO | null;
-  dataQuality?: { uploadValid?: boolean; matchConfidence?: number | null; missingFields?: string[]; warnings?: string[] };
-  missingData?: Array<{ field: string; message: string }>;
-  llm?: { used: boolean; provider: string | null; fallbackUsed: boolean; summary?: string | null };
-  llmSummary?: string | null;
-  disclaimer?: string | null;
-  productDisclaimer?: string | null;
-};
+  productType?: "GEMEL" | "HISHTALMUT";
+  payslipFindings?: GemelFindingDTO[];
+} & Partial<ThreeCardAdvisoryData>;
 
 export type GemelLeadingFundDTO = {
   id: string;

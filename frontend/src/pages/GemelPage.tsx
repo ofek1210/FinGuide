@@ -2,8 +2,8 @@
  * GemelPage — provident & study funds agent (קופות גמל וקרנות השתלמות).
  *
  * Loads /api/gemel/analysis + /api/gemel/funds and renders the flagship
- * GemelAdvisor. Har HaKesef imports run through the pension import flow
- * (the same report contains gemel funds), so "ייבוא דוח" deep-links there.
+ * GemelAdvisor (three_card_v5 only). Har HaKesef imports run through the
+ * pension import flow; "ייבוא דוח" deep-links there.
  */
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -13,17 +13,14 @@ import GemelAdvisor from "../components/gemel/GemelAdvisor";
 import {
   getGemelAnalysis,
   getGemelFunds,
-  getGemelReport,
   createGemelFund,
   deleteGemelFund,
   uploadGemelExcel,
   type GemelAnalysisData,
-  type GemelAdvisorReportDTO,
   type GemelFundDTO,
   type UploadGemelFundBody,
 } from "../api/gemel.api";
-import GemelAccountCards from "../components/gemel/GemelAccountCards";
-import GemelAdvisorSummary from "../components/gemel/GemelAdvisorSummary";
+import { isThreeCardAdvisory } from "../api/financialAdvisory.types";
 import AgentOnboardingModal from "../components/onboarding/AgentOnboardingModal";
 import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import { APP_ROUTES } from "../types/navigation";
@@ -40,10 +37,10 @@ export default function GemelPage() {
   const agentOnboarding = useAgentOnboarding("gemel");
 
   const [data, setData] = useState<GemelAnalysisData | null>(null);
-  const [advisorReport, setAdvisorReport] = useState<GemelAdvisorReportDTO | null>(null);
   const [funds, setFunds] = useState<GemelFundDTO[]>([]);
   const [loading, setLoading] = useState(true);
-  const [reportLoading, setReportLoading] = useState(true);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [excelUploading, setExcelUploading] = useState(false);
   const [uploadMsg, setUploadMsg] = useState<string | null>(null);
 
@@ -54,19 +51,21 @@ export default function GemelPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
-    const [analysisRes, fundsRes, reportRes] = await Promise.all([
+    setAnalysisLoading(true);
+    setAnalysisError(null);
+    const [analysisRes, fundsRes] = await Promise.all([
       getGemelAnalysis(),
       getGemelFunds(),
-      getGemelReport(true),
     ]);
+    setAnalysisLoading(false);
     if (analysisRes.ok && analysisRes.data?.success && analysisRes.data.data) {
       setData(analysisRes.data.data);
+    } else if (!analysisRes.ok) {
+      setAnalysisError(analysisRes.error?.message ?? "שגיאה בטעינת הניתוח");
+    } else {
+      setAnalysisError("לא התקבלו נתוני ניתוח מהשרת");
     }
     if (fundsRes.ok && fundsRes.data?.data) setFunds(fundsRes.data.data.funds);
-    if (reportRes.ok && reportRes.data?.data?.report) {
-      setAdvisorReport(reportRes.data.data.report);
-    }
-    setReportLoading(false);
   }, []);
 
   useEffect(() => {
@@ -76,16 +75,26 @@ export default function GemelPage() {
     })();
   }, [loadAll]);
 
-  const gemelLabel = data?.summary
-    ? `גמל והשתלמות · ${data.summary.fundCount ?? funds.length} קופות`
-    : "גמל והשתלמות";
+  const hasPayslipGemelData = Boolean(
+    data?.summary?.hasStudyFund
+    || data?.summary?.hasProvidentFund
+    || (data?.summary?.fundCount ?? 0) > 0
+    || (data?.summary?.totalMonthlyContribution ?? 0) > 0,
+  );
+
+  const gemelLabel = isThreeCardAdvisory(data)
+    ? "גמל והשתלמות · ניתוח שלוש-כרטיסים"
+    : data?.summary
+      ? `גמל והשתלמות · ${data.summary.fundCount ?? funds.length} קופות`
+      : "גמל והשתלמות";
+
   const gemelDetail = [
     data?.summary?.fundCount != null ? `מספר קופות: ${data.summary.fundCount}` : null,
     data?.summary?.totalBalance != null
       ? `צבירה כוללת: ₪${Math.round(Number(data.summary.totalBalance)).toLocaleString("he-IL")}`
       : null,
     funds.length ? `קרנות ברשימה: ${funds.length}` : null,
-    advisorReport ? "דוח יועץ גמל זמין" : null,
+    isThreeCardAdvisory(data) ? `כרטיסים: ${data.recommendationCards.length}` : null,
   ]
     .filter(Boolean)
     .join("\n");
@@ -120,7 +129,6 @@ export default function GemelPage() {
     setExcelUploading(false);
     if (res.ok && res.data?.success) {
       setUploadMsg(`יובאו ${res.data.data?.imported ?? 0} חשבונות${res.data.data?.warnings?.length ? ` (${res.data.data.warnings.length} אזהרות)` : ""}`);
-      setReportLoading(true);
       await loadAll();
     } else {
       setUploadMsg("שגיאה בהעלאת הקובץ");
@@ -145,25 +153,16 @@ export default function GemelPage() {
         </div>
       ) : (
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "20px 24px 0" }}>
-          <GemelAdvisorSummary
-            report={advisorReport}
-            loading={reportLoading}
-            onUpload={handleExcelUpload}
-            uploading={excelUploading}
-            uploadMsg={uploadMsg}
-            knownFundCount={funds.length}
-            knownTotalBalance={funds.reduce((sum, f) => sum + (f.currentBalance || 0), 0)}
-            hasPayslipGemelData={Boolean(
-              data?.summary?.hasStudyFund
-              || data?.summary?.hasProvidentFund
-              || (data?.summary?.fundCount ?? 0) > 0
-              || (data?.summary?.totalMonthlyContribution ?? 0) > 0,
-            )}
-          />
-          <GemelAccountCards report={advisorReport} loading={reportLoading} knownFundCount={funds.length} />
           <GemelAdvisor
             data={data}
             funds={funds}
+            analysisLoading={analysisLoading}
+            analysisError={analysisError}
+            onRetryAnalysis={() => void loadAll()}
+            hasPayslipGemelData={hasPayslipGemelData}
+            onExcelUpload={handleExcelUpload}
+            excelUploading={excelUploading}
+            uploadMsg={uploadMsg}
             showAddForm={showAddForm}
             setShowAddForm={setShowAddForm}
             form={form}

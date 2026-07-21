@@ -1,3 +1,7 @@
+/**
+ * @deprecated Step 6b — no longer mounted on GemelPage.
+ * Per-account analysis is rendered by AccountAnalysisList inside ThreeCardSummary.
+ */
 import { AlertTriangle, CheckCircle2, HelpCircle } from "lucide-react";
 import type { GemelAccountReportDTO, GemelAdvisorReportDTO } from "../../api/gemel.api";
 import { formatCurrencyOrDash } from "../../utils/formatters";

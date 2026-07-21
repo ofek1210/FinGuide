@@ -1,36 +1,29 @@
-/** Shared display rules for LLM-formatted advisory cards (pension + gemel). */
-export type AdvisoryRecommendationDisplayData = {
-  primaryRecommendations?: unknown[] | null;
-  recommendations?: unknown[] | null;
-  structuredInsights?: unknown[] | null;
-  disclaimer?: string | null;
-  productDisclaimer?: string | null;
-};
+/** Shared display rules for three_card_v5 advisory UI. */
+import { isThreeCardAdvisory, type ThreeCardAdvisoryData } from "../api/financialAdvisory.types";
+import { combinedAdvisoryDisclaimer } from "./financialAdvisoryDisplay";
 
-export function shouldShowUnifiedRecommendations(
-  data: AdvisoryRecommendationDisplayData | null | undefined,
+export type AdvisoryRecommendationDisplayData = Partial<ThreeCardAdvisoryData> | null | undefined;
+
+export function shouldShowThreeCardAdvisory(
+  data: { recommendationEngine?: string; recommendationCards?: unknown[] } | null | undefined,
 ): boolean {
-  return (data?.primaryRecommendations?.length ?? 0) > 0;
+  return isThreeCardAdvisory(data);
 }
 
-export function shouldShowLegacyRecommendations(
-  data: AdvisoryRecommendationDisplayData | null | undefined,
-): boolean {
-  if (shouldShowUnifiedRecommendations(data)) return false;
-  return (data?.recommendations?.length ?? 0) > 0;
+/** @deprecated use shouldShowThreeCardAdvisory */
+export function shouldShowUnifiedRecommendations(data: AdvisoryRecommendationDisplayData): boolean {
+  return shouldShowThreeCardAdvisory(data);
 }
 
-export function shouldShowStructuredInsightsPanel(
-  data: AdvisoryRecommendationDisplayData | null | undefined,
-): boolean {
-  if (shouldShowUnifiedRecommendations(data)) return false;
-  return (data?.structuredInsights?.length ?? 0) > 0;
+/** Legacy paths removed from pension/gemel UI */
+export function shouldShowLegacyRecommendations(_data: AdvisoryRecommendationDisplayData): boolean {
+  return false;
 }
 
-export function combinedRecommendationDisclaimer(
-  data: AdvisoryRecommendationDisplayData | null | undefined,
-): string | null {
-  const parts = [data?.disclaimer, data?.productDisclaimer].filter(Boolean) as string[];
-  if (!parts.length) return null;
-  return [...new Set(parts)].join(" ");
+export function shouldShowStructuredInsightsPanel(_data: AdvisoryRecommendationDisplayData): boolean {
+  return false;
+}
+
+export function combinedRecommendationDisclaimer(data: AdvisoryRecommendationDisplayData): string | null {
+  return combinedAdvisoryDisclaimer(data);
 }

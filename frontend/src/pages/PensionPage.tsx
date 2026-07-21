@@ -28,6 +28,7 @@ import {
   type PensionFundDTO,
   type UploadPensionBody,
 } from "../api/pension.api";
+import { isThreeCardAdvisory } from "../api/financialAdvisory.types";
 import { APP_ROUTES } from "../types/navigation";
 import { UPLOAD_PROGRESS_STEPS } from "../utils/pensionDisplay";
 import PensionLandingScreen from "../components/pension/PensionLandingScreen";
@@ -117,10 +118,7 @@ export default function PensionPage() {
   }, []);
 
   const pensionContextLabel = (() => {
-    const score = data?.healthCheck?.score;
-    if (typeof score === "number" && Number.isFinite(score)) {
-      return `פנסיה · ציון ${Math.round(score)}`;
-    }
+    if (isThreeCardAdvisory(data)) return "פנסיה · ניתוח שלוש-כרטיסים";
     if (step === "results") return "פנסיה · ניתוח";
     if (step === "upload" || step === "guide") return "פנסיה · ייבוא";
     return "פנסיה";
@@ -128,15 +126,13 @@ export default function PensionPage() {
 
   const pensionContextDetail = (() => {
     const lines: string[] = [`שלב במסך: ${step}`];
-    if (typeof data?.healthCheck?.score === "number") {
-      lines.push(`ציון בריאות פנסיונית: ${Math.round(data.healthCheck.score)}/100`);
+    if (isThreeCardAdvisory(data)) {
+      lines.push(`כרטיסים: ${data.recommendationCards.length}`);
+      const top = data.primaryRecommendations?.[0];
+      if (top?.title) lines.push(`המלצה מובילה: ${top.title}`);
     }
     if (data?.summary?.fundCount != null) {
       lines.push(`מספר קרנות: ${data.summary.fundCount}`);
-    }
-    const topRec = data?.recommendations?.[0];
-    if (topRec && typeof topRec === "object" && "title" in topRec && topRec.title) {
-      lines.push(`המלצה מובילה: ${String(topRec.title)}`);
     }
     if (funds.length) lines.push(`קרנות ברשימה: ${funds.length}`);
     return lines.join("\n");
