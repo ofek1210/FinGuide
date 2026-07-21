@@ -29,6 +29,15 @@ export type AgentReportSection = {
   sourceData: string | null;
 };
 
+export type ManagementFeeProduct = {
+  product: string;
+  currentFee?: number | null;
+  comparisonValue?: number | null;
+  estimatedAnnualExcess?: number | null;
+  conclusion?: string | null;
+  sourceAgent?: string;
+};
+
 export type AgentFirstReport = {
   title: string;
   intro: string;
@@ -36,7 +45,7 @@ export type AgentFirstReport = {
   combinedSummary: {
     notes: string[];
     managementFees?: {
-      products: unknown[];
+      products: ManagementFeeProduct[];
       totalEstimatedAnnualExcess: number | null;
     };
   };

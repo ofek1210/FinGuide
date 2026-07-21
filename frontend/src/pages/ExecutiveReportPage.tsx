@@ -287,6 +287,9 @@ export default function ExecutiveReportPage() {
   const sections = report?.sections;
   const agentReport = sections?.agentReport;
 
+  const feeProducts = agentReport?.combinedSummary.managementFees?.products ?? [];
+  const hasCombined = (agentReport?.combinedSummary.notes.length ?? 0) > 0 || feeProducts.length > 0;
+
   const tocItems = agentReport
     ? [
         { id: "report-overview", label: "התמונה הפיננסית שלי" },
@@ -294,7 +297,8 @@ export default function ExecutiveReportPage() {
           id: `report-agent-${s.agentId}`,
           label: s.title,
         })),
-        ...(agentReport.combinedSummary.notes.length ? [{ id: "report-combined", label: "סיכום משולב" }] : []),
+        ...(hasCombined ? [{ id: "report-combined", label: "סיכום משולב" }] : []),
+        ...(sections?.conflicts?.length ? [{ id: "report-conflicts", label: "הערות והתלבטויות" }] : []),
         ...(agentReport.whatToDo.length ? [{ id: "report-actions", label: "מה כדאי לעשות" }] : []),
         ...(agentReport.missingData.length ? [{ id: "report-missing", label: "מידע שחסר" }] : []),
       ]
@@ -483,13 +487,75 @@ export default function ExecutiveReportPage() {
               <AgentSectionView key={section.agentId} section={section} index={index} />
             ))}
 
-            {agentReport.combinedSummary.notes.length > 0 ? (
+            {hasCombined ? (
               <SectionCard id="report-combined" icon={<Target size={18} />} title="סיכום משולב">
-                <ul style={{ margin: 0, paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14, lineHeight: 1.7 }}>
-                  {agentReport.combinedSummary.notes.map(note => (
-                    <li key={note}>{note}</li>
+                {agentReport.combinedSummary.notes.length > 0 ? (
+                  <ul style={{ margin: "0 0 16px", paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14, lineHeight: 1.7 }}>
+                    {agentReport.combinedSummary.notes.map(note => (
+                      <li key={note}>{note}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {feeProducts.length > 0 ? (
+                  <div style={{ overflowX: "auto" }}>
+                    <div style={{ fontWeight: 800, marginBottom: 8 }}>דמי ניהול — השוואה בין תחומים</div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ textAlign: "right", borderBottom: "1px solid var(--border-hair)" }}>
+                          <th style={{ padding: 8 }}>מוצר</th>
+                          <th style={{ padding: 8 }}>דמ"נ נוכחי</th>
+                          <th style={{ padding: 8 }}>השוואה</th>
+                          <th style={{ padding: 8 }}>עודף שנתי</th>
+                          <th style={{ padding: 8 }}>מסקנה</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {feeProducts.map(p => (
+                          <tr key={p.product} style={{ borderBottom: "1px solid var(--border-hair)" }}>
+                            <td style={{ padding: 8 }}>{p.product}</td>
+                            <td style={{ padding: 8 }}>{p.currentFee ?? "—"}</td>
+                            <td style={{ padding: 8 }}>{p.comparisonValue ?? "—"}</td>
+                            <td style={{ padding: 8 }}>
+                              {p.estimatedAnnualExcess != null
+                                ? `₪${Math.round(p.estimatedAnnualExcess).toLocaleString("he-IL")}`
+                                : "—"}
+                            </td>
+                            <td style={{ padding: 8 }}>{p.conclusion ?? "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {agentReport.combinedSummary.managementFees?.totalEstimatedAnnualExcess != null ? (
+                      <p style={{ marginTop: 12, fontWeight: 800 }}>
+                        סה"כ עודף שנתי מוערך: ₪
+                        {Math.round(agentReport.combinedSummary.managementFees.totalEstimatedAnnualExcess).toLocaleString("he-IL")}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </SectionCard>
+            ) : null}
+
+            {(sections.conflicts?.length ?? 0) > 0 ? (
+              <SectionCard id="report-conflicts" icon={<AlertTriangle size={18} />} title="הערות והתלבטויות">
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {sections.conflicts.map(c => (
+                    <article key={c.title} style={{ padding: 14, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
+                      <div style={{ fontWeight: 900, color: "var(--text-strong)", marginBottom: 6 }}>{c.title}</div>
+                      <div style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>{c.explanation}</div>
+                      {c.tradeOff ? (
+                        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
+                          <strong>התלבטות:</strong> {c.tradeOff}
+                        </div>
+                      ) : null}
+                      {c.recommendation ? (
+                        <div style={{ fontSize: 13, color: "var(--mint-ink)", fontWeight: 700, marginTop: 6 }}>
+                          המלצת האורקסטרטור: {c.recommendation}
+                        </div>
+                      ) : null}
+                    </article>
                   ))}
-                </ul>
+                </div>
               </SectionCard>
             ) : null}
 

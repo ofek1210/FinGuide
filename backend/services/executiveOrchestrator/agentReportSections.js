@@ -250,6 +250,12 @@ function buildWhatToDo(agentSections) {
   return actions;
 }
 
+function orderWhatToDoByPriority(whatToDo, scoredItems) {
+  if (!scoredItems?.length || !whatToDo?.length) return whatToDo;
+  const scoreByTitle = new Map(scoredItems.map(s => [s.title, s.priorityScore ?? 0]));
+  return [...whatToDo].sort((a, b) => (scoreByTitle.get(b.title) ?? 0) - (scoreByTitle.get(a.title) ?? 0));
+}
+
 function buildMissingDataSection(agentSections) {
   return agentSections
     .filter(s => s.dataStatus === 'missing')
@@ -262,10 +268,10 @@ function buildMissingDataSection(agentSections) {
     }));
 }
 
-function buildAgentFirstReport(packages) {
+function buildAgentFirstReport(packages, { scoredItems = null } = {}) {
   const agentSections = SPECIALIST_AGENTS.map(id => buildAgentSection(id, packages[id]));
   const combinedSummary = buildCombinedSummary(agentSections, packages);
-  const whatToDo = buildWhatToDo(agentSections);
+  const whatToDo = orderWhatToDoByPriority(buildWhatToDo(agentSections), scoredItems);
   const missingData = buildMissingDataSection(agentSections);
 
   const analyzedCount = agentSections.filter(s => s.dataStatus === 'available').length;
@@ -289,6 +295,7 @@ module.exports = {
   resolveDataStatus,
   resolveRecommendationStatus,
   preserveRecommendation,
+  orderWhatToDoByPriority,
   AGENT_LABELS,
   NO_RECS_HE,
   MISSING_HE,

@@ -24,7 +24,7 @@ function buildExecutiveReport({
   conflicts,
   llmSummary = null,
 }) {
-  const agentReport = buildAgentFirstReport(packages);
+  const agentReport = buildAgentFirstReport(packages, { scoredItems: priorityEngine?.scoredItems });
   const executiveSummary = llmSummary || buildExecutiveSummary(agentReport);
 
   const preservedRecommendations = SPECIALIST_AGENTS.flatMap(agentId =>
