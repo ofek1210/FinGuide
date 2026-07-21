@@ -1,15 +1,15 @@
 flowchart TB
-  Browser["Browser Client\nReact 19 SPA"]
-  Express["Express API Server\nNode.js"]
-  MongoDB[(MongoDB)]
-  FS["Local Filesystem\nbackend/uploads/"]
-  Tesseract["Tesseract + Poppler\nchild processes"]
-  Claude["Anthropic Claude API"]
-  Ollama["Ollama LLM\noptional fallback"]
+  Browser["Browser Client\nReact 19 SPA served separately"]
+  Express["Express API Server\nNode.js 20"]
+  Storage["Persistence\nMongoDB + backend/uploads filesystem"]
+  Documents["Document processing\nTesseract + Poppler + Sharp"]
+  AI["AI services\nAnthropic Claude; configurable OpenAI adapter\noptional Ollama fallback"]
+  External["External integrations\nGoogle OAuth/Gmail + data.gov.il datasets\nPensiaNet / GemelNet / BituahNet"]
+  Jobs["In-process work\npost-upload tasks + monthly gov-data cron"]
 
-  Browser -->|"HTTPS REST"| Express
-  Express --> MongoDB
-  Express --> FS
-  Express --> Tesseract
-  Express --> Claude
-  Express --> Ollama
+  Browser -->|"REST + SSE; HTTPS at deployment edge"| Express
+  Express --> Storage
+  Express --> Documents
+  Express --> AI
+  Express --> External
+  Express --> Jobs

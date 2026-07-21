@@ -11,17 +11,19 @@ const OUT = path.join(__dirname, 'figures', 'fig12-comparison.png');
 const SVG = path.join(__dirname, 'figures', 'fig12-comparison.svg');
 
 const ROWS = [
-  { label: 'Payslip parse', manual: 1, hilan: 2, bank: 0, finguide: 2 },
-  { label: 'Compliance checks', manual: 1, hilan: 0, bank: 0, finguide: 2 },
-  { label: 'Longitudinal view', manual: 0, hilan: 0, bank: 1, finguide: 2 },
-  { label: 'Hebrew AI advisory', manual: 0, hilan: 0, bank: 0, finguide: 2 },
-  { label: 'No banking API', manual: 2, hilan: 2, bank: 0, finguide: 2 },
+  { label: 'Payslip parse', manual: 1, hilan: 2, bank: 0, accountant: 2, finguide: 2 },
+  { label: 'Compliance checks', manual: 1, hilan: 0, bank: 0, accountant: 2, finguide: 2 },
+  { label: 'Longitudinal view', manual: 0, hilan: 0, bank: 1, accountant: 2, finguide: 2 },
+  { label: 'Hebrew AI advisory', manual: 0, hilan: 0, bank: 0, accountant: 1, finguide: 2 },
+  { label: 'No banking API', manual: 2, hilan: 2, bank: 0, accountant: 2, finguide: 2 },
+  { label: 'Certified advice', manual: 0, hilan: 0, bank: 0, accountant: 2, finguide: 0 },
 ];
 
 const COLS = [
   { key: 'manual', title: 'Manual' },
   { key: 'hilan', title: 'Hilan/iCount' },
   { key: 'bank', title: 'Bank PFM' },
+  { key: 'accountant', title: 'Accountant' },
   { key: 'finguide', title: 'FinGuide' },
 ];
 
@@ -60,7 +62,7 @@ function buildSvg() {
   <rect width="100%" height="100%" fill="white"/>
   <text x="${w / 2}" y="18" text-anchor="middle" font-family="Times New Roman" font-size="15" font-weight="bold">Capability Comparison (qualitative scale)</text>
   ${body}
-  <text x="${w / 2}" y="${h - 8}" text-anchor="middle" font-family="Times New Roman" font-size="10">Yes = full support; Partial = manual/limited; No = not supported</text>
+  <text x="${w / 2}" y="${h - 8}" text-anchor="middle" font-family="Times New Roman" font-size="10">Qualitative design comparison; not an empirical vendor benchmark</text>
 </svg>`;
 }
 

@@ -11,14 +11,14 @@ const OUT = path.join(__dirname, 'figures', 'fig10-ocr-results.png');
 const SVG = path.join(__dirname, 'figures', 'fig10-ocr-results.svg');
 
 const FIELD_DATA = [
-  { field: 'period_month', accuracy: 100 },
-  { field: 'gross_total', accuracy: 100 },
-  { field: 'net_payable', accuracy: 85.7 },
-  { field: 'employee_id', accuracy: 100 },
-  { field: 'tax_credit_points', accuracy: 100 },
-  { field: 'base_salary', accuracy: 100 },
-  { field: 'mandatory_total', accuracy: 57.1 },
-  { field: 'national_insurance', accuracy: 57.1 },
+  { field: 'period_month', accuracy: 57.1 },
+  { field: 'gross_total', accuracy: 85.7 },
+  { field: 'net_payable', accuracy: 42.9 },
+  { field: 'employee_id', accuracy: 57.1 },
+  { field: 'tax_credit_points', accuracy: 57.1 },
+  { field: 'base_salary', accuracy: 0 },
+  { field: 'mandatory_total', accuracy: 42.9 },
+  { field: 'national_insurance', accuracy: 42.9 },
   { field: 'health_insurance', accuracy: 57.1 },
 ];
 
@@ -43,8 +43,8 @@ function buildSvg() {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">
   <rect width="100%" height="100%" fill="white"/>
-  <text x="${w / 2}" y="24" text-anchor="middle" font-family="Times New Roman, serif" font-size="16" font-weight="bold">Field Extraction Accuracy (n=7 golden fixtures, July 2026)</text>
-  <text x="${w / 2}" y="${h - 12}" text-anchor="middle" font-family="Times New Roman, serif" font-size="11">Extraction path: 100% pdf_text (Path 1) — avg confidence 0.653</text>
+  <text x="${w / 2}" y="24" text-anchor="middle" font-family="Times New Roman, serif" font-size="16" font-weight="bold">Field Extraction Accuracy (7 scored fixtures, July 2026)</text>
+  <text x="${w / 2}" y="${h - 12}" text-anchor="middle" font-family="Times New Roman, serif" font-size="11">3 direct PDF-text fixtures + 4 OCR-fallback fixtures; 2 unscored IDF image fixtures excluded</text>
   ${bars}
 </svg>`;
 }
