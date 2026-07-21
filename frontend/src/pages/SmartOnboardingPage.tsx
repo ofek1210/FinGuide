@@ -19,7 +19,7 @@ export default function SmartOnboardingPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editMode = searchParams.get("edit") === "1";
-  const { refreshAuth } = useAuth();
+  const { refresh } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<SmartQuestionDTO[]>([]);
@@ -45,12 +45,12 @@ export default function SmartOnboardingPage() {
     setEstimatedMinutes(state.estimatedMinutes || 1);
     if (!state.missingQuestions.length && !editMode) {
       await completeGeneralOnboarding({});
-      await refreshAuth();
+      await refresh();
       navigate(APP_ROUTES.hub, { replace: true });
       return;
     }
     setLoading(false);
-  }, [editMode, navigate, refreshAuth]);
+  }, [editMode, navigate, refresh]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -79,7 +79,7 @@ export default function SmartOnboardingPage() {
     setSaving(false);
     if (res.ok) {
       setDone(true);
-      await refreshAuth();
+      await refresh();
       setTimeout(() => navigate(APP_ROUTES.hub, { replace: true }), 1200);
     }
   };
@@ -87,7 +87,8 @@ export default function SmartOnboardingPage() {
   if (loading) {
     return (
       <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "var(--surface-page)" }}>
-        <Loader label="טוען שאלון..." />
+        <Loader />
+        <p style={{ marginTop: 12, color: "var(--text-muted)", fontWeight: 600 }}>טוען שאלון...</p>
       </div>
     );
   }

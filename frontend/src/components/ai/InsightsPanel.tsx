@@ -13,6 +13,8 @@ import {
   getInsuranceProfileInsights,
   getPensionRiskAdvice,
 } from "../../api/aiInsights.api";
+import { summarizeInsightText } from "../../utils/insightDisplay";
+import AgentInsightCta from "./AgentInsightCta";
 
 type AgentType = "payslip" | "insurance" | "pension";
 
@@ -218,10 +220,10 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
         </div>
       )}
       {insights.map((ins) => (
-        <InsightCard key={ins.id} insight={ins} />
+        <InsightCard key={ins.id} insight={ins} agent={agent} />
       ))}
 
-      {/* Narrative */}
+      {/* Narrative — condensed teaser + agent CTA */}
       {narrative && (
         <div
           style={{
@@ -231,22 +233,24 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
             borderRadius: 10,
             fontSize: 14,
             color: "#4a5568",
-            lineHeight: 1.7,
-            whiteSpace: "pre-line",
+            lineHeight: 1.6,
             borderRight: "3px solid #9b8cff",
           }}
         >
           <div
             style={{
-              fontWeight: 700,
+              fontWeight: 800,
               marginBottom: 8,
               color: "#7c3aed",
-              fontSize: 13,
+              fontSize: 14,
             }}
           >
-            ניתוח אישי
+            סיכום קצר
           </div>
-          {narrative}
+          <p style={{ margin: 0 }}>
+            {summarizeInsightText(narrative.replace(/\n+/g, " "), 180)}
+          </p>
+          <AgentInsightCta agent={agent} />
         </div>
       )}
     </div>

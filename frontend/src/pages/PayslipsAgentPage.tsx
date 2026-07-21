@@ -325,7 +325,7 @@ function UploadStep({ intake, agentOnboarding, onComplete, onBack }: {
             agentLabel="תלושי שכר"
             estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
             questions={agentOnboarding.state?.missingQuestions || []}
-            onSkip={agentOnboarding.skip}
+            onSkip={async () => { await agentOnboarding.skip(); }}
             onSubmit={agentOnboarding.submit}
           />
           <div style={{ marginTop: 26 }}>
@@ -645,7 +645,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
 
       {/* AI insights */}
       {(hasData || summary?.moneyFlow) && (
-        <ResSection title="תובנות AI" sub="מחקר מעמיק: מאיפה נעלם ההפרש בין ברוטו לנטו?">
+        <ResSection title="תובנות AI" sub="כותרות מרכזיות — לפירוט מלא פנה לסוכן התלושים">
           <div style={{ background: "var(--card)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)", padding: 24 }}>
             <InsightsPanel agent="payslip" trigger={refreshKey + (summary?.count ?? 0)} />
           </div>

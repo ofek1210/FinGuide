@@ -138,8 +138,9 @@ export default function ExecutiveReportPage() {
   }, [loadReport]);
 
   const handleDownloadPdf = async () => {
+    if (!runId) return;
     setDownloading(true);
-    const result = await downloadExecutiveReportPdf({ runId: runId ?? undefined });
+    const result = await downloadExecutiveReportPdf({ runId });
     setDownloading(false);
     if (!result.success) {
       setError(result.message);

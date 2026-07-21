@@ -1,5 +1,5 @@
 import AgentOnboardingFlow from "./AgentOnboardingFlow";
-import type { SmartQuestionDTO } from "../api/smartOnboarding.api";
+import type { SmartQuestionDTO } from "../../api/smartOnboarding.api";
 
 type Props = {
   open: boolean;

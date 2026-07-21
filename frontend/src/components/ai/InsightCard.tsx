@@ -1,4 +1,7 @@
 import type { AIInsight } from "../../api/aiInsights.api";
+import type { InsightAgentKind } from "../../utils/insightDisplay";
+import { insightTeaser } from "../../utils/insightDisplay";
+import AgentInsightCta from "./AgentInsightCta";
 
 const SEVERITY_STYLES: Record<
   AIInsight["severity"],
@@ -11,13 +14,15 @@ const SEVERITY_STYLES: Record<
 
 interface Props {
   insight: AIInsight;
+  agent?: InsightAgentKind;
 }
 
-export function InsightCard({ insight }: Props) {
+export function InsightCard({ insight, agent = "payslip" }: Props) {
   const s = SEVERITY_STYLES[insight.severity];
+  const teaser = insightTeaser(insight.description || insight.recommendation || "");
 
   return (
-    <div
+    <article
       style={{
         display: "flex",
         gap: 12,
@@ -34,7 +39,7 @@ export function InsightCard({ insight }: Props) {
           height: 8,
           borderRadius: "50%",
           background: s.dot,
-          marginTop: 6,
+          marginTop: 8,
           flexShrink: 0,
         }}
       />
@@ -45,12 +50,12 @@ export function InsightCard({ insight }: Props) {
             justifyContent: "space-between",
             alignItems: "flex-start",
             gap: 8,
-            marginBottom: 4,
+            marginBottom: teaser || insight.financialImpactLabel ? 6 : 0,
           }}
         >
-          <span style={{ fontWeight: 600, fontSize: 14, color: "#1a202c" }}>
+          <h3 style={{ margin: 0, fontWeight: 800, fontSize: 15, color: "#1a202c", lineHeight: 1.35 }}>
             {insight.title}
-          </span>
+          </h3>
           <span
             style={{
               fontSize: 11,
@@ -67,30 +72,20 @@ export function InsightCard({ insight }: Props) {
           </span>
         </div>
 
-        {insight.description && (
+        {teaser && (
           <p
             style={{
               fontSize: 13,
               color: "#4a5568",
               margin: "0 0 6px",
-              lineHeight: 1.5,
+              lineHeight: 1.45,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
             }}
           >
-            {insight.description}
-          </p>
-        )}
-
-        {insight.recommendation && (
-          <p
-            style={{
-              fontSize: 13,
-              color: "#2d3748",
-              margin: "0 0 6px",
-              fontWeight: 500,
-              lineHeight: 1.5,
-            }}
-          >
-            ▸ {insight.recommendation}
+            {teaser}
           </p>
         )}
 
@@ -110,7 +105,9 @@ export function InsightCard({ insight }: Props) {
             {insight.financialImpactLabel}
           </span>
         )}
+
+        <AgentInsightCta agent={agent} />
       </div>
-    </div>
+    </article>
   );
 }

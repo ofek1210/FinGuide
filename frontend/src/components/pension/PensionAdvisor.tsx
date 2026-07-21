@@ -17,7 +17,9 @@ import PensionLeadingFundsTable from "./PensionLeadingFundsTable";
 import { buildLeadingFundsInsights } from "./leadingFundsInsights";
 import PensionCentralRecommendationsPanel from "./PensionCentralRecommendationsPanel";
 import PensionStructuredInsightsPanel from "./PensionStructuredInsightsPanel";
+import AgentInsightCta from "../ai/AgentInsightCta";
 import { formatCurrencyOrDash } from "../../utils/formatters";
+import { insightTeaser } from "../../utils/insightDisplay";
 import { FUND_TYPE_LABELS, RANK_BADGE, isPensionFundActive } from "../../utils/pensionDisplay";
 import {
   shouldShowLegacyRecommendations,
@@ -308,7 +310,10 @@ export default function PensionAdvisor({
                           <span style={{ fontWeight: 800, fontSize: 15.5, color: "var(--text-strong)" }}>{r.title}</span>
                           <span style={{ fontSize: 10.5, fontWeight: 800, color: fg, background: bg, borderRadius: 999, padding: "2px 9px" }}>{u.tag}</span>
                         </div>
-                        <div style={{ fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{r.reason}</div>
+                        <div style={{ fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                          {insightTeaser(r.reason, 100)}
+                        </div>
+                        <AgentInsightCta agent="pension" style={{ marginTop: 4 }} />
                       </div>
                       {r.financialImpact && (
                         <div style={{ textAlign: "center", flex: "none" }}>
