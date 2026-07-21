@@ -37,7 +37,7 @@ export default function HubReadinessPanel({ loading, documents, advisors }: Prop
       <div style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", padding: "20px 22px", boxShadow: "var(--shadow-soft)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
           <h2 style={{ margin: 0, fontSize: 15, fontWeight: 900, color: "var(--text-strong)" }}>מסמכים במערכת</h2>
-          <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--text-faint)" }}>ייבוא מרכזי</span>
+          <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--text-faint)" }}>סטטוס מסמכים</span>
         </div>
         {loading ? (
           <p style={{ margin: 0, fontSize: 13.5, color: "var(--text-muted)" }}>טוען סטטוס מסמכים…</p>

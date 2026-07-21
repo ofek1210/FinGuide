@@ -94,7 +94,7 @@ export function buildDocumentInventory(signals: DocumentSignals): DocumentInvent
       detail: signals.insurancePolicyCount > 0
         ? `${signals.insurancePolicyCount} פוליסות במעקב`
         : "טרם יובא דוח",
-      route: hubDocumentUrl("insurance"),
+      route: APP_ROUTES.insurance,
     },
     {
       id: "payslips",
@@ -109,7 +109,7 @@ export function buildDocumentInventory(signals: DocumentSignals): DocumentInvent
         : signals.completedPayslips > 0
           ? `${signals.completedPayslips} תלושים נותחו`
           : "טרם הועלו תלושים",
-      route: hubDocumentUrl("payslips"),
+      route: APP_ROUTES.documentsUpload,
     },
   ];
   return items;
