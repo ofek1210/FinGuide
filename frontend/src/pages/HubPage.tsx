@@ -19,7 +19,8 @@ import { useRegisterPageContext } from "../assistant/AiChatProvider";
 import { getLatestExecutiveReport } from "../api/executiveReport.api";
 import HubReadinessPanel from "../components/hub/HubReadinessPanel";
 import HubDocumentCenter from "../components/hub/HubDocumentCenter";
-import { parseHubDocumentParam } from "../utils/hubDocuments";
+import HubClearinghouseWelcomeModal from "../components/hub/HubClearinghouseWelcomeModal";
+import { parseHubDocumentParam, shouldShowClearinghouseWelcome } from "../utils/hubDocuments";
 
 /* ============================================================
    Hub — the master agent's home. One editorial page in the
@@ -52,7 +53,9 @@ export default function HubPage() {
       setLastReport({
         savedAt: latest.savedAt,
         score: latest.report.meta.globalHealthScore ?? null,
-        topAction: latest.report.sections.topPriorityActions[0]?.title ?? null,
+        topAction: latest.report.sections.mainDecisions[0]?.title
+          ?? latest.report.sections.actionPlan?.doNow[0]?.title
+          ?? null,
       });
     });
     return () => { cancelled = true; };
@@ -96,6 +99,14 @@ export default function HubPage() {
   const greeting = timeOfDayGreeting();
   const reviewLabel = new Date().toLocaleDateString("he-IL", { month: "long", year: "numeric" });
 
+  const showClearinghouseWelcome = shouldShowClearinghouseWelcome(
+    user?.id,
+    data.totalClearinghouseProducts,
+    data.loading,
+  );
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const clearinghouseModalOpen = showClearinghouseWelcome && !welcomeDismissed;
+
   const oppLine = data.loading
     ? "טוענים את התמונה הפיננסית שלך…"
     : data.opportunities === 1
@@ -123,6 +134,15 @@ export default function HubPage() {
       )}
 
       <PrivateTopbar />
+
+      {user?.id && (
+        <HubClearinghouseWelcomeModal
+          open={clearinghouseModalOpen}
+          userId={user.id}
+          onClose={() => setWelcomeDismissed(true)}
+          onUploadComplete={data.reload}
+        />
+      )}
 
       <main style={{ maxWidth: 1160, margin: "0 auto", padding: "44px 24px 80px" }}>
         {/* greeting */}
@@ -155,10 +175,8 @@ export default function HubPage() {
         />
 
         <HubDocumentCenter
-          focusDocument={focusDocument}
+          focusDocument={focusDocument === "clearinghouse" ? focusDocument : null}
           clearinghouseFundCount={data.totalClearinghouseProducts}
-          insurancePolicyCount={data.importedPolicies}
-          completedPayslips={data.completedDocs}
           onUploadComplete={data.reload}
         />
 

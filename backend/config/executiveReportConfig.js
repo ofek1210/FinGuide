@@ -54,7 +54,20 @@ const ROADMAP_BUCKETS = {
   longTerm: ['long_term'],
 };
 
-const MAX_PRIORITY_ACTIONS = 8;
+/** Annual savings below this (NIS) are treated as immaterial for main decisions. */
+const MATERIALITY_ANNUAL_NIS = 100;
+
+const MAX_MAIN_DECISIONS = 8;
+
+const SPECIALIST_AGENTS = ['pension', 'gemel', 'insurance', 'payslip'];
+
+const AGENT_SOURCE_REPORT = {
+  pension: 'Pension Clearinghouse',
+  gemel: 'Pension Clearinghouse / Payslip',
+  insurance: 'Har HaBituach',
+  payslip: 'Payslip',
+  onboarding: 'Onboarding',
+};
 
 const REVIEW_ITEMS = [
   'דמי ניהול בפנסיה, גמל והשתלמות',
@@ -72,6 +85,9 @@ module.exports = {
   CATEGORY_BOOST,
   MERGE_GROUPS,
   ROADMAP_BUCKETS,
-  MAX_PRIORITY_ACTIONS,
+  MAX_MAIN_DECISIONS,
+  MATERIALITY_ANNUAL_NIS,
+  SPECIALIST_AGENTS,
+  AGENT_SOURCE_REPORT,
   REVIEW_ITEMS,
 };

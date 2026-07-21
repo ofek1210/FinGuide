@@ -9,6 +9,7 @@ const {
 const { structuredRecommendation } = require('../../utils/executiveAgentSchema');
 const { buildAgentPackage } = require('../../services/executiveOrchestrator/agentOutputNormalizer');
 const { buildExecutiveReport } = require('../../services/executiveOrchestrator/reportSectionBuilder');
+const { isMissingDataItem, isMaterial } = require('../../services/executiveOrchestrator/reportCoordinator');
 
 describe('executive global priority engine — extended', () => {
   it('detects emergency fund vs idle cash conflict', () => {
@@ -44,7 +45,7 @@ describe('executive global priority engine — extended', () => {
       }),
     });
 
-    const mergedAction = result.priorityActions.find(a =>
+    const mergedAction = result.scoredItems.find(a =>
       a.sourceAgents?.includes('insurance') && a.sourceAgents?.includes('payslip'),
     );
     expect(mergedAction).toBeTruthy();
@@ -58,8 +59,8 @@ describe('executive global priority engine — extended', () => {
     const empty = buildAgentPackage('insurance', { status: 'no_data' });
 
     const result = runGlobalPriorityEngine({ pension, insurance: empty });
-    expect(result.priorityActions.length).toBeGreaterThan(0);
-    expect(result.priorityActions[0].title).toMatch(/דמי ניהול/);
+    expect(result.scoredItems.length).toBeGreaterThan(0);
+    expect(result.scoredItems[0].title).toMatch(/דמי ניהול/);
   });
 
   it('does not invent savings when impact amount is missing', () => {
@@ -67,10 +68,10 @@ describe('executive global priority engine — extended', () => {
       legacyRecs: [{ title: 'בדוק תלוש', reason: 'ללא סכום', urgency: 'low' }],
     });
     const result = runGlobalPriorityEngine({ payslip: pkg });
-    expect(result.priorityActions[0].possibleSavings).toBeNull();
+    expect(result.scoredItems[0].possibleSavings).toBeNull();
   });
 
-  it('builds all seven report sections', () => {
+  it('builds v2 report sections with decision flow buckets', () => {
     const pension = buildAgentPackage('pension', {
       legacyRecs: [{ title: 'פנסיה', reason: 'בדיקה', urgency: 'medium', impactAmount: 500 }],
     });
@@ -79,20 +80,21 @@ describe('executive global priority engine — extended', () => {
       userId: 'u1',
       packages: { pension },
       priorityEngine: engine,
-      globalScore: { score: 72, label: 'טוב' },
+      globalScore: { score: 72, label: 'טוב', categories: [] },
       conflicts: engine.conflicts,
     });
 
+    expect(report.meta.reportVersion).toBe('2.0.0');
     expect(report.sections.executiveSummary).toBeTruthy();
-    expect(Array.isArray(report.sections.topPriorityActions)).toBe(true);
-    expect(Array.isArray(report.sections.financialStrengths)).toBe(true);
-    expect(Array.isArray(report.sections.risks)).toBe(true);
-    expect(Array.isArray(report.sections.opportunities)).toBe(true);
-    expect(report.sections.roadmap).toBeTruthy();
+    expect(report.sections.personalOverview).toBeTruthy();
+    expect(report.sections.mainDecisions).toBeTruthy();
+    expect(report.sections.actionPlan).toBeTruthy();
+    expect(report.sections.actionPlan.doNow).toBeTruthy();
+    expect(report.sections.allRecommendations.length).toBeGreaterThan(0);
     expect(report.sections.thingsToReviewRegularly.length).toBeGreaterThan(0);
   });
 
-  it('includes confidence and sourceAgents in priority actions', () => {
+  it('includes sourceAgents in classified recommendations', () => {
     const pkg = buildAgentPackage('pension', {
       legacyRecs: [{
         title: 'איחוד קרנות',
@@ -109,8 +111,48 @@ describe('executive global priority engine — extended', () => {
       priorityEngine: engine,
       conflicts: [],
     });
-    const action = report.sections.topPriorityActions[0];
-    expect(action.confidence).not.toBeNull();
-    expect(action.sourceAgents).toContain('pension');
+    const rec = report.sections.allRecommendations[0];
+    expect(rec.confidence).not.toBeNull();
+    expect(rec.sourceAgents).toContain('pension');
+  });
+
+  it('separates missing-data tasks from financial recommendations', () => {
+    const onboarding = buildAgentPackage('onboarding', {
+      legacyRecs: [{ title: 'העלאת תלושי שכר', reason: 'נדרש לניתוח', urgency: 'high' }],
+    });
+    const pension = buildAgentPackage('pension', {
+      legacyRecs: [{ title: 'הורדת דמי ניהול', reason: 'גבוהים', urgency: 'high', impactAmount: 5000 }],
+    });
+    const engine = runGlobalPriorityEngine({ onboarding, pension });
+    const report = buildExecutiveReport({
+      userId: 'u1',
+      packages: { onboarding, pension },
+      priorityEngine: engine,
+      conflicts: [],
+    });
+
+    expect(report.sections.actionPlan.missingData.some(i => /תלוש/i.test(i.title))).toBe(true);
+    expect(report.sections.mainDecisions.every(d => !/העלא/i.test(d.title))).toBe(true);
+  });
+});
+
+describe('report coordinator helpers', () => {
+  it('flags upload tasks as missing data', () => {
+    const item = structuredRecommendation({
+      title: 'העלאת תלוש שכר',
+      explanation: 'נדרש לניתוח',
+      itemKind: 'missing_data',
+      sourceAgent: 'onboarding',
+    });
+    expect(isMissingDataItem({ ...item, sourceAgents: ['onboarding'] })).toBe(true);
+  });
+
+  it('treats small annual savings as immaterial', () => {
+    const item = structuredRecommendation({
+      title: 'דמי ניהול',
+      explanation: 'הפרש קטן',
+      possibleSavings: 12,
+    });
+    expect(isMaterial(item)).toBe(false);
   });
 });

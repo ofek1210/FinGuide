@@ -50,10 +50,12 @@ async function downloadExecutiveReportPdf(req, res) {
     throw new NotFoundError('הדוח לא נמצא או שפג תוקפו. יש ליצור דוח חדש.');
   }
 
-  const pdfBuffer = await generateExecutiveReportPdf(report);
+  const mode = req.query.mode === 'professional' ? 'professional' : 'user';
+  const pdfBuffer = await generateExecutiveReportPdf(report, { mode });
   const date = new Date(report.meta?.generatedAt || Date.now()).toISOString().slice(0, 10);
+  const suffix = mode === 'professional' ? 'Professional' : 'Personal';
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="FinGuide-Financial-Report-${date}.pdf"`);
+  res.setHeader('Content-Disposition', `attachment; filename="FinGuide-${suffix}-Report-${date}.pdf"`);
   return res.send(pdfBuffer);
 }
 

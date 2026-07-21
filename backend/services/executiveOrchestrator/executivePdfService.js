@@ -4,11 +4,17 @@ const PDFDocument = require('pdfkit');
 const {
   registerHebrewFonts,
   drawRtlText,
-  formatImpactStars,
   pdfContainsHebrew,
 } = require('../pdf/pdfTextUtils');
 
-async function generateExecutiveReportPdf(report) {
+async function generateExecutiveReportPdf(report, { mode = 'user' } = {}) {
+  if (mode === 'professional') {
+    return generateProfessionalPdf(report);
+  }
+  return generateUserFriendlyPdf(report);
+}
+
+async function generateUserFriendlyPdf(report) {
   const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
   const chunks = [];
 
@@ -28,104 +34,67 @@ async function generateExecutiveReportPdf(report) {
     year: 'numeric',
   });
 
-  // ── cover ──
-  doc.font('Hebrew-Bold').fontSize(22).fillColor('#1a1a1a');
-  drawRtlText(doc, 'דוח פיננסי מנהלים');
-  doc.font('Helvetica').fontSize(10).fillColor('#666').text('FinGuide', { align: 'right' });
-  doc.font('Hebrew');
+  sectionTitle(doc, report.sections.userFriendly?.title || 'הדוח הפיננסי האישי שלי');
   drawRtlText(doc, dateHe);
-  if (report.meta.globalHealthScore != null) {
-    doc.moveDown(0.4).fontSize(11).fillColor('#333');
-    drawRtlText(doc, `ציון בריאות פיננסית: ${report.meta.globalHealthScore}/100`);
-  }
-  doc.moveDown(1.2).fillColor('#000');
+  doc.moveDown(0.5);
 
-  // ── sections ──
-  sectionTitle(doc, 'סיכום מנהלים');
+  sectionTitle(doc, 'התמונה שלי');
+  const overview = report.sections.personalOverview;
+  if (overview) {
+    bodyText(doc, `תחומים שנותחו: ${(overview.analyzedDomains || []).join(', ') || '—'}`);
+    bodyText(doc, `מקורות: ${(overview.availableReports || []).join(', ') || '—'}`);
+    bodyText(doc, `ממצאים: ${overview.findingCount ?? 0} · הזדמנויות מהותיות: ${overview.materialOpportunityCount ?? 0}`);
+    if (overview.healthScore) {
+      bodyText(doc, `ציון בריאות פיננסית: ${overview.healthScore.score}/100`);
+      bodyText(doc, `חישוב: ${overview.healthScore.howCalculated}`);
+      if (overview.healthScore.pointsLost?.length) {
+        bodyText(doc, `נקודות שאבדו: ${overview.healthScore.pointsLost.join('; ')}`);
+      }
+    }
+  }
+
+  sectionTitle(doc, 'מה מצאנו');
   bodyText(doc, report.sections.executiveSummary);
-
-  sectionTitle(doc, 'פעולות בעדיפות עליונה');
-  for (const action of report.sections.topPriorityActions) {
-    doc.font('Hebrew-Bold').fontSize(13).fillColor('#1a1a1a');
-    drawRtlText(doc, `${action.rank}. ${action.title}`);
-    doc.font('Hebrew');
-    doc.moveDown(0.25);
-    if (action.explanation) {
-      doc.fontSize(10).fillColor('#333');
-      drawRtlText(doc, action.explanation, { lineGap: 3 });
+  for (const decision of (report.sections.mainDecisions || []).slice(0, 6)) {
+    doc.font('Hebrew-Bold').fontSize(12);
+    drawRtlText(doc, decision.title);
+    doc.font('Hebrew').fontSize(10);
+    if (decision.finding) drawRtlText(doc, decision.finding, { lineGap: 2 });
+    if (decision.whyItMatters) drawRtlText(doc, `למה זה חשוב: ${decision.whyItMatters}`, { lineGap: 2 });
+    if (decision.monetaryImpact?.summary) {
+      drawRtlText(doc, decision.monetaryImpact.summary, { lineGap: 2 });
+      for (const a of (decision.monetaryImpact.assumptions || [])) {
+        drawRtlText(doc, `• ${a}`, { lineGap: 1 });
+      }
     }
-    doc.fontSize(10).fillColor('#444');
-    drawRtlText(doc, `למה עכשיו: ${action.whyNow}`, { lineGap: 2 });
-    drawRtlText(doc, `תועלת צפויה: ${action.expectedBenefit}`, { lineGap: 2 });
-    drawRtlText(
-      doc,
-      `עדיפות: ${action.priorityLabel} | דחיפות: ${action.urgency} | ${formatImpactStars(action.impactStars)}`,
-      { lineGap: 2 },
-    );
-    if (action.conflictNote) {
-      drawRtlText(doc, `הערה: ${action.conflictNote}`, { lineGap: 2 });
-    }
-    doc.moveDown(0.9).fillColor('#000');
+    doc.moveDown(0.6);
   }
 
-  if (report.sections.conflicts?.length) {
-    sectionTitle(doc, 'נושאים שדורשים איזון');
-    for (const c of report.sections.conflicts) {
-      doc.font('Hebrew-Bold').fontSize(11).fillColor('#1a1a1a');
-      drawRtlText(doc, c.title);
-      doc.font('Hebrew').fontSize(10).fillColor('#333');
-      if (c.explanation) drawRtlText(doc, c.explanation, { lineGap: 2 });
-      if (c.tradeOff) drawRtlText(doc, `הפשרה: ${c.tradeOff}`, { lineGap: 2 });
-      if (c.recommendation) drawRtlText(doc, `המלצה: ${c.recommendation}`, { lineGap: 2 });
-      doc.moveDown(0.6).fillColor('#000');
+  const fees = report.sections.managementFees;
+  if (fees?.products?.length) {
+    sectionTitle(doc, 'דמי ניהול — סיכום');
+    for (const p of fees.products.slice(0, 8)) {
+      const excess = p.estimatedAnnualExcess != null
+        ? ` · עודף שנתי ~₪${Math.round(p.estimatedAnnualExcess).toLocaleString('he-IL')}`
+        : '';
+      bullet(doc, `${p.product}: ${p.conclusion || ''}${excess}`);
+    }
+    if (fees.totalEstimatedAnnualExcess != null) {
+      bodyText(doc, `סה"כ עודף שנתי מוערך: ₪${Math.round(fees.totalEstimatedAnnualExcess).toLocaleString('he-IL')}`);
+    }
+    for (const im of (fees.immaterialProducts || [])) {
+      bullet(doc, `${im.product}: ${im.reason}`);
     }
   }
 
-  if (report.sections.financialStrengths.length) {
-    sectionTitle(doc, 'חוזקות פיננסיות');
-    for (const s of report.sections.financialStrengths) {
-      bullet(doc, s.explanation ? `${s.title} - ${s.explanation}` : s.title);
-    }
-  }
+  sectionTitle(doc, 'מה כדאי לעשות');
+  renderActionBucket(doc, report.sections.actionPlan?.doNow || []);
 
-  if (report.sections.risks.length) {
-    sectionTitle(doc, 'סיכונים');
-    for (const r of report.sections.risks) {
-      bullet(doc, r.explanation ? `${r.title} - ${r.explanation}` : r.title);
-    }
-  }
+  sectionTitle(doc, 'לפני שמבצעים שינוי');
+  renderActionBucket(doc, report.sections.actionPlan?.beforeChange || []);
 
-  if (report.sections.opportunities.length) {
-    sectionTitle(doc, 'הזדמנויות');
-    for (const o of report.sections.opportunities) {
-      const suffix = o.possibleSavings ? ' (חיסכון פוטנציאלי)' : '';
-      bullet(doc, o.explanation ? `${o.title} - ${o.explanation}${suffix}` : `${o.title}${suffix}`);
-    }
-  }
-
-  sectionTitle(doc, 'מפת דרכים');
-  const roadmapLabels = {
-    immediate: 'מיידי',
-    within30Days: 'עד 30 יום',
-    within3Months: 'עד 3 חודשים',
-    longTerm: 'ארוך טווח',
-  };
-  for (const [key, label] of Object.entries(roadmapLabels)) {
-    const items = report.sections.roadmap[key] || [];
-    if (!items.length) continue;
-    doc.font('Hebrew-Bold').fontSize(12).fillColor('#333');
-    drawRtlText(doc, label);
-    doc.font('Hebrew');
-    for (const item of items) {
-      bullet(doc, item.title);
-    }
-    doc.moveDown(0.4).fillColor('#000');
-  }
-
-  sectionTitle(doc, 'לעקוב באופן קבוע');
-  for (const item of report.sections.thingsToReviewRegularly) {
-    bullet(doc, item);
-  }
+  sectionTitle(doc, 'מידע שחסר');
+  renderActionBucket(doc, report.sections.actionPlan?.missingData || []);
 
   doc.moveDown(1);
   doc.fontSize(8).fillColor('#888');
@@ -133,6 +102,90 @@ async function generateExecutiveReportPdf(report) {
 
   doc.end();
   return finished;
+}
+
+async function generateProfessionalPdf(report) {
+  const doc = new PDFDocument({ margin: 50, size: 'A4', bufferPages: true });
+  const chunks = [];
+
+  doc.on('data', chunk => chunks.push(chunk));
+
+  const finished = new Promise((resolve, reject) => {
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+  });
+
+  registerHebrewFonts(doc);
+  doc.font('Hebrew');
+
+  const pro = report.sections.professional || {};
+  sectionTitle(doc, pro.title || 'סיכום פיננסי לאיש מקצוע');
+  bodyText(doc, `תאריך: ${new Date(pro.reportDate || report.meta.generatedAt).toLocaleDateString('he-IL')}`);
+  bodyText(doc, `מקורות: ${(pro.dataSources || []).join(', ')}`);
+
+  sectionTitle(doc, 'מלאי מוצרים ויתרות');
+  for (const item of (pro.balances || [])) {
+    bullet(doc, `${item.label}: ${item.formatted} (${item.sourceAgent})`);
+  }
+
+  sectionTitle(doc, 'דמי ניהול');
+  for (const p of (pro.fees?.products || [])) {
+    bullet(doc, `${p.product} | יתרה: ${p.balance ?? '—'} | דמ"נ: ${p.currentFee ?? '—'} | עודף שנתי: ${p.estimatedAnnualExcess ?? '—'}`);
+  }
+
+  sectionTitle(doc, 'כיסוי ביטוחי');
+  const ins = pro.insuranceCoverage || {};
+  for (const item of [...(ins.pensionEmbedded || []), ...(ins.privatePolicies || [])]) {
+    bullet(doc, `${item.title}: ${item.detail}`);
+  }
+  bodyText(doc, `מקורות: ${(ins.sources || []).join(', ')}`);
+
+  sectionTitle(doc, 'ממצאים לפי סוכן');
+  for (const [agentId, data] of Object.entries(pro.findingsByAgent || {})) {
+    doc.font('Hebrew-Bold').fontSize(11);
+    drawRtlText(doc, agentId);
+    doc.font('Hebrew').fontSize(10);
+    for (const f of (data.findings || []).slice(0, 5)) {
+      bullet(doc, `${f.title}: ${f.explanation || ''}`);
+    }
+    doc.moveDown(0.4);
+  }
+
+  sectionTitle(doc, 'המלצות מאוחדות');
+  for (const rec of (pro.consolidatedRecommendations || []).slice(0, 20)) {
+    bullet(doc, `[${rec.classification}] ${rec.title} — ${(rec.sourceAgents || []).join('+')} (${(rec.sourceReports || []).join(', ')})`);
+  }
+
+  sectionTitle(doc, 'הנחות ומידע חסר');
+  for (const a of (pro.assumptions || []).slice(0, 10)) {
+    bullet(doc, a);
+  }
+  for (const m of (pro.missingData || [])) {
+    bullet(doc, m.title);
+  }
+
+  doc.moveDown(1);
+  doc.fontSize(8).fillColor('#888');
+  drawRtlText(doc, pro.disclaimer || report.disclaimer, { lineGap: 2 });
+
+  doc.end();
+  return finished;
+}
+
+function renderActionBucket(doc, items) {
+  if (!items.length) {
+    bodyText(doc, '—');
+    return;
+  }
+  for (const item of items) {
+    doc.font('Hebrew-Bold').fontSize(11);
+    drawRtlText(doc, item.title);
+    doc.font('Hebrew').fontSize(10);
+    if (item.explanation) drawRtlText(doc, item.explanation, { lineGap: 2 });
+    if (item.whoToContact) drawRtlText(doc, `ליצירת קשר: ${item.whoToContact}`, { lineGap: 1 });
+    if (item.whatToRequest) drawRtlText(doc, `לבקש: ${item.whatToRequest}`, { lineGap: 1 });
+    doc.moveDown(0.5);
+  }
 }
 
 function sectionTitle(doc, title) {
@@ -143,7 +196,7 @@ function sectionTitle(doc, title) {
 
 function bodyText(doc, text) {
   doc.fontSize(11);
-  drawRtlText(doc, text, { lineGap: 4 });
+  drawRtlText(doc, text || '—', { lineGap: 4 });
   doc.moveDown(0.5);
 }
 

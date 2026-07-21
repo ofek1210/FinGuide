@@ -136,13 +136,15 @@ describe('Executive report API', () => {
 
     const { report } = res.body.data;
     expect(report.sections.executiveSummary).toBeTruthy();
-    expect(report.sections.topPriorityActions.length).toBeLessThanOrEqual(8);
-    expect(report.sections.roadmap).toBeTruthy();
+    expect(report.meta.reportVersion).toBe('2.0.0');
+    expect(report.sections.mainDecisions).toBeTruthy();
+    expect(report.sections.actionPlan).toBeTruthy();
+    expect(report.sections.allRecommendations.length).toBeGreaterThan(0);
     expect(report.sections.thingsToReviewRegularly.length).toBeGreaterThan(0);
 
     const cached = await ExecutiveReport.findOne({ runId: res.body.data.runId, user: userId });
     expect(cached).toBeTruthy();
-    expect(cached.report.sections.topPriorityActions[0].title).toBeTruthy();
+    expect(cached.report.sections.mainDecisions).toBeTruthy();
   });
 
   it('GET /api/executive/report/pdf uses cached report without re-running agents', async () => {

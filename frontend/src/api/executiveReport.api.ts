@@ -1,34 +1,134 @@
 import { apiBlob, apiJson } from "./client";
 
-export type ExecutivePriorityAction = {
-  rank: number;
+export type MonetaryImpact = {
+  hasImpact: boolean;
+  summary: string | null;
+  annualAmount?: number | null;
+  assumptions: string[];
+  disclaimer: string | null;
+};
+
+export type DecisionCard = {
+  id: string;
+  title: string;
+  sourceAgents: string[];
+  sourceReports: string[];
+  originalRecommendationIds: string[];
+  dataDate: string | null;
+  confidence: number | null;
+  classification: string;
+  currentState: string;
+  finding: string;
+  whyItMatters: string;
+  monetaryImpact: MonetaryImpact;
+  recommendedAction: string;
+  steps: string[];
+  questionsForProvider: string[];
+  immaterialReason?: string | null;
+  conflictNote?: string | null;
+  evidenceDeadline?: string | null;
+};
+
+export type ActionPlanItem = {
   title: string;
   explanation: string;
-  whyNow: string;
-  expectedBenefit: string;
-  priorityScore: number;
-  priorityLabel: string;
-  urgency: string;
-  impactStars: number;
+  whoToContact: string;
+  whatToRequest: string;
+  whatToCompare: string;
+  documentToAttach: string | null;
+  returnToFinGuide: string | null;
+  sourceAgents: string[];
+};
+
+export type ManagementFeeProduct = {
+  product: string;
+  productType: string;
+  balance: number | null;
+  currentFee: number | null;
+  comparisonValue: number | null;
+  estimatedAnnualExcess: number | null;
+  conclusion: string | null;
+  sourceAgent: string;
+  material: boolean;
+};
+
+export type ClassifiedRecommendation = {
+  id: string;
+  title: string;
+  explanation: string;
+  classification: "mainDecision" | "additionalFinding" | "monitoringItem" | "missingData" | "notMaterial";
+  decisionBucket: string;
+  sourceAgents: string[];
+  sourceReports: string[];
+  originalRecommendationIds: string[];
+  dataDate: string | null;
+  confidence: number | null;
   possibleSavings: number | null;
-  sourceAgents?: string[];
-  confidence?: number | null;
-  conflictNote?: string | null;
+  immaterialReason: string | null;
+  monetaryImpact: MonetaryImpact;
+};
+
+export type PersonalOverview = {
+  analyzedDomains: string[];
+  availableReports: string[];
+  completedAgents: string[];
+  findingCount: number;
+  materialOpportunityCount: number;
+  missingSources: { agentId: string; label: string; message: string }[];
+  missingDataCount: number;
+  healthScore?: {
+    score: number;
+    label: string | null;
+    howCalculated: string;
+    categories: { name: string; score: number; maxScore: number; messages: string[] }[];
+    missingData: string[];
+    pointsLost: string[];
+    confidence: string;
+    disclaimer: string | null;
+  };
 };
 
 export type ExecutiveReportSection = {
   executiveSummary: string;
-  topPriorityActions: ExecutivePriorityAction[];
+  personalOverview: PersonalOverview;
+  currentPosition: { items: { label: string; value: number; formatted: string; sourceAgent: string }[]; disclaimer: string };
+  mainDecisions: DecisionCard[];
+  managementFees: {
+    products: ManagementFeeProduct[];
+    totalEstimatedAnnualExcess: number | null;
+    largestExcessProduct: string | null;
+    worthNegotiating: string[];
+    immaterialProducts: { product: string; reason: string }[];
+    disclaimer: string;
+  };
+  insuranceSummary: {
+    pensionEmbedded: { title: string; detail: string }[];
+    privatePolicies: { title: string; detail: string }[];
+    crossDomainNotes: string[];
+    sources: string[];
+  };
+  payslipFindings: { hasData: boolean; findings: { title: string; explanation: string; severity?: string }[] };
+  productAlternatives: {
+    productOrTrack: string;
+    managementFees: number | null;
+    riskLevel: string | null;
+    comparisonPerformance: number | null;
+    fitNotes: string | null;
+    tradeoffs: string;
+    sourceAgent: string;
+    verificationRequired: string[];
+  }[];
+  actionPlan: {
+    doNow: ActionPlanItem[];
+    beforeChange: ActionPlanItem[];
+    checkLater: ActionPlanItem[];
+    missingData: ActionPlanItem[];
+  };
+  allRecommendations: ClassifiedRecommendation[];
   financialStrengths: { title: string; explanation: string }[];
   risks: { title: string; explanation: string; severity?: string }[];
   opportunities: { title: string; explanation: string; possibleSavings?: number | null }[];
   conflicts: { title: string; explanation: string; tradeOff: string; recommendation: string }[];
-  roadmap: {
-    immediate: { title: string; explanation: string; rank: number }[];
-    within30Days: { title: string; explanation: string; rank: number }[];
-    within3Months: { title: string; explanation: string; rank: number }[];
-    longTerm: { title: string; explanation: string; rank: number }[];
-  };
   thingsToReviewRegularly: string[];
 };
 
@@ -43,6 +143,11 @@ export type ExecutiveReport = {
       rawRecommendationCount: number;
       mergedCount: number;
       conflictCount: number;
+      preservedCount?: number;
+      totalRecommendations?: number;
+      mainDecisionCount?: number;
+      missingDataCount?: number;
+      notMaterialCount?: number;
     };
   };
   sections: ExecutiveReportSection;
@@ -105,11 +210,13 @@ export const getLatestExecutiveReport = async () => {
   return { success: true, found: true, ...latest } as const;
 };
 
-export const downloadExecutiveReportPdf = async (options?: { runId: string }) => {
+export const downloadExecutiveReportPdf = async (options?: { runId: string; mode?: "user" | "professional" }) => {
   if (!options?.runId) {
     return { success: false, message: "חסר מזהה דוח. יש ליצור דוח לפני ההורדה." } as const;
   }
-  const qs = `?runId=${encodeURIComponent(options.runId)}`;
+  const params = new URLSearchParams({ runId: options.runId });
+  if (options.mode) params.set("mode", options.mode);
+  const qs = `?${params.toString()}`;
   const result = await apiBlob(`/api/executive/report/pdf${qs}`, {
     auth: true,
     fallbackErrorMessage: "לא הצלחנו להוריד את הדוח.",
@@ -121,7 +228,7 @@ export const downloadExecutiveReportPdf = async (options?: { runId: string }) =>
 
   const disposition = result.response.headers.get("Content-Disposition") || "";
   const match = disposition.match(/filename="([^"]+)"/);
-  const filename = match?.[1] || `FinGuide-Financial-Report-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filename = match?.[1] || `FinGuide-Personal-Report-${new Date().toISOString().slice(0, 10)}.pdf`;
 
   return { success: true, blob: result.blob, filename } as const;
 };

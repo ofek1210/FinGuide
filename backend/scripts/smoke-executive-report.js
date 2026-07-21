@@ -17,11 +17,11 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const AGENT_KEYS = ['onboarding', 'payslip', 'insurance', 'pension', 'gemel'];
 const SECTION_KEYS = [
   'executiveSummary',
-  'topPriorityActions',
+  'personalOverview',
+  'mainDecisions',
+  'actionPlan',
+  'allRecommendations',
   'financialStrengths',
-  'risks',
-  'opportunities',
-  'roadmap',
   'thingsToReviewRegularly',
 ];
 
@@ -113,28 +113,26 @@ async function main() {
   assert(summary.length >= 50, 'Executive summary has substance (≥50 chars)', results);
   assert(hebrewRatio(summary) > 0.3, 'Executive summary is primarily Hebrew', results);
 
-  const actions = report?.sections?.topPriorityActions || [];
-  assert(actions.length <= 8, `Priority actions count ≤8 (got ${actions.length})`, results);
+  const decisions = report?.sections?.mainDecisions || [];
+  assert(decisions.length <= 8, `Main decisions count ≤8 (got ${decisions.length})`, results);
 
-  if (actions.length >= 2) {
-    const scores = actions.map(a => a.priorityScore);
-    const sorted = [...scores].sort((a, b) => b - a);
-    assert(JSON.stringify(scores) === JSON.stringify(sorted), 'Actions sorted by priorityScore descending', results);
+  for (const [i, decision] of decisions.entries()) {
+    const required = ['title', 'finding', 'whyItMatters', 'recommendedAction'];
+    for (const field of required) {
+      assert(decision[field] != null && decision[field] !== '', `Decision #${i + 1} has ${field}`, results);
+    }
+    assert(Array.isArray(decision.sourceAgents) && decision.sourceAgents.length > 0, `Decision #${i + 1} has sourceAgents`, results);
   }
 
-  for (const [i, action] of actions.entries()) {
-    const required = ['title', 'explanation', 'whyNow', 'expectedBenefit', 'priorityLabel', 'urgency', 'impactStars'];
-    for (const field of required) {
-      assert(action[field] != null && action[field] !== '', `Action #${i + 1} has ${field}`, results);
-    }
-    assert(Array.isArray(action.sourceAgents) && action.sourceAgents.length > 0, `Action #${i + 1} has sourceAgents`, results);
-    if (action.possibleSavings != null) {
-      assert(typeof action.possibleSavings === 'number' && action.possibleSavings >= 0, `Action #${i + 1} savings is valid number`, results);
-    }
+  const forbiddenUrgency = ['בקרוב', 'בטווח של 3 חודשים', 'עד 30 יום', 'דחוף'];
+  const reportJson = JSON.stringify(report?.sections || {});
+  for (const label of forbiddenUrgency) {
+    assert(!reportJson.includes(label), `Report does not contain unsupported urgency "${label}"`, results);
   }
 
   // Cross-agent merge heuristic
-  const mergedInsuranceCash = actions.some(a =>
+  const allRecs = report?.sections?.allRecommendations || [];
+  const mergedInsuranceCash = allRecs.some(a =>
     /ביטוח|פרמיה/i.test(a.title + a.explanation) && /תזרים|מזומן/i.test(a.explanation),
   );
   if (agentStatuses.insurance === 'success' && agentStatuses.payslip === 'success') {

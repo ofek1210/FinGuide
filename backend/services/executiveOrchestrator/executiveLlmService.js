@@ -18,7 +18,7 @@ async function polishExecutiveSummary(report, { skipLLM = false } = {}) {
 
   const context = {
     globalScore: report.meta.globalHealthScore,
-    topActions: report.sections.topPriorityActions.slice(0, 3).map(a => a.title),
+    topActions: (report.sections.mainDecisions || []).slice(0, 3).map(a => a.title),
     strengths: report.sections.financialStrengths.slice(0, 2).map(s => s.title),
     risks: report.sections.risks.slice(0, 2).map(r => r.title),
   };
