@@ -1,14 +1,10 @@
 /**
  * Pension Agent
  *
- * Pipeline: buildPensionAnalysis → LLM explanation
+ * Pipeline: buildPensionAnalysis → shared LLM insight formatter (deterministic fallback)
  */
 
-
-
 const { buildPensionAnalysis } = require('../../services/pensionAnalysisService');
-const { buildPensionSystemPrompt } = require('../prompts/pensionPrompt');
-const { askClaude } = require('../../services/claudeChatService');
 
 /**
  * @param {string} userId
@@ -19,8 +15,8 @@ const { askClaude } = require('../../services/claudeChatService');
 async function runPensionAgent(userId, { skipLLM = false } = {}) {
   const startedAt = Date.now();
 
-  const analysis = await buildPensionAnalysis(userId);
-  const { summary, projection, benchmark, healthCheck, recommendations, fundAdvice } = analysis;
+  const analysis = await buildPensionAnalysis(userId, { skipLLM });
+  const { summary, projection, benchmark, healthCheck, recommendations, fundAdvice, llm, primaryRecommendations } = analysis;
 
   if (!summary.hasData) {
     return {
@@ -29,32 +25,18 @@ async function runPensionAgent(userId, { skipLLM = false } = {}) {
       message: 'לא נמצאו נתוני פנסיה. העלה תלוש שכר או דוח הר הכסף.',
       data: null,
       recommendations: [],
+      structuredInsights: [],
+      primaryRecommendations: [],
       llmExplanation: null,
+      llm: { used: false, provider: null, fallbackUsed: true },
       durationMs: Date.now() - startedAt,
     };
   }
 
-  let llmExplanation = null;
-  if (!skipLLM && process.env.ANTHROPIC_API_KEY) {
-    try {
-      const systemPrompt = buildPensionSystemPrompt({
-        summary,
-        projection,
-        benchmark: benchmark?.summary,
-        healthCheck: { score: healthCheck?.score, level: healthCheck?.level?.label },
-        recommendationCount: recommendations.length,
-        fundAdvice,
-      });
-      const result = await askClaude(
-        'ספק ניתוח אקטוארי קצר: השוואה מול data.gov.il, פסק דין (LEAVE/NEGOTIATE/SWITCH), והשפעה כספית עד פרישה — 4-5 משפטים בעברית.',
-        systemPrompt,
-        [],
-      );
-      llmExplanation = result?.answer || null;
-    } catch {
-      // Non-fatal
-    }
-  }
+  const llmExplanation = llm?.summary
+    || (primaryRecommendations?.length
+      ? primaryRecommendations.map(r => r.explanation).join(' ')
+      : null);
 
   return {
     agentId: 'pension',
@@ -88,9 +70,17 @@ async function runPensionAgent(userId, { skipLLM = false } = {}) {
           })),
         }
         : null,
+      marketData: analysis.marketData ?? null,
+      dataQuality: analysis.dataQuality ?? null,
     },
     recommendations,
+    structuredInsights: analysis.structuredInsights ?? [],
+    primaryRecommendations: primaryRecommendations ?? [],
+    secondaryInsights: analysis.secondaryInsights ?? [],
+    additionalInsights: analysis.additionalInsights ?? [],
     llmExplanation,
+    llm: llm ?? { used: false, provider: null, fallbackUsed: true },
+    analysisId: analysis.analysisId ?? null,
     durationMs: Date.now() - startedAt,
   };
 }

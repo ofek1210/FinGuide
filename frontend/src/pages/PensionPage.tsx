@@ -16,6 +16,8 @@ import PensionAdvisor from "../components/pension/PensionAdvisor";
 import PensionImportGuide from "../components/pension/PensionImportGuide";
 import PensionUpload from "../components/pension/PensionUpload";
 import PensionOnboardingWizard from "../components/pension/PensionOnboardingWizard";
+import AgentOnboardingModal from "../components/onboarding/AgentOnboardingModal";
+import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import {
   getPensionAnalysis,
   getPensionFunds,
@@ -44,6 +46,7 @@ type FlowStep = "landing" | "onboarding" | "guide" | "upload" | "results";
 
 export default function PensionPage() {
   const navigate = useNavigate();
+  const agentOnboarding = useAgentOnboarding("pension");
   const { uploadProgressStep, start: startProgress, stop: stopProgress } = useGovReportUploadProgress(UPLOAD_PROGRESS_STEPS.length);
 
   const [step, setStep] = useState<FlowStep>("landing");
@@ -173,6 +176,14 @@ export default function PensionPage() {
 
   const shell = (children: React.ReactNode) => (
     <div data-agent="pension" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(47,156,98,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
+      <AgentOnboardingModal
+        open={agentOnboarding.showModal}
+        agentLabel="פנסיה"
+        estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+        questions={agentOnboarding.state?.missingQuestions || []}
+        onClose={agentOnboarding.dismiss}
+        onSubmit={agentOnboarding.submit}
+      />
       <PrivateTopbar />
       {children}
       <AppFooter variant="private" />

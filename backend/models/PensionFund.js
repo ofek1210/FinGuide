@@ -129,7 +129,7 @@ const pensionFundSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['manual', 'har_hakesef', 'quarterly_report', 'clearinghouse', 'free_report'],
+      enum: ['manual', 'har_hakesef', 'quarterly_report', 'clearinghouse', 'free_report', 'user_excel'],
       default: 'manual',
     },
     sourceFile: {

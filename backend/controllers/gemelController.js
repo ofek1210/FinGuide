@@ -10,6 +10,12 @@ const { buildGemelAnalysis } = require('../services/gemelAnalysisService');
 const { runGemelAgent } = require('../ai/agents/gemelAgent');
 const { getLeadingGovFunds } = require('../services/govFundQueryService');
 const { GEMEL_FUND_TYPES } = require('../ai/tools/gemelTools');
+const {
+  buildGemelAdvisorReport,
+  importUserExcelAccounts,
+} = require('../services/gemelAdvisor/gemelAdvisorService');
+const { saveGemelAdvisorReport, getGemelAdvisorReport } = require('../services/gemelAdvisor/gemelReportCache');
+const { generateGemelAdvisorPdf } = require('../services/gemelAdvisor/gemelPdfService');
 const { ValidationError, NotFoundError } = require('../utils/appErrors');
 
 function mapGemelFundToDto(f) {
@@ -37,15 +43,16 @@ function mapGemelFundToDto(f) {
  * GET /api/gemel/analysis — full gemel analysis (summary, market advice, findings, recommendations)
  */
 async function getGemelAnalysis(req, res) {
-  const analysis = await buildGemelAnalysis(req.user._id);
-  const { summary, marketAdvice, payslipFindings, recommendations } = analysis;
+  const skipLLM = req.query.skipLLM === 'true';
+  const analysis = await buildGemelAnalysis(req.user._id, { skipLLM });
   return res.json({
     success: true,
     data: {
-      summary: { ...summary, funds: (summary.funds || []).map(mapGemelFundToDto) },
-      marketAdvice,
-      payslipFindings,
-      recommendations,
+      ...analysis,
+      summary: {
+        ...analysis.summary,
+        funds: (analysis.summary?.funds || []).map(mapGemelFundToDto),
+      },
     },
   });
 }
@@ -164,6 +171,62 @@ async function getGemelLeadingFunds(req, res) {
   return res.json({ success: true, data });
 }
 
+/**
+ * POST /api/gemel/upload — upload user Excel with gemel/study fund accounts
+ */
+async function uploadGemelExcel(req, res) {
+  if (!req.file?.buffer) {
+    throw new ValidationError('קובץ Excel נדרש');
+  }
+  const result = await importUserExcelAccounts(req.user._id, req.file.buffer);
+  return res.status(201).json({
+    success: true,
+    data: {
+      imported: result.persistedCount,
+      warnings: result.warnings,
+      sheetName: result.sheetName,
+      fundIds: result.fundIds?.map(String),
+    },
+  });
+}
+
+/**
+ * POST /api/gemel/analyze — run full gemel advisor analysis
+ */
+async function analyzeGemel(req, res) {
+  const skipLLM = req.query.skipLLM === 'true' || req.body?.skipLLM === true;
+  const runId = `gemel_${req.user._id}_${Date.now()}`;
+  const report = await buildGemelAdvisorReport(req.user._id, { skipLLM });
+  await saveGemelAdvisorReport(req.user._id, runId, report);
+  return res.json({ success: true, data: { runId, report } });
+}
+
+/**
+ * GET /api/gemel/report — latest-style report (runs fresh analysis)
+ */
+async function getGemelReport(req, res) {
+  const skipLLM = req.query.skipLLM === 'true';
+  const runId = `gemel_${req.user._id}_${Date.now()}`;
+  const report = await buildGemelAdvisorReport(req.user._id, { skipLLM });
+  await saveGemelAdvisorReport(req.user._id, runId, report);
+  return res.json({ success: true, data: { runId, report } });
+}
+
+/**
+ * GET /api/gemel/report/pdf?runId= — PDF from cached report
+ */
+async function downloadGemelReportPdf(req, res) {
+  const runId = req.query.runId;
+  if (!runId) throw new ValidationError('נדרש runId — יש ליצור דוח לפני ההורדה.');
+  const report = await getGemelAdvisorReport(req.user._id, runId);
+  if (!report) throw new NotFoundError('הדוח לא נמצא או שפג תוקפו.');
+  const pdfBuffer = await generateGemelAdvisorPdf(report);
+  const date = new Date(report.generatedAt || Date.now()).toISOString().slice(0, 10);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="FinGuide-Gemel-Report-${date}.pdf"`);
+  return res.send(pdfBuffer);
+}
+
 module.exports = {
   getGemelAnalysis,
   getGemelAgentResult,
@@ -172,5 +235,9 @@ module.exports = {
   updateGemelFund,
   deleteGemelFund,
   getGemelLeadingFunds,
+  uploadGemelExcel,
+  analyzeGemel,
+  getGemelReport,
+  downloadGemelReportPdf,
   mapGemelFundToDto,
 };

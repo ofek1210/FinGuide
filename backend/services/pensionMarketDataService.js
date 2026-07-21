@@ -4,6 +4,8 @@ const PensiaNetFund = require('../models/PensiaNetFund');
 const { normalizeFundRiskLevel } = require('../utils/pensionShared');
 const config = require('../config/pensionAnalysisConfig');
 const { computeTrackPerformanceAnalysis } = require('./pensiaNetMonthlyAnalysisService');
+const { normalizeExposurePercent } = require('../utils/normalizePercentage');
+const { formatComparisonGroupLabel } = require('../utils/comparisonGroupLabel');
 
 const FUND_TYPE_CLASSIFICATION = {
   pension_comprehensive: /פנסיה.*מקיפה|פנסיה חדשה|קרנות חדשות|קרנות כלליות/i,
@@ -99,12 +101,17 @@ async function buildPeerGroup(fund, matchedMarketFund = null) {
 
   return {
     groupKey,
+    comparisonGroupLabel: formatComparisonGroupLabel(groupKey, matchedMarketFund?.classification),
     peers: peers.map(formatPensiaRow),
     size: peers.length,
   };
 }
 
 function formatPensiaRow(row) {
+  const totalAssets = row.YITRAT_NECHASIM;
+  const stockNorm = normalizeExposurePercent(row.CHSHIF_MNUIOT, totalAssets);
+  const foreignNorm = normalizeExposurePercent(row.BETA_HUTZ_LAARETZ, totalAssets);
+
   return {
     id: row.ID,
     fundName: row.SHM_KRN,
@@ -118,9 +125,9 @@ function formatPensiaRow(row) {
     standardDeviation36m: row.STIAT_TEKEN_36_HODASHIM,
     sharpeRatio: row.SHARPE_RATIO,
     alpha: row.ALPHA,
-    stockExposure: row.CHSHIF_MNUIOT,
-    foreignExposure: row.BETA_HUTZ_LAARETZ,
-    totalAssets: row.YITRAT_NECHASIM,
+    stockExposure: stockNorm.valid ? stockNorm.value : null,
+    foreignExposure: foreignNorm.valid ? foreignNorm.value : null,
+    totalAssets,
     actuarialSurplus: row.ODEF_GIRAON_ACTUARI_LETKUFA,
     reportPeriod: row.TKUFAT_DUACH,
   };

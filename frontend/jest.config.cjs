@@ -4,7 +4,11 @@ module.exports = {
   coverageDirectory: 'coverage',
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   transform: {
-    '^.+\\.tsx?$': 'ts-jest',
+    '^.+\\.tsx?$': ['ts-jest', {
+      tsconfig: {
+        jsx: 'react-jsx',
+      },
+    }],
   },
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json', 'node'],
 };

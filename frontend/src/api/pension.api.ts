@@ -52,6 +52,7 @@ export type PensionInsightSeverity = "info" | "low" | "medium" | "high";
 
 export type PensionInsightBenchmarkDTO = {
   group?: string | null;
+  comparisonGroupLabel?: string | null;
   average?: number | null;
   median?: number | null;
   percentile?: number | null;
@@ -155,6 +156,20 @@ export type PensionHealthCheckDTO = {
   disclaimer: string;
 };
 
+export type PensionFormattedRecommendationDTO = {
+  insightId: string;
+  title: string;
+  explanation: string;
+  whyItMatters?: string;
+  nextStep?: string;
+  financialImpact?: {
+    amount?: number | null;
+    currency?: string;
+    period?: "annual" | "retirement" | string;
+  } | null;
+  evidence?: Record<string, unknown> | null;
+};
+
 export type PensionAnalysisData = {
   summary: PensionSummaryDTO;
   projection: PensionProjectionDTO | null;
@@ -162,6 +177,19 @@ export type PensionAnalysisData = {
   healthCheck?: PensionHealthCheckDTO;
   recommendations: PensionRecommendationDTO[];
   structuredInsights?: PensionStructuredInsightDTO[];
+  primaryRecommendations?: PensionFormattedRecommendationDTO[];
+  positiveFindings?: PensionStructuredInsightDTO[];
+  additionalInsights?: PensionStructuredInsightDTO[];
+  llm?: { used: boolean; provider?: string | null; fallbackUsed?: boolean; reason?: string | null };
+  llmSummary?: string | null;
+  disclaimer?: string | null;
+  productDisclaimer?: string | null;
+  prioritizationStats?: {
+    rawCount?: number;
+    centralCount?: number;
+    positiveCount?: number;
+    mergedOrHidden?: number;
+  };
   insightMeta?: PensionInsightMetaDTO | null;
 };
 

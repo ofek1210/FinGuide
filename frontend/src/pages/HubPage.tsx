@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sparkles } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
@@ -6,14 +6,12 @@ import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import { AGENTS } from "../theme/agents";
 import { timeOfDayGreeting } from "../utils/timeGreeting";
+import { APP_ROUTES } from "../types/navigation";
 import { AGENT_KEY, DOMAIN_TO_AGENT } from "../components/hub/masterAgentMerge";
 import { useMasterAgent } from "../components/hub/useMasterAgent";
 import { useHubData } from "../components/hub/useHubData";
 import MasterBand from "../components/hub/MasterBand";
-import UnifiedSummary from "../components/hub/UnifiedSummary";
 import AgentSummaryCard from "../components/hub/AgentSummaryCard";
-import NextActions from "../components/hub/NextActions";
-import AiScoreCta from "../components/hub/AiScoreCta";
 import CommandBar from "../components/hub/CommandBar";
 import AgentSyncOverlay from "../components/hub/AgentSyncOverlay";
 import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
@@ -22,7 +20,7 @@ import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
    Hub — the master agent's home. One editorial page in the
    FinGuide design language: bold greeting → the dark master
    band (unified picture + run CTA + health card) → four agent
-   summary cards → the next actions → a floating command bar.
+   summary cards → a floating command bar.
    ============================================================ */
 
 export default function HubPage() {
@@ -30,7 +28,11 @@ export default function HubPage() {
   const location = useLocation();
   const { user } = useAuth();
 
-  const master = useMasterAgent();
+  const goToExecutiveReport = useCallback(() => {
+    navigate(APP_ROUTES.executiveReport);
+  }, [navigate]);
+
+  const master = useMasterAgent({ onFullComplete: goToExecutiveReport });
   const data = useHubData();
 
   // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
@@ -104,9 +106,6 @@ export default function HubPage() {
           onRunFull={master.runFull}
         />
 
-        {/* THE UNIFIED SUMMARY — the one cross-referenced takeaway (post-run) */}
-        {master.result && <UnifiedSummary result={master.result} />}
-
         {/* FOUR AGENT CARDS — status readout + gateway into each domain */}
         <div id="agent-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 20, marginBottom: 46, scrollMarginTop: 90 }}>
           {AGENTS.map((a, i) => {
@@ -128,17 +127,6 @@ export default function HubPage() {
             );
           })}
         </div>
-
-        {/* NEXT ACTIONS — the master agent's top-3 cross-referenced items */}
-        <NextActions
-          items={master.result?.actionItems ?? []}
-          fallbackFindings={data.rankedFindings}
-          loading={data.loading}
-          completedDocs={data.completedDocs}
-        />
-
-        {/* AI SCORE NUDGE — only when a run left the score below 100% */}
-        <AiScoreCta score={master.result?.globalScore ?? null} />
 
         {/* FLOATING COMMAND BAR — talk to the master agent */}
         <CommandBar busy={master.busy} onRunFocused={master.runFocused} />

@@ -2,10 +2,12 @@ require('dotenv').config();
 
 const connectDB = require('./config/db');
 const createApp = require('./app');
-const { startPensiaNetCron, ensurePensiaNetSeeded } = require('./jobs/pensiaNetMonthlySync');
+const {
+  startGovMarketCron,
+  ensureGovMarketSeeded,
+} = require('./jobs/govMarketMonthlySync');
 
 const DEFAULT_PORT = 5000;
-const MAX_PORT_ATTEMPTS = 10;
 
 let server;
 let app;
@@ -13,45 +15,55 @@ let app;
 // ולידציה של משתני סביבה קריטיים בהפעלה
 const validateEnv = () => {
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 10) {
-    throw new Error('JWT_SECRET חסר או חלש – הגדר ב-.env (לפחות 10 תווים)');
+    throw new Error(
+      'JWT_SECRET חסר או חלש – הגדר ב-.env לפחות 10 תווים'
+    );
   }
+
   if (!process.env.MONGODB_URI) {
     throw new Error('MONGODB_URI חסר – הגדר ב-.env');
   }
 };
 
 // הפעלת השרת
-const startServer = async (port, attempt = 0) => {
+const startServer = async (port) => {
   try {
-    // ולידציה וחיבור ל-DB מתבצעים רק בניסיון הראשון
-    if (attempt === 0) {
-      validateEnv();
-      await connectDB();
-      startPensiaNetCron();
-      ensurePensiaNetSeeded().catch(err => {
-        console.error('[pensiaNetCron] initial seed failed:', err.message);
-      });
-    }
+    validateEnv();
+
+    await connectDB();
 
     app = createApp();
 
     server = app.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
-      console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(
+        `📝 Environment: ${process.env.NODE_ENV || 'development'}`
+      );
+
+      startGovMarketCron();
+
+      ensureGovMarketSeeded().catch((err) => {
+        console.error(
+          '[govMarketCron] initial seed failed:',
+          err.message
+        );
+      });
     });
 
-    server.on('error', async err => {
-      if (err.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
-        const nextPort = port + 1;
-        console.warn(`⚠️ Port ${port} in use, trying ${nextPort}...`);
-        // ניסיון מחדש על פורט אחר – מוודאים שההפעלה החוזרת עצמה מטופלת
-        await startServer(nextPort, attempt + 1);
-        return;
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${port} is already in use.`);
+        console.error(
+          `Close the process using port ${port}, then restart the backend.`
+        );
+        process.exit(1);
       }
 
       console.error('❌ Server failed to start:', err);
       process.exit(1);
     });
+
+    return server;
   } catch (err) {
     console.error('❌ Failed to initialize server:', err);
     process.exit(1);
@@ -59,10 +71,10 @@ const startServer = async (port, attempt = 0) => {
 };
 
 const basePort = Number(process.env.PORT) || DEFAULT_PORT;
-// הרצה מיידית כאשר הקובץ נטען – משאירים את ה-Promise מנוהל דרך ה-catch הפנימי
+
 startServer(basePort);
 
-process.on('unhandledRejection', err => {
+process.on('unhandledRejection', (err) => {
   console.error('❌ Unhandled Rejection:', err);
   process.exit(1);
 });

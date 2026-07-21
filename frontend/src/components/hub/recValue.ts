@@ -50,7 +50,14 @@ export function effortFor(type: string): EffortLevel {
   return EFFORT_PROCESS;
 }
 
-const URGENCY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+export const URGENCY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
+
+/** Most urgent first; within the same urgency, money×effort wins. */
+export function compareByUrgency(a: FullAnalysisRecommendation, b: FullAnalysisRecommendation): number {
+  const u = (URGENCY_ORDER[a.urgency] ?? 3) - (URGENCY_ORDER[b.urgency] ?? 3);
+  if (u !== 0) return u;
+  return compareByValue(a, b);
+}
 
 /**
  * Money×effort ordering: highest yearly value first; among equals,
