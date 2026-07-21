@@ -5,7 +5,6 @@ export const APP_ROUTES = {
   register: "/register",
   resetPassword: "/reset-password",
   onboarding: "/onboarding",
-  welcome: "/welcome",
   documents: "/documents",
   documentsUpload: "/documents?upload=1",
   documentsScan: "/documents/scan",
@@ -39,7 +38,6 @@ export type AppRoute = (typeof APP_ROUTES)[keyof typeof APP_ROUTES];
 export const PRIVATE_ROUTES: AppRoute[] = [
   APP_ROUTES.hub,
   APP_ROUTES.onboarding,
-  APP_ROUTES.welcome,
   APP_ROUTES.documents,
   APP_ROUTES.payslipHistory,
   APP_ROUTES.taxAssistant,

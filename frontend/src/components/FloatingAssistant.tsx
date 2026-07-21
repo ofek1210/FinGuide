@@ -262,9 +262,7 @@ export default function FloatingAssistant() {
   // Full-page assistant route hosts the same chat inline — hide floating bubble there.
   if (
     location.pathname === APP_ROUTES.assistant ||
-    location.pathname === APP_ROUTES.aiAgents ||
-    location.pathname === APP_ROUTES.welcome ||
-    location.pathname === "/dev/welcome"
+    location.pathname === APP_ROUTES.aiAgents
   ) {
     return null;
   }

@@ -20,8 +20,6 @@ import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SmartOnboardingPage from "./pages/SmartOnboardingPage";
-import WelcomePage from "./pages/WelcomePage";
-import WelcomePagePreview from "./pages/WelcomePagePreview";
 import PensionPage from "./pages/PensionPage";
 import GemelPage from "./pages/GemelPage";
 import ExecutiveReportPage from "./pages/ExecutiveReportPage";
@@ -88,15 +86,6 @@ export default function App() {
             </RequireAuth>
           }
         />
-        <Route
-          path={APP_ROUTES.welcome}
-          element={
-            <RequireAuth>
-              <WelcomePage />
-            </RequireAuth>
-          }
-        />
-        <Route path="/welcome-back" element={<Navigate to={APP_ROUTES.hub} replace />} />
         <Route
           path={APP_ROUTES.documents}
           element={
@@ -260,9 +249,6 @@ export default function App() {
         <Route path="/401" element={<Error401 />} />
         <Route path="/403" element={<Error403 />} />
         <Route path="/500" element={<Error500 />} />
-        {import.meta.env.DEV ? (
-          <Route path="/dev/welcome" element={<WelcomePagePreview />} />
-        ) : null}
         <Route path="*" element={<Error404 />} />
       </Routes>
       <FloatingAssistant />

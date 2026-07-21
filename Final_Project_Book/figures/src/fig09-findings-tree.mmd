@@ -1,12 +1,12 @@
 flowchart TD
-  Start["For each completed payslip"]
-  Q1{"Pension section\nidentified in extraction?"}
+  Start["For each completed payslip and fund\n(pension or study fund)"]
+  Q1{"Fund section identified by\nOCR metadata, base, quality candidate, or block?"}
   Skip1["Skip — no finding"]
   Q2{"Employee plus employer\ndeposits sum to zero?"}
   Skip2["Skip — deposits present"]
   Q3{"missingLine warning\nabsent?"}
   Skip3["Skip — section may be missing from OCR"]
-  Emit["Emit PENSION_MISSING_DEPOSIT\nfinding with meta.periods"]
+  Emit["Emit fund-specific no-deposit finding\nwith document and period metadata"]
 
   Start --> Q1
   Q1 -->|no| Skip1

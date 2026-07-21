@@ -4,10 +4,11 @@ flowchart TD
   Canvas["buildExecutionCanvas\nonboarding, documents, profile"]
   Prefetch["prefetchGovMarketData\nparallel"]
   Score["buildFinancialHealthScore\nparallel"]
-  Agents["Promise.allSettled\n4 domain agents"]
+  Agents["Promise.allSettled\n5 agents"]
   Payslip["payslipAgent"]
   Insurance["insuranceAgent"]
   Pension["pensionAgent"]
+  Gemel["gemelAgent"]
   Profile["financialProfileAgent"]
   Merge["mergeRecommendations\ndeduplicate by type"]
   Summary["Hebrew summary\nClaude or rule fallback"]
@@ -21,9 +22,11 @@ flowchart TD
   Agents --> Payslip
   Agents --> Insurance
   Agents --> Pension
+  Agents --> Gemel
   Agents --> Profile
   Payslip --> Merge
   Insurance --> Merge
   Pension --> Merge
+  Gemel --> Merge
   Profile --> Merge
   Merge --> Summary --> Log --> Response

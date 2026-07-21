@@ -24,23 +24,12 @@ export function RequireAuth({ children }: GuardProps) {
     return <Navigate to={APP_ROUTES.login} replace />;
   }
 
-  const welcomeShown = auth.user?.welcomeShown;
-  const isWelcomeRoute = location.pathname === APP_ROUTES.welcome;
-  if (welcomeShown === false && !isWelcomeRoute) {
-    return <Navigate to={APP_ROUTES.welcome} replace />;
-  }
-
   const onboardingCompleted = auth.user?.onboardingCompleted;
   const isOnboardingRoute = location.pathname === APP_ROUTES.onboarding;
   // Treat a missing/unknown flag as "not onboarded" (fail closed): data-dependent
   // pages assume onboarding data exists, so an authenticated user is only allowed
   // past this gate once the backend confirms onboardingCompleted === true.
-  // Welcome is allowed so the first-run flow can run before onboarding.
-  if (
-    onboardingCompleted !== true &&
-    !isOnboardingRoute &&
-    !isWelcomeRoute
-  ) {
+  if (onboardingCompleted !== true && !isOnboardingRoute) {
     return <Navigate to={APP_ROUTES.onboarding} replace />;
   }
 
