@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import PlanTabBar from "../components/tabs/PlanTabBar";
 import { askAgent } from "../api/agents.api";
 import { renderMarkdown } from "../utils/renderMarkdown";
 import "./AIAgentsPage.css";
@@ -19,7 +18,6 @@ const AGENT_LABELS: Record<string, { label: string; icon: string }> = {
   pension_advisor: { label: "יועץ פנסיוני", icon: "🏦" },
   gemel_advisor: { label: "סוכן קופות גמל", icon: "💰" },
   financial_analysis: { label: "מנתח פיננסי", icon: "📊" },
-  financial_planning: { label: "מתכנן פיננסי", icon: "🎯" },
   insurance_benefits: { label: "יועץ ביטוח", icon: "🛡️" },
   orchestrator: { label: "עוזר כללי", icon: "🤖" },
 };
@@ -29,7 +27,6 @@ const QUICK_PROMPTS = [
   { text: "האם הפנסיה שלי תקינה?", agent: "pension_advisor" },
   { text: "מה מצב קרן ההשתלמות שלי?", agent: "gemel_advisor" },
   { text: "תן לי ניתוח פיננסי", agent: "financial_analysis" },
-  { text: "איך אני יכול לחסוך יותר?", agent: "financial_planning" },
   { text: "אילו ביטוחים אני צריך?", agent: "insurance_benefits" },
 ];
 
@@ -86,7 +83,6 @@ export default function AIAgentsPage() {
     <div className="private-layout" dir="rtl">
       <PrivateTopbar />
       <main className="private-main ai-agents-page">
-        <PlanTabBar />
         <h1 className="ai-agents-title">עוזר AI פיננסי</h1>
         <p className="ai-agents-subtitle">
           שאל/י כל שאלה פיננסית — המערכת תנתב אותך אוטומטית לסוכן המתאים

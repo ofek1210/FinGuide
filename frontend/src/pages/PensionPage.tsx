@@ -7,7 +7,7 @@
  * Step "results"  — flagship pension advisor (PensionAdvisor.jsx design),
  *                   wired to /api/pension/* (analysis, funds).
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
@@ -28,11 +28,11 @@ import {
 } from "../api/pension.api";
 import { APP_ROUTES } from "../types/navigation";
 import { UPLOAD_PROGRESS_STEPS } from "../utils/pensionDisplay";
-import { GovReportImportFlow } from "../components/import/GovReportImportFlow";
-import { PENSION_IMPORT_CONFIG } from "../config/govReportImportConfig";
+import PensionLandingScreen from "../components/pension/PensionLandingScreen";
+import { PENSION_SITE_URL } from "../config/govReportImportConfig";
 import { useGovReportUploadProgress } from "../hooks/useGovReportUploadProgress";
 
-const HAR_HAKESEF_URL = PENSION_IMPORT_CONFIG.siteUrl;
+const HAR_HAKESEF_URL = PENSION_SITE_URL;
 
 const EMPTY_FORM: UploadPensionBody = {
   fundName: "", fundType: "pension_comprehensive", provider: "",
@@ -44,13 +44,13 @@ type FlowStep = "landing" | "onboarding" | "guide" | "upload" | "results";
 
 export default function PensionPage() {
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadProgressStep, start: startProgress, stop: stopProgress } = useGovReportUploadProgress(UPLOAD_PROGRESS_STEPS.length);
 
   const [step, setStep] = useState<FlowStep>("landing");
   const [data, setData] = useState<PensionAnalysisData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [visitedSite, setVisitedSite] = useState(false);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   // Upload state
   const [uploading, setUploading] = useState(false);
@@ -77,19 +77,31 @@ export default function PensionPage() {
   // Loads analysis data only — does NOT change the step, so the upload success
   // screen stays visible until the user clicks "צפה בניתוח הפנסיה".
   const loadAnalysis = useCallback(async () => {
+    setAnalysisLoading(true);
+    setAnalysisError(null);
     const res = await getPensionAnalysis();
-    if (res.ok && res.data?.success && res.data.data) setData(res.data.data);
+    setAnalysisLoading(false);
+    if (res.ok && res.data?.success && res.data.data) {
+      setData(res.data.data);
+      return res;
+    }
+    setAnalysisError(res.ok ? "לא התקבלו נתוני ניתוח מהשרת" : (res.error?.message ?? "שגיאה בטעינת הניתוח"));
     return res;
   }, []);
 
   useEffect(() => {
     void (async () => {
+      setAnalysisLoading(true);
+      setAnalysisError(null);
       const [analysisRes, fundsRes] = await Promise.all([getPensionAnalysis(), getPensionFunds()]);
+      setAnalysisLoading(false);
       setLoading(false);
       const fundList = fundsRes.ok && fundsRes.data?.data ? fundsRes.data.data : [];
       setFunds(fundList);
       if (analysisRes.ok && analysisRes.data?.success && analysisRes.data.data) {
         setData(analysisRes.data.data);
+      } else if (!analysisRes.ok) {
+        setAnalysisError(analysisRes.error?.message ?? "שגיאה בטעינת הניתוח");
       }
       if (fundList.length > 0) {
         setStep("results");
@@ -187,7 +199,7 @@ export default function PensionPage() {
       <PensionImportGuide
         onBack={() => setStep("landing")}
         onContinue={() => setStep("upload")}
-        onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); setVisitedSite(true); }}
+        onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); }}
       />,
     );
   }
@@ -240,6 +252,9 @@ export default function PensionPage() {
           <PensionAdvisor
             data={data}
             funds={funds}
+            analysisLoading={analysisLoading}
+            analysisError={analysisError}
+            onRetryAnalysis={() => { void loadAnalysis(); }}
             showAddForm={showAddForm}
             setShowAddForm={setShowAddForm}
             form={form}
@@ -250,7 +265,6 @@ export default function PensionPage() {
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
             onReimport={() => setStep("onboarding")}
-            onOpenChat={() => navigate(`${APP_ROUTES.hub}?chat=1`)}
           />
         </div>
       </>,
@@ -265,26 +279,10 @@ export default function PensionPage() {
         טוען נתוני פנסיה...
       </div>
     ) : (
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 24px 40px" }}>
-        <GovReportImportFlow
-          domain="pension"
-          step="landing"
-          progressSteps={UPLOAD_PROGRESS_STEPS}
-          onImport={() => setStep("onboarding")}
-          onManual={() => { setStep("results"); setShowAddForm(true); }}
-          visitedSite={visitedSite}
-          onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); setVisitedSite(true); }}
-          onContinue={() => setStep("upload")}
-          onBack={() => setStep("landing")}
-          fileInputRef={fileInputRef}
-          uploading={uploading}
-          uploadMsg={uploadMsg}
-          uploadProgressStep={uploadProgressStep}
-          isDragging={isDragging}
-          setIsDragging={setIsDragging}
-          onUpload={handleFileUpload}
-        />
-      </div>
+      <PensionLandingScreen
+        onImport={() => setStep("onboarding")}
+        onManual={() => { setStep("results"); setShowAddForm(true); }}
+      />
     ),
   );
 }

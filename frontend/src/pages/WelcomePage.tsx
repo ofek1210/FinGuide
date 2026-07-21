@@ -4,7 +4,6 @@ import { useAuth } from "../auth/AuthProvider";
 import { markWelcomeShown } from "../api/auth.api";
 import { APP_ROUTES } from "../types/navigation";
 import Loader from "../components/ui/Loader";
-import { clearWelcomeBackPending } from "../utils/welcomeBackSession";
 import "../components/welcome/welcome.css";
 
 type AnimalFact = {
@@ -202,7 +201,6 @@ export default function WelcomePage() {
     setIsContinuing(true);
     try {
       const res = await markWelcomeShown();
-      clearWelcomeBackPending();
       await auth.refresh();
       const onboardingIncomplete =
         res.success && res.data?.user?.onboardingCompleted === false;
@@ -210,7 +208,6 @@ export default function WelcomePage() {
         replace: true,
       });
     } catch {
-      clearWelcomeBackPending();
       navigate(APP_ROUTES.hub, { replace: true });
     }
   }, [auth, isContinuing, navigate]);

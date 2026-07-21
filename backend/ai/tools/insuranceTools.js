@@ -10,6 +10,19 @@ const { runMissingCoverageRules } = require('../engines/ruleEngine');
 const { estimateInsuranceSavings } = require('../engines/calculationEngine');
 const { analyzeAggregatedInsurance } = require('../../services/insurancePolicyAggregationService');
 
+// Hebrew labels for the coverage-type keys ruleEngine emits — user-facing
+// recommendation text must never leak the English keys ("life", "disability").
+const COVERAGE_LABELS_HE = {
+  life: 'ביטוח חיים',
+  health: 'ביטוח בריאות',
+  health_supplement: 'ביטוח בריאות משלים',
+  disability: 'ביטוח אובדן כושר עבודה (אכ"ע)',
+  apartment: 'ביטוח דירה',
+  car: 'ביטוח רכב',
+  mortgage: 'ביטוח משכנתא',
+  critical_illness: 'ביטוח מחלות קשות',
+};
+
 // ── Tool: getInsuranceProfile ─────────────────────────────────────────────────
 
 /**
@@ -130,10 +143,11 @@ function generateInsuranceRecommendations(analysisResult) {
   }
 
   for (const missing of analysisResult.missingCoverage || []) {
+    const missingHe = COVERAGE_LABELS_HE[missing] || missing;
     recs.push({
       type: `missing_${missing}`,
-      title: `כיסוי חסר — ${missing}`,
-      reason: `לפי הפרופיל שלך, ביטוח ${missing} מומלץ.`,
+      title: `כיסוי חסר — ${missingHe}`,
+      reason: `לפי הפרופיל שלך, ${missingHe} מומלץ.`,
       urgency: analysisResult.missingUrgency,
       financialImpact: null,
       confidenceScore: 75,

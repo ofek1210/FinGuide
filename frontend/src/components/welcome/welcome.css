@@ -1,10 +1,9 @@
 /* ============================================================
-   WELCOME PAGES — new-user + returning-user CEO greetings
+   WELCOME PAGE — first-run onboarding greeting
    Pastel FinGuide shell (RTL), built on shared design tokens.
    ============================================================ */
 
-.welcome-page,
-.welcome-back-page {
+.welcome-page {
   position: relative;
   isolation: isolate;
   min-height: 100vh;
@@ -17,8 +16,7 @@
   overflow-x: clip;
 }
 
-.welcome-page::before,
-.welcome-back-page::before {
+.welcome-page::before {
   content: "";
   position: absolute;
   inset-block-start: -120px;
@@ -32,8 +30,7 @@
   pointer-events: none;
 }
 
-.welcome-page::after,
-.welcome-back-page::after {
+.welcome-page::after {
   content: "";
   position: absolute;
   inset-block-end: -80px;
@@ -46,8 +43,7 @@
   pointer-events: none;
 }
 
-.welcome-main,
-.welcome-back-main {
+.welcome-main {
   position: relative;
   z-index: 1;
   max-width: 920px;
@@ -108,7 +104,6 @@
 }
 
 .welcome-hero-eyebrow,
-.welcome-back-eyebrow,
 .welcome-founder-eyebrow,
 .welcome-features-eyebrow,
 .welcome-animal-eyebrow {
@@ -212,8 +207,7 @@
   align-items: start;
 }
 
-.welcome-founder-portrait,
-.welcome-back-portrait {
+.welcome-founder-portrait {
   margin: 0;
   display: flex;
   flex-direction: column;
@@ -235,8 +229,7 @@
   transform: rotate(-2deg);
 }
 
-.welcome-founder-portrait-frame img,
-.welcome-back-portrait-frame img {
+.welcome-founder-portrait-frame img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -261,8 +254,7 @@
   color: var(--text-muted, #6b6b78);
 }
 
-.welcome-founder-content > p,
-.welcome-back-body {
+.welcome-founder-content > p {
   margin: 0 0 14px;
   line-height: 1.65;
   color: var(--text-body, #4a4a55);
@@ -308,8 +300,7 @@
   color: var(--text-strong, #16151b) !important;
 }
 
-.welcome-founder-signature,
-.welcome-back-signature {
+.welcome-founder-signature {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -318,168 +309,18 @@
   border-block-start: 1px solid var(--border-soft, #ececef);
 }
 
-.welcome-founder-signature-name,
-.welcome-back-signature-name {
+.welcome-founder-signature-name {
   font-family: var(--font-display, inherit);
   font-weight: 900;
   font-size: 1.15rem;
   color: var(--text-strong, #16151b);
 }
 
-.welcome-founder-signature-role,
-.welcome-back-signature-role {
+.welcome-founder-signature-role {
   font-size: 0.85rem;
   color: var(--text-muted, #6b6b78);
 }
 
-.welcome-back-page {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 100vh;
-  min-height: 100dvh;
-  padding: clamp(20px, 3vh, 40px) clamp(20px, 4vw, 48px);
-}
-
-.welcome-back-main {
-  max-width: min(1180px, 94vw);
-  width: 100%;
-  margin-inline: auto;
-  gap: 0;
-}
-
-.welcome-back-founder {
-  padding: clamp(36px, 5vw, 64px) clamp(36px, 5vw, 72px);
-  min-height: clamp(540px, 82vh, 820px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  border-radius: clamp(20px, 2.4vw, 28px);
-  background: var(--surface-card, #fff);
-  border: 1px solid var(--border-soft, #ececef);
-  box-shadow: var(--shadow-card, 0 18px 40px -24px rgba(22, 21, 28, 0.18));
-}
-
-.welcome-back-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 460px);
-  gap: clamp(32px, 5vw, 72px);
-  align-items: center;
-  width: 100%;
-}
-
-.welcome-back-portrait {
-  width: 100%;
-  align-self: stretch;
-  justify-content: center;
-}
-
-.welcome-back-portrait-frame {
-  width: 100%;
-  min-height: clamp(380px, 58vh, 620px);
-  aspect-ratio: 10 / 11;
-  border-radius: clamp(20px, 2vw, 28px);
-  overflow: hidden;
-  background: var(--lav-50, #faf7ff);
-  transform: rotate(1.5deg);
-  box-shadow:
-    0 0 0 5px var(--lav-200, #e8ddff),
-    0 0 0 7px var(--surface-card, #fff),
-    0 24px 48px -16px rgba(22, 21, 28, 0.2);
-}
-
-.welcome-back-headline {
-  margin: 0 0 16px;
-  font-family: var(--font-display, inherit);
-  font-weight: 900;
-  font-size: clamp(2.25rem, 5.5vw, 3.75rem);
-  line-height: 1.08;
-  letter-spacing: -0.03em;
-  color: var(--text-strong, #16151b);
-}
-
-.welcome-back-sub {
-  margin: 0 0 14px;
-  font-size: clamp(1.1rem, 2.2vw, 1.35rem);
-}
-
-.welcome-back-body {
-  font-size: clamp(1rem, 1.8vw, 1.15rem);
-  line-height: 1.7;
-  max-width: 42ch;
-}
-
-.welcome-back-quote {
-  margin: clamp(24px, 3vw, 32px) 0;
-  padding: clamp(22px, 3.5vw, 32px);
-}
-
-.welcome-back-quote p {
-  font-size: clamp(1.05rem, 2vw, 1.25rem);
-  line-height: 1.55;
-}
-
-.welcome-back-signature-name {
-  font-size: clamp(1.15rem, 2vw, 1.35rem);
-}
-
-.welcome-back-signature-role {
-  font-size: clamp(0.9rem, 1.5vw, 1rem);
-}
-
-.welcome-back-cta {
-  margin-block-start: clamp(24px, 3vw, 32px);
-  padding: 15px 28px;
-  min-height: 54px;
-  font-size: 16px;
-}
-
-.welcome-back-eyebrow {
-  font-size: 13px;
-  padding: 8px 18px;
-  margin-block-end: 4px;
-}
-
-.welcome-back-content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  padding-block: clamp(8px, 2vh, 24px);
-}
-
-.welcome-back-headline strong {
-  font-weight: inherit;
-  background: linear-gradient(135deg, var(--lav-600, #7c5fd6), var(--peach-ink, #c45a2a));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.welcome-back-sub {
-  margin: 0 0 12px;
-  font-weight: 600;
-  color: var(--text-strong, #16151b);
-}
-
-.welcome-back-quote {
-  margin: 20px 0;
-  padding: clamp(18px, 3vw, 24px);
-  border-radius: var(--r-card, 20px);
-  background: var(--lav-50, #faf7ff);
-  border: 1px solid var(--border-soft, #ececef);
-  border-inline-start: 4px solid var(--lav-300, #cbb8ff);
-}
-
-.welcome-back-quote p {
-  margin: 0;
-  font-family: var(--font-display, inherit);
-  font-weight: 700;
-  font-size: 1.05rem;
-  line-height: 1.5;
-  color: var(--text-strong, #16151b);
-}
-
-.welcome-back-cta,
 .welcome-cta-button {
   display: inline-flex;
   align-items: center;
@@ -500,13 +341,11 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.welcome-back-cta:hover:not(:disabled),
 .welcome-cta-button:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 18px 36px -14px rgba(124, 95, 214, 0.6);
 }
 
-.welcome-back-cta:disabled,
 .welcome-cta-button:disabled {
   opacity: 0.7;
   cursor: wait;
@@ -558,14 +397,10 @@
 }
 
 /* Tone accents */
-.welcome-page .tone-yellow,
-.welcome-back-page .tone-yellow { --tone-bar: var(--butter, #ffe066); --tone-soft: var(--butter-soft, #fff8dc); }
-.welcome-page .tone-pink,
-.welcome-back-page .tone-pink { --tone-bar: var(--peach, #ffb088); --tone-soft: var(--peach-soft, #fff4ec); }
-.welcome-page .tone-mint,
-.welcome-back-page .tone-mint { --tone-bar: var(--mint, #7ddeb8); --tone-soft: var(--mint-soft, #e8fff4); }
-.welcome-page .tone-purple,
-.welcome-back-page .tone-purple { --tone-bar: var(--lav-300, #cbb8ff); --tone-soft: var(--lav-100, #f3edff); }
+.welcome-page .tone-yellow { --tone-bar: var(--butter, #ffe066); --tone-soft: var(--butter-soft, #fff8dc); }
+.welcome-page .tone-pink { --tone-bar: var(--peach, #ffb088); --tone-soft: var(--peach-soft, #fff4ec); }
+.welcome-page .tone-mint { --tone-bar: var(--mint, #7ddeb8); --tone-soft: var(--mint-soft, #e8fff4); }
+.welcome-page .tone-purple { --tone-bar: var(--lav-300, #cbb8ff); --tone-soft: var(--lav-100, #f3edff); }
 
 /* ---- Animal easter egg ---- */
 .welcome-animal-card {
@@ -689,30 +524,8 @@
 
 /* ---- Responsive ---- */
 @media (max-width: 720px) {
-  .welcome-founder-grid,
-  .welcome-back-grid {
+  .welcome-founder-grid {
     grid-template-columns: 1fr;
-  }
-
-  .welcome-back-grid {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .welcome-back-portrait {
-    order: -1;
-    max-width: min(360px, 78vw);
-    margin-inline: auto;
-    align-self: center;
-  }
-
-  .welcome-back-portrait-frame {
-    min-height: clamp(320px, 48vh, 440px);
-  }
-
-  .welcome-back-founder {
-    min-height: auto;
-    padding: clamp(28px, 6vw, 40px);
   }
 
   .welcome-founder-portrait {
@@ -751,7 +564,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .welcome-feature,
-  .welcome-back-cta,
   .welcome-cta-button {
     transition: none;
   }

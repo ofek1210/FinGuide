@@ -8,12 +8,14 @@
  *
  * Fully wired to /api/pension/* via props from PensionPage — no mock data.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   PiggyBank, TrendingUp, Upload, Plus, X, Check, AlertTriangle,
-  Sparkles, Loader2, Trash2, type LucideIcon,
+  Loader2, Trash2, type LucideIcon,
 } from "lucide-react";
 import PensionLeadingFundsTable from "./PensionLeadingFundsTable";
+import { buildLeadingFundsInsights } from "./leadingFundsInsights";
+import PensionStructuredInsightsPanel from "./PensionStructuredInsightsPanel";
 import { formatCurrencyOrDash } from "../../utils/formatters";
 import { FUND_TYPE_LABELS, RANK_BADGE, isPensionFundActive } from "../../utils/pensionDisplay";
 import type {
@@ -65,6 +67,9 @@ function RadialGauge({ value, sub }: { value: number; sub: string }) {
 type Props = {
   data: PensionAnalysisData | null;
   funds: PensionFundDTO[];
+  analysisLoading?: boolean;
+  analysisError?: string | null;
+  onRetryAnalysis?: () => void;
   showAddForm: boolean;
   setShowAddForm: React.Dispatch<React.SetStateAction<boolean>>;
   form: UploadPensionBody;
@@ -75,12 +80,12 @@ type Props = {
   onSaveFund: () => void;
   onDeleteFund: (id: string) => void;
   onReimport: () => void;
-  onOpenChat: () => void;
 };
 
 export default function PensionAdvisor({
-  data, funds, showAddForm, setShowAddForm, form, setForm, saving, saveMsg, deletingId,
-  onSaveFund, onDeleteFund, onReimport, onOpenChat,
+  data, funds, analysisLoading = false, analysisError = null, onRetryAnalysis,
+  showAddForm, setShowAddForm, form, setForm, saving, saveMsg, deletingId,
+  onSaveFund, onDeleteFund, onReimport,
 }: Props) {
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
@@ -102,6 +107,8 @@ export default function PensionAdvisor({
   const benchmark = data?.benchmark;
   const healthCheck = data?.healthCheck;
   const recs: PensionRecommendationDTO[] = data?.recommendations ?? [];
+  const structuredInsights = data?.structuredInsights;
+  const insightMeta = data?.insightMeta;
 
   const base = projection?.projectedAccumulation ?? summary?.currentAccumulation ?? 0;
   const optimistic = projection?.scenarios?.optimistic.accumulation ?? 0;
@@ -117,6 +124,9 @@ export default function PensionAdvisor({
 
   const activeFunds = funds.filter(isPensionFundActive);
   const inactiveFunds = funds.filter(f => !isPensionFundActive(f));
+
+  // Agent analysis → leading-funds table annotations (current fund, switch advice).
+  const tableInsights = useMemo(() => buildLeadingFundsInsights(data, funds), [data, funds]);
 
   // empty state — no pension data yet
   if (!hasData && funds.length === 0 && !showAddForm) {
@@ -246,12 +256,23 @@ export default function PensionAdvisor({
         </div>
       )}
 
-      <PensionLeadingFundsTable />
+      <PensionStructuredInsightsPanel
+        insights={structuredInsights}
+        meta={insightMeta}
+        loading={analysisLoading}
+        error={analysisError}
+        onRetry={onRetryAnalysis}
+        hasLegacyRecommendations={recs.length > 0}
+      />
 
-      {/* recommendations by impact */}
+      <PensionLeadingFundsTable insights={tableInsights} />
+
+      {/* recommendations by impact — legacy shape; shown when API has no structuredInsights or as supplement */}
       {recs.length > 0 && (
         <div style={{ marginBottom: 18 }}>
-          <h2 style={{ fontSize: 13, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".06em", margin: "0 2px 14px" }}>המלצות — מדורגות לפי השפעה כספית</h2>
+          <h2 style={{ fontSize: 13, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".06em", margin: "0 2px 14px" }}>
+            {structuredInsights?.length ? "המלצות נוספות" : "המלצות — מדורגות לפי השפעה כספית"}
+          </h2>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {recs.map((r, i) => {
               const u = URGENCY[r.urgency] ?? URGENCY.low;
@@ -325,13 +346,6 @@ export default function PensionAdvisor({
           )}
       </div>
 
-      {/* chat CTA */}
-      <div style={{ position: "relative", overflow: "hidden", borderRadius: "var(--radius)", padding: "28px 30px", textAlign: "center", background: "var(--mint-soft)", border: "1px solid rgba(47,156,98,.18)" }}>
-        <div style={{ width: 48, height: 48, borderRadius: 14, margin: "0 auto 14px", background: "var(--mint-ink)", color: "#fff", display: "grid", placeItems: "center", boxShadow: "var(--shadow-soft)" }}><Sparkles size={22} /></div>
-        <div style={{ fontSize: 19, fontWeight: 900, letterSpacing: "-.02em", marginBottom: 6, color: "var(--text-strong)" }}>שאל את יועץ הפנסיה</div>
-        <p style={{ margin: "0 auto 18px", fontSize: 14.5, color: "var(--text-muted)", maxWidth: 420, lineHeight: 1.5 }}>"מתי כדאי לפרוש?", "האם כדאי לאחד קרנות?", "כמה אני משלם בדמי ניהול?"</p>
-        <button onClick={onOpenChat} style={{ ...btnPrimary, padding: "14px 26px", fontSize: 15.5 }}><Sparkles size={17} /> פתח שיחה עם יועץ הפנסיה</button>
-      </div>
     </main>
   );
 }

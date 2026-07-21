@@ -2,7 +2,8 @@
 
 const config = require('../config/pensiaNetConfig');
 const PensiaNetFund = require('../models/PensiaNetFund');
-const { mapApiRecordToPensiaNet } = require('../utils/pensiaNetFieldMapper');
+const PensiaNetMonthlyReturn = require('../models/PensiaNetMonthlyReturn');
+const { mapApiRecordToPensiaNet, mapApiRecordToMonthlyReturn } = require('../utils/pensiaNetFieldMapper');
 
 const CKAN_SEARCH = `${config.ckanBaseUrl}/datastore_search`;
 
@@ -109,23 +110,73 @@ async function updateDatabase(funds) {
 }
 
 /**
- * Full sync pipeline: fetch → dedupe → upsert.
- * @param {{ resourceId?: string, forceRefresh?: boolean }} [opts]
+ * Upsert monthly return rows from full CKAN history.
+ * @param {object[]} apiRecords
+ */
+async function upsertMonthlyReturns(apiRecords) {
+  const now = new Date();
+  const ops = [];
+
+  for (const row of apiRecords) {
+    const mapped = mapApiRecordToMonthlyReturn(row);
+    if (!mapped?.fundId || mapped.reportPeriod == null) continue;
+    ops.push({
+      updateOne: {
+        filter: { fundId: mapped.fundId, reportPeriod: mapped.reportPeriod },
+        update: { $set: { ...mapped, syncedAt: now } },
+        upsert: true,
+      },
+    });
+  }
+
+  if (!ops.length) {
+    return { upserted: 0, modified: 0, total: 0 };
+  }
+
+  const CHUNK = 500;
+  let upserted = 0;
+  let modified = 0;
+  for (let i = 0; i < ops.length; i += CHUNK) {
+    const result = await PensiaNetMonthlyReturn.bulkWrite(ops.slice(i, i + CHUNK), { ordered: false });
+    upserted += result.upsertedCount || 0;
+    modified += result.modifiedCount || 0;
+  }
+
+  return { upserted, modified, total: ops.length };
+}
+
+/**
+ * Full sync pipeline: fetch → dedupe → upsert snapshot + monthly (legacy).
+ * @param {{ resourceId?: string, updateSnapshot?: boolean, updateMonthly?: boolean }} [opts]
  */
 async function syncPensiaNetDataset(opts = {}) {
   if (!config.enabled) {
     return { skipped: true, reason: 'PENSIANET_ENABLED=false', upserted: 0, modified: 0, total: 0 };
   }
 
+  const updateSnapshot = opts.updateSnapshot !== false;
+  const updateMonthly = opts.updateMonthly !== false;
+
   const apiRecords = await fetchLatestDataset(opts);
   const latestFunds = pickLatestPerFund(apiRecords);
-  const stats = await updateDatabase(latestFunds);
+
+  let stats = { upserted: 0, modified: 0, total: 0 };
+  if (updateSnapshot) {
+    stats = await updateDatabase(latestFunds);
+  }
+
+  let monthlyStats = { upserted: 0, modified: 0, total: 0 };
+  if (updateMonthly) {
+    monthlyStats = await upsertMonthlyReturns(apiRecords);
+  }
 
   return {
     skipped: false,
     fetchedRows: apiRecords.length,
     uniqueFunds: latestFunds.length,
+    snapshotUpdated: updateSnapshot,
     ...stats,
+    monthlyReturns: monthlyStats,
     syncedAt: new Date().toISOString(),
   };
 }
@@ -134,6 +185,7 @@ module.exports = {
   fetchLatestDataset,
   pickLatestPerFund,
   updateDatabase,
+  upsertMonthlyReturns,
   syncPensiaNetDataset,
   fetchWithTimeout,
 };

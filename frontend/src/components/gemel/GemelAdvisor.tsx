@@ -11,7 +11,7 @@
 import { useEffect, useState } from "react";
 import {
   PiggyBank, TrendingUp, Upload, Plus, X, Check, AlertTriangle, Scale,
-  Sparkles, Loader2, Trash2, Landmark, Percent, CalendarClock, type LucideIcon,
+  Loader2, Trash2, Landmark, Percent, CalendarClock, type LucideIcon,
 } from "lucide-react";
 import GemelLeadingFundsTable from "./GemelLeadingFundsTable";
 import { formatCurrencyOrDash } from "../../utils/formatters";
@@ -66,12 +66,11 @@ type Props = {
   onSaveFund: () => void;
   onDeleteFund: (id: string) => void;
   onImport: () => void;
-  onOpenChat: () => void;
 };
 
 export default function GemelAdvisor({
   data, funds, showAddForm, setShowAddForm, form, setForm, saving, saveMsg, deletingId,
-  onSaveFund, onDeleteFund, onImport, onOpenChat,
+  onSaveFund, onDeleteFund, onImport,
 }: Props) {
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
@@ -385,14 +384,6 @@ export default function GemelAdvisor({
       </div>
 
       <GemelLeadingFundsTable />
-
-      {/* chat CTA */}
-      <div style={{ position: "relative", overflow: "hidden", borderRadius: "var(--radius)", padding: "28px 30px", textAlign: "center", background: "var(--butter-soft)", border: "1px solid rgba(185,139,22,.22)" }}>
-        <div style={{ width: 48, height: 48, borderRadius: 14, margin: "0 auto 14px", background: "var(--butter-ink)", color: "#fff", display: "grid", placeItems: "center", boxShadow: "var(--shadow-soft)" }}><Sparkles size={22} /></div>
-        <div style={{ fontSize: 19, fontWeight: 900, letterSpacing: "-.02em", marginBottom: 6, color: "var(--text-strong)" }}>שאל את סוכן הגמל</div>
-        <p style={{ margin: "0 auto 18px", fontSize: 14.5, color: "var(--text-muted)", maxWidth: 440, lineHeight: 1.5 }}>"מתי קרן ההשתלמות שלי נזילה?", "האם דמי הניהול שלי גבוהים?", "האם כדאי גמל להשקעה?"</p>
-        <button onClick={onOpenChat} style={{ ...btnPrimary, padding: "14px 26px", fontSize: 15.5 }}><Sparkles size={17} /> פתח שיחה עם סוכן הגמל</button>
-      </div>
     </main>
   );
 }

@@ -230,7 +230,7 @@ Contributions reflect primary ownership areas verified against repository commit
 | **Shahar Mayster** | Project coordination, findings utilities (`detectContributionRateGap`, `detectDepositContinuityGap`), evaluation scripts, project book authoring, integration testing |
 | **Ofek Dil** | Frontend architecture (React/Vite), Hub and payslip UI, OCR service integration, primary UI development |
 | **Ofir Raz** | Backend controllers and API layer, AI assistant wiring, document processing, authentication flows |
-| **Emily Belensky** | Backend services (OCR pipeline, financial document processing), frontend components, test coverage |
+| **Emily Belenky** | Backend services (OCR pipeline, financial document processing), frontend components, test coverage |
 | **Segev Partush** | Multi-agent orchestration, pension and insurance domains, AI prompt and agent tooling |
 
 All team members participated in code review, manual payslip validation, and end-to-end testing of the integrated platform.

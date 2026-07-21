@@ -100,7 +100,6 @@ export default function GemelPage() {
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
             onImport={() => navigate(APP_ROUTES.pension)}
-            onOpenChat={() => navigate(`${APP_ROUTES.hub}?chat=1`)}
           />
         </div>
       )}
