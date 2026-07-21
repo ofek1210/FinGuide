@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { CircleAlert, CircleDashed, Play, Upload } from "lucide-react";
-import type { FullAnalysisResponse } from "../../api/fullAnalysis.api";
+import { CircleAlert, CircleDashed, FileText, Play, Upload } from "lucide-react";
+import { relativeTime } from "../../utils/notificationDisplay";
+import type { FullAnalysisGlobalScore, FullAnalysisResponse } from "../../api/fullAnalysis.api";
 import { AGENTS } from "../../theme/agents";
 import { APP_ROUTES } from "../../types/navigation";
 import { AGENT_KEY, type BackendAgentKey } from "./masterAgentMerge";
@@ -16,6 +17,12 @@ import type { Phase } from "./useMasterAgent";
    floating financial-health card fed by result.globalScore.
    ============================================================ */
 
+export type LastReportMeta = {
+  savedAt: string;
+  score: number | null;
+  topAction: string | null;
+};
+
 type MasterBandProps = {
   loading: boolean;
   phase: Phase;
@@ -28,6 +35,8 @@ type MasterBandProps = {
   completedDocs: number;
   heroRows: [string, string][];
   onRunFull: () => void;
+  lastReport: LastReportMeta | null;
+  savedScore: FullAnalysisGlobalScore | null;
 };
 
 const whiteCta: React.CSSProperties = {
@@ -47,7 +56,7 @@ const whiteCta: React.CSSProperties = {
 
 export default function MasterBand({
   loading, phase, busy, focusKey, result, statusLine,
-  potentialSavings, opportunities, completedDocs, heroRows, onRunFull,
+  potentialSavings, opportunities, completedDocs, heroRows, onRunFull, lastReport, savedScore,
 }: MasterBandProps) {
   const navigate = useNavigate();
   const [heroRef, heroSeen] = useInView<HTMLDivElement>();
@@ -57,7 +66,10 @@ export default function MasterBand({
   const heroMode: "money" | "counts" | "empty" =
     loading || potentialSavings > 0 ? "money" : opportunities > 0 ? "counts" : "empty";
 
-  const score = result?.globalScore ?? null;
+  // Live run wins; otherwise the score computed from the user's saved data —
+  // so the health card reflects the last analysis from the moment Hub loads.
+  const liveScore = result?.globalScore ?? null;
+  const score = liveScore ?? savedScore;
 
   const healthRows: [string, number | null][] = score?.categories?.length
     ? score.categories.slice(0, 3).map(cat => [
@@ -113,8 +125,9 @@ export default function MasterBand({
               ))}
             </div>
 
-            {/* primary CTA — actually runs the full analysis */}
-            <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            {/* primary CTA — actually runs the full analysis; next to it,
+                the last saved report opens instantly (no re-run) */}
+            <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
               <button
                 onClick={onRunFull}
                 disabled={busy}
@@ -126,6 +139,37 @@ export default function MasterBand({
                   ? <><CircleDashed size={16} style={{ animation: "fgSpin 1s linear infinite" }} /> מנתח...</>
                   : <><Play size={16} strokeWidth={2.4} /> הרץ ניתוח מלא</>}
               </button>
+
+              {lastReport && (
+                <button
+                  onClick={() => navigate(APP_ROUTES.executiveReport)}
+                  title={lastReport.topAction ? `בראש הדוח: ${lastReport.topAction}` : "פתיחת הדוח האחרון"}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 9,
+                    background: "rgba(255,255,255,.07)",
+                    color: "#fff",
+                    border: "1px solid rgba(255,255,255,.18)",
+                    borderRadius: "var(--r-btn)",
+                    padding: "13px 18px",
+                    fontFamily: "inherit",
+                    fontWeight: 700,
+                    fontSize: 13.5,
+                    cursor: "pointer",
+                    transition: "background .2s var(--ease), transform .2s var(--ease)",
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,.13)"; e.currentTarget.style.transform = "translateY(-2px)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,.07)"; e.currentTarget.style.transform = "none"; }}
+                >
+                  <FileText size={15} strokeWidth={2.2} color="#CDB6FF" />
+                  <span>הדוח האחרון</span>
+                  <span style={{ fontWeight: 600, color: "rgba(255,255,255,.55)", fontSize: 12.5 }}>
+                    {relativeTime(lastReport.savedAt)}
+                    {lastReport.score != null ? ` · ציון ${lastReport.score}` : ""}
+                  </span>
+                </button>
+              )}
             </div>
 
             {/* four tiny per-agent status dots */}
@@ -171,7 +215,7 @@ export default function MasterBand({
           <div style={{ alignSelf: "stretch", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ fontSize: 13.5, fontWeight: 800 }}>בריאות פיננסית</span>
             <span style={{ fontSize: 11, fontWeight: 800, color: "#fff", background: score ? "rgba(72,201,139,.28)" : "rgba(255,255,255,.12)", borderRadius: 999, padding: "3px 10px" }}>
-              {score ? "מעודכן · הסוכן הראשי" : "ממתין לניתוח"}
+              {liveScore ? "מעודכן · הסוכן הראשי" : score ? "לפי הניתוח האחרון" : "ממתין לניתוח"}
             </span>
           </div>
           <RadialGauge

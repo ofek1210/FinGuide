@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sparkles } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
@@ -16,6 +16,8 @@ import CommandBar from "../components/hub/CommandBar";
 import AgentSyncOverlay from "../components/hub/AgentSyncOverlay";
 import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
 import { useRegisterPageContext } from "../assistant/AiChatProvider";
+import { getLatestExecutiveReport } from "../api/executiveReport.api";
+import type { LastReportMeta } from "../components/hub/MasterBand";
 
 /* ============================================================
    Hub — the master agent's home. One editorial page in the
@@ -29,12 +31,30 @@ export default function HubPage() {
   const location = useLocation();
   const { user } = useAuth();
 
+  // An explicit full run should produce a fresh report; the report page reads
+  // this flag — without it, it shows the last saved analysis instantly.
   const goToExecutiveReport = useCallback(() => {
-    navigate(APP_ROUTES.executiveReport);
+    navigate(APP_ROUTES.executiveReport, { state: { fresh: true } });
   }, [navigate]);
 
   const master = useMasterAgent({ onFullComplete: goToExecutiveReport });
   const data = useHubData();
+
+  // The last saved executive report (kept 7 days server-side) — lets the user
+  // reopen their previous analysis without running the agents again.
+  const [lastReport, setLastReport] = useState<LastReportMeta | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void getLatestExecutiveReport().then(latest => {
+      if (cancelled || !latest.success || !latest.found) return;
+      setLastReport({
+        savedAt: latest.savedAt,
+        score: latest.report.meta.globalHealthScore ?? null,
+        topAction: latest.report.sections.topPriorityActions[0]?.title ?? null,
+      });
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
   // scroll to the master-agent chat and focus its input.
@@ -125,6 +145,8 @@ export default function HubPage() {
           completedDocs={data.completedDocs}
           heroRows={data.heroRows}
           onRunFull={master.runFull}
+          lastReport={lastReport}
+          savedScore={data.healthScore}
         />
 
         {/* FOUR AGENT CARDS — status readout + gateway into each domain */}

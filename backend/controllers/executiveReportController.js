@@ -2,7 +2,10 @@
 
 const { runExecutiveOrchestrator } = require('../services/executiveOrchestrator/runExecutiveOrchestrator');
 const { generateExecutiveReportPdf } = require('../services/executiveOrchestrator/executivePdfService');
-const { getExecutiveReport } = require('../services/executiveOrchestrator/executiveReportCache');
+const {
+  getExecutiveReport,
+  getLatestExecutiveReport,
+} = require('../services/executiveOrchestrator/executiveReportCache');
 const { NotFoundError, ValidationError } = require('../utils/appErrors');
 
 /**
@@ -18,6 +21,18 @@ async function generateExecutiveReport(req, res) {
       report: result.report,
       meta: result.meta,
     },
+  });
+}
+
+/**
+ * GET /api/executive/report/latest — the user's most recent saved report
+ * (reports are kept for 7 days). data is null when no report exists yet.
+ */
+async function getLatestExecutiveReportHandler(req, res) {
+  const latest = await getLatestExecutiveReport(req.user._id);
+  return res.json({
+    success: true,
+    data: latest,
   });
 }
 
@@ -44,5 +59,6 @@ async function downloadExecutiveReportPdf(req, res) {
 
 module.exports = {
   generateExecutiveReport,
+  getLatestExecutiveReportHandler,
   downloadExecutiveReportPdf,
 };

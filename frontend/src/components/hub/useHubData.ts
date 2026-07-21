@@ -4,6 +4,8 @@ import { listFindings, type FindingItem } from "../../api/findings.api";
 import { getPensionAnalysis, getPensionImportHistory, type PensionAnalysisData } from "../../api/pension.api";
 import { listDocuments, type DocumentItem } from "../../api/documents.api";
 import { getInsuranceAnalysis } from "../../api/insuranceAI.api";
+import { getFinancialHealthScore } from "../../api/financialHealth.api";
+import type { FullAnalysisGlobalScore } from "../../api/fullAnalysis.api";
 import { enrichPayslipFromDoc } from "../../utils/payslipEnrichment";
 import { domainOf } from "./agentDisplay";
 
@@ -36,6 +38,7 @@ export type HubData = {
   loading: boolean;
   findings: FindingItem[];
   pension: PensionAnalysisData | null;
+  healthScore: FullAnalysisGlobalScore | null;
   documents: DocumentItem[];
   completedDocs: number;
   domainCounts: Record<AgentId, number>;
@@ -54,6 +57,7 @@ export function useHubData(): HubData {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [importedPolicies, setImportedPolicies] = useState(0);
   const [pensionScoreTrend, setPensionScoreTrend] = useState<number[]>([]);
+  const [healthScore, setHealthScore] = useState<FullAnalysisGlobalScore | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -63,7 +67,8 @@ export function useHubData(): HubData {
       listDocuments(),
       getPensionImportHistory(),
       getInsuranceAnalysis(),
-    ]).then(([findRes, penRes, docRes, histRes, insRes]) => {
+      getFinancialHealthScore(new Date().getFullYear()),
+    ]).then(([findRes, penRes, docRes, histRes, insRes, healthRes]) => {
       if (!alive) return;
       if (findRes.status === "fulfilled" && findRes.value.success && findRes.value.data) {
         setFindings(findRes.value.data);
@@ -85,6 +90,24 @@ export function useHubData(): HubData {
       }
       if (insRes.status === "fulfilled" && insRes.value.ok && insRes.value.data?.data) {
         setImportedPolicies(insRes.value.data.data.policies?.length ?? 0);
+      }
+      if (healthRes.status === "fulfilled" && healthRes.value.success && healthRes.value.data) {
+        // same score the master agent computes on a full run — mapped to the
+        // band's shape so the health card is populated straight from mount
+        const h = healthRes.value.data;
+        setHealthScore({
+          year: h.year,
+          score: h.score,
+          level: h.level,
+          label: h.label,
+          categories: h.categories.map(c => ({
+            id: c.key,
+            label: c.name,
+            score: c.score,
+            maxScore: c.maxScore,
+            status: c.status,
+          })),
+        });
       }
       setLoading(false);
     });
@@ -155,6 +178,7 @@ export function useHubData(): HubData {
     loading,
     findings,
     pension,
+    healthScore,
     documents,
     completedDocs,
     domainCounts,

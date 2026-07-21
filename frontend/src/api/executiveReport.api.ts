@@ -79,6 +79,32 @@ export const generateExecutiveReport = async (options?: { skipLLM?: boolean }) =
   return { success: true, ...payload.data } as const;
 };
 
+type LatestExecutiveReportResponse = {
+  success: boolean;
+  data?: {
+    runId: string;
+    report: ExecutiveReport;
+    savedAt: string;
+  } | null;
+};
+
+/** The user's most recent saved report (kept 7 days server-side), if any. */
+export const getLatestExecutiveReport = async () => {
+  const result = await apiJson<LatestExecutiveReportResponse>("/api/executive/report/latest", {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לטעון את הדוח האחרון.",
+  });
+
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as const;
+  }
+  const latest = result.data?.data;
+  if (!latest?.report) {
+    return { success: true, found: false } as const;
+  }
+  return { success: true, found: true, ...latest } as const;
+};
+
 export const downloadExecutiveReportPdf = async (options?: { runId: string }) => {
   if (!options?.runId) {
     return { success: false, message: "חסר מזהה דוח. יש ליצור דוח לפני ההורדה." } as const;

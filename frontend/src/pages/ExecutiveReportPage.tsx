@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowRight,
   CheckCircle2,
   Download,
   FileText,
+  History,
   Lightbulb,
   RefreshCw,
   Sparkles,
@@ -18,6 +19,7 @@ import Loader from "../components/ui/Loader";
 import {
   downloadExecutiveReportPdf,
   generateExecutiveReport,
+  getLatestExecutiveReport,
   type ExecutiveReport,
 } from "../api/executiveReport.api";
 import { APP_ROUTES } from "../types/navigation";
@@ -113,14 +115,18 @@ function RoadmapBucket({
 
 export default function ExecutiveReportPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [report, setReport] = useState<ExecutiveReport | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadReport = useCallback(async () => {
     setLoading(true);
+    setGenerating(true);
     setError(null);
     const result = await generateExecutiveReport();
     if (!result.success) {
@@ -129,12 +135,35 @@ export default function ExecutiveReportPage() {
     } else {
       setReport(result.report);
       setRunId(result.runId);
+      setFromCache(false);
     }
     setLoading(false);
+    setGenerating(false);
   }, []);
 
+  // Entry behavior: an explicit run from the Hub (state.fresh) generates a new
+  // report; any other visit (back navigation, direct link, refresh) shows the
+  // last saved report instantly and only generates when none exists yet.
   useEffect(() => {
-    void loadReport();
+    const wantsFresh = (location.state as { fresh?: boolean } | null)?.fresh === true;
+    if (wantsFresh) {
+      void loadReport();
+      return;
+    }
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      const latest = await getLatestExecutiveReport();
+      if (latest.success && latest.found) {
+        setReport(latest.report);
+        setRunId(latest.runId);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+      await loadReport();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadReport]);
 
   const handleDownloadPdf = async () => {
@@ -217,7 +246,28 @@ export default function ExecutiveReportPage() {
                 הדוח הפיננסי שלך
               </h1>
               {generatedLabel ? (
-                <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>נוצר ב-{generatedLabel}</p>
+                <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>
+                  נוצר ב-{generatedLabel}
+                  {fromCache ? (
+                    <span
+                      style={{
+                        marginInlineStart: 10,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        background: "var(--lav-50)",
+                        color: "var(--lav-600)",
+                        borderRadius: 999,
+                        padding: "3px 10px",
+                        fontSize: 12,
+                        fontWeight: 800,
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      <History size={12} /> הניתוח האחרון שנשמר
+                    </span>
+                  ) : null}
+                </p>
               ) : null}
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -240,7 +290,7 @@ export default function ExecutiveReportPage() {
                   opacity: loading ? 0.6 : 1,
                 }}
               >
-                <RefreshCw size={16} /> רענון
+                <RefreshCw size={16} /> {fromCache ? "ניתוח חדש" : "רענון"}
               </button>
               <button
                 type="button"
@@ -273,7 +323,7 @@ export default function ExecutiveReportPage() {
           <section style={{ textAlign: "center", padding: "60px 20px" }}>
             <Loader />
             <p style={{ marginTop: 16, color: "var(--text-muted)", fontWeight: 600 }}>
-              מרכזים את כל הסוכנים לדוח אחד...
+              {generating ? "מרכזים את כל הסוכנים לדוח אחד..." : "טוענים את הניתוח האחרון שלך..."}
             </p>
           </section>
         ) : null}
