@@ -15,11 +15,18 @@ import {
 } from "lucide-react";
 import PensionLeadingFundsTable from "./PensionLeadingFundsTable";
 import { buildLeadingFundsInsights } from "./leadingFundsInsights";
+import PensionCentralRecommendationsPanel from "./PensionCentralRecommendationsPanel";
 import PensionStructuredInsightsPanel from "./PensionStructuredInsightsPanel";
 import AgentInsightCta from "../ai/AgentInsightCta";
 import { formatCurrencyOrDash } from "../../utils/formatters";
 import { insightTeaser } from "../../utils/insightDisplay";
 import { FUND_TYPE_LABELS, RANK_BADGE, isPensionFundActive } from "../../utils/pensionDisplay";
+import {
+  shouldShowLegacyRecommendations,
+  shouldShowStructuredInsightsPanel,
+  shouldShowUnifiedRecommendations,
+  combinedRecommendationDisclaimer,
+} from "../../utils/pensionRecommendationDisplay";
 import type {
   PensionAnalysisData, PensionFundDTO, UploadPensionBody,
   PensionBenchmarkFundDTO, PensionRecommendationDTO, PensionHealthCategoryDTO,
@@ -111,6 +118,10 @@ export default function PensionAdvisor({
   const recs: PensionRecommendationDTO[] = data?.recommendations ?? [];
   const structuredInsights = data?.structuredInsights;
   const insightMeta = data?.insightMeta;
+  const showUnified = shouldShowUnifiedRecommendations(data);
+  const showLegacy = shouldShowLegacyRecommendations(data);
+  const showStructuredPanel = shouldShowStructuredInsightsPanel(data);
+  const recommendationDisclaimer = combinedRecommendationDisclaimer(data);
 
   const base = projection?.projectedAccumulation ?? summary?.currentAccumulation ?? 0;
   const optimistic = projection?.scenarios?.optimistic.accumulation ?? 0;
@@ -258,54 +269,71 @@ export default function PensionAdvisor({
         </div>
       )}
 
-      <PensionStructuredInsightsPanel
-        insights={structuredInsights}
-        meta={insightMeta}
-        loading={analysisLoading}
-        error={analysisError}
-        onRetry={onRetryAnalysis}
-        hasLegacyRecommendations={recs.length > 0}
-      />
+      {showUnified ? (
+        <PensionCentralRecommendationsPanel
+          recommendations={data?.primaryRecommendations}
+          positiveFindings={data?.positiveFindings}
+          additionalInsights={data?.additionalInsights}
+          summary={data?.llmSummary}
+          loading={analysisLoading}
+          error={analysisError}
+          onRetry={onRetryAnalysis}
+          disclaimer={recommendationDisclaimer}
+        />
+      ) : (
+        <>
+          {(analysisLoading || analysisError || showStructuredPanel) && (
+            <PensionStructuredInsightsPanel
+              insights={structuredInsights}
+              meta={insightMeta}
+              loading={analysisLoading}
+              error={analysisError}
+              onRetry={onRetryAnalysis}
+              hasLegacyRecommendations={showLegacy}
+            />
+          )}
 
-      <PensionLeadingFundsTable insights={tableInsights} />
-
-      {/* recommendations by impact — legacy shape; shown when API has no structuredInsights or as supplement */}
-      {recs.length > 0 && (
-        <div style={{ marginBottom: 18 }}>
-          <h2 style={{ fontSize: 13, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".06em", margin: "0 2px 14px" }}>
-            {structuredInsights?.length ? "המלצות נוספות" : "המלצות — מדורגות לפי השפעה כספית"}
-          </h2>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {recs.map((r, i) => {
-              const u = URGENCY[r.urgency] ?? URGENCY.low;
-              const [bg, fg] = REC_TONE[u.tone];
-              return (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
-                  <span style={{ width: 40, height: 40, borderRadius: "50%", flex: "none", background: bg, color: fg, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 16 }}>{i + 1}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: 800, fontSize: 15.5, color: "var(--text-strong)" }}>{r.title}</span>
-                      <span style={{ fontSize: 10.5, fontWeight: 800, color: fg, background: bg, borderRadius: 999, padding: "2px 9px" }}>{u.tag}</span>
+          {showLegacy && (
+            <div style={{ marginBottom: 18 }}>
+              <h2 style={{ fontSize: 13, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".06em", margin: "0 2px 14px" }}>
+                המלצות — מדורגות לפי השפעה כספית
+              </h2>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {recs.map((r, i) => {
+                  const u = URGENCY[r.urgency] ?? URGENCY.low;
+                  const [bg, fg] = REC_TONE[u.tone];
+                  return (
+                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 16, padding: "16px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
+                      <span style={{ width: 40, height: 40, borderRadius: "50%", flex: "none", background: bg, color: fg, display: "grid", placeItems: "center", fontWeight: 900, fontSize: 16 }}>{i + 1}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 4, flexWrap: "wrap" }}>
+                          <span style={{ fontWeight: 800, fontSize: 15.5, color: "var(--text-strong)" }}>{r.title}</span>
+                          <span style={{ fontSize: 10.5, fontWeight: 800, color: fg, background: bg, borderRadius: 999, padding: "2px 9px" }}>{u.tag}</span>
+                        </div>
+                        <div style={{ fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                          {insightTeaser(r.reason, 100)}
+                        </div>
+                        <AgentInsightCta agent="pension" style={{ marginTop: 4 }} />
+                      </div>
+                      {r.financialImpact && (
+                        <div style={{ textAlign: "center", flex: "none" }}>
+                          <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: "-.02em", color: "var(--mint-ink)", whiteSpace: "nowrap" }}>{r.financialImpact}</div>
+                          <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>עד הפרישה</div>
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
-                      {insightTeaser(r.reason, 100)}
-                    </div>
-                    <AgentInsightCta agent="pension" style={{ marginTop: 4 }} />
-                  </div>
-                  {r.financialImpact && (
-                    <div style={{ textAlign: "center", flex: "none" }}>
-                      <div style={{ fontSize: 17, fontWeight: 900, letterSpacing: "-.02em", color: "var(--mint-ink)", whiteSpace: "nowrap" }}>{r.financialImpact}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>עד הפרישה</div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  );
+                })}
+              </div>
+              {recommendationDisclaimer && (
+                <p style={{ margin: "14px 2px 0", fontSize: 11.5, color: "var(--text-faint)", lineHeight: 1.5 }}>{recommendationDisclaimer}</p>
+              )}
+            </div>
+          )}
+        </>
       )}
 
-      {/* funds */}
+      <PensionLeadingFundsTable insights={tableInsights} />
       <div style={{ ...cardBox, marginBottom: 18 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <span style={{ fontSize: 15.5, fontWeight: 800, color: "var(--text-strong)" }}>

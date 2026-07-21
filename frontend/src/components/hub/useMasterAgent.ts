@@ -37,7 +37,12 @@ export type MasterAgent = {
   runFocused: (key: BackendAgentKey) => void;
 };
 
-export function useMasterAgent(): MasterAgent {
+type UseMasterAgentOptions = {
+  /** Called after a successful full run (post sync overlay). */
+  onFullComplete?: () => void;
+};
+
+export function useMasterAgent(options?: UseMasterAgentOptions): MasterAgent {
   const [phase, setPhase] = useState<Phase>("idle");
   const [focusKey, setFocusKey] = useState<BackendAgentKey | null>(null);
   const [result, setResult] = useState<FullAnalysisResponse | null>(null);
@@ -68,10 +73,11 @@ export function useMasterAgent(): MasterAgent {
     if (res.ok && res.data) {
       applyResult(res.data);
       setPhase("done");
+      options?.onFullComplete?.();
     } else {
       setPhase("error");
     }
-  }, [applyResult]);
+  }, [applyResult, options?.onFullComplete]);
 
   /** Run a single agent (focused analysis). Shows the solo-mission overlay
    *  for just this agent while it works. */

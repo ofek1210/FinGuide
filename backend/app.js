@@ -26,6 +26,8 @@ const dashboardRoutes = require('./routes/dashboard');
 const agentRoutes = require('./routes/agents');
 const govRoutes = require('./routes/gov');
 const summaryEmailRoutes = require('./routes/summaryEmail');
+const executiveReportRoutes = require('./routes/executiveReport');
+const smartOnboardingRoutes = require('./routes/smartOnboarding');
 
 const createApp = () => {
   const app = express();
@@ -90,6 +92,7 @@ const createApp = () => {
   app.use('/api/ai', aiRoutes);
   app.use('/api/findings', findingsRoutes);
   app.use('/api/onboarding', onboardingRoutes);
+  app.use('/api/smart-onboarding', smartOnboardingRoutes);
   app.use('/api/profile', profileRoutes);
   app.use('/api/insights', insightsRoutes);
   app.use('/api/recommendations', recommendationsRoutes);
@@ -106,6 +109,7 @@ const createApp = () => {
   app.use('/api/agents', agentRoutes);
   app.use('/api/gov', govRoutes);
   app.use('/api/summary-email', summaryEmailRoutes);
+  app.use('/api/executive', executiveReportRoutes);
 
   // 404 handler
   app.use((req, res) => {

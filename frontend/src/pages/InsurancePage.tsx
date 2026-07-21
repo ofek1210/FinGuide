@@ -14,6 +14,8 @@ import InsuranceRibbonWave from "../components/insurance/InsuranceRibbonWave";
 import InsuranceImportGuide from "../components/insurance/InsuranceImportGuide";
 import InsuranceUpload from "../components/insurance/InsuranceUpload";
 import InsuranceOnboardingWizard from "../components/insurance/InsuranceOnboardingWizard";
+import AgentOnboardingModal from "../components/onboarding/AgentOnboardingModal";
+import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import AIInsightsLoadingState from "../components/ai/AIInsightsLoadingState";
 import {
   getInsuranceAnalysis,
@@ -40,17 +42,26 @@ const HAR_HABITUACH_URL = INSURANCE_SITE_URL;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const fmt = formatCurrencyOrDash;
 
-function insuranceShell(children: React.ReactNode) {
-  return (
-    <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
-      <PrivateTopbar />
-      {children}
-      <AppFooter variant="private" />
-    </div>
-  );
-}
-
 export default function InsurancePage() {
+  const agentOnboarding = useAgentOnboarding("insurance");
+
+  function insuranceShell(children: React.ReactNode) {
+    return (
+      <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
+        <AgentOnboardingModal
+          open={agentOnboarding.showModal}
+          agentLabel="ביטוח"
+          estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+          questions={agentOnboarding.state?.missingQuestions || []}
+          onClose={agentOnboarding.dismiss}
+          onSubmit={agentOnboarding.submit}
+        />
+        <PrivateTopbar />
+        {children}
+        <AppFooter variant="private" />
+      </div>
+    );
+  }
   const [data, setData] = useState<InsuranceAnalysisResponse["data"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysisError, setAnalysisError] = useState<string | null>(null);

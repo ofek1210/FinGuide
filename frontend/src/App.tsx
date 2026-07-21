@@ -14,17 +14,17 @@ import PayslipMissingFieldsPage from "./pages/PayslipMissingFieldsPage";
 import InsurancePage from "./pages/InsurancePage";
 import NotificationsPage from "./pages/NotificationsPage";
 import AIAgentsPage from "./pages/AIAgentsPage";
-import FinancialHealthPage from "./pages/FinancialHealthPage";
 import SettingsPage from "./pages/SettingsPage";
 import HelpPage from "./pages/HelpPage";
 import IntegrationsEmailPage from "./pages/IntegrationsEmailPage";
 import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
-import OnboardingPage from "./pages/OnboardingPage";
+import SmartOnboardingPage from "./pages/SmartOnboardingPage";
 import WelcomePage from "./pages/WelcomePage";
 import WelcomePagePreview from "./pages/WelcomePagePreview";
 import PensionPage from "./pages/PensionPage";
 import GemelPage from "./pages/GemelPage";
+import ExecutiveReportPage from "./pages/ExecutiveReportPage";
 import TeamPage from "./pages/TeamPage";
 import ContactPage from "./pages/ContactPage";
 import FAQPage from "./pages/FAQPage";
@@ -84,7 +84,7 @@ export default function App() {
           path={APP_ROUTES.onboarding}
           element={
             <RequireAuth>
-              <OnboardingPage />
+              <SmartOnboardingPage />
             </RequireAuth>
           }
         />
@@ -127,13 +127,14 @@ export default function App() {
         {/* legacy — the findings page was removed; keep old URLs working */}
         <Route path="/findings" element={<Navigate to={APP_ROUTES.hub} replace />} />
         <Route
-          path={APP_ROUTES.financialHealth}
+          path={APP_ROUTES.executiveReport}
           element={
             <RequireAuth>
-              <FinancialHealthPage />
+              <ExecutiveReportPage />
             </RequireAuth>
           }
         />
+        <Route path={APP_ROUTES.financialHealth} element={<Navigate to={APP_ROUTES.hub} replace />} />
         <Route path="/copilot" element={<Navigate to={APP_ROUTES.hub} replace />} />
         <Route path="/insights" element={<Navigate to={APP_ROUTES.hub} replace />} />
         <Route path="/planning" element={<Navigate to={APP_ROUTES.hub} replace />} />

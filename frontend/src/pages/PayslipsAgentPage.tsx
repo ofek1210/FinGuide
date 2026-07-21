@@ -20,6 +20,8 @@ import DocumentsRibbonWave from "../components/documents/DocumentsRibbonWave";
 import PayslipsAgentTabs from "../components/payslips/PayslipsAgentTabs";
 import TaxAssistantPanel from "../components/payslips/TaxAssistantPanel";
 import Loader from "../components/ui/Loader";
+import AgentOnboardingFlow from "../components/onboarding/AgentOnboardingFlow";
+import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
 import { APP_ROUTES } from "../types/navigation";
@@ -98,6 +100,7 @@ type WizardStep = "upload" | "results";
 ════════════════════════════════════════════════════════════════ */
 export default function PayslipsAgentPage() {
   const navigate = useNavigate();
+  const agentOnboarding = useAgentOnboarding("payslip");
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const forceUpload = searchParams.get("upload") === "1" || searchParams.get("step") === "upload";
@@ -168,6 +171,7 @@ export default function PayslipsAgentPage() {
         ) : step === "upload" ? (
           <UploadStep
             intake={intake}
+            agentOnboarding={agentOnboarding}
             onComplete={(analyzableCount, uploadedDocs) => {
               setResultsSeedDocs(analyzableCount > 0 ? uploadedDocs : null);
               setResultsRefreshKey(k => k + 1);
@@ -225,8 +229,9 @@ function StepIndicator({ step }: { step: WizardStep }) {
 /* ════════════════════════════════════════════════════════════════
    STEP 1 — UPLOAD (manual PDF only)
 ════════════════════════════════════════════════════════════════ */
-function UploadStep({ intake, onComplete, onBack }: {
+function UploadStep({ intake, agentOnboarding, onComplete, onBack }: {
   intake: IntakeData;
+  agentOnboarding: ReturnType<typeof useAgentOnboarding>;
   onComplete: (analyzableCount: number, uploadedDocs: DocumentItem[]) => void;
   onBack: () => void;
 }) {
@@ -305,6 +310,32 @@ function UploadStep({ intake, onComplete, onBack }: {
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "44px 24px 80px" }}>
       <StepIndicator step="upload" />
 
+      {agentOnboarding.needsQuestions ? (
+        <>
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <h1 style={{ fontSize: "clamp(28px,3.4vw,40px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.1, margin: "0 0 12px", color: "var(--text-strong)" }}>
+              לפני שמעלים תלושים
+            </h1>
+            <p style={{ fontSize: 16.5, color: "var(--text-muted)", lineHeight: 1.55, fontWeight: 500, margin: "0 auto", maxWidth: 420 }}>
+              כמה שאלות קצרות שיעזרו לנו לנתח את התלושים שלך בצורה מדויקת יותר.
+            </p>
+          </div>
+          <AgentOnboardingFlow
+            variant="inline"
+            agentLabel="תלושי שכר"
+            estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+            questions={agentOnboarding.state?.missingQuestions || []}
+            onSkip={async () => { await agentOnboarding.skip(); }}
+            onSubmit={agentOnboarding.submit}
+          />
+          <div style={{ marginTop: 26 }}>
+            <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, color: "var(--text-muted)" }}>
+              <ChevronRight size={16} strokeWidth={2.4} /> חזרה
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <h1 style={{ fontSize: "clamp(28px,3.4vw,40px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.1, margin: "0 0 12px", color: "var(--text-strong)" }}>
           {intake.firstName ? `${intake.firstName}, נמשוך את התלושים שלך.` : "בוא נמשוך את התלושים שלך."}
@@ -389,6 +420,8 @@ function UploadStep({ intake, onComplete, onBack }: {
           </PrimaryBtn>
         </div>
       </div>
+        </>
+      )}
     </main>
   );
 }

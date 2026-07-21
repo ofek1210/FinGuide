@@ -16,6 +16,8 @@ const {
   getPayslipBenchmarks,
   postPensiaCohortAnnual,
   getPensiaCohortAnnual,
+  postGemelCohortAnnual,
+  getGemelCohortAnnual,
 } = require('../controllers/govController');
 
 const excelUpload = multer({
@@ -34,9 +36,14 @@ router.get('/status', (req, res, next) => {
   Promise.resolve(getGovStatus(req, res)).catch(next);
 });
 
-/** POST /api/gov/sync — trigger pensia + gemel + bituah sync */
+/** POST /api/gov/sync — trigger full market sync (pensia + gemel + bituah + tracks + cohort) */
 router.post('/sync', (req, res, next) => {
   Promise.resolve(postGovSync(req, res)).catch(next);
+});
+
+/** POST /api/gov/sync-all — alias for full sync including cohort macro tables */
+router.post('/sync-all', (req, res, next) => {
+  Promise.resolve(postGovSyncAll(req, res)).catch(next);
 });
 
 /** GET /api/gov/gemel/advice — personalized gemel/study fund advice */
@@ -62,6 +69,16 @@ router.get('/pensia/cohort-annual', (req, res, next) => {
 /** POST /api/gov/pensia/cohort-annual — import tsuotHodPtihaRDL.xls from Pensia-Net UI */
 router.post('/pensia/cohort-annual', excelUpload.single('file'), (req, res, next) => {
   Promise.resolve(postPensiaCohortAnnual(req, res)).catch(next);
+});
+
+/** GET /api/gov/gemel/cohort-annual — imported macro annual returns by fund type */
+router.get('/gemel/cohort-annual', (req, res, next) => {
+  Promise.resolve(getGemelCohortAnnual(req, res)).catch(next);
+});
+
+/** POST /api/gov/gemel/cohort-annual — import tsuotHodPtihaRDL.xls from Gemel-Net UI */
+router.post('/gemel/cohort-annual', excelUpload.single('file'), (req, res, next) => {
+  Promise.resolve(postGemelCohortAnnual(req, res)).catch(next);
 });
 
 /** GET /api/gov/:net/status — single net sync meta */

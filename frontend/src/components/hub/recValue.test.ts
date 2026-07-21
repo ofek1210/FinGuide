@@ -1,4 +1,4 @@
-import { parseYearlyImpact, effortFor, compareByValue, totalYearlyValue } from "./recValue";
+import { parseYearlyImpact, effortFor, compareByValue, compareByUrgency, totalYearlyValue } from "./recValue";
 import type { FullAnalysisRecommendation } from "../../api/fullAnalysis.api";
 
 const rec = (over: Partial<FullAnalysisRecommendation>): FullAnalysisRecommendation => ({
@@ -65,6 +65,14 @@ describe("compareByValue", () => {
     const highUrgency = rec({ type: "emergency_fund", urgency: "high" });
     const lowUrgency = rec({ type: "savings_habit", urgency: "low" });
     expect([lowUrgency, highUrgency].sort(compareByValue)[0]).toBe(highUrgency);
+  });
+});
+
+describe("compareByUrgency", () => {
+  it("puts high urgency before medium even when medium has higher value", () => {
+    const urgent = rec({ urgency: "high", financialImpact: "~₪100/שנה" });
+    const valuable = rec({ urgency: "medium", financialImpact: "+₪1,167/חודש" });
+    expect([valuable, urgent].sort(compareByUrgency)[0]).toBe(urgent);
   });
 });
 

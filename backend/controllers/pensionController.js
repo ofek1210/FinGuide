@@ -53,7 +53,8 @@ async function getPensionAnalysis(req, res) {
   if (isDemoRequest(req)) {
     return res.json({ success: true, data: MOCK_PENSION_ANALYSIS });
   }
-  const data = await buildPensionAnalysis(req.user._id);
+  const skipLLM = req.query.skipLLM === 'true';
+  const data = await buildPensionAnalysis(req.user._id, { skipLLM });
   return res.json({ success: true, data });
 }
 
