@@ -14,7 +14,9 @@ import {
   Loader2, Trash2, Landmark, Percent, CalendarClock, type LucideIcon,
 } from "lucide-react";
 import GemelLeadingFundsTable from "./GemelLeadingFundsTable";
+import AgentInsightCta from "../ai/AgentInsightCta";
 import { formatCurrencyOrDash } from "../../utils/formatters";
+import { insightTeaser } from "../../utils/insightDisplay";
 import type {
   GemelAnalysisData, GemelFundDTO, GemelMarketFundDTO,
   GemelRecommendationDTO, GemelFindingDTO, UploadGemelFundBody, GemelFundType,
@@ -241,7 +243,10 @@ export default function GemelAdvisor({
                     <MiniStat label="ממוצע שוק" value={f.marketFee != null ? `${f.marketFee.toFixed(2)}%` : "—"} />
                     <MiniStat label="חיסכון שנתי אפשרי" value={f.annualSavingsEstimate ? fmt(f.annualSavingsEstimate) : "—"} highlight={!!f.annualSavingsEstimate} />
                   </div>
-                  <p style={{ margin: 0, fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.55 }}>{f.summaryHe}</p>
+                  <p style={{ margin: 0, fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                    {insightTeaser(f.summaryHe, 110)}
+                  </p>
+                  <AgentInsightCta agent="gemel" style={{ marginTop: 6 }} />
                   {f.alternatives.length > 0 && (
                     <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: "var(--r-sm)", background: "var(--surface-sunken)", fontSize: 12.5, color: "var(--text-body)", fontWeight: 600 }}>
                       חלופות מובילות:{" "}
@@ -274,7 +279,10 @@ export default function GemelAdvisor({
                       <span style={{ fontWeight: 800, fontSize: 15.5, color: "var(--text-strong)" }}>{r.title}</span>
                       <span style={{ fontSize: 10.5, fontWeight: 800, color: fg, background: bg, borderRadius: 999, padding: "2px 9px" }}>{u.tag}</span>
                     </div>
-                    <div style={{ fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{r.reason}</div>
+                    <div style={{ fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                      {insightTeaser(r.reason, 100)}
+                    </div>
+                    <AgentInsightCta agent="gemel" style={{ marginTop: 4 }} />
                   </div>
                   {r.financialImpact && (
                     <div style={{ textAlign: "center", flex: "none" }}>
@@ -302,7 +310,10 @@ export default function GemelAdvisor({
                   <span style={{ width: 32, height: 32, borderRadius: 9, flex: "none", background: s.bg, color: s.fg, display: "grid", placeItems: "center" }}><Icon size={16} strokeWidth={2.4} /></span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-strong)" }}>{f.title}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{f.details}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                      {insightTeaser(f.details, 96)}
+                    </div>
+                    <AgentInsightCta agent="gemel" style={{ marginTop: 4 }} />
                   </div>
                 </div>
               );
