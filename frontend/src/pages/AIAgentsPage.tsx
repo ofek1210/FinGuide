@@ -22,6 +22,15 @@ function formatConversationPreview(
   return dateLabel ? `${text}${text.length >= 42 ? "…" : ""} · ${dateLabel}` : text;
 }
 
+function formatRateLimitWait(until: number | null): string | null {
+  if (!until) return null;
+  const sec = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+  if (sec <= 0) return null;
+  if (sec < 60) return `${sec} שניות`;
+  const min = Math.ceil(sec / 60);
+  return min === 1 ? "דקה" : `${min} דקות`;
+}
+
 function degradedBannerText(reason?: string): string | null {
   if (!reason) return null;
   if (reason === "budget_exhausted") {
@@ -63,6 +72,7 @@ export default function AIAgentsPage() {
     deleteConversation,
     renameConversation,
     rateMessage,
+    feedbackToast,
     startVoiceInput,
     stopVoiceInput,
     pageContext,
@@ -70,11 +80,18 @@ export default function AIAgentsPage() {
 
   const [input, setInput] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
 
   const rateLimited = Boolean(rateLimitedUntil && Date.now() < rateLimitedUntil);
+  const rateLimitWait = formatRateLimitWait(rateLimitedUntil);
+  const showSuggestions =
+    historyHydrated &&
+    !isSending &&
+    messages.filter((m) => m.id !== "welcome").length === 0;
   const latestAssistant = [...messages]
     .reverse()
     .find((m) => m.role === "assistant" && !m.isStreaming && m.source);
@@ -101,21 +118,28 @@ export default function AIAgentsPage() {
 
   const handleSend = (forced?: string) => {
     const text = (forced ?? input).trim();
-    if (!text || isSending || rateLimited) return;
+    if (!text || isSending || rateLimited || !historyHydrated) return;
     setInput("");
     sendMessage(text);
   };
 
-  const handleRename = useCallback(
-    async (id: string, currentTitle: string | undefined, event: React.MouseEvent) => {
+  const handleStartRename = useCallback(
+    (id: string, currentTitle: string | undefined, event: React.MouseEvent) => {
       event.stopPropagation();
-      const next = window.prompt("שם חדש לשיחה", currentTitle || "");
-      if (next == null) return;
-      const trimmed = next.trim();
+      setRenamingId(id);
+      setRenameDraft(currentTitle || "");
+    },
+    [],
+  );
+
+  const handleCommitRename = useCallback(
+    async (id: string) => {
+      const trimmed = renameDraft.trim();
+      setRenamingId(null);
       if (!trimmed) return;
       await renameConversation(id, trimmed);
     },
-    [renameConversation],
+    [renameDraft, renameConversation],
   );
 
   return (
@@ -146,6 +170,16 @@ export default function AIAgentsPage() {
               </button>
               {historyOpen ? (
                 <div className="ai-agents-history-menu" role="listbox">
+                  <button
+                    type="button"
+                    className="ai-agents-history-new"
+                    onClick={() => {
+                      clearChat();
+                      setHistoryOpen(false);
+                    }}
+                  >
+                    ＋ שיחה חדשה
+                  </button>
                   {conversations.length === 0 ? (
                     <div className="ai-agents-history-empty">אין שיחות קודמות</div>
                   ) : (
@@ -156,23 +190,42 @@ export default function AIAgentsPage() {
                           c.conversationId === conversationId ? " is-active" : ""
                         }`}
                       >
-                        <button
-                          type="button"
-                          className="ai-agents-history-item"
-                          onClick={() => {
-                            selectConversation(c.conversationId);
-                            setHistoryOpen(false);
-                          }}
-                        >
-                          {formatConversationPreview(c.title, c.preview, c.updatedAt)}
-                          {c.degraded || c.lastSource === "ollama" ? (
-                            <span className="ai-agents-history-meta"> מקומי</span>
-                          ) : null}
-                        </button>
+                        {renamingId === c.conversationId ? (
+                          <input
+                            className="ai-agents-history-rename-input"
+                            value={renameDraft}
+                            autoFocus
+                            aria-label="שם חדש לשיחה"
+                            onChange={(e) => setRenameDraft(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                void handleCommitRename(c.conversationId);
+                              }
+                              if (e.key === "Escape") setRenamingId(null);
+                            }}
+                            onBlur={() => void handleCommitRename(c.conversationId)}
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            className="ai-agents-history-item"
+                            onClick={() => {
+                              selectConversation(c.conversationId);
+                              setHistoryOpen(false);
+                            }}
+                          >
+                            {formatConversationPreview(c.title, c.preview, c.updatedAt)}
+                            {c.degraded || c.lastSource === "ollama" ? (
+                              <span className="ai-agents-history-meta"> מקומי</span>
+                            ) : null}
+                          </button>
+                        )}
                         <button
                           type="button"
                           aria-label="שנה שם"
-                          onClick={(e) => void handleRename(c.conversationId, c.title, e)}
+                          onClick={(e) => handleStartRename(c.conversationId, c.title, e)}
                         >
                           ✎
                         </button>
@@ -207,7 +260,10 @@ export default function AIAgentsPage() {
 
         {error ? (
           <div className="ai-agents-error" role="alert">
-            <span>{error}</span>
+            <span>
+              {error}
+              {rateLimited && rateLimitWait ? ` (נותרו ${rateLimitWait})` : ""}
+            </span>
             {lastFailedUserMessage ? (
               <button
                 type="button"
@@ -220,17 +276,25 @@ export default function AIAgentsPage() {
           </div>
         ) : null}
 
+        {feedbackToast ? (
+          <div className="ai-agents-toast" role="status">
+            {feedbackToast}
+          </div>
+        ) : null}
+
         {!historyHydrated ? (
           <div className="ai-agents-loading" aria-live="polite">
             טוען שיחה…
           </div>
         ) : null}
 
-        <div className="ai-agents-messages" aria-live="polite">
+        <div className="ai-agents-messages" aria-live="polite" aria-busy={isSending || !historyHydrated}>
           {messages.map((m) => (
             <div key={m.id} className={`ai-agents-msg ${m.role}`}>
               {m.isStreaming && !m.content ? (
                 <span>מכין תשובה…</span>
+              ) : m.isStreaming ? (
+                <div className="ai-agents-stream-plain">{m.content}</div>
               ) : (
                 <div dangerouslySetInnerHTML={{ __html: renderMarkdown(m.content) }} />
               )}
@@ -267,6 +331,8 @@ export default function AIAgentsPage() {
                       <button
                         type="button"
                         className={m.feedbackRating === 1 ? "is-active" : ""}
+                        aria-label="תשובה מועילה"
+                        title="מועיל"
                         onClick={() => void rateMessage(m.id, 1)}
                       >
                         👍
@@ -274,6 +340,8 @@ export default function AIAgentsPage() {
                       <button
                         type="button"
                         className={m.feedbackRating === -1 ? "is-active" : ""}
+                        aria-label="תשובה לא מועילה"
+                        title="לא מועיל"
                         onClick={() => void rateMessage(m.id, -1)}
                       >
                         👎
@@ -287,18 +355,20 @@ export default function AIAgentsPage() {
           <div ref={endRef} />
         </div>
 
-        <div className="ai-agents-suggestions">
-          {suggestions.map((s) => (
-            <button
-              key={s}
-              type="button"
-              disabled={isSending || rateLimited}
-              onClick={() => handleSend(s)}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        {showSuggestions ? (
+          <div className="ai-agents-suggestions">
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                type="button"
+                disabled={isSending || rateLimited || !historyHydrated}
+                onClick={() => handleSend(s)}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        ) : null}
 
         <div className="ai-agents-input">
           {isVoiceInputSupported ? (
@@ -322,9 +392,13 @@ export default function AIAgentsPage() {
               }
             }}
             placeholder={
-              rateLimited ? "המתינו לפני שאלה נוספת…" : "כתבו שאלה פיננסית…"
+              rateLimited && rateLimitWait
+                ? `המתינו עוד ${rateLimitWait}…`
+                : !historyHydrated
+                  ? "טוען שיחה…"
+                  : "כתבו שאלה פיננסית…"
             }
-            disabled={isSending || rateLimited}
+            disabled={isSending || rateLimited || !historyHydrated}
           />
           {isSending ? (
             <button type="button" onClick={stopGeneration}>
@@ -334,7 +408,7 @@ export default function AIAgentsPage() {
             <button
               type="button"
               onClick={() => handleSend()}
-              disabled={rateLimited || !input.trim()}
+              disabled={rateLimited || !historyHydrated || !input.trim()}
             >
               שליחה
             </button>

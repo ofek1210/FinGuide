@@ -8144,6 +8144,56 @@
   color: #c0392b;
 }
 
+.floating-assistant-history-delete.is-confirm {
+  background: rgba(192, 57, 43, 0.16);
+  color: #c0392b;
+  font-weight: 800;
+}
+
+.floating-assistant-history-new {
+  display: block;
+  width: 100%;
+  text-align: right;
+  border: 0;
+  border-bottom: 1px solid var(--border-soft, #eceaf3);
+  background: transparent;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 750;
+  color: var(--lav-600, #5b4db8);
+  cursor: pointer;
+}
+
+.floating-assistant-history-new:hover {
+  background: rgba(80, 90, 180, 0.06);
+}
+
+.floating-assistant-history-rename-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border-soft, #d8d5e4);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.82rem;
+  background: #fff;
+}
+
+.floating-assistant-toast {
+  margin: 0 14px 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(46, 160, 110, 0.12);
+  color: #1f7a52;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.floating-assistant-stream-plain {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .floating-assistant-loading {
   padding: 8px 16px;
   font-size: 0.82rem;

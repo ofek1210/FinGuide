@@ -366,10 +366,10 @@ export async function renameConversation(conversationId: string, title: string) 
 
 export async function submitMessageFeedback(
   messageId: string,
-  rating: 1 | -1,
+  rating: 1 | -1 | 0,
   note?: string,
 ) {
-  const result = await apiJson<{ success: boolean }>(
+  const result = await apiJson<{ success: boolean; rating?: 1 | -1 | null }>(
     `/api/ai/chat/messages/${encodeURIComponent(messageId)}/feedback`,
     {
       method: "POST",

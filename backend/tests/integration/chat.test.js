@@ -282,4 +282,74 @@ describe('Chat integration', () => {
     expect(json.body.intent).toBe(done.intent);
     expect(json.body.source).toBe(done.source);
   });
+
+  it('rejects conversationId that belongs to another user', async () => {
+    const other = await request(app).post('/api/auth/register').send({
+      name: 'Other User',
+      email: `other-${Date.now()}@test.com`,
+      password: 'Test123',
+    });
+    const otherToken = other.body.data.token;
+
+    const owned = await request(app)
+      .post('/api/ai/chat')
+      .set('Authorization', `Bearer ${otherToken}`)
+      .send({ message: 'שלום' });
+    expect(owned.statusCode).toBe(200);
+    const foreignId = owned.body.conversationId;
+
+    const hijack = await request(app)
+      .post('/api/ai/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ message: 'שלום', conversationId: foreignId });
+    expect(hijack.statusCode).toBe(403);
+    expect(hijack.body.success).toBe(false);
+  });
+
+  it('keeps the first-question title when later messages arrive', async () => {
+    const first = await request(app)
+      .post('/api/ai/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ message: 'כמה שכר נטו קיבלתי?' });
+    expect(first.statusCode).toBe(200);
+    const conversationId = first.body.conversationId;
+
+    await request(app)
+      .post('/api/ai/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ message: 'תודה', conversationId });
+
+    const list = await request(app)
+      .get('/api/ai/chat/conversations')
+      .set('Authorization', `Bearer ${token}`);
+    expect(list.statusCode).toBe(200);
+    const conv = list.body.data.find(c => c.conversationId === conversationId);
+    expect(conv).toBeTruthy();
+    expect(conv.title).toContain('כמה שכר נטו');
+    expect(conv.title).not.toBe('תודה');
+  });
+
+  it('allows clearing message feedback with rating 0', async () => {
+    const chat = await request(app)
+      .post('/api/ai/chat')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ message: 'שלום' });
+    const conversationId = chat.body.conversationId;
+    const hist = await request(app)
+      .get(`/api/ai/chat/history?conversationId=${conversationId}`)
+      .set('Authorization', `Bearer ${token}`);
+    const assistant = hist.body.data.find(m => m.role === 'assistant');
+
+    await request(app)
+      .post(`/api/ai/chat/messages/${assistant._id}/feedback`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ rating: 1 });
+
+    const cleared = await request(app)
+      .post(`/api/ai/chat/messages/${assistant._id}/feedback`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ rating: 0 });
+    expect(cleared.statusCode).toBe(200);
+    expect(cleared.body.rating).toBeNull();
+  });
 });

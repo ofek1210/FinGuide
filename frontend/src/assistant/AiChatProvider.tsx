@@ -121,6 +121,22 @@ export function getSuggestionsForPath(pathname: string): readonly string[] {
       "מה מצב הביטוחים שלי?",
     ];
   }
+  if (path === APP_ROUTES.executiveReport || path.startsWith(`${APP_ROUTES.executiveReport}/`)) {
+    return [
+      "תסביר לי את דוח המנהלים בקצרה.",
+      "מה ההמלצה הכי חשובה בדוח?",
+      "מה הכי חשוב לעשות עכשיו?",
+      "תן לי סיכום פיננסי של המצב שלי.",
+    ];
+  }
+  if (path === APP_ROUTES.assistant || path === APP_ROUTES.aiAgents) {
+    return [
+      "תן לי סיכום פיננסי של המצב שלי.",
+      "כמה שכר נטו קיבלתי החודש?",
+      "יש חריגות בתלושים שלי?",
+      "מה יקרה אם אקבל העלאה של 10%?",
+    ];
+  }
 
   return AI_PROMPT_SUGGESTIONS.slice(0, 4);
 }
@@ -157,6 +173,8 @@ type AiChatContextValue = {
   deleteConversation: (conversationId: string) => Promise<void>;
   renameConversation: (conversationId: string, title: string) => Promise<void>;
   rateMessage: (messageId: string, rating: 1 | -1) => Promise<void>;
+  feedbackToast: string | null;
+  clearFeedbackToast: () => void;
   startVoiceInput: (onTranscript: (text: string) => void) => void;
   stopVoiceInput: () => void;
   setPageContextOverride: (value: PageContextOverride | null) => void;
@@ -284,9 +302,35 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
   );
   const [historyHydrated, setHistoryHydrated] = useState(!conversationId);
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
+  const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
 
   const streamAbortRef = useRef<(() => void) | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const selectGenRef = useRef(0);
+
+  // Live tick so rate-limit countdown UI re-renders every second.
+  const [, setRateLimitTick] = useState(0);
+  useEffect(() => {
+    if (!rateLimitedUntil) return;
+    if (Date.now() >= rateLimitedUntil) {
+      setRateLimitedUntil(null);
+      return;
+    }
+    const id = window.setInterval(() => {
+      if (Date.now() >= rateLimitedUntil) {
+        setRateLimitedUntil(null);
+        return;
+      }
+      setRateLimitTick((n) => n + 1);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [rateLimitedUntil]);
+
+  useEffect(() => {
+    if (!feedbackToast) return;
+    const t = window.setTimeout(() => setFeedbackToast(null), 2200);
+    return () => window.clearTimeout(t);
+  }, [feedbackToast]);
 
   const refreshConversations = useCallback(() => {
     if (!isAuthenticated) return;
@@ -300,10 +344,11 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
       setHistoryHydrated(true);
       return;
     }
+    const gen = ++selectGenRef.current;
     let cancelled = false;
     setHistoryHydrated(false);
     void getChatHistory(conversationId).then((res) => {
-      if (cancelled) return;
+      if (cancelled || gen !== selectGenRef.current) return;
       if (res.success && res.data?.length) {
         const loaded: ChatMessage[] = res.data
           .filter((m) => m.role === "user" || m.role === "assistant")
@@ -320,7 +365,18 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
                 ? m.metadata.feedbackRating
                 : null,
           }));
-        if (loaded.length) setMessages(loaded);
+        setMessages(loaded.length ? loaded : [AI_WELCOME_MESSAGE]);
+      } else {
+        // Empty history: keep an in-flight local thread (just created via send),
+        // otherwise show welcome — never reuse a previous conversation's messages.
+        setMessages((prev) => {
+          const hasLocalThread = prev.some(
+            (m) =>
+              m.role === "user" ||
+              (m.role === "assistant" && m.id !== "welcome"),
+          );
+          return hasLocalThread ? prev : [AI_WELCOME_MESSAGE];
+        });
       }
       setHistoryHydrated(true);
     });
@@ -385,17 +441,34 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
     streamAbortRef.current?.();
     streamAbortRef.current = null;
     setIsSending(false);
-    setMessages((prev) =>
-      prev.map((m) => (m.isStreaming ? { ...m, isStreaming: false } : m)),
-    );
+    setMessages((prev) => {
+      const streaming = prev.find((m) => m.isStreaming);
+      if (!streaming) return prev;
+      // Empty abort — drop the unfinished assistant bubble and mark user turn stopped.
+      if (!streaming.content.trim()) {
+        return prev
+          .filter((m) => m.id !== streaming.id)
+          .map((m, i, arr) =>
+            i === arr.length - 1 && m.role === "user"
+              ? { ...m, content: `${m.content}\n\n_(הופסק)_` }
+              : m,
+          );
+      }
+      return prev.map((m) =>
+        m.isStreaming
+          ? { ...m, isStreaming: false, degradedReason: m.degradedReason || "client_aborted" }
+          : m,
+      );
+    });
   }, []);
 
   const sendMessage = useCallback(
     (text: string) => {
       const trimmed = text.trim();
-      if (!trimmed || isSending) return;
+      if (!trimmed || isSending || !historyHydrated) return;
       if (rateLimitedUntil && Date.now() < rateLimitedUntil) {
-        setError("חרגת ממגבלת השאלות לעוזר. נסו שוב בעוד כמה דקות.");
+        const secLeft = Math.max(1, Math.ceil((rateLimitedUntil - Date.now()) / 1000));
+        setError(`חרגת ממגבלת השאלות לעוזר. נסו שוב בעוד ${secLeft} שניות.`);
         return;
       }
 
@@ -482,7 +555,7 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
 
       streamAbortRef.current = abort;
     },
-    [conversationId, isSending, rateLimitedUntil, refreshConversations],
+    [conversationId, historyHydrated, isSending, rateLimitedUntil, refreshConversations],
   );
 
   const retryLastFailed = useCallback(() => {
@@ -510,6 +583,12 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       stopGeneration();
       stopVoiceInput();
+      // Clear immediately so the previous thread never flashes under the new id.
+      setMessages([AI_WELCOME_MESSAGE]);
+      sessionStorage.removeItem(AI_CHAT_STORAGE_KEY);
+      setError("");
+      setLastFailedUserMessage(null);
+      setHistoryHydrated(false);
       setConversationId(id);
       refreshConversations();
     },
@@ -551,15 +630,24 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
     if (!messageId || messageId.startsWith("assistant-") || messageId === "welcome") {
       return;
     }
-    const res = await submitMessageFeedback(messageId, rating);
+    const current = messages.find((m) => m.id === messageId)?.feedbackRating;
+    const nextRating = current === rating ? 0 : rating;
+    const res = await submitMessageFeedback(messageId, nextRating as 1 | -1 | 0);
     if (!res.success) {
       setError(("message" in res && res.message) || "לא הצלחנו לשמור את הדירוג.");
       return;
     }
     setMessages((prev) =>
-      prev.map((m) => (m.id === messageId ? { ...m, feedbackRating: rating } : m)),
+      prev.map((m) =>
+        m.id === messageId
+          ? { ...m, feedbackRating: nextRating === 0 ? null : (nextRating as 1 | -1) }
+          : m,
+      ),
     );
-  }, []);
+    setFeedbackToast(nextRating === 0 ? "הדירוג בוטל" : "תודה על הדירוג");
+  }, [messages]);
+
+  const clearFeedbackToast = useCallback(() => setFeedbackToast(null), []);
 
   const startVoiceInput = useCallback(
     (onTranscript: (text: string) => void) => {
@@ -629,6 +717,8 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
       deleteConversation,
       renameConversation,
       rateMessage,
+      feedbackToast,
+      clearFeedbackToast,
       startVoiceInput,
       stopVoiceInput,
       setPageContextOverride,
@@ -657,6 +747,8 @@ export function AiChatProvider({ children }: { children: ReactNode }) {
       deleteConversation,
       renameConversation,
       rateMessage,
+      feedbackToast,
+      clearFeedbackToast,
       startVoiceInput,
       stopVoiceInput,
       suggestions,

@@ -284,3 +284,41 @@
   font-weight: 700;
 }
 
+.ai-agents-history-new {
+  display: block;
+  width: 100%;
+  text-align: right;
+  border: 0;
+  border-bottom: 1px solid var(--border-soft, #eceaf3);
+  background: transparent;
+  padding: 10px 12px;
+  font: inherit;
+  font-weight: 750;
+  color: var(--lav-600, #5b4db8);
+  cursor: pointer;
+}
+
+.ai-agents-history-rename-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border-soft, #d8d5e4);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.ai-agents-toast {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(46, 160, 110, 0.12);
+  color: #1f7a52;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.ai-agents-stream-plain {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+

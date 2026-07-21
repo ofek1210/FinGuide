@@ -38,4 +38,12 @@ const chatMessageSchema = new mongoose.Schema(
 
 chatMessageSchema.index({ user: 1, conversationId: 1, createdAt: 1 });
 
+// TTL: align with Conversation retention so messages don't orphan after conv expiry.
+const retentionDays = Number(process.env.CHAT_RETENTION_DAYS);
+const days = Number.isFinite(retentionDays) && retentionDays > 0 ? retentionDays : 180;
+chatMessageSchema.index(
+  { createdAt: 1 },
+  { expireAfterSeconds: days * 24 * 60 * 60 },
+);
+
 module.exports = mongoose.model('ChatMessage', chatMessageSchema);

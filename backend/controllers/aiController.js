@@ -134,22 +134,63 @@ function logChatMeta(payload) {
   }
 }
 
+/**
+ * Resolve a client conversation id to an owned ObjectId.
+ * Rejects ids that belong to another user (403). Creates a new id when none given.
+ */
+async function resolveOwnedConversationId(userId, clientConversationId) {
+  if (!clientConversationId || !mongoose.Types.ObjectId.isValid(clientConversationId)) {
+    return { ok: true, conversationId: new mongoose.Types.ObjectId() };
+  }
+  const conversationId = new mongoose.Types.ObjectId(clientConversationId);
+  const owned = await Conversation.findOne({ _id: conversationId, user: userId }).lean();
+  if (owned) return { ok: true, conversationId };
+
+  const foreignConv = await Conversation.findById(conversationId).select('_id user').lean();
+  if (foreignConv) {
+    return { ok: false, status: 403, message: 'אין הרשאה לשיחה זו' };
+  }
+
+  const foreignMsg = await ChatMessage.exists({
+    conversationId,
+    user: { $ne: userId },
+  });
+  if (foreignMsg) {
+    return { ok: false, status: 403, message: 'אין הרשאה לשיחה זו' };
+  }
+
+  // Brand-new id or legacy thread that only has this user's messages.
+  return { ok: true, conversationId };
+}
+
+/**
+ * Upsert conversation metadata.
+ * - `title` is applied only on insert (stable first-question title).
+ * - `renameTitle` forces a title overwrite (explicit user rename).
+ */
 async function touchConversation(userId, conversationId, patch = {}) {
-  const title =
+  const insertTitle =
     typeof patch.title === 'string' && patch.title.trim()
       ? patch.title.trim().slice(0, 80)
+      : 'שיחה';
+  const renameTitle =
+    typeof patch.renameTitle === 'string' && patch.renameTitle.trim()
+      ? patch.renameTitle.trim().slice(0, 80)
       : undefined;
+
   const $set = {
     user: userId,
-    ...(title ? { title } : {}),
+    ...(renameTitle ? { title: renameTitle } : {}),
     ...(patch.lastSource != null ? { lastSource: patch.lastSource } : {}),
     ...(patch.degradedReason !== undefined ? { degradedReason: patch.degradedReason } : {}),
     ...(patch.preview != null ? { preview: String(patch.preview).slice(0, 120) } : {}),
   };
+
   // Avoid Mongo conflict: same path cannot appear in both $set and $setOnInsert.
-  const update = title
+  const update = renameTitle
     ? { $set }
-    : { $set, $setOnInsert: { title: 'שיחה' } };
+    : { $set, $setOnInsert: { title: insertTitle } };
+
   await Conversation.findOneAndUpdate(
     { _id: conversationId, user: userId },
     update,
@@ -449,7 +490,52 @@ function getRecommendedAction(ctx) {
 
 // ── server-side RAG: build context from DB ────────────────────────────────────
 
-async function buildUserContext(userId) {
+const USER_CONTEXT_CACHE_TTL_MS = 45_000;
+/** @type {Map<string, { at: number, light: object, heavy: object | null }>} */
+const userContextCache = new Map();
+
+function getCachedUserContext(userId, heavy) {
+  const key = String(userId);
+  const hit = userContextCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > USER_CONTEXT_CACHE_TTL_MS) {
+    userContextCache.delete(key);
+    return null;
+  }
+  if (heavy) return hit.heavy || null;
+  return hit.light || (hit.heavy ? stripHeavyContext(hit.heavy) : null);
+}
+
+function putCachedUserContext(userId, ctx, heavy) {
+  const key = String(userId);
+  const prev = userContextCache.get(key) || { at: Date.now(), light: null, heavy: null };
+  userContextCache.set(key, {
+    at: Date.now(),
+    light: heavy ? prev.light || stripHeavyContext(ctx) : ctx,
+    heavy: heavy ? ctx : prev.heavy,
+  });
+}
+
+function stripHeavyContext(ctx) {
+  return {
+    ...ctx,
+    insights: [],
+    recommendations: [],
+    pensionAnalysis: null,
+    insuranceAnalysis: null,
+    findings: [],
+  };
+}
+
+/**
+ * @param {string|import('mongoose').Types.ObjectId} userId
+ * @param {{ heavy?: boolean }} [opts] — heavy=false skips pension/insurance/findings/insights (rule path)
+ */
+async function buildUserContext(userId, opts = {}) {
+  const heavy = opts.heavy !== false;
+  const cached = getCachedUserContext(userId, heavy);
+  if (cached) return cached;
+
   const documents = await Document.find({
     user: userId,
     status: { $in: ['completed', 'needs_review'] },
@@ -460,10 +546,17 @@ async function buildUserContext(userId) {
     .limit(50)
     .lean();
 
+  const profilePromise = UserProfile.findOne({ user: userId }).lean();
+  const heavyPromises = heavy
+    ? [
+        Insight.find({ user: userId, status: 'active' }).sort({ createdAt: -1 }).limit(5).lean(),
+        Recommendation.find({ user: userId, status: 'active' }).sort({ importance: 1 }).limit(5).lean(),
+      ]
+    : [Promise.resolve([]), Promise.resolve([])];
+
   const [profile, insights, recommendations] = await Promise.all([
-    UserProfile.findOne({ user: userId }).lean(),
-    Insight.find({ user: userId, status: 'active' }).sort({ createdAt: -1 }).limit(5).lean(),
-    Recommendation.find({ user: userId, status: 'active' }).sort({ importance: 1 }).limit(5).lean(),
+    profilePromise,
+    ...heavyPromises,
   ]);
 
   const completedPayslips = selectRecentPayslipDocuments(documents, 3);
@@ -483,30 +576,33 @@ async function buildUserContext(userId) {
   }));
 
   let pensionAnalysis = null;
-  try {
-    const analysis = await buildPensionAnalysis(userId);
-    pensionAnalysis = toPensionSummary(analysis);
-  } catch {
-    // Non-fatal — copilot works without pension import data
-  }
-
   let insuranceAnalysis = null;
-  try {
-    const analysis = await buildInsuranceAnalysis(userId);
-    insuranceAnalysis = toInsuranceSummary(analysis);
-  } catch {
-    // Non-fatal
-  }
-
   let findings = [];
-  try {
-    const allFindings = await buildFindingsForUser(userId);
-    findings = toChatFindingsSummary(allFindings, 5);
-  } catch {
-    // Non-fatal — chat works without findings
+
+  if (heavy) {
+    try {
+      const analysis = await buildPensionAnalysis(userId);
+      pensionAnalysis = toPensionSummary(analysis);
+    } catch {
+      // Non-fatal — copilot works without pension import data
+    }
+
+    try {
+      const analysis = await buildInsuranceAnalysis(userId);
+      insuranceAnalysis = toInsuranceSummary(analysis);
+    } catch {
+      // Non-fatal
+    }
+
+    try {
+      const allFindings = await buildFindingsForUser(userId);
+      findings = toChatFindingsSummary(allFindings, 5);
+    } catch {
+      // Non-fatal — chat works without findings
+    }
   }
 
-  return {
+  const ctx = {
     documents: documents.map(d => ({
       status: d.status,
       type: d.metadata?.category || 'unknown',
@@ -550,6 +646,9 @@ async function buildUserContext(userId) {
     insuranceAnalysis,
     findings,
   };
+
+  putCachedUserContext(userId, ctx, heavy);
+  return ctx;
 }
 
 // ── rule-based answers ────────────────────────────────────────────────────────
@@ -906,20 +1005,23 @@ async function chatWithAI(req, res) {
     return res.status(400).json({ success: false, message: 'message too long (max 2000 chars)' });
   }
 
-  const conversationId = clientConversationId && mongoose.Types.ObjectId.isValid(clientConversationId)
-    ? new mongoose.Types.ObjectId(clientConversationId)
-    : new mongoose.Types.ObjectId();
+  const resolved = await resolveOwnedConversationId(req.user._id, clientConversationId);
+  if (!resolved.ok) {
+    return res.status(resolved.status).json({ success: false, message: resolved.message });
+  }
+  const { conversationId } = resolved;
 
-  const userContext = await buildUserContext(req.user._id);
   const intent = detectIntent(message);
+  // Rule intents only need payslip/profile; defer heavy RAG until LLM path.
+  let userContext = await buildUserContext(req.user._id, { heavy: false });
 
   let finalAnswer;
   let source;
   let model = null;
   let tokensUsed = null;
   let degradedReason = null;
-  const contextUsed = buildContextUsed(userContext, pageContext);
-  const citations = buildCitations(userContext, pageContext);
+  let contextUsed = buildContextUsed(userContext, pageContext);
+  let citations = buildCitations(userContext, pageContext);
 
   const dbHistory = await getChatHistory(req.user._id, conversationId);
   const mergedHistory = resolveMergedHistory(clientConversationId, dbHistory);
@@ -955,6 +1057,9 @@ async function chatWithAI(req, res) {
   } else {
     const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
     if (ruleAnswer === null) {
+      userContext = await buildUserContext(req.user._id, { heavy: true });
+      contextUsed = buildContextUsed(userContext, pageContext);
+      citations = buildCitations(userContext, pageContext);
       const chatResult = await claudeChat(message, {
         userContext,
         profile: userContext.profile,
@@ -1203,7 +1308,7 @@ async function renameConversation(req, res) {
   if (!owned && !conv) {
     return res.status(404).json({ success: false, message: 'שיחה לא נמצאה' });
   }
-  await touchConversation(req.user._id, conversationId, { title });
+  await touchConversation(req.user._id, conversationId, { renameTitle: title });
   const firstUser = await ChatMessage.findOne({
     user: req.user._id,
     conversationId,
@@ -1218,13 +1323,14 @@ async function renameConversation(req, res) {
 
 async function submitMessageFeedback(req, res) {
   const { id } = req.params;
-  const rating = Number(req.body?.rating);
+  const ratingRaw = req.body?.rating;
+  const rating = ratingRaw === 0 || ratingRaw === '0' ? 0 : Number(ratingRaw);
   const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 500) : null;
   if (!id || !mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ success: false, message: 'message id required' });
   }
-  if (rating !== 1 && rating !== -1) {
-    return res.status(400).json({ success: false, message: 'rating must be 1 or -1' });
+  if (rating !== 1 && rating !== -1 && rating !== 0) {
+    return res.status(400).json({ success: false, message: 'rating must be 1, -1, or 0' });
   }
   const msg = await ChatMessage.findOne({
     _id: id,
@@ -1236,12 +1342,12 @@ async function submitMessageFeedback(req, res) {
   }
   msg.metadata = {
     ...(msg.metadata?.toObject?.() || msg.metadata || {}),
-    feedbackRating: rating,
-    feedbackNote: note,
-    feedbackAt: new Date(),
+    feedbackRating: rating === 0 ? null : rating,
+    feedbackNote: rating === 0 ? null : note,
+    feedbackAt: rating === 0 ? null : new Date(),
   };
   await msg.save();
-  return res.json({ success: true, rating });
+  return res.json({ success: true, rating: rating === 0 ? null : rating });
 }
 
 // ── streaming handler ─────────────────────────────────────────────────────────
@@ -1258,14 +1364,16 @@ async function chatWithAIStream(req, res) {
     return res.status(400).json({ success: false, message: 'message too long (max 2000 chars)' });
   }
 
-  const conversationId = clientConversationId && mongoose.Types.ObjectId.isValid(clientConversationId)
-    ? new mongoose.Types.ObjectId(clientConversationId)
-    : new mongoose.Types.ObjectId();
+  const resolved = await resolveOwnedConversationId(req.user._id, clientConversationId);
+  if (!resolved.ok) {
+    return res.status(resolved.status).json({ success: false, message: resolved.message });
+  }
+  const { conversationId } = resolved;
 
-  const userContext = await buildUserContext(req.user._id);
   const intent = detectIntent(message);
-  const contextUsed = buildContextUsed(userContext, pageContext);
-  const citations = buildCitations(userContext, pageContext);
+  let userContext = await buildUserContext(req.user._id, { heavy: false });
+  let contextUsed = buildContextUsed(userContext, pageContext);
+  let citations = buildCitations(userContext, pageContext);
 
   const dbHistory = await getChatHistory(req.user._id, conversationId);
   const mergedHistory = resolveMergedHistory(clientConversationId, dbHistory);
@@ -1355,6 +1463,12 @@ async function chatWithAIStream(req, res) {
     res.end();
     return;
   }
+
+  // LLM path — enrich with pension/insurance/findings before streaming
+  userContext = await buildUserContext(req.user._id, { heavy: true });
+  contextUsed = buildContextUsed(userContext, pageContext);
+  citations = buildCitations(userContext, pageContext);
+  sendEvent({ type: 'meta', conversationId: conversationId.toString(), intent, contextUsed, citations });
 
   // LLM streaming
   let fullAnswer = '';
@@ -1623,5 +1737,8 @@ module.exports = {
   buildRuleBasedAnswer,
   buildChatMeta,
   sanitizePageContext,
+  resolveOwnedConversationId,
+  touchConversation,
+  titleFromMessage,
 };
 
