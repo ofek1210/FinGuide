@@ -5,6 +5,7 @@
 
 
 const InsurancePolicy = require('../models/InsurancePolicy');
+const PensionFund = require('../models/PensionFund');
 const {
   getInsuranceProfile,
   analyzeInsuranceCoverage,
@@ -16,7 +17,9 @@ const { buildBituahMarketAdvice } = require('./bituahNetAdvisorService');
 
 async function buildInsuranceAnalysis(userId) {
   const profileDTO = await getInsuranceProfile(userId);
-  const dbPolicies = await InsurancePolicy.find({ user: userId, status: { $ne: 'cancelled' } }).lean();
+  const dbPolicies = await InsurancePolicy.find({ user: userId, status: { $ne: 'cancelled' } })
+    .select('+rawData')
+    .lean();
 
   if (dbPolicies.length > 0) {
     profileDTO.policies = dbPolicies.map(p => ({
@@ -29,15 +32,18 @@ async function buildInsuranceAnalysis(userId) {
       startDate: p.startDate,
       endDate: p.endDate,
       status: p.status,
+      rawData: p.rawData,
+      notes: p.notes,
     }));
   }
 
-  const analysis = analyzeInsuranceCoverage(profileDTO);
+  const pensionFunds = await PensionFund.find({ user: userId }).lean();
+  const analysis = analyzeInsuranceCoverage(profileDTO, { pensionFunds });
   const policiesForDisplay = analysis.aggregatedPolicies || profileDTO.policies;
-  const healthCheck = runInsuranceHealthCheck(profileDTO, { ...analysis, policies: policiesForDisplay });
-  const recommendations = generateInsuranceRecommendations(analysis);
 
-  const marketAdvice = await buildMarketAdvice(policiesForDisplay, profileDTO);
+  const marketAdvice = await buildMarketAdvice(policiesForDisplay, profileDTO, { analysis });
+  const recommendations = generateInsuranceRecommendations(analysis, marketAdvice);
+  const healthCheck = runInsuranceHealthCheck(profileDTO, { ...analysis, policies: policiesForDisplay });
   const bituahAdvice = await buildBituahMarketAdvice(policiesForDisplay, profileDTO);
 
   const bituahRecs = (bituahAdvice.funds || [])

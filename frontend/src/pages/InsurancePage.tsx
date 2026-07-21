@@ -544,30 +544,40 @@ function ResultsStep({
   }
 
   const annualSavings = analysis?.savings?.annualSavings ?? 0;
-  const monthlyWaste = analysis?.totalMonthlyWaste ?? 0;
+  const premiumUnderReview = analysis?.premiumUnderReviewMonthly ?? analysis?.savings?.premiumUnderReviewMonthly ?? 0;
   const missing = analysis?.missingCoverage ?? [];
   const duplicates = analysis?.duplicates ?? [];
-  const score = healthCheck?.score;
+  const scoreDisabled = healthCheck?.scoreDisabled === true;
+  const score = scoreDisabled ? null : healthCheck?.score;
   const isReportWithoutPolicies = policies.length === 0 && hasAnalysisOutput;
-  const heroMetric = isReportWithoutPolicies
-    ? (score != null ? `${score}/100` : String(missing.length))
-    : fmt(annualSavings);
-  const heroMetricLabel = isReportWithoutPolicies
-    ? (score != null ? "ציון התאמת כיסוי" : "כיסויים חסרים")
-    : "פוטנציאל חיסכון שנתי";
-  const heroDescription = isReportWithoutPolicies
-    ? "הדוח נקלט, אבל לא נמצאו בו פוליסות פעילות. הניתוח מבוסס על תשובות השאלון ומדגיש כיסויים שכדאי לבדוק."
-    : "על בסיס זיהוי כפילויות ואופטימיזציית פרמיות בפוליסות שלך.";
+  const heroMetric = scoreDisabled
+    ? "—"
+    : isReportWithoutPolicies
+      ? (score != null ? `${score}/100` : String(missing.length))
+      : premiumUnderReview > 0
+        ? fmt(premiumUnderReview)
+        : fmt(annualSavings);
+  const heroMetricLabel = scoreDisabled
+    ? "מצב התיק הביטוחי"
+    : isReportWithoutPolicies
+      ? (score != null ? "ציון התאמת כיסוי" : "כיסויים חסרים")
+      : premiumUnderReview > 0
+        ? "פרמיה חודשית לבדיקה"
+        : "פוטנציאל חיסכון שנתי";
+  const heroDescription = scoreDisabled
+    ? (healthCheck?.messageHe ?? "נדרשת השלמת מידע כדי לבדוק כפילויות, מחירים ופערי כיסוי.")
+    : isReportWithoutPolicies
+      ? "הדוח נקלט, אבל לא נמצאו בו פוליסות פעילות. הניתוח מבוסס על תשובות השאלון ומדגיש כיסויים שכדאי לבדוק."
+      : "על בסיס כיסויים שדורשים בדיקה והשוואת פרמיות — ללא חיסכון מאומת.";
 
   const stats: { icon: LucideIcon; label: string; value: string; bg: string; fg: string }[] = [
     ...(score != null ? [{ icon: ShieldCheck, label: "ציון כיסוי", value: String(score), bg: "var(--peach-soft)", fg: "var(--peach-ink)" }] : []),
-    { icon: AlertTriangle, label: "כיסויים לבדיקה", value: String(missing.length), bg: "var(--butter-soft)", fg: "var(--butter-ink)" },
+    { icon: AlertTriangle, label: "כיסויים לבדיקה", value: String((analysis?.duplicateCount ?? 0) + missing.length), bg: "var(--butter-soft)", fg: "var(--butter-ink)" },
     { icon: Lightbulb, label: "המלצות", value: String(recs.length), bg: "var(--mint-soft)", fg: "var(--mint-ink)" },
     { icon: FileText, label: "פוליסות פעילות בדוח", value: String(policies.length), bg: "var(--lav-100)", fg: "var(--lav-600)" },
     ...(!isReportWithoutPolicies ? [
       { icon: Shield, label: "הוצאה חודשית", value: fmt(totalPremium), bg: "var(--peach-soft)", fg: "var(--peach-ink)" },
-      { icon: TrendingDown, label: "בזבוז מכפילויות", value: fmt(monthlyWaste), bg: monthlyWaste > 0 ? "rgba(214,69,69,.08)" : "var(--surface-sunken)", fg: monthlyWaste > 0 ? "var(--danger)" : "var(--text-faint)" },
-      { icon: TrendingUp, label: "חיסכון שנתי", value: fmt(annualSavings), bg: "var(--mint-soft)", fg: "var(--mint-ink)" },
+      ...(premiumUnderReview > 0 ? [{ icon: TrendingDown, label: "פרמיה לבדיקה", value: fmt(premiumUnderReview), bg: "var(--butter-soft)", fg: "var(--butter-ink)" }] : []),
     ] : []),
   ].slice(0, isReportWithoutPolicies ? 4 : 6);
 
@@ -717,8 +727,13 @@ function ResultsStep({
       )}
 
       {/* health check */}
-      {healthCheck && healthCheck.categories?.length > 0 && (
-        <Section title="בדיקת בריאות ביטוח" sub={`ציון כולל ${healthCheck.score}/100${healthCheck.level?.label ? ` · ${healthCheck.level.label}` : ""}`}>
+      {healthCheck && (healthCheck.scoreDisabled || (healthCheck.categories?.length ?? 0) > 0) && (
+        <Section title={healthCheck.headlineHe ?? "בדיקת בריאות ביטוח"} sub={healthCheck.scoreDisabled ? healthCheck.messageHe : `ציון כולל ${healthCheck.score}/100${healthCheck.level?.label ? ` · ${healthCheck.level.label}` : ""}`}>
+          {healthCheck.scoreDisabled ? (
+            <div style={{ padding: "14px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>
+              {healthCheck.messageHe}
+            </div>
+          ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {healthCheck.categories.map(c => {
               const [bg, fg] = statusTone(c.status);
@@ -735,22 +750,25 @@ function ResultsStep({
               );
             })}
           </div>
+          )}
         </Section>
       )}
 
-      {/* duplicates */}
+      {/* overlaps for review */}
       {duplicates.length > 0 && (
-        <Section title="כיסויים כפולים שזוהו" sub="פוליסות שייתכן ומיותרות — שווה לבדוק">
+        <Section title="כיסויים הדורשים בדיקה" sub="קיימת חפיפה אפשרית — לא אושר חיסכון">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14 }}>
             {duplicates.map((dup: InsuranceDuplicate, i: number) => (
-              <div key={i} style={{ position: "relative", overflow: "hidden", padding: "16px 18px", background: "var(--card)", border: "1px solid rgba(214,69,69,.22)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
-                <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 3, background: "var(--danger)" }} />
+              <div key={i} style={{ position: "relative", overflow: "hidden", padding: "16px 18px", background: "var(--card)", border: "1px solid var(--butter)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
+                <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 3, background: "var(--butter-ink)" }} />
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span style={{ fontWeight: 800, fontSize: 15, color: "var(--danger)" }}>{POLICY_TYPE_LABELS[dup.type] ?? dup.type}</span>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: "var(--danger)", background: "rgba(214,69,69,.08)", borderRadius: 999, padding: "2px 9px" }}>{dup.policies.length} כפולים</span>
+                  <span style={{ fontWeight: 800, fontSize: 15, color: "var(--butter-ink)" }}>{dup.typeLabelHe ?? POLICY_TYPE_LABELS[dup.type] ?? dup.type}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "var(--butter-ink)", background: "var(--butter-soft)", borderRadius: 999, padding: "2px 9px" }}>{dup.policyCount ?? dup.policies.length} פוליסות</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 8 }}>{dup.policies.map(p => p.provider).filter(Boolean).join(" · ") || "—"}</div>
-                <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--danger)" }}>בזבוז: {fmt(dup.estimatedMonthlyWaste)} / חודש</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 8 }}>{dup.reasonHe ?? (dup.policies.map(p => p.provider).filter(Boolean).join(" · ") || "—")}</div>
+                {(dup.premiumUnderReviewMonthly ?? 0) > 0 && (
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--butter-ink)" }}>פרמיה חודשית לבדיקה: {fmt(dup.premiumUnderReviewMonthly ?? 0)}</div>
+                )}
               </div>
             ))}
           </div>

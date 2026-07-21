@@ -225,84 +225,34 @@ function aggregatePoliciesByPolicyNumber(policies) {
   return [...consolidated, ...ungrouped];
 }
 
+const { normalizeInsurancePolicies } = require('./insurance/insurancePolicyNormalizationService');
+const {
+  analyzeDuplicateCoverage,
+  mapFindingsToLegacyDuplicates,
+} = require('./insurance/insuranceDuplicateEvidenceService');
+
 /**
- * Detect true cross-policy duplications (different policy numbers, same risk type).
+ * Evidence-based overlap detection — no "cheapest keeper" waste calculation.
  * @param {object[]} aggregatedPolicies - output of aggregatePoliciesByPolicyNumber
  * @param {object} [options]
- * @param {boolean} [options.hasKupatHolimSupplement] - user has Shaban-style coverage
+ * @param {number|null} [options.vehiclesOwned]
  */
-function detectTruePolicyDuplications(aggregatedPolicies, { hasKupatHolimSupplement = true } = {}) {
-  const byRisk = new Map();
+function detectTruePolicyDuplications(aggregatedPolicies, options = {}) {
+  const normalizedPolicies = normalizeInsurancePolicies(aggregatedPolicies);
+  const result = analyzeDuplicateCoverage(normalizedPolicies, options);
 
-  for (const policy of aggregatedPolicies || []) {
-    const policyKey = policy.aggregationKey
-      || policyGroupKey(policy.provider, policy.policyNumber)
-      || `singleton::${policy.id || policy.provider || 'unknown'}`;
-
-    const riskTypes = policy.riskTypes?.length
-      ? policy.riskTypes
-      : inferRiskTypes(policy);
-
-    for (const riskType of riskTypes) {
-      if (!byRisk.has(riskType)) byRisk.set(riskType, new Map());
-      const bucket = byRisk.get(riskType);
-
-      if (!bucket.has(policyKey)) {
-        bucket.set(policyKey, {
-          policyKey,
-          provider: policy.provider,
-          policyNumber: policy.policyNumber,
-          policyId: policy.id,
-          monthlyPremium: policy.monthlyPremium || 0,
-          isCatastrophic: CATASTROPHIC_IDS.has(riskType),
-          kupatHolimOverlap: KUPAT_HOLIM_OVERLAP_IDS.has(riskType),
-          riders: policy.riders || [],
-        });
-      }
-    }
-  }
-
-  const duplicates = [];
-  let totalWaste = 0;
-
-  for (const [riskType, policyMap] of byRisk.entries()) {
-    const entries = [...policyMap.values()];
-    if (entries.length < 2) continue;
-
-    const isCatastrophic = CATASTROPHIC_IDS.has(riskType);
-    const isKupatHolimOverlap = KUPAT_HOLIM_OVERLAP_IDS.has(riskType);
-
-    const sorted = [...entries].sort((a, b) => (a.monthlyPremium || 0) - (b.monthlyPremium || 0));
-    let waste = sorted.slice(1).reduce((sum, p) => sum + (p.monthlyPremium || 0), 0);
-
-    if (isKupatHolimOverlap && hasKupatHolimSupplement && waste === 0) {
-      waste = DEFAULT_REDUNDANT_WASTE;
-    }
-
-    duplicates.push({
-      type: riskType,
-      typeLabelHe: riskTypeLabelHe(riskType),
-      policies: entries.map(e => ({
-        provider: e.provider,
-        policyNumber: e.policyNumber,
-        policyId: e.policyId,
-        monthlyPremium: e.monthlyPremium,
-      })),
-      policyCount: entries.length,
-      estimatedMonthlyWaste: Math.round(waste),
-      isCatastrophic,
-      kupatHolimOverlap: isKupatHolimOverlap,
-      recommendCancellation: !isCatastrophic,
-      reasonHe: buildDuplicateReasonHe(riskType, entries, isCatastrophic, isKupatHolimOverlap),
-    });
-
-    totalWaste += waste;
-  }
+  const legacyDuplicates = mapFindingsToLegacyDuplicates(result.findings);
 
   return {
-    duplicates,
-    totalWaste: Math.round(totalWaste),
-    duplicateCount: duplicates.length,
+    duplicates: legacyDuplicates,
+    duplicateFindings: result.findings,
+    normalizedPolicies,
+    vehiclePackages: result.vehiclePackages,
+    vehicleVerificationNeeded: result.vehicleVerificationNeeded,
+    totalWaste: 0,
+    verifiedSavingMonthly: 0,
+    premiumUnderReviewMonthly: result.premiumUnderReviewMonthly,
+    duplicateCount: legacyDuplicates.length,
   };
 }
 
@@ -336,9 +286,7 @@ function buildDuplicateReasonHe(riskType, entries, isCatastrophic, isKupatHolimO
 function buildAggregationSummary(rawPolicies, aggregatedPolicies, duplicateResult) {
   const rawCount = (rawPolicies || []).filter(p => p.status !== 'cancelled' && p.status !== 'expired').length;
   const policyCount = aggregatedPolicies.length;
-  const cancellableDuplicates = (duplicateResult.duplicates || []).filter(d => d.recommendCancellation);
-  const redundantDuplications = cancellableDuplicates.length;
-  const cancellableWaste = cancellableDuplicates.reduce((s, d) => s + (d.estimatedMonthlyWaste || 0), 0);
+  const overlapReviews = duplicateResult.duplicateCount ?? 0;
   const catastrophicRiders = aggregatedPolicies.reduce(
     (sum, p) => sum + (p.riders || []).filter(r => r.isCatastrophic).length,
     0,
@@ -346,21 +294,25 @@ function buildAggregationSummary(rawPolicies, aggregatedPolicies, duplicateResul
 
   let status = 'optimized';
   let statusHe = 'כיסוי ליבה מאופטם';
-  if (redundantDuplications > 0) {
-    status = 'review_duplicates';
-    statusHe = `זוהו ${redundantDuplications} כפילויות אמיתיות בין פוליסות`;
+  if (duplicateResult.vehicleVerificationNeeded) {
+    status = 'needs_vehicle_count';
+    statusHe = 'נמצאו מספר פוליסות רכב — השלם כמה רכבים רשומים על שמך';
+  } else if (overlapReviews > 0) {
+    status = 'review_overlaps';
+    statusHe = `נמצאו ${overlapReviews} כיסויים הדורשים בדיקה`;
   } else if (rawCount > policyCount) {
-    status = 'optimized';
-    statusHe = `סה"כ פוליסות: ${policyCount}. כפילויות מיותרות: 0. סטטוס: כיסוי ליבה מאופטם (${rawCount} נספחים אוחדו)`;
+    statusHe = `סה"כ פוליסות: ${policyCount} (${rawCount} שורות מקור אוחדו לפי מספר פוליסה)`;
   }
 
   return {
     totalRawRows: rawCount,
     totalPolicies: policyCount,
     consolidatedRiderGroups: aggregatedPolicies.filter(p => p.isConsolidated).length,
-    redundantDuplications,
-    crossPolicyOverlaps: (duplicateResult.duplicates || []).length - redundantDuplications,
-    cancellableMonthlyWaste: Math.round(cancellableWaste),
+    redundantDuplications: 0,
+    crossPolicyOverlaps: overlapReviews,
+    cancellableMonthlyWaste: 0,
+    premiumUnderReviewMonthly: duplicateResult.premiumUnderReviewMonthly ?? null,
+    vehiclePackageCount: duplicateResult.vehiclePackages?.length ?? null,
     catastrophicRidersProtected: catastrophicRiders,
     status,
     statusHe,
@@ -377,10 +329,16 @@ function analyzeAggregatedInsurance(policies, options = {}) {
 
   return {
     aggregatedPolicies: aggregated,
+    normalizedPolicies: duplicateResult.normalizedPolicies,
     aggregationSummary: summary,
     duplicates: duplicateResult.duplicates,
+    duplicateFindings: duplicateResult.duplicateFindings,
     duplicateCount: duplicateResult.duplicateCount,
-    totalMonthlyWaste: duplicateResult.totalWaste,
+    vehiclePackages: duplicateResult.vehiclePackages,
+    vehicleVerificationNeeded: duplicateResult.vehicleVerificationNeeded,
+    totalMonthlyWaste: 0,
+    verifiedSavingMonthly: 0,
+    premiumUnderReviewMonthly: duplicateResult.premiumUnderReviewMonthly,
   };
 }
 
