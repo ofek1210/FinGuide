@@ -46,13 +46,19 @@ function processInlineMarkdown(text) {
   });
   out = out.replace(/\[([^\]]+)\]\(#([^)]+)\)/g, '<a href="#$2" class="toc-link">$1</a>');
   out = out.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, '<a href="$2">$1</a>');
+  out = out.replace(
+    /^(<a href="#[^"]+" class="toc-link">.+<\/a>)\s+—\s+(\d+)$/,
+    '<span class="toc-label">$1</span><span class="toc-dots"></span><span class="toc-page">$2</span>',
+  );
   out = out.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   out = out.replace(/\*(.+?)\*/g, '<em>$1</em>');
   return out;
 }
 
 function expandImagePlaceholders(html) {
-  return html.replace(/%%IMG:([^:]*?)::([^%]+?)%%/g, (_, alt, src) => {
+  // Captions conventionally contain a colon ("Figure 7: ..."), so the
+  // caption group must not stop at the first colon; `::` is the delimiter.
+  return html.replace(/%%IMG:(.+?)::([^%]+?)%%/g, (_, alt, src) => {
     const caption = alt.trim();
     const imgPath = path.join(ROOT, src);
     if (!fs.existsSync(imgPath)) {
@@ -113,13 +119,13 @@ function buildTable(lines) {
   const [header, ...body] = rows;
   let html = '<table><thead><tr>';
   header.forEach((c) => {
-    html += `<th>${c}</th>`;
+    html += `<th>${processInlineMarkdown(c)}</th>`;
   });
   html += '</tr></thead><tbody>';
   body.forEach((row) => {
     html += '<tr>';
     row.forEach((c) => {
-      html += `<td>${c}</td>`;
+      html += `<td>${processInlineMarkdown(c)}</td>`;
     });
     html += '</tr>';
   });
@@ -142,6 +148,13 @@ function convertLists(text) {
     const olMatch = line.match(/^(\s*)\d+\.\s+(.+)$/);
     const ulMatch = line.match(/^(\s*)[-*]\s+(.+)$/);
 
+    // Markdown commonly separates list items with a blank line. Preserve the
+    // current list across that whitespace so ordered lists continue 1, 2, 3
+    // instead of being emitted as several independent lists that each start at 1.
+    if (!line.trim() && stack.length) {
+      continue;
+    }
+
     if (olMatch || ulMatch) {
       const indent = (olMatch || ulMatch)[1].length;
       const content = (olMatch || ulMatch)[2];
@@ -149,10 +162,8 @@ function convertLists(text) {
       const level = Math.floor(indent / 2) + 1;
 
       while (stack.length < level) {
-        const openTag =
-          type === 'ul' && stack.length === level - 1
-            ? '<ul class="toc-list">'
-            : `<${type}>`;
+        const isToc = type === 'ul' && /\]\(#[^)]+\)\s+—\s+\d+$/.test(content);
+        const openTag = isToc ? '<ul class="toc-list">' : `<${type}>`;
         out.push(openTag);
         stack.push(type);
       }
