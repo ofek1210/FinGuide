@@ -184,6 +184,56 @@ describe('Executive report API', () => {
     expect(res.body.data.meta.agentStatuses.insurance).toBe('error');
   });
 
+  it('GET /api/executive/report/latest returns the last saved report without re-running agents', async () => {
+    mockAgents();
+    const app = harness.getApp();
+    const { token } = await harness.register();
+
+    const emptyRes = await request(app)
+      .get('/api/executive/report/latest')
+      .set('Authorization', `Bearer ${token}`);
+    expect(emptyRes.statusCode).toBe(200);
+    expect(emptyRes.body.success).toBe(true);
+    expect(emptyRes.body.data).toBeNull();
+
+    const gen = await request(app)
+      .post('/api/executive/report?skipLLM=true')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    const runId = gen.body.data.runId;
+    jest.clearAllMocks();
+
+    const res = await request(app)
+      .get('/api/executive/report/latest')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.runId).toBe(runId);
+    expect(res.body.data.savedAt).toBeTruthy();
+    expect(res.body.data.report.sections.executiveSummary).toBeTruthy();
+    expect(runPayslipAgent).not.toHaveBeenCalled();
+    expect(runPensionAgent).not.toHaveBeenCalled();
+  });
+
+  it('does not expose another user\'s latest report', async () => {
+    mockAgents();
+    const app = harness.getApp();
+    const { token } = await harness.register();
+
+    await request(app)
+      .post('/api/executive/report?skipLLM=true')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    const { token: otherToken } = await harness.register();
+    const res = await request(app)
+      .get('/api/executive/report/latest')
+      .set('Authorization', `Bearer ${otherToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data).toBeNull();
+  });
+
   it('returns 400 when PDF requested without runId', async () => {
     const app = harness.getApp();
     const { token } = await harness.register();
