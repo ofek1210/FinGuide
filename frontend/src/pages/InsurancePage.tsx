@@ -15,7 +15,7 @@ import InsuranceRibbonWave from "../components/insurance/InsuranceRibbonWave";
 import InsuranceImportGuide from "../components/insurance/InsuranceImportGuide";
 import InsuranceUpload from "../components/insurance/InsuranceUpload";
 import InsuranceOnboardingWizard from "../components/insurance/InsuranceOnboardingWizard";
-import AgentOnboardingModal from "../components/onboarding/AgentOnboardingModal";
+import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
 import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import AIInsightsLoadingState from "../components/ai/AIInsightsLoadingState";
 import {
@@ -51,14 +51,6 @@ export default function InsurancePage() {
   function insuranceShell(children: React.ReactNode) {
     return (
       <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
-        <AgentOnboardingModal
-          open={agentOnboarding.showModal || forceOnboardingModal}
-          agentLabel="ביטוח"
-          estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
-          questions={agentOnboarding.state?.missingQuestions || []}
-          onClose={agentOnboarding.dismiss}
-          onSubmit={agentOnboarding.submit}
-        />
         <PrivateTopbar />
         {children}
         <AppFooter variant="private" />
@@ -136,7 +128,7 @@ export default function InsurancePage() {
   }, [searchParams, step, setStep]);
 
   const hasInsuranceDocument = (data?.policies?.length ?? 0) > 0;
-  const forceOnboardingModal = hasInsuranceDocument && agentOnboarding.needsQuestions;
+  const needsSmartOnboarding = hasInsuranceDocument && agentOnboarding.needsQuestions;
 
   // When policies exist, route into onboarding or results — not the empty landing upload prompt.
   useEffect(() => {
@@ -250,6 +242,32 @@ export default function InsurancePage() {
       <InsuranceOnboardingWizard
         onBack={() => setStep("upload")}
         onComplete={showResults}
+      />,
+    );
+  }
+
+  if (step === "results" && needsSmartOnboarding) {
+    if (agentOnboarding.loading) {
+      return insuranceShell(
+        <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--peach-ink)" }}>בודקים מה חסר לפני הניתוח...</div>,
+      );
+    }
+    return insuranceShell(
+      <AgentOnboardingStep
+        agentId="insurance"
+        agentLabel="ביטוח"
+        estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+        questions={agentOnboarding.state?.missingQuestions ?? []}
+        phases={["document", "questions", "analysis"]}
+        activePhase="questions"
+        headline="עוד רגע — נשלים את תמונת הביטוח"
+        subhead="דוח הר הביטוח והשאלון כבר אצלנו. עוד כמה שאלות והסוכן יציג ניתוח, כפילויות והמלצות מלאים."
+        onSkip={agentOnboarding.dismiss}
+        onSubmit={async answers => {
+          const ok = await agentOnboarding.submit(answers);
+          if (ok) await load();
+          return ok;
+        }}
       />,
     );
   }

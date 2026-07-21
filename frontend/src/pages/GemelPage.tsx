@@ -21,7 +21,7 @@ import {
   type UploadGemelFundBody,
 } from "../api/gemel.api";
 import { isThreeCardAdvisory } from "../api/financialAdvisory.types";
-import AgentOnboardingModal from "../components/onboarding/AgentOnboardingModal";
+import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
 import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import { APP_ROUTES } from "../types/navigation";
 import { useRegisterPageContext } from "../assistant/AiChatProvider";
@@ -81,7 +81,7 @@ export default function GemelPage() {
     || (data?.summary?.totalMonthlyContribution ?? 0) > 0,
   );
   const hasGemelDocument = funds.length > 0 || hasPayslipGemelData || Boolean(data?.summary?.hasData);
-  const forceOnboardingModal = hasGemelDocument && agentOnboarding.needsQuestions;
+  const needsAgentQuestions = hasGemelDocument && agentOnboarding.needsQuestions;
 
   useEffect(() => {
     if (searchParams.get("flow") === "import") {
@@ -131,14 +131,6 @@ export default function GemelPage() {
 
   return (
     <div data-agent="gemel" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(185,139,22,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
-      <AgentOnboardingModal
-        open={agentOnboarding.showModal || forceOnboardingModal}
-        agentLabel="גמל והשתלמות"
-        estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
-        questions={agentOnboarding.state?.missingQuestions || []}
-        onClose={agentOnboarding.dismiss}
-        onSubmit={agentOnboarding.submit}
-      />
       <PrivateTopbar />
       {loading ? (
         <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--butter-ink)", fontSize: 14 }}>
@@ -150,6 +142,27 @@ export default function GemelPage() {
           title="חסר דוח מסלקה לגמל והשתלמות"
           body="קופות גמל וקרנות השתלמות נקלטות מדוח המסלקה הפנסיונית במרכז המסמכים. לאחר הייבוא, חזרו לכאן להשלמת האונבורדינג."
           documentId="clearinghouse"
+        />
+      ) : agentOnboarding.loading ? (
+        <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--butter-ink)", fontSize: 14 }}>
+          בודקים מה חסר לפני הניתוח...
+        </div>
+      ) : needsAgentQuestions ? (
+        <AgentOnboardingStep
+          agentId="gemel"
+          agentLabel="גמל והשתלמות"
+          estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+          questions={agentOnboarding.state?.missingQuestions ?? []}
+          phases={["document", "questions", "analysis"]}
+          activePhase="questions"
+          headline="כמעט שם — נשלים את תמונת הגמל"
+          subhead="נתוני המסלקה כבר אצלנו. עוד כמה שאלות והסוכן יציג ניתוח והמלצות מלאים לקופות גמל והשתלמות."
+          onSkip={agentOnboarding.dismiss}
+          onSubmit={async answers => {
+            const ok = await agentOnboarding.submit(answers);
+            if (ok) void loadAll();
+            return ok;
+          }}
         />
       ) : (
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "20px 24px 0" }}>

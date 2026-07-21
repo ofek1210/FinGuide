@@ -61,3 +61,38 @@ export function clearinghouseReadinessLines(readiness: ClearinghouseUploadReadin
   if (readiness.pensionInsuranceReady) lines.push("הסוכן הביטוחי קיבל כיסויים פנסיוניים");
   return lines;
 }
+
+export type ClearinghouseIntakeStatus = "waiting" | "complete";
+
+function intakeStorageKey(userId: string): string {
+  return `finguide:hub-clearinghouse-intake:${userId}`;
+}
+
+export function getClearinghouseIntakeStatus(userId: string): ClearinghouseIntakeStatus | null {
+  try {
+    const v = localStorage.getItem(intakeStorageKey(userId));
+    return v === "waiting" || v === "complete" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function markClearinghouseIntakeWaiting(userId?: string): void {
+  if (!userId) return;
+  try { localStorage.setItem(intakeStorageKey(userId), "waiting"); } catch { /* ignore */ }
+}
+
+export function markClearinghouseIntakeComplete(userId?: string): void {
+  if (!userId) return;
+  try { localStorage.setItem(intakeStorageKey(userId), "complete"); } catch { /* ignore */ }
+}
+
+export function shouldShowClearinghouseWelcome(
+  userId: string | undefined,
+  clearinghouseFundCount: number,
+  loading: boolean,
+): boolean {
+  if (loading || !userId || clearinghouseFundCount > 0) return false;
+  const status = getClearinghouseIntakeStatus(userId);
+  return status !== "waiting" && status !== "complete";
+}

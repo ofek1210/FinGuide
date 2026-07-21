@@ -7,7 +7,7 @@ import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import GlassCard from "../components/ui/GlassCard";
 import PensionAdvisor from "../components/pension/PensionAdvisor";
-import AgentOnboardingModal from "../components/onboarding/AgentOnboardingModal";
+import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
 import AgentMissingDocumentPanel from "../components/hub/AgentMissingDocumentPanel";
 import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import {
@@ -93,7 +93,7 @@ export default function PensionPage() {
   }, [searchParams, navigate]);
 
   const hasPensionDocument = funds.length > 0;
-  const forceOnboardingModal = hasPensionDocument && agentOnboarding.needsQuestions;
+  const needsAgentQuestions = hasPensionDocument && agentOnboarding.needsQuestions;
 
   const pensionContextLabel = isThreeCardAdvisory(data)
     ? "פנסיה · ניתוח שלוש-כרטיסים"
@@ -148,14 +148,6 @@ export default function PensionPage() {
 
   const shell = (children: React.ReactNode) => (
     <div data-agent="pension" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(47,156,98,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
-      <AgentOnboardingModal
-        open={agentOnboarding.showModal || forceOnboardingModal}
-        agentLabel="פנסיה"
-        estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
-        questions={agentOnboarding.state?.missingQuestions || []}
-        onClose={agentOnboarding.dismiss}
-        onSubmit={agentOnboarding.submit}
-      />
       <PrivateTopbar />
       {children}
       <AppFooter variant="private" />
@@ -177,6 +169,36 @@ export default function PensionPage() {
         title="חסר דוח מסלקה פנסיונית"
         body="ייבוא דוח המסלקה מתבצע במרכז המסמכים ב-Hub. לאחר הייבוא, חזרו לכאן להשלמת האונבורדינג והניתוח."
         documentId="clearinghouse"
+      />,
+    );
+  }
+
+  if (agentOnboarding.loading) {
+    return shell(
+      <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--mint-ink)", fontSize: 14 }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+        בודקים מה חסר לפני הניתוח...
+      </div>,
+    );
+  }
+
+  if (needsAgentQuestions) {
+    return shell(
+      <AgentOnboardingStep
+        agentId="pension"
+        agentLabel="פנסיה"
+        estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+        questions={agentOnboarding.state?.missingQuestions ?? []}
+        phases={["document", "questions", "analysis"]}
+        activePhase="questions"
+        headline="כמעט שם — נשלים את התמונה הפנסיונית"
+        subhead="דוח המסלקה כבר אצלנו. עוד כמה שאלות קצרות והסוכן יציג ניתוח, המלצות ותחזית מלאים."
+        onSkip={agentOnboarding.dismiss}
+        onSubmit={async answers => {
+          const ok = await agentOnboarding.submit(answers);
+          if (ok) void loadAnalysis();
+          return ok;
+        }}
       />,
     );
   }
