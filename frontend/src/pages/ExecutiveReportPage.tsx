@@ -3,16 +3,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowRight,
-  CheckCircle2,
   Download,
   FileText,
   History,
-  Lightbulb,
   RefreshCw,
-  Shield,
   Sparkles,
   Target,
-  Wallet,
 } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
@@ -21,8 +17,9 @@ import {
   downloadExecutiveReportPdf,
   generateExecutiveReport,
   getLatestExecutiveReport,
-  type DecisionCard,
+  type AgentReportSection,
   type ExecutiveReport,
+  type PreservedRecommendation,
 } from "../api/executiveReport.api";
 import { APP_ROUTES } from "../types/navigation";
 
@@ -74,92 +71,149 @@ function SectionCard({
   );
 }
 
-function DecisionCardView({ card }: { card: DecisionCard }) {
+function statusBadge(section: AgentReportSection) {
+  if (section.dataStatus === "error") {
+    return { label: "שגיאה בטעינה", color: "var(--peach-ink)", bg: "rgba(218,111,68,.1)" };
+  }
+  if (section.dataStatus === "missing") {
+    return { label: "נתונים חסרים", color: "var(--text-muted)", bg: "var(--surface-sunken)" };
+  }
+  if (section.recommendationStatus === "hasRecommendations") {
+    return { label: "יש המלצות", color: "var(--mint-ink)", bg: "var(--mint-soft)" };
+  }
+  return { label: "נבדק — ללא המלצות מהותיות", color: "var(--lav-600)", bg: "var(--lav-50)" };
+}
+
+function RecommendationView({ rec }: { rec: PreservedRecommendation }) {
   return (
     <article
       style={{
         border: "1px solid var(--border-hair)",
         borderRadius: "var(--r-md)",
-        padding: "18px 20px",
+        padding: "16px 18px",
         background: "var(--surface-sunken)",
       }}
     >
-      <h3 style={{ margin: "0 0 8px", fontSize: 17, fontWeight: 900, color: "var(--text-strong)" }}>{card.title}</h3>
-      {(card.sourceAgents?.length ?? 0) > 0 ? (
-        <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}>
-          מקור: {card.sourceAgents.join(", ")}
-          {card.sourceReports?.length ? ` · ${card.sourceReports.join(", ")}` : null}
-        </div>
+      <h4 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 900, color: "var(--text-strong)" }}>{rec.title}</h4>
+      {rec.description ? (
+        <p style={{ margin: "0 0 8px", fontSize: 14, lineHeight: 1.6, color: "var(--text-muted)" }}>{rec.description}</p>
       ) : null}
-      <div style={{ display: "grid", gap: 12, fontSize: 14, lineHeight: 1.6 }}>
-        <div>
-          <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>המצב כיום</div>
-          <div style={{ color: "var(--text-muted)" }}>{card.currentState}</div>
-        </div>
-        <div>
-          <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>מה מצאנו</div>
-          <div style={{ color: "var(--text-muted)" }}>{card.finding}</div>
-        </div>
-        <div>
-          <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>למה זה חשוב</div>
-          <div style={{ color: "var(--text-muted)" }}>{card.whyItMatters}</div>
-        </div>
-        {card.monetaryImpact?.hasImpact ? (
-          <div>
-            <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>השפעה אפשרית</div>
-            <div style={{ color: "var(--mint-ink)", fontWeight: 700 }}>{card.monetaryImpact.summary}</div>
-            {card.monetaryImpact.assumptions?.length ? (
-              <ul style={{ margin: "6px 0 0", paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 13 }}>
-                {card.monetaryImpact.assumptions.map(a => <li key={a}>{a}</li>)}
-              </ul>
-            ) : null}
-            {card.monetaryImpact.disclaimer ? (
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>{card.monetaryImpact.disclaimer}</div>
-            ) : null}
-          </div>
-        ) : null}
-        <div>
-          <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>מה לעשות</div>
-          <div style={{ color: "var(--text-muted)" }}>{card.recommendedAction}</div>
-          {card.steps?.length ? (
-            <ol style={{ margin: "8px 0 0", paddingInlineStart: 18, color: "var(--text-muted)" }}>
-              {card.steps.map((s, i) => <li key={i}>{s}</li>)}
-            </ol>
-          ) : null}
-        </div>
-        {card.questionsForProvider?.length ? (
-          <div>
-            <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>שאלות לספק / איש מקצוע</div>
-            <ul style={{ margin: "6px 0 0", paddingInlineStart: 18, color: "var(--text-muted)" }}>
-              {card.questionsForProvider.map(q => <li key={q}>{q}</li>)}
-            </ul>
-          </div>
-        ) : null}
-      </div>
-      {card.conflictNote ? (
-        <p style={{ margin: "12px 0 0", fontSize: 13, color: "var(--peach-ink)", fontWeight: 600 }}>
-          הערה: {card.conflictNote}
+      {rec.reason ? (
+        <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-muted)" }}>
+          <strong>למה זה חשוב:</strong> {rec.reason}
         </p>
+      ) : null}
+      {rec.expectedBenefit ? (
+        <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--mint-ink)", fontWeight: 700 }}>
+          צעד מומלץ: {rec.expectedBenefit}
+        </p>
+      ) : null}
+      {rec.source ? (
+        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>מקור: {rec.source}</p>
       ) : null}
     </article>
   );
 }
 
-function ActionList({ items, emptyLabel }: { items: { title: string; explanation: string; whoToContact?: string; whatToRequest?: string }[]; emptyLabel: string }) {
-  if (!items.length) {
-    return <p style={{ margin: 0, color: "var(--text-muted)" }}>{emptyLabel}</p>;
-  }
+function AgentSectionView({ section, index }: { section: AgentReportSection; index: number }) {
+  const badge = statusBadge(section);
   return (
-    <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
-      {items.map(item => (
-        <li key={item.title} style={{ padding: "12px 14px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)" }}>
-          <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>{item.title}</div>
-          {item.explanation ? <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{item.explanation}</div> : null}
-          {item.whoToContact ? <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>ליצירת קשר: {item.whoToContact}</div> : null}
-          {item.whatToRequest ? <div style={{ fontSize: 13, color: "var(--text-muted)" }}>לבקש: {item.whatToRequest}</div> : null}
-        </li>
-      ))}
-    </ul>
+    <SectionCard
+      id={`report-agent-${section.agentId}`}
+      icon={<FileText size={18} />}
+      title={`${index + 1}. ${section.title}`}
+    >
+      <div
+        style={{
+          display: "inline-flex",
+          padding: "4px 12px",
+          borderRadius: 999,
+          fontSize: 12,
+          fontWeight: 800,
+          color: badge.color,
+          background: badge.bg,
+          marginBottom: 14,
+        }}
+      >
+        {badge.label}
+      </div>
+
+      {section.statusMessage ? (
+        <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.7, color: "var(--text-strong)", fontWeight: 600 }}>
+          {section.statusMessage}
+        </p>
+      ) : null}
+
+      {section.missingDetail ? (
+        <div style={{ marginBottom: 16, padding: 14, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>מה חסר</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{section.missingDetail.whatIsMissing}</div>
+          <div style={{ fontWeight: 800, margin: "12px 0 6px" }}>מה ייפתח לאחר העלאה</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{section.missingDetail.whatEnables}</div>
+        </div>
+      ) : null}
+
+      {section.dataSummary.length > 0 ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>סיכום נתונים</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8 }}>
+            {section.dataSummary.map(item => (
+              <div key={`${item.label}-${item.value}`} style={{ padding: 12, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{item.label}</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {section.findings.length > 0 ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>ממצאי הסוכן</div>
+          <ul style={{ margin: 0, paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14, lineHeight: 1.6 }}>
+            {section.findings.map(f => (
+              <li key={f.title}>
+                <strong style={{ color: "var(--text-strong)" }}>{f.title}</strong>
+                {f.explanation ? ` — ${f.explanation}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {section.recommendations.length > 0 ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, marginBottom: 10 }}>המלצות</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {section.recommendations.map(rec => (
+              <RecommendationView key={`${rec.recommendationId || rec.title}`} rec={rec} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {section.plainLanguageExplanation ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>הסבר בשפה פשוטה</div>
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: "var(--text-muted)" }}>{section.plainLanguageExplanation}</p>
+        </div>
+      ) : null}
+
+      {section.nextActions.length > 0 ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>צעדים מעשיים</div>
+          <ul style={{ margin: 0, paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14 }}>
+            {section.nextActions.map(action => (
+              <li key={action}>{action}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {section.sourceData ? (
+        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>מקור נתונים: {section.sourceData}</p>
+      ) : null}
+    </SectionCard>
   );
 }
 
@@ -171,7 +225,7 @@ export default function ExecutiveReportPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [fromCache, setFromCache] = useState(false);
-  const [downloading, setDownloading] = useState<"user" | "professional" | null>(null);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadReport = useCallback(async () => {
@@ -213,11 +267,11 @@ export default function ExecutiveReportPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadReport]);
 
-  const handleDownloadPdf = async (mode: "user" | "professional") => {
+  const handleDownloadPdf = async () => {
     if (!runId) return;
-    setDownloading(mode);
-    const result = await downloadExecutiveReportPdf({ runId, mode });
-    setDownloading(null);
+    setDownloading(true);
+    const result = await downloadExecutiveReportPdf({ runId });
+    setDownloading(false);
     if (!result.success) {
       setError(result.message);
       return;
@@ -231,20 +285,18 @@ export default function ExecutiveReportPage() {
   };
 
   const sections = report?.sections;
-  const overview = sections?.personalOverview;
+  const agentReport = sections?.agentReport;
 
-  const tocItems = sections
+  const tocItems = agentReport
     ? [
-        { id: "report-overview", label: "התמונה שלי" },
-        { id: "report-position", label: "מצב פיננסי נוכחי" },
-        { id: "report-decisions", label: "החלטות מרכזיות" },
-        ...(sections.managementFees?.products?.length ? [{ id: "report-fees", label: "דמי ניהול" }] : []),
-        ...(sections.insuranceSummary?.privatePolicies?.length || sections.insuranceSummary?.pensionEmbedded?.length
-          ? [{ id: "report-insurance", label: "ביטוח" }]
-          : []),
-        { id: "report-actions", label: "מה כדאי לעשות" },
-        { id: "report-before-change", label: "לפני שינוי" },
-        { id: "report-missing", label: "מידע שחסר" },
+        { id: "report-overview", label: "התמונה הפיננסית שלי" },
+        ...agentReport.agentSections.map(s => ({
+          id: `report-agent-${s.agentId}`,
+          label: s.title,
+        })),
+        ...(agentReport.combinedSummary.notes.length ? [{ id: "report-combined", label: "סיכום משולב" }] : []),
+        ...(agentReport.whatToDo.length ? [{ id: "report-actions", label: "מה כדאי לעשות" }] : []),
+        ...(agentReport.missingData.length ? [{ id: "report-missing", label: "מידע שחסר" }] : []),
       ]
     : [];
 
@@ -294,7 +346,7 @@ export default function ExecutiveReportPage() {
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <div>
               <h1 style={{ margin: "0 0 8px", fontSize: "clamp(28px,3.5vw,40px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>
-                הדוח הפיננסי האישי שלי
+                {sections?.title || "הדוח הפיננסי האישי שלי"}
               </h1>
               {generatedLabel ? (
                 <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>
@@ -345,8 +397,8 @@ export default function ExecutiveReportPage() {
               </button>
               <button
                 type="button"
-                onClick={() => void handleDownloadPdf("user")}
-                disabled={loading || downloading !== null || !report || !runId}
+                onClick={() => void handleDownloadPdf()}
+                disabled={loading || downloading || !report || !runId}
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
@@ -364,29 +416,7 @@ export default function ExecutiveReportPage() {
                 }}
               >
                 <Download size={16} />
-                {downloading === "user" ? "מוריד..." : "הורדת דוח אישי (PDF)"}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleDownloadPdf("professional")}
-                disabled={loading || downloading !== null || !report || !runId}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "12px 18px",
-                  borderRadius: "var(--r-btn)",
-                  border: "1px solid var(--border-hair)",
-                  background: "var(--card)",
-                  cursor: loading || downloading ? "not-allowed" : "pointer",
-                  fontFamily: "inherit",
-                  fontWeight: 700,
-                  fontSize: 14,
-                  opacity: loading || downloading ? 0.6 : 1,
-                }}
-              >
-                <FileText size={16} />
-                {downloading === "professional" ? "מוריד..." : "דוח לאיש מקצוע"}
+                {downloading ? "מוריד..." : "הורדת PDF"}
               </button>
             </div>
           </div>
@@ -416,7 +446,7 @@ export default function ExecutiveReportPage() {
           </section>
         ) : null}
 
-        {sections && overview ? (
+        {sections && agentReport ? (
           <>
             <nav
               aria-label="תוכן הדוח"
@@ -440,159 +470,55 @@ export default function ExecutiveReportPage() {
               </ul>
             </nav>
 
-            <SectionCard id="report-overview" icon={<FileText size={18} />} title="התמונה שלי">
-              <p style={{ margin: "0 0 16px", fontSize: 16, lineHeight: 1.75, color: "var(--text-strong)" }}>
+            <SectionCard id="report-overview" icon={<FileText size={18} />} title="התמונה הפיננסית שלי">
+              <p style={{ margin: "0 0 12px", fontSize: 16, lineHeight: 1.75, color: "var(--text-strong)" }}>
                 {sections.executiveSummary}
               </p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 10, fontSize: 14 }}>
-                <div style={{ padding: 12, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
-                  <div style={{ fontWeight: 800 }}>תחומים שנותחו</div>
-                  <div style={{ color: "var(--text-muted)" }}>{overview.analyzedDomains.join(", ") || "—"}</div>
-                </div>
-                <div style={{ padding: 12, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
-                  <div style={{ fontWeight: 800 }}>ממצאים</div>
-                  <div style={{ color: "var(--text-muted)" }}>{overview.findingCount}</div>
-                </div>
-                <div style={{ padding: 12, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
-                  <div style={{ fontWeight: 800 }}>הזדמנויות מהותיות</div>
-                  <div style={{ color: "var(--text-muted)" }}>{overview.materialOpportunityCount}</div>
-                </div>
-              </div>
-              {overview.healthScore ? (
-                <div style={{ marginTop: 16, padding: 14, background: "var(--mint-soft)", borderRadius: "var(--r-md)", fontSize: 13 }}>
-                  <div style={{ fontWeight: 800, color: "var(--mint-ink)" }}>
-                    ציון בריאות פיננסית: {overview.healthScore.score}/100
-                    {overview.healthScore.label ? ` (${overview.healthScore.label})` : ""}
-                  </div>
-                  <div style={{ color: "var(--text-muted)", marginTop: 6 }}>{overview.healthScore.howCalculated}</div>
-                  {overview.healthScore.pointsLost?.length ? (
-                    <div style={{ color: "var(--text-muted)", marginTop: 4 }}>נקודות שאבדו: {overview.healthScore.pointsLost.join(" · ")}</div>
-                  ) : null}
-                  <div style={{ color: "var(--text-muted)", marginTop: 4 }}>רמת ביטחון: {overview.healthScore.confidence}</div>
-                </div>
-              ) : null}
-              {overview.missingSources?.length ? (
-                <div style={{ marginTop: 14 }}>
-                  <div style={{ fontWeight: 800, marginBottom: 6 }}>מקורות חסרים</div>
-                  <ul style={{ margin: 0, paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14 }}>
-                    {overview.missingSources.map(s => (
-                      <li key={s.agentId}>{s.message}</li>
-                    ))}
-                  </ul>
-                </div>
+              {agentReport.intro ? (
+                <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)" }}>{agentReport.intro}</p>
               ) : null}
             </SectionCard>
 
-            <SectionCard id="report-position" icon={<Wallet size={18} />} title="מצב פיננסי נוכחי">
-              {sections.currentPosition?.items?.length ? (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
-                  {sections.currentPosition.items.map(item => (
-                    <div key={item.label} style={{ padding: 14, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
-                      <div style={{ fontSize: 13, color: "var(--text-muted)" }}>{item.label}</div>
-                      <div style={{ fontSize: 20, fontWeight: 900, color: "var(--text-strong)" }}>{item.formatted}</div>
-                    </div>
+            {agentReport.agentSections.map((section, index) => (
+              <AgentSectionView key={section.agentId} section={section} index={index} />
+            ))}
+
+            {agentReport.combinedSummary.notes.length > 0 ? (
+              <SectionCard id="report-combined" icon={<Target size={18} />} title="סיכום משולב">
+                <ul style={{ margin: 0, paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14, lineHeight: 1.7 }}>
+                  {agentReport.combinedSummary.notes.map(note => (
+                    <li key={note}>{note}</li>
                   ))}
-                </div>
-              ) : (
-                <p style={{ margin: 0, color: "var(--text-muted)" }}>אין עדיין מספיק נתונים להצגת מצב מספרי.</p>
-              )}
-              <p style={{ margin: "12px 0 0", fontSize: 12, color: "var(--text-muted)" }}>{sections.currentPosition?.disclaimer}</p>
-            </SectionCard>
+                </ul>
+              </SectionCard>
+            ) : null}
 
-            <SectionCard id="report-decisions" icon={<Target size={18} />} title="החלטות מרכזיות">
-              {sections.mainDecisions.length === 0 ? (
-                <p style={{ margin: 0, color: "var(--text-muted)" }}>לא זוהו החלטות מהותיות כרגע — ראו «מה כדאי לבדוק בהמשך».</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {sections.mainDecisions.map(card => (
-                    <DecisionCardView key={card.id} card={card} />
+            {agentReport.whatToDo.length > 0 ? (
+              <SectionCard id="report-actions" icon={<Target size={18} />} title="מה כדאי לעשות">
+                <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
+                  {agentReport.whatToDo.map(item => (
+                    <li key={`${item.agentId}-${item.title}-${item.action}`} style={{ padding: "12px 14px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)" }}>
+                      <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>{item.title}</div>
+                      <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{item.action}</div>
+                    </li>
                   ))}
-                </div>
-              )}
-            </SectionCard>
-
-            {sections.managementFees?.products?.length ? (
-              <SectionCard id="report-fees" icon={<Wallet size={18} />} title="דמי ניהול — סיכום">
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ textAlign: "right", borderBottom: "1px solid var(--border-hair)" }}>
-                        <th style={{ padding: 8 }}>מוצר</th>
-                        <th style={{ padding: 8 }}>דמ"נ נוכחי</th>
-                        <th style={{ padding: 8 }}>השוואה</th>
-                        <th style={{ padding: 8 }}>עודף שנתי</th>
-                        <th style={{ padding: 8 }}>מסקנה</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sections.managementFees.products.map(p => (
-                        <tr key={p.product} style={{ borderBottom: "1px solid var(--border-hair)" }}>
-                          <td style={{ padding: 8 }}>{p.product}</td>
-                          <td style={{ padding: 8 }}>{p.currentFee ?? "—"}</td>
-                          <td style={{ padding: 8 }}>{p.comparisonValue ?? "—"}</td>
-                          <td style={{ padding: 8 }}>{p.estimatedAnnualExcess != null ? `₪${Math.round(p.estimatedAnnualExcess).toLocaleString("he-IL")}` : "—"}</td>
-                          <td style={{ padding: 8 }}>{p.conclusion ?? "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {sections.managementFees.totalEstimatedAnnualExcess != null ? (
-                  <p style={{ marginTop: 12, fontWeight: 800 }}>
-                    סה"כ עודף שנתי מוערך: ₪{Math.round(sections.managementFees.totalEstimatedAnnualExcess).toLocaleString("he-IL")}
-                  </p>
-                ) : null}
-                {sections.managementFees.immaterialProducts?.map(im => (
-                  <p key={im.product} style={{ fontSize: 13, color: "var(--text-muted)", margin: "6px 0 0" }}>
-                    {im.product}: {im.reason}
-                  </p>
-                ))}
+                </ul>
               </SectionCard>
             ) : null}
 
-            {(sections.insuranceSummary?.privatePolicies?.length ?? 0) > 0 || (sections.insuranceSummary?.pensionEmbedded?.length ?? 0) > 0 ? (
-              <SectionCard id="report-insurance" icon={<Shield size={18} />} title="ביטוח">
-                <div style={{ fontWeight: 800, marginBottom: 8 }}>כיסויים ביטוחיים במסגרת הפנסיה</div>
-                <ActionList items={sections.insuranceSummary.pensionEmbedded.map(p => ({ title: p.title, explanation: p.detail }))} emptyLabel="—" />
-                <div style={{ fontWeight: 800, margin: "16px 0 8px" }}>ביטוחים פרטיים</div>
-                <ActionList items={sections.insuranceSummary.privatePolicies.map(p => ({ title: p.title, explanation: p.detail }))} emptyLabel="—" />
-                {sections.insuranceSummary.crossDomainNotes?.map(note => (
-                  <p key={note} style={{ fontSize: 13, color: "var(--peach-ink)", marginTop: 10 }}>{note}</p>
-                ))}
-                <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
-                  מקורות: {sections.insuranceSummary.sources.join(", ") || "—"}
-                </p>
-              </SectionCard>
-            ) : null}
-
-            <SectionCard id="report-actions" icon={<Target size={18} />} title="מה כדאי לעשות עכשיו">
-              <ActionList items={sections.actionPlan.doNow} emptyLabel="אין פעולות מיידיות — המשך מעקב." />
-            </SectionCard>
-
-            <SectionCard id="report-before-change" icon={<AlertTriangle size={18} />} title="לפני שמבצעים מעבר או שינוי">
-              <ActionList items={sections.actionPlan.beforeChange} emptyLabel="אין בדיקות מקדימות נדרשות כרגע." />
-            </SectionCard>
-
-            {sections.actionPlan.checkLater.length > 0 ? (
-              <SectionCard id="report-check-later" icon={<Lightbulb size={18} />} title="מה כדאי לבדוק בהמשך">
-                <ActionList items={sections.actionPlan.checkLater} emptyLabel="—" />
-              </SectionCard>
-            ) : null}
-
-            <SectionCard id="report-missing" icon={<FileText size={18} />} title="מידע שחסר להשלמת התמונה">
-              <ActionList items={sections.actionPlan.missingData} emptyLabel="כל המידע הנדרש קיים." />
-            </SectionCard>
-
-            {sections.financialStrengths.length > 0 ? (
-              <SectionCard id="report-strengths" icon={<CheckCircle2 size={18} />} title="חוזקות">
-                <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
-                  {sections.financialStrengths.map(s => (
-                    <li key={s.title} style={{ display: "flex", gap: 10 }}>
-                      <CheckCircle2 size={18} color="var(--mint-ink)" />
-                      <div>
-                        <div style={{ fontWeight: 800 }}>{s.title}</div>
-                        {s.explanation ? <div style={{ fontSize: 14, color: "var(--text-muted)" }}>{s.explanation}</div> : null}
-                      </div>
+            {agentReport.missingData.length > 0 ? (
+              <SectionCard id="report-missing" icon={<AlertTriangle size={18} />} title="מידע שחסר">
+                <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
+                  {agentReport.missingData.map(item => (
+                    <li key={item.agentId} style={{ padding: "12px 14px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)" }}>
+                      <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>{item.title}</div>
+                      <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{item.message}</div>
+                      {item.whatIsMissing ? (
+                        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>חסר: {item.whatIsMissing}</div>
+                      ) : null}
+                      {item.whatEnables ? (
+                        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>לאחר העלאה: {item.whatEnables}</div>
+                      ) : null}
                     </li>
                   ))}
                 </ul>

@@ -52,9 +52,11 @@ export default function HubPage() {
       if (cancelled || !latest.success || !latest.found) return;
       setLastReport({
         savedAt: latest.savedAt,
-        score: latest.report.meta.globalHealthScore ?? null,
-        topAction: latest.report.sections.mainDecisions[0]?.title
-          ?? latest.report.sections.actionPlan?.doNow[0]?.title
+        score: null,
+        topAction: latest.report.sections.agentReport?.whatToDo[0]?.title
+          ?? latest.report.sections.agentReport?.agentSections
+            ?.find(s => s.recommendationStatus === "hasRecommendations")
+            ?.recommendations[0]?.title
           ?? null,
       });
     });

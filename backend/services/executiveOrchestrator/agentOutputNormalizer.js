@@ -264,6 +264,12 @@ function normalizePayslipAgent(agent) {
   if (!agent || agent.status === 'no_data') {
     return buildAgentPackage('payslip', { status: 'no_data', humanExplanation: agent?.message });
   }
+  if (agent.status === 'error') {
+    return buildAgentPackage('payslip', {
+      status: 'error',
+      humanExplanation: agent.error || agent.message || 'שגיאה בטעינת נתוני תלוש',
+    });
+  }
   return buildAgentPackage('payslip', {
     humanExplanation: agent.llmExplanation,
     legacyRecs: asArray(agent.recommendations),
@@ -276,6 +282,12 @@ function normalizePayslipAgent(agent) {
 function normalizeInsuranceAgent(agent) {
   if (!agent || agent.status === 'no_data') {
     return buildAgentPackage('insurance', { status: 'no_data', humanExplanation: agent?.message });
+  }
+  if (agent.status === 'error') {
+    return buildAgentPackage('insurance', {
+      status: 'error',
+      humanExplanation: agent.error || agent.message || 'שגיאה בטעינת נתוני ביטוח',
+    });
   }
   const findings = [];
   if (agent.data?.duplicateCount > 0) {
@@ -305,6 +317,12 @@ function normalizePensionAgent(agent) {
   if (!agent || agent.status === 'no_data') {
     return buildAgentPackage('pension', { status: 'no_data', humanExplanation: agent?.message });
   }
+  if (agent.status === 'error') {
+    return buildAgentPackage('pension', {
+      status: 'error',
+      humanExplanation: agent.error || agent.message || 'שגיאה בטעינת נתוני פנסיה',
+    });
+  }
   return buildAgentPackage('pension', {
     humanExplanation: agent.llmExplanation,
     legacyRecs: asArray(agent.recommendations),
@@ -321,8 +339,15 @@ function normalizeGemelAgent(agent) {
   if (!agent || agent.status === 'no_data') {
     return buildAgentPackage('gemel', { status: 'no_data', humanExplanation: agent?.message });
   }
+  if (agent.status === 'error') {
+    return buildAgentPackage('gemel', {
+      status: 'error',
+      humanExplanation: agent.error || agent.message || 'שגיאה בטעינת נתוני גמל',
+    });
+  }
+
   const orch = agent.data?.advisorReport?.orchestrator;
-  const orchRecs = (orch?.recommendations || []).map(r => ({
+  const mapOrchRec = r => ({
     type: r.type || r.id,
     title: r.title,
     reason: r.explanation,
@@ -330,11 +355,28 @@ function normalizeGemelAgent(agent) {
     financialImpact: r.possibleSavings != null ? `₪${r.possibleSavings}` : null,
     impactAmount: r.possibleSavings,
     confidenceScore: Math.round((r.confidence || 0.7) * 100),
+  });
+
+  const orchRecs = (orch?.recommendations || []).map(mapOrchRec);
+  const advisorRecs = (agent.data?.advisorReport?.recommendations || []).map(r => ({
+    type: r.type || r.id || r.title,
+    title: r.title,
+    reason: r.explanation || r.reason || r.summaryHe,
+    urgency: r.severity === 'high' ? 'high' : 'medium',
+    impactAmount: r.possibleSavings ?? r.annualSavingsEstimate,
+    financialImpact: r.possibleSavings != null ? `₪${r.possibleSavings}` : null,
   }));
+
+  const primaryRecs = asArray(agent.primaryRecommendations);
+  const legacyFromAgent = asArray(agent.recommendations);
+  const legacyRecs = primaryRecs.length
+    ? [...advisorRecs.filter(ar => !legacyFromAgent.some(l => l.title === ar.title)), ...legacyFromAgent]
+    : (orchRecs.length ? orchRecs : [...advisorRecs, ...legacyFromAgent]);
+
   return buildAgentPackage('gemel', {
     humanExplanation: agent.llmExplanation || agent.data?.advisorReport?.humanSummary,
-    legacyRecs: orchRecs.length ? orchRecs : asArray(agent.recommendations),
-    primaryRecs: asArray(agent.primaryRecommendations),
+    legacyRecs,
+    primaryRecs,
     findings: [
       ...asArray(agent.structuredInsights),
       ...asArray(agent.data?.payslipFindings).map(f => ({

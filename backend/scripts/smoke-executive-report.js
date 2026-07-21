@@ -16,13 +16,10 @@ const BASE = `http://127.0.0.1:${PORT}`;
 
 const AGENT_KEYS = ['onboarding', 'payslip', 'insurance', 'pension', 'gemel'];
 const SECTION_KEYS = [
+  'title',
   'executiveSummary',
-  'personalOverview',
-  'mainDecisions',
-  'actionPlan',
-  'allRecommendations',
-  'financialStrengths',
-  'thingsToReviewRegularly',
+  'agentReport',
+  'preservedRecommendations',
 ];
 
 function hebrewRatio(text) {
@@ -113,15 +110,20 @@ async function main() {
   assert(summary.length >= 50, 'Executive summary has substance (≥50 chars)', results);
   assert(hebrewRatio(summary) > 0.3, 'Executive summary is primarily Hebrew', results);
 
-  const decisions = report?.sections?.mainDecisions || [];
-  assert(decisions.length <= 8, `Main decisions count ≤8 (got ${decisions.length})`, results);
+  const agentReport = report?.sections?.agentReport;
+  assert(agentReport?.agentSections?.length === 4, 'All four specialist agents appear in report', results);
 
-  for (const [i, decision] of decisions.entries()) {
-    const required = ['title', 'finding', 'whyItMatters', 'recommendedAction'];
-    for (const field of required) {
-      assert(decision[field] != null && decision[field] !== '', `Decision #${i + 1} has ${field}`, results);
+  for (const section of (agentReport?.agentSections || [])) {
+    assert(['available', 'missing', 'error'].includes(section.dataStatus), `${section.agentId} has dataStatus`, results);
+    assert(['hasRecommendations', 'noRecommendations', 'unavailable'].includes(section.recommendationStatus), `${section.agentId} has recommendationStatus`, results);
+    if (section.dataStatus === 'missing' || section.dataStatus === 'error' || section.recommendationStatus === 'noRecommendations') {
+      assert(!!section.statusMessage, `${section.agentId} has status message (no empty heading)`, results);
     }
-    assert(Array.isArray(decision.sourceAgents) && decision.sourceAgents.length > 0, `Decision #${i + 1} has sourceAgents`, results);
+  }
+
+  const preserved = report?.sections?.preservedRecommendations || [];
+  for (const [i, rec] of preserved.entries()) {
+    assert(rec.agentId && rec.title, `Preserved recommendation #${i + 1} has agentId and title`, results);
   }
 
   const forbiddenUrgency = ['בקרוב', 'בטווח של 3 חודשים', 'עד 30 יום', 'דחוף'];
@@ -131,9 +133,9 @@ async function main() {
   }
 
   // Cross-agent merge heuristic
-  const allRecs = report?.sections?.allRecommendations || [];
+  const allRecs = preserved;
   const mergedInsuranceCash = allRecs.some(a =>
-    /ביטוח|פרמיה/i.test(a.title + a.explanation) && /תזרים|מזומן/i.test(a.explanation),
+    /ביטוח|פרמיה/i.test(a.title + (a.description || '')) && /תזרים|מזומן/i.test(a.description || ''),
   );
   if (agentStatuses.insurance === 'success' && agentStatuses.payslip === 'success') {
     if (mergedInsuranceCash) results.passed.push('Cross-agent: insurance/cash-flow merge detected');
@@ -145,11 +147,10 @@ async function main() {
     results.passed.push(`Conflict resolution: ${report.sections.conflicts.length} conflict(s) surfaced`);
   }
 
-  results.samples.topActions = actions.slice(0, 3).map(a => ({
-    rank: a.rank,
+  results.samples.topActions = (agentReport?.whatToDo || []).slice(0, 3).map(a => ({
     title: a.title,
-    priorityScore: a.priorityScore,
-    sourceAgents: a.sourceAgents,
+    action: a.action,
+    agentId: a.agentId,
   }));
 
   // PDF via cached runId
@@ -169,7 +170,7 @@ async function main() {
       'PDF contains expected content markers',
       results,
     );
-    const titleFragment = actions[0]?.title?.slice(0, 6);
+    const titleFragment = (agentReport?.whatToDo?.[0]?.title || preserved[0]?.title || '').slice(0, 6);
     if (titleFragment) {
       const titleOk = pdfText.includes(titleFragment)
         || pdfBuf.includes(Buffer.from(titleFragment.slice(0, 4), 'utf8'));

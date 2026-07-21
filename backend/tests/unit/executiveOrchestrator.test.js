@@ -71,30 +71,28 @@ describe('executive global priority engine — extended', () => {
     expect(result.scoredItems[0].possibleSavings).toBeNull();
   });
 
-  it('builds v2 report sections with decision flow buckets', () => {
+  it('builds v2.1 agent-first report sections', () => {
     const pension = buildAgentPackage('pension', {
       legacyRecs: [{ title: 'פנסיה', reason: 'בדיקה', urgency: 'medium', impactAmount: 500 }],
+      data: { fundAdvice: { funds: [{}] } },
     });
     const engine = runGlobalPriorityEngine({ pension });
     const report = buildExecutiveReport({
       userId: 'u1',
-      packages: { pension },
+      packages: { pension, gemel: buildAgentPackage('gemel', { status: 'no_data' }), insurance: buildAgentPackage('insurance', { status: 'no_data' }), payslip: buildAgentPackage('payslip', { status: 'no_data' }) },
       priorityEngine: engine,
       globalScore: { score: 72, label: 'טוב', categories: [] },
       conflicts: engine.conflicts,
     });
 
-    expect(report.meta.reportVersion).toBe('2.0.0');
+    expect(report.meta.reportVersion).toBe('2.1.0');
     expect(report.sections.executiveSummary).toBeTruthy();
-    expect(report.sections.personalOverview).toBeTruthy();
-    expect(report.sections.mainDecisions).toBeTruthy();
-    expect(report.sections.actionPlan).toBeTruthy();
-    expect(report.sections.actionPlan.doNow).toBeTruthy();
-    expect(report.sections.allRecommendations.length).toBeGreaterThan(0);
-    expect(report.sections.thingsToReviewRegularly.length).toBeGreaterThan(0);
+    expect(report.sections.agentReport.agentSections).toHaveLength(4);
+    expect(report.sections.agentReport.agentSections.find(s => s.agentId === 'pension').dataStatus).toBe('available');
+    expect(report.sections.preservedRecommendations.length).toBeGreaterThan(0);
   });
 
-  it('includes sourceAgents in classified recommendations', () => {
+  it('includes source agent in preserved recommendations', () => {
     const pkg = buildAgentPackage('pension', {
       legacyRecs: [{
         title: 'איחוד קרנות',
@@ -103,36 +101,39 @@ describe('executive global priority engine — extended', () => {
         impactAmount: 3000,
         confidenceScore: 80,
       }],
+      data: { fundAdvice: { funds: [{}] } },
     });
     const engine = runGlobalPriorityEngine({ pension: pkg });
     const report = buildExecutiveReport({
       userId: 'u1',
-      packages: { pension: pkg },
+      packages: { pension: pkg, gemel: buildAgentPackage('gemel', { status: 'no_data' }), insurance: buildAgentPackage('insurance', { status: 'no_data' }), payslip: buildAgentPackage('payslip', { status: 'no_data' }) },
       priorityEngine: engine,
       conflicts: [],
     });
-    const rec = report.sections.allRecommendations[0];
+    const rec = report.sections.preservedRecommendations[0];
     expect(rec.confidence).not.toBeNull();
-    expect(rec.sourceAgents).toContain('pension');
+    expect(rec.agentId).toBe('pension');
   });
 
-  it('separates missing-data tasks from financial recommendations', () => {
+  it('separates missing-data from financial recommendations in agent sections', () => {
     const onboarding = buildAgentPackage('onboarding', {
       legacyRecs: [{ title: 'העלאת תלושי שכר', reason: 'נדרש לניתוח', urgency: 'high' }],
     });
     const pension = buildAgentPackage('pension', {
       legacyRecs: [{ title: 'הורדת דמי ניהול', reason: 'גבוהים', urgency: 'high', impactAmount: 5000 }],
+      data: { fundAdvice: { funds: [{}] } },
     });
     const engine = runGlobalPriorityEngine({ onboarding, pension });
     const report = buildExecutiveReport({
       userId: 'u1',
-      packages: { onboarding, pension },
+      packages: { onboarding, pension, gemel: buildAgentPackage('gemel', { status: 'no_data' }), insurance: buildAgentPackage('insurance', { status: 'no_data' }), payslip: buildAgentPackage('payslip', { status: 'no_data' }) },
       priorityEngine: engine,
       conflicts: [],
     });
 
-    expect(report.sections.actionPlan.missingData.some(i => /תלוש/i.test(i.title))).toBe(true);
-    expect(report.sections.mainDecisions.every(d => !/העלא/i.test(d.title))).toBe(true);
+    const payslipSection = report.sections.agentReport.agentSections.find(s => s.agentId === 'payslip');
+    expect(payslipSection.dataStatus).toBe('missing');
+    expect(report.sections.preservedRecommendations.every(r => r.agentId !== 'onboarding')).toBe(true);
   });
 });
 

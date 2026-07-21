@@ -1,135 +1,61 @@
 import { apiBlob, apiJson } from "./client";
 
-export type MonetaryImpact = {
-  hasImpact: boolean;
-  summary: string | null;
-  annualAmount?: number | null;
-  assumptions: string[];
-  disclaimer: string | null;
-};
+export type AgentDataStatus = "available" | "missing" | "error";
+export type AgentRecommendationStatus = "hasRecommendations" | "noRecommendations" | "unavailable";
 
-export type DecisionCard = {
-  id: string;
+export type PreservedRecommendation = {
+  agentId: string;
+  recommendationId: string | null;
   title: string;
-  sourceAgents: string[];
-  sourceReports: string[];
-  originalRecommendationIds: string[];
-  dataDate: string | null;
+  description: string;
+  reason: string | null;
+  expectedBenefit: string | null;
+  source: string | null;
   confidence: number | null;
-  classification: string;
-  currentState: string;
-  finding: string;
-  whyItMatters: string;
-  monetaryImpact: MonetaryImpact;
-  recommendedAction: string;
-  steps: string[];
-  questionsForProvider: string[];
-  immaterialReason?: string | null;
-  conflictNote?: string | null;
-  evidenceDeadline?: string | null;
 };
 
-export type ActionPlanItem = {
+export type AgentReportSection = {
+  agentId: string;
   title: string;
-  explanation: string;
-  whoToContact: string;
-  whatToRequest: string;
-  whatToCompare: string;
-  documentToAttach: string | null;
-  returnToFinGuide: string | null;
-  sourceAgents: string[];
+  dataStatus: AgentDataStatus;
+  recommendationStatus: AgentRecommendationStatus;
+  statusMessage: string | null;
+  missingDetail: { whatIsMissing: string; whatEnables: string } | null;
+  dataSummary: { label: string; value: string }[];
+  findings: { title: string; explanation: string; severity?: string | null }[];
+  recommendations: PreservedRecommendation[];
+  plainLanguageExplanation: string | null;
+  nextActions: string[];
+  sourceData: string | null;
 };
 
-export type ManagementFeeProduct = {
-  product: string;
-  productType: string;
-  balance: number | null;
-  currentFee: number | null;
-  comparisonValue: number | null;
-  estimatedAnnualExcess: number | null;
-  conclusion: string | null;
-  sourceAgent: string;
-  material: boolean;
-};
-
-export type ClassifiedRecommendation = {
-  id: string;
+export type AgentFirstReport = {
   title: string;
-  explanation: string;
-  classification: "mainDecision" | "additionalFinding" | "monitoringItem" | "missingData" | "notMaterial";
-  decisionBucket: string;
-  sourceAgents: string[];
-  sourceReports: string[];
-  originalRecommendationIds: string[];
-  dataDate: string | null;
-  confidence: number | null;
-  possibleSavings: number | null;
-  immaterialReason: string | null;
-  monetaryImpact: MonetaryImpact;
-};
-
-export type PersonalOverview = {
-  analyzedDomains: string[];
-  availableReports: string[];
-  completedAgents: string[];
-  findingCount: number;
-  materialOpportunityCount: number;
-  missingSources: { agentId: string; label: string; message: string }[];
-  missingDataCount: number;
-  healthScore?: {
-    score: number;
-    label: string | null;
-    howCalculated: string;
-    categories: { name: string; score: number; maxScore: number; messages: string[] }[];
-    missingData: string[];
-    pointsLost: string[];
-    confidence: string;
-    disclaimer: string | null;
+  intro: string;
+  agentSections: AgentReportSection[];
+  combinedSummary: {
+    notes: string[];
+    managementFees?: {
+      products: unknown[];
+      totalEstimatedAnnualExcess: number | null;
+    };
   };
+  whatToDo: { title: string; action: string; agentId: string }[];
+  missingData: {
+    agentId: string;
+    title: string;
+    message: string;
+    whatIsMissing: string | null;
+    whatEnables: string | null;
+  }[];
 };
 
 export type ExecutiveReportSection = {
+  title: string;
   executiveSummary: string;
-  personalOverview: PersonalOverview;
-  currentPosition: { items: { label: string; value: number; formatted: string; sourceAgent: string }[]; disclaimer: string };
-  mainDecisions: DecisionCard[];
-  managementFees: {
-    products: ManagementFeeProduct[];
-    totalEstimatedAnnualExcess: number | null;
-    largestExcessProduct: string | null;
-    worthNegotiating: string[];
-    immaterialProducts: { product: string; reason: string }[];
-    disclaimer: string;
-  };
-  insuranceSummary: {
-    pensionEmbedded: { title: string; detail: string }[];
-    privatePolicies: { title: string; detail: string }[];
-    crossDomainNotes: string[];
-    sources: string[];
-  };
-  payslipFindings: { hasData: boolean; findings: { title: string; explanation: string; severity?: string }[] };
-  productAlternatives: {
-    productOrTrack: string;
-    managementFees: number | null;
-    riskLevel: string | null;
-    comparisonPerformance: number | null;
-    fitNotes: string | null;
-    tradeoffs: string;
-    sourceAgent: string;
-    verificationRequired: string[];
-  }[];
-  actionPlan: {
-    doNow: ActionPlanItem[];
-    beforeChange: ActionPlanItem[];
-    checkLater: ActionPlanItem[];
-    missingData: ActionPlanItem[];
-  };
-  allRecommendations: ClassifiedRecommendation[];
-  financialStrengths: { title: string; explanation: string }[];
-  risks: { title: string; explanation: string; severity?: string }[];
-  opportunities: { title: string; explanation: string; possibleSavings?: number | null }[];
+  agentReport: AgentFirstReport;
+  preservedRecommendations: PreservedRecommendation[];
   conflicts: { title: string; explanation: string; tradeOff: string; recommendation: string }[];
-  thingsToReviewRegularly: string[];
 };
 
 export type ExecutiveReport = {
@@ -138,17 +64,7 @@ export type ExecutiveReport = {
     generatedAt: string;
     reportVersion: string;
     agentCount: number;
-    globalHealthScore: number | null;
-    stats?: {
-      rawRecommendationCount: number;
-      mergedCount: number;
-      conflictCount: number;
-      preservedCount?: number;
-      totalRecommendations?: number;
-      mainDecisionCount?: number;
-      missingDataCount?: number;
-      notMaterialCount?: number;
-    };
+    stats?: Record<string, number>;
   };
   sections: ExecutiveReportSection;
   disclaimer: string;
@@ -193,7 +109,6 @@ type LatestExecutiveReportResponse = {
   } | null;
 };
 
-/** The user's most recent saved report (kept 7 days server-side), if any. */
 export const getLatestExecutiveReport = async () => {
   const result = await apiJson<LatestExecutiveReportResponse>("/api/executive/report/latest", {
     auth: true,
@@ -210,13 +125,11 @@ export const getLatestExecutiveReport = async () => {
   return { success: true, found: true, ...latest } as const;
 };
 
-export const downloadExecutiveReportPdf = async (options?: { runId: string; mode?: "user" | "professional" }) => {
+export const downloadExecutiveReportPdf = async (options?: { runId: string }) => {
   if (!options?.runId) {
     return { success: false, message: "חסר מזהה דוח. יש ליצור דוח לפני ההורדה." } as const;
   }
-  const params = new URLSearchParams({ runId: options.runId });
-  if (options.mode) params.set("mode", options.mode);
-  const qs = `?${params.toString()}`;
+  const qs = `?runId=${encodeURIComponent(options.runId)}`;
   const result = await apiBlob(`/api/executive/report/pdf${qs}`, {
     auth: true,
     fallbackErrorMessage: "לא הצלחנו להוריד את הדוח.",

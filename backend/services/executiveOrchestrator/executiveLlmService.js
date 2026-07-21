@@ -16,11 +16,16 @@ async function polishExecutiveSummary(report, { skipLLM = false } = {}) {
     return { summary: report.sections.executiveSummary, llm: { used: false, provider: null } };
   }
 
+  const agentReport = report.sections.agentReport || {};
   const context = {
-    globalScore: report.meta.globalHealthScore,
-    topActions: (report.sections.mainDecisions || []).slice(0, 3).map(a => a.title),
-    strengths: report.sections.financialStrengths.slice(0, 2).map(s => s.title),
-    risks: report.sections.risks.slice(0, 2).map(r => r.title),
+    intro: agentReport.intro,
+    analyzedDomains: (agentReport.agentSections || [])
+      .filter(s => s.dataStatus === 'available')
+      .map(s => s.title),
+    topActions: (agentReport.agentSections || [])
+      .flatMap(s => s.recommendations.map(r => r.title))
+      .slice(0, 3),
+    missingDomains: (agentReport.missingData || []).map(m => m.title),
   };
 
   try {
