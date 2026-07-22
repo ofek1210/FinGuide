@@ -25,6 +25,8 @@
     "eval:vision": "node scripts/evalVisionPayslips.js",
     "eval:findings": "node scripts/evalFindings.js",
     "eval:ai-routing": "node scripts/evalAiRouting.js",
+    "eval:ai-answers": "jest --runInBand tests/unit/aiAnswerQuality.test.js",
+    "purge:chat-retention": "node scripts/purgeChatRetention.js",
     "bench:upload-latency": "node scripts/benchUploadLatency.js",
     "eval:ocr-path3": "node scripts/evalOcrPath3.js",
     "lint": "eslint .",

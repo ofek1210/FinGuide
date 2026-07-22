@@ -58,6 +58,8 @@ async function runGemelRecommendationEngine(userId, options = {}) {
     fundCount: funds.length,
     analyzersRun: [],
     marketMatches: [],
+    marketContexts: [],
+    userContext,
     missingData,
     generatedAt: new Date().toISOString(),
     ruleVersion: advisoryConfig.ruleVersion,
@@ -78,6 +80,7 @@ async function runGemelRecommendationEngine(userId, options = {}) {
       allowPeerRanking: m.productMatch?.allowPeerRanking ?? false,
       peerGroupSize: m.peerGroup?.size ?? 0,
     }));
+    meta.marketContexts = marketContexts;
   } catch (err) {
     console.error('[runGemelRecommendationEngine] market data failed:', err.message);
     meta.marketDataError = err.message;

@@ -21,14 +21,29 @@ const chatMessageSchema = new mongoose.Schema(
     content: { type: String, required: true, maxlength: 8000 },
     metadata: {
       intent: { type: String, default: null },
+      source: { type: String, default: null },
       contextUsed: { type: [String], default: [] },
       tokensUsed: { type: Number, default: null },
       model: { type: String, default: null },
+      degradedReason: { type: String, default: null },
+      title: { type: String, default: null },
+      feedbackRating: { type: Number, default: null },
+      feedbackNote: { type: String, default: null },
+      feedbackAt: { type: Date, default: null },
+      latencyMs: { type: Number, default: null },
     },
   },
   { timestamps: true },
 );
 
 chatMessageSchema.index({ user: 1, conversationId: 1, createdAt: 1 });
+
+// TTL: align with Conversation retention so messages don't orphan after conv expiry.
+const retentionDays = Number(process.env.CHAT_RETENTION_DAYS);
+const days = Number.isFinite(retentionDays) && retentionDays > 0 ? retentionDays : 180;
+chatMessageSchema.index(
+  { createdAt: 1 },
+  { expireAfterSeconds: days * 24 * 60 * 60 },
+);
 
 module.exports = mongoose.model('ChatMessage', chatMessageSchema);

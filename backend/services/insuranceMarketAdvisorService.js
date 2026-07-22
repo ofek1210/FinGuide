@@ -90,9 +90,33 @@ function buildPolicyNarrative(verdict, ctx) {
   return `${typeLabel} אצל ${provider} — מדד שירות ${serviceIndex}/100 ו/או פרמיה מעל השוק. אחוז תשלום תביעות ~${claimPaymentRate}% — נמוך מהמובילים. שקלי: ${altText || 'חברות עם מדד שירות גבוה'}.`;
 }
 
+function hasComparablePremiumFactors(policy, profileDTO) {
+  const personal = profileDTO?.personal || {};
+  const type = policy.type;
+
+  if (type === 'car') {
+    const onboarding = profileDTO?.insuranceOnboarding?.answers || {};
+    const hasVehicleContext = onboarding['insuranceOnboarding.vehicle.marketValue'] != null
+      || onboarding['insuranceOnboarding.vehicle.year'] != null
+      || profileDTO?.vehiclesOwned != null;
+    return Boolean(hasVehicleContext && policy.rawData?.subBranch);
+  }
+
+  if (type === 'health' || type === 'critical_illness') {
+    return Boolean(personal.age != null && (policy.rawData?.subBranch || policy.rawData?.productType));
+  }
+
+  if (type === 'life') {
+    return Boolean(personal.age != null && policy.coverageAmount != null);
+  }
+
+  return Boolean(personal.age != null);
+}
+
 function analyzePolicy(policy, profileDTO, govRows, duplicateTypes) {
   const personal = profileDTO?.personal || {};
   const monthlyPremium = policy.monthlyPremium ?? null;
+  const comparable = hasComparablePremiumFactors(policy, profileDTO);
   const baseline = getPriceRange(policy.type, {
     age: personal.age,
     gender: personal.gender,
@@ -112,20 +136,23 @@ function analyzePolicy(policy, profileDTO, govRows, duplicateTypes) {
   });
 
   const service = lookupProviderScores(policy.provider, policy.type, govRows);
-  const premStatus = mapAssessmentToPremiumStatus(pricingCompare.assessment)
-    || premiumVsMarket(monthlyPremium, baseline);
-  const monthlyOverpay = monthlyPremium != null && baseline.average
+  const premStatus = comparable
+    ? (mapAssessmentToPremiumStatus(pricingCompare.assessment) || premiumVsMarket(monthlyPremium, baseline))
+    : 'unknown';
+  const monthlyOverpay = comparable && monthlyPremium != null && baseline.average
     ? Math.max(0, monthlyPremium - baseline.average)
     : 0;
   const tier = serviceTier(service.serviceIndex);
   const isDuplicate = duplicateTypes.has(policy.type);
 
-  const verdict = decideVerdict({
-    premiumStatus: premStatus,
-    serviceIndex: service.serviceIndex,
-    serviceTier: tier,
-    monthlyOverpay,
-  });
+  const verdict = comparable
+    ? decideVerdict({
+      premiumStatus: premStatus,
+      serviceIndex: service.serviceIndex,
+      serviceTier: tier,
+      monthlyOverpay,
+    })
+    : VERDICT.REVIEW;
 
   const alternatives = verdict === VERDICT.SWITCH
     ? getTopProvidersByService(2, policy.type).filter(a =>
@@ -167,6 +194,10 @@ function analyzePolicy(policy, profileDTO, govRows, duplicateTypes) {
       pricingComparison: pricingCompare,
     },
     duplicateCoverage: isDuplicate,
+    comparisonQuality: comparable ? 'comparable' : 'general_only',
+    comparisonNoteHe: comparable
+      ? null
+      : 'השוואה כללית בלבד — אין מספיק נתונים לקבוע אם הפרמיה גבוהה.',
     verdict,
     verdictLabelHe: VERDICT_HE[verdict],
     summaryHe: buildPolicyNarrative(verdict, {
@@ -208,8 +239,12 @@ async function buildMarketAdvice(policies, profileDTO, options = {}) {
     forceRefresh: Boolean(options.forceRefresh),
   });
 
-  const coverage = analyzeInsuranceCoverage(profileDTO);
-  const duplicateTypes = new Set((coverage.duplicates || []).map(d => d.type));
+  const coverage = options.analysis || analyzeInsuranceCoverage(profileDTO);
+  const duplicateTypes = new Set(
+    (coverage.duplicates || [])
+      .filter(d => d.status === 'likely_duplicate')
+      .map(d => d.type),
+  );
 
   const policyAdvice = active.map(p =>
     analyzePolicy(p, profileDTO, govRows, duplicateTypes),
@@ -224,6 +259,8 @@ async function buildMarketAdvice(policies, profileDTO, options = {}) {
     serviceScore: p.comparisonMatrix.service.serviceIndex,
     claimPaymentRate: p.comparisonMatrix.service.claimPaymentRate,
     premiumVsMarket: p.comparisonMatrix.cost.premiumVsMarket,
+    comparisonQuality: p.comparisonQuality,
+    comparisonNoteHe: p.comparisonNoteHe,
     duplicate: p.duplicateCoverage,
     verdict: p.verdict,
   }));
@@ -243,7 +280,8 @@ async function buildMarketAdvice(policies, profileDTO, options = {}) {
     (s, p) => s + (p.comparisonMatrix.cost.annualOverpayVsAvg || 0),
     0,
   );
-  const duplicateWaste = coverage.totalMonthlyWaste ?? 0;
+  const duplicateWaste = 0;
+  const premiumUnderReview = coverage.premiumUnderReviewMonthly ?? 0;
 
   const pricingMeta = getSourceMetadata();
   const pricingDisclaimer = getPricingDisclaimer();
@@ -259,14 +297,16 @@ async function buildMarketAdvice(policies, profileDTO, options = {}) {
     comparisonMatrix,
     duplicates: coverage.duplicates || [],
     duplicateCount: coverage.duplicateCount ?? 0,
-    totalMonthlyDuplicateWaste: duplicateWaste,
+    totalMonthlyDuplicateWaste: 0,
+    premiumUnderReviewMonthly: premiumUnderReview || null,
     overallVerdict,
     overallVerdictLabelHe: VERDICT_HE[overallVerdict],
     summary: {
       policyCount: policyAdvice.length,
       verdictCounts,
       totalAnnualOverpayVsMarket: totalAnnualOverpay,
-      totalAnnualDuplicateWaste: Math.round(duplicateWaste * 12),
+      totalAnnualDuplicateWaste: 0,
+      premiumUnderReviewMonthly: premiumUnderReview || null,
     },
     recommendationHe: overallVerdict === VERDICT.STAY
       ? 'פרופיל הביטוח מאוזן — מחירים ומדד שירות בתוך טווח השוק.'
@@ -286,4 +326,5 @@ module.exports = {
   analyzePolicy,
   premiumVsMarket,
   serviceTier,
+  hasComparablePremiumFactors,
 };

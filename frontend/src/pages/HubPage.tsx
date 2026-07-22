@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Sparkles } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
@@ -10,11 +10,17 @@ import { APP_ROUTES } from "../types/navigation";
 import { AGENT_KEY, DOMAIN_TO_AGENT } from "../components/hub/masterAgentMerge";
 import { useMasterAgent } from "../components/hub/useMasterAgent";
 import { useHubData } from "../components/hub/useHubData";
-import MasterBand from "../components/hub/MasterBand";
+import MasterBand, { type LastReportMeta } from "../components/hub/MasterBand";
 import AgentSummaryCard from "../components/hub/AgentSummaryCard";
 import CommandBar from "../components/hub/CommandBar";
 import AgentSyncOverlay from "../components/hub/AgentSyncOverlay";
 import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
+import { getLatestExecutiveReport } from "../api/executiveReport.api";
+import HubReadinessPanel from "../components/hub/HubReadinessPanel";
+import HubDocumentCenter from "../components/hub/HubDocumentCenter";
+import HubClearinghouseWelcomeModal from "../components/hub/HubClearinghouseWelcomeModal";
+import { parseHubDocumentParam, shouldShowClearinghouseWelcome } from "../utils/hubDocuments";
 
 /* ============================================================
    Hub — the master agent's home. One editorial page in the
@@ -28,12 +34,37 @@ export default function HubPage() {
   const location = useLocation();
   const { user } = useAuth();
 
+  // An explicit full run should produce a fresh report; the report page reads
+  // this flag — without it, it shows the last saved analysis instantly.
   const goToExecutiveReport = useCallback(() => {
-    navigate(APP_ROUTES.executiveReport);
+    navigate(APP_ROUTES.executiveReport, { state: { fresh: true } });
   }, [navigate]);
 
   const master = useMasterAgent({ onFullComplete: goToExecutiveReport });
   const data = useHubData();
+
+  // The last saved executive report (kept 7 days server-side) — lets the user
+  // reopen their previous analysis without running the agents again.
+  const [lastReport, setLastReport] = useState<LastReportMeta | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void getLatestExecutiveReport().then(latest => {
+      if (cancelled || !latest.success || !latest.found) return;
+      setLastReport({
+        savedAt: latest.savedAt,
+        score: null,
+        topAction: latest.report.sections.agentReport?.whatToDo[0]?.title
+          ?? latest.report.sections.agentReport?.agentSections
+            ?.find(s => s.recommendationStatus === "hasRecommendations")
+            ?.recommendations[0]?.title
+          ?? null,
+      });
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Deep-link from agent pages or readiness panel (/hub?document=clearinghouse|insurance|payslips)
+  const focusDocument = parseHubDocumentParam(new URLSearchParams(location.search).get("document"));
 
   // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
   // scroll to the master-agent chat and focus its input.
@@ -46,9 +77,37 @@ export default function HubPage() {
     return () => clearTimeout(t);
   }, [location.search]);
 
+  const hubContextLabel = data.loading
+    ? "לוח בקרה (Hub)"
+    : data.opportunities > 0
+      ? `לוח בקרה · ${data.opportunities} הזדמנויות`
+      : "לוח בקרה (Hub)";
+  const hubContextDetail = [
+    data.completedDocs > 0 ? `תלושים מעובדים: ${data.completedDocs}` : null,
+    data.findings.length ? `ממצאים פעילים: ${data.findings.length}` : null,
+    data.rankedFindings[0]?.title ? `ממצא מוביל: ${data.rankedFindings[0].title}` : null,
+    data.pension?.summary?.fundCount
+      ? `קרנות פנסיה במעקב: ${data.pension.summary.fundCount}`
+      : null,
+    typeof data.potentialSavings === "number" && data.potentialSavings > 0
+      ? `פוטנציאל חיסכון: ₪${Math.round(data.potentialSavings).toLocaleString("he-IL")}`
+      : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  useRegisterPageContext(hubContextLabel, hubContextDetail || null);
+
   const firstName = user?.name?.split(" ")[0] ?? "שלום";
   const greeting = timeOfDayGreeting();
   const reviewLabel = new Date().toLocaleDateString("he-IL", { month: "long", year: "numeric" });
+
+  const showClearinghouseWelcome = shouldShowClearinghouseWelcome(
+    user?.id,
+    data.totalClearinghouseProducts,
+    data.loading,
+  );
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const clearinghouseModalOpen = showClearinghouseWelcome && !welcomeDismissed;
 
   const oppLine = data.loading
     ? "טוענים את התמונה הפיננסית שלך…"
@@ -78,6 +137,15 @@ export default function HubPage() {
 
       <PrivateTopbar />
 
+      {user?.id && (
+        <HubClearinghouseWelcomeModal
+          open={clearinghouseModalOpen}
+          userId={user.id}
+          onClose={() => setWelcomeDismissed(true)}
+          onUploadComplete={data.reload}
+        />
+      )}
+
       <main style={{ maxWidth: 1160, margin: "0 auto", padding: "44px 24px 80px" }}>
         {/* greeting */}
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 26 }}>
@@ -104,6 +172,20 @@ export default function HubPage() {
           completedDocs={data.completedDocs}
           heroRows={data.heroRows}
           onRunFull={master.runFull}
+          lastReport={lastReport}
+          savedScore={data.healthScore}
+        />
+
+        <HubDocumentCenter
+          focusDocument={focusDocument === "clearinghouse" ? focusDocument : null}
+          clearinghouseFundCount={data.totalClearinghouseProducts}
+          onUploadComplete={data.reload}
+        />
+
+        <HubReadinessPanel
+          loading={data.loading}
+          documents={data.documentInventory}
+          advisors={data.advisorReadiness}
         />
 
         {/* FOUR AGENT CARDS — status readout + gateway into each domain */}
@@ -116,6 +198,7 @@ export default function HubPage() {
                 agent={a}
                 index={i}
                 metric={data.agentMetric[a.id]}
+                readinessDetail={data.advisorReadiness.find(r => r.agentId === a.id)?.detail}
                 spark={data.agentSpark[a.id]}
                 loading={data.loading}
                 agentResult={master.result?.agents?.[key]}

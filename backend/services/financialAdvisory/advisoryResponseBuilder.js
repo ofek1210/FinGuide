@@ -17,6 +17,10 @@ function buildAdvisoryResponse({
   missingData = [],
   llm = {},
   legacyFields = {},
+  recommendationCards = null,
+  moreFindings = null,
+  threeCardMeta = null,
+  accountAnalyses = null,
 }) {
   const analysisId = randomUUID();
   const generatedAt = new Date().toISOString();
@@ -72,18 +76,26 @@ function buildAdvisoryResponse({
     },
     disclaimer: config.disclaimers.general,
     productDisclaimer: disclaimer,
+    recommendationEngine: recommendationCards ? 'three_card_v5' : 'legacy_prioritizer',
   };
 
-  if (legacyFields.recommendations) envelope.recommendations = legacyFields.recommendations;
-  if (legacyFields.insightMeta) envelope.insightMeta = legacyFields.insightMeta;
-  if (legacyFields.benchmark) envelope.benchmark = legacyFields.benchmark;
-  if (legacyFields.healthCheck) envelope.healthCheck = legacyFields.healthCheck;
-  if (legacyFields.fundAdvice) envelope.fundAdvice = legacyFields.fundAdvice;
-  if (legacyFields.marketAdvice) envelope.marketAdvice = legacyFields.marketAdvice;
-  if (legacyFields.payslipFindings) envelope.payslipFindings = legacyFields.payslipFindings;
-  if (legacyFields.projection) envelope.projection = legacyFields.projection;
-  if (legacyFields.profile) envelope.profile = legacyFields.profile;
-  if (legacyFields.summaryDto) envelope.summary = { ...envelope.summary, ...legacyFields.summaryDto };
+  if (recommendationCards) {
+    envelope.recommendationCards = recommendationCards;
+    envelope.moreFindings = moreFindings || [];
+    envelope.threeCardMeta = threeCardMeta;
+    envelope.accountAnalyses = accountAnalyses || [];
+  } else {
+    if (legacyFields.recommendations) envelope.recommendations = legacyFields.recommendations;
+    if (legacyFields.insightMeta) envelope.insightMeta = legacyFields.insightMeta;
+    if (legacyFields.benchmark) envelope.benchmark = legacyFields.benchmark;
+    if (legacyFields.healthCheck) envelope.healthCheck = legacyFields.healthCheck;
+    if (legacyFields.fundAdvice) envelope.fundAdvice = legacyFields.fundAdvice;
+    if (legacyFields.marketAdvice) envelope.marketAdvice = legacyFields.marketAdvice;
+    if (legacyFields.payslipFindings) envelope.payslipFindings = legacyFields.payslipFindings;
+    if (legacyFields.projection) envelope.projection = legacyFields.projection;
+    if (legacyFields.profile) envelope.profile = legacyFields.profile;
+    if (legacyFields.summaryDto) envelope.summary = { ...envelope.summary, ...legacyFields.summaryDto };
+  }
 
   return envelope;
 }

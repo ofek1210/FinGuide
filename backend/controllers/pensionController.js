@@ -7,8 +7,13 @@ const { getPensionSummary, projectRetirementIncome } = require('../ai/tools/pens
 const { projectPensionIncome } = require('../ai/engines/calculationEngine');
 const { parseHarHaKesef } = require('../services/harHaKesefService');
 const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
+const {
+  buildUploadAnalysisSnippet,
+  isThreeCardAnalysis,
+} = require('../services/financialAdvisory/threeCardAnalysisPayload');
 const { buildFundAdvice } = require('../services/pensionFundAdvisorService');
 const pensionFinqService = require('../services/PensionService');
+const marketComparisonService = require('../services/marketComparison/marketComparisonService');
 const { buildPensionRecommendations } = require('../services/pensionRecommendationService');
 const { comparePensionProducts } = require('../services/pensionComparisonEngine');
 const PensionFund = require('../models/PensionFund');
@@ -18,11 +23,36 @@ const { parsePensionFreeReport } = require('../services/pensionFreeReportParser'
 const {
   importClearinghouseFile,
   importManualFundsFromPreview,
+  clearClearinghouseData,
 } = require('../services/pensionClearinghouseImportService');
 const PensionImportSnapshot = require('../models/PensionImportSnapshot');
 const { computeBufferChecksum, assertUploadNotDuplicate } = require('../utils/duplicateUpload');
 
 const SNAPSHOT_CAP = 5;
+
+const PENSION_PRODUCT_TYPES = new Set([
+  'pension_comprehensive', 'pension_old', 'managers_insurance', 'other',
+]);
+const GEMEL_PRODUCT_TYPES = new Set(['study_fund', 'provident_fund']);
+
+function buildClearinghouseAgentReadiness(funds) {
+  let pensionFundCount = 0;
+  let gemelFundCount = 0;
+  let pensionCoverageCount = 0;
+  for (const fund of funds || []) {
+    if (PENSION_PRODUCT_TYPES.has(fund.fundType)) pensionFundCount += 1;
+    if (GEMEL_PRODUCT_TYPES.has(fund.fundType)) gemelFundCount += 1;
+    pensionCoverageCount += (fund.insuranceCoverages || []).length;
+  }
+  return {
+    pensionReady: pensionFundCount > 0,
+    gemelReady: gemelFundCount > 0,
+    pensionInsuranceReady: pensionCoverageCount > 0,
+    pensionFundCount,
+    gemelFundCount,
+    pensionCoverageCount,
+  };
+}
 
 function mapPensionFundToDto(f, { idField = '_id' } = {}) {
   const id = f[idField] ?? f.id;
@@ -203,13 +233,9 @@ async function uploadPensionFile(req, res, next) {
       summary: parsed.summary,
       savingsDelta: result.savingsDelta,
       healthScore: result.healthScore,
-      healthCheck: analysis?.healthCheck ?? null,
-      recommendations: analysis?.recommendations ?? [],
-      analysis: analysis ? {
-        summary: analysis.summary,
-        benchmark: analysis.benchmark,
-        projection: analysis.projection,
-      } : null,
+      healthCheck: isThreeCardAnalysis(analysis) ? null : (analysis?.healthCheck ?? null),
+      recommendations: isThreeCardAnalysis(analysis) ? [] : (analysis?.recommendations ?? []),
+      analysis: buildUploadAnalysisSnippet(analysis),
       funds: result.funds.map(f => mapPensionFundToDto(f)),
     },
   });
@@ -329,6 +355,18 @@ async function updatePensionFund(req, res) {
 }
 
 /**
+ * DELETE /api/pension/clearinghouse — delete clearinghouse import only (settings privacy zone).
+ */
+async function deleteClearinghouseData(req, res) {
+  const userId = req.user._id;
+
+  await clearClearinghouseData(userId);
+  await syncProfileRetirement(userId);
+
+  return res.json({ success: true, message: 'דוח המסלקה נמחק' });
+}
+
+/**
  * DELETE /api/pension/funds — delete ALL pension data for the user (settings privacy zone).
  */
 async function deleteAllPensionData(req, res) {
@@ -436,10 +474,24 @@ async function getPensionRecommendations(req, res) {
 }
 
 /**
- * GET /api/pension/leading-funds?risk=LOW|MEDIUM|HIGH|INCREASED
- * Leading comprehensive pension funds from Finq (cached per risk cohort).
+ * GET /api/pension/leading-funds?risk=low|medium|high&period=12|36|5y|combined&limit=5
+ * Official PensiaNet market comparison (Step 3).
  */
 async function getLeadingFunds(req, res) {
+  const data = await marketComparisonService.getPensionMarketComparison({
+    risk: req.query.risk,
+    period: req.query.period,
+    limit: req.query.limit,
+    comparisonGroup: req.query.comparisonGroup || null,
+  });
+  return res.json({ success: true, data });
+}
+
+/**
+ * GET /api/pension/leading-funds/finq?risk=LOW|MEDIUM|HIGH|INCREASED
+ * Legacy Finq leading funds — retained for backward compatibility during transition.
+ */
+async function getLeadingFinqFunds(req, res) {
   const forceRefresh = req.query.refresh === 'true';
   const data = await pensionFinqService.getLeadingFunds(req.query.risk, { forceRefresh });
   return res.json({ success: true, data });
@@ -531,11 +583,7 @@ async function completeManualFunds(req, res) {
     data: {
       imported: result.imported,
       funds: result.funds.map(f => mapPensionFundToDto(f)),
-      analysis: analysis ? {
-        summary: analysis.summary,
-        healthCheck: analysis.healthCheck,
-        benchmark: analysis.benchmark,
-      } : null,
+      analysis: buildUploadAnalysisSnippet(analysis),
     },
   });
 }
@@ -586,13 +634,9 @@ async function uploadClearinghouse(req, res) {
       summary: parsed.summary,
       savingsDelta: result.savingsDelta,
       healthScore: result.healthScore,
-      analysis: analysis ? {
-        summary: analysis.summary,
-        benchmark: analysis.benchmark,
-        projection: analysis.projection,
-        healthCheck: analysis.healthCheck,
-      } : null,
+      analysis: buildUploadAnalysisSnippet(analysis),
       funds: result.funds.map(f => mapPensionFundToDto(f)),
+      agentReadiness: buildClearinghouseAgentReadiness(result.funds),
     },
   });
 }
@@ -610,8 +654,10 @@ module.exports = {
   deletePensionFund,
   getFundAdvice,
   getLeadingFunds,
+  getLeadingFinqFunds,
   getMarketFundById,
   getPensionRecommendations,
   deleteAllPensionData,
+  deleteClearinghouseData,
   analyzePensionOnly,
 };

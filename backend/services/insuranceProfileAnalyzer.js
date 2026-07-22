@@ -101,14 +101,14 @@ function buildInsights(profile, policies) {
 
   if (!hasDisability && age != null && age < 50) {
     insights.push({
-      id: 'disability_insurance_missing',
-      severity: 'error',
+      id: 'disability_insurance_unverified',
+      severity: 'info',
       category: 'insurance',
-      title: 'אין ביטוח אובדן כושר עבודה',
-      description: 'ביטוח אכ"ע הוא הביטוח הקריטי ביותר לשכירים — מגן על הכנסתך אם תפסיק לעבוד בגלל מחלה/תאונה.',
-      recommendation: 'בדוק אם הפנסיה שלך כוללת ביטוח נכות. אם לא — רכוש ביטוח אכ"ע עצמאי. עלות טיפוסית: ₪100-200/חודש.',
+      title: 'כיסוי אובדן כושר — לבדיקה',
+      description: 'לא זוהה כיסוי אובדן כושר עבודה בקובץ הביטוח שהועלה. כדאי לבדוק אם הכיסוי קיים בקרן הפנסיה, בביטוח מנהלים או דרך המעסיק.',
+      recommendation: 'אמת מול הפנסיה והמעסיק לפני רכישת פוליסה חדשה.',
       financialImpact: null,
-      financialImpactLabel: 'חיוני לאבטחת הכנסה',
+      financialImpactLabel: 'לבדיקה — לא מסקנה על פער',
     });
   }
 
@@ -136,24 +136,21 @@ function buildInsights(profile, policies) {
   if (hasHealthInsurance) {
     const { analyzeAggregatedInsurance } = require('./insurancePolicyAggregationService');
     const { aggregatedPolicies, duplicates } = analyzeAggregatedInsurance(policies);
-    const healthDup = duplicates.find(d =>
-      (d.type === 'health' || d.type === 'surgery_israel') && d.recommendCancellation,
+    const paOverlap = duplicates.find(d =>
+      d.type === 'personal_accident' && d.status === 'possible_overlap',
     );
-    if (healthDup) {
-      const annualDouble = healthDup.estimatedMonthlyWaste * 12;
+    if (paOverlap) {
       insights.push({
-        id: 'health_insurance_duplicate',
-        severity: 'warning',
+        id: 'health_insurance_overlap_review',
+        severity: 'info',
         category: 'insurance',
-        title: 'כפילות בביטוח בריאות',
-        description: healthDup.reasonHe || `נמצאו ${healthDup.policyCount} פוליסות נפרדות עם חפיפה לקופ"ח.`,
-        recommendation: healthDup.isCatastrophic
-          ? 'כיסוי קטסטרופי — אל תבטל ללא ייעוץ מקצועי.'
-          : `ייתכן חיסכון של ~₪${Math.round(healthDup.estimatedMonthlyWaste).toLocaleString('he-IL')}/חודש בביטול כיסויים כפולים.`,
-        financialImpact: healthDup.isCatastrophic ? null : Math.round(annualDouble),
-        financialImpactLabel: healthDup.isCatastrophic
-          ? null
-          : `₪${Math.round(annualDouble).toLocaleString('he-IL')}/שנה בביטול כפילויות`,
+        title: 'חפיפה אפשרית — תאונות אישיות',
+        description: paOverlap.reasonHe || 'נמצאו מספר פוליסות תאונות אישיות — יש להשוות סכומים ותנאים.',
+        recommendation: 'פרמיה לבדיקה בלבד — לא מדובר בחיסכון מאומת.',
+        financialImpact: null,
+        financialImpactLabel: paOverlap.premiumUnderReviewMonthly
+          ? `פרמיה לבדיקה: ₪${Math.round(paOverlap.premiumUnderReviewMonthly).toLocaleString('he-IL')}/חודש`
+          : null,
       });
     } else if (aggregatedPolicies.filter(p => p.type === 'health').length >= 2) {
       // Multiple distinct health policies but no true duplicate detected — informational only

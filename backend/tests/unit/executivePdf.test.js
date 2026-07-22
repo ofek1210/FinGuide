@@ -15,10 +15,10 @@ describe('executive PDF generation', () => {
         impactAmount: 5000,
       }],
     });
-    const engine = runGlobalPriorityEngine({ pension });
+    const engine = runGlobalPriorityEngine({ pension, gemel: buildAgentPackage('gemel', { status: 'no_data' }), insurance: buildAgentPackage('insurance', { status: 'no_data' }), payslip: buildAgentPackage('payslip', { status: 'no_data' }) });
     const report = buildExecutiveReport({
       userId: 'u1',
-      packages: { pension },
+      packages: { pension, gemel: buildAgentPackage('gemel', { status: 'no_data' }), insurance: buildAgentPackage('insurance', { status: 'no_data' }), payslip: buildAgentPackage('payslip', { status: 'no_data' }) },
       priorityEngine: engine,
       globalScore: { score: 60, label: 'סביר' },
       conflicts: [],

@@ -1,3 +1,7 @@
+/**
+ * @deprecated Step 6b — no longer mounted on GemelPage.
+ * Recommendations moved to ThreeCardSummary via /api/gemel/analysis (three_card_v5).
+ */
 import { AlertTriangle, FileSpreadsheet, TrendingUp } from "lucide-react";
 import type { GemelAdvisorReportDTO } from "../../api/gemel.api";
 import { formatCurrencyOrDash } from "../../utils/formatters";

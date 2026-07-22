@@ -94,12 +94,12 @@ export function agentStats(id: AgentId, result: AgentResult | undefined): Array<
   if (id === "pension") {
     const monthly = asNumber(d.totalMonthlyContribution);
     const projection = (d.projection ?? null) as { monthlyPensionEstimate?: number } | null;
-    const health = (d.healthCheck ?? null) as { score?: number } | null;
+    const cards = asNumber((d as { recommendationCards?: unknown[] }).recommendationCards?.length);
     if (monthly != null) stats.push({ k: "הפקדה חודשית", v: nis(monthly) });
     if (typeof projection?.monthlyPensionEstimate === "number") {
       stats.push({ k: "קצבה חזויה", v: nis(projection.monthlyPensionEstimate) });
     }
-    if (typeof health?.score === "number") stats.push({ k: "ציון פנסיה", v: `${health.score}` });
+    if (cards != null && cards > 0) stats.push({ k: "כרטיסי המלצה", v: String(cards) });
   }
 
   if (id === "gemel") {
@@ -117,11 +117,12 @@ export function agentStats(id: AgentId, result: AgentResult | undefined): Array<
 /** Domain verdict (pension LEAVE/NEGOTIATE/SWITCH · insurance STAY/REVIEW/SWITCH). */
 export function agentVerdict(id: AgentId, result: AgentResult | undefined): string | null {
   const d = (result?.data ?? {}) as Record<string, unknown>;
-  if (id === "pension") {
-    const advice = (d.fundAdvice ?? null) as { overallVerdictLabelHe?: string } | null;
-    return asString(advice?.overallVerdictLabelHe);
+  if (id === "pension" || id === "gemel") {
+    const cards = d.recommendationCards as unknown[] | undefined;
+    if (cards?.length) return "ניתוח שלוש-כרטיסים";
+    return null;
   }
-  if (id === "insurance" || id === "gemel") {
+  if (id === "insurance") {
     const advice = (d.marketAdvice ?? null) as { overallVerdictLabelHe?: string } | null;
     return asString(advice?.overallVerdictLabelHe);
   }

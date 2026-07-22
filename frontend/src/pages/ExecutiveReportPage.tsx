@@ -1,15 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowRight,
-  CheckCircle2,
   Download,
   FileText,
-  Lightbulb,
+  History,
   RefreshCw,
   Sparkles,
-  Star,
   Target,
 } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
@@ -18,25 +16,12 @@ import Loader from "../components/ui/Loader";
 import {
   downloadExecutiveReportPdf,
   generateExecutiveReport,
+  getLatestExecutiveReport,
+  type AgentReportSection,
   type ExecutiveReport,
+  type PreservedRecommendation,
 } from "../api/executiveReport.api";
 import { APP_ROUTES } from "../types/navigation";
-
-function ImpactStars({ count }: { count: number }) {
-  return (
-    <span style={{ color: "var(--lav-500)", letterSpacing: 1 }} aria-label={`השפעה: ${count} מתוך 5`}>
-      {Array.from({ length: 5 }, (_, i) => (
-        <Star
-          key={i}
-          size={14}
-          fill={i < count ? "currentColor" : "none"}
-          strokeWidth={2}
-          style={{ display: "inline", verticalAlign: "middle", opacity: i < count ? 1 : 0.25 }}
-        />
-      ))}
-    </span>
-  );
-}
 
 function SectionCard({
   id,
@@ -86,41 +71,166 @@ function SectionCard({
   );
 }
 
-function RoadmapBucket({
-  label,
-  items,
-}: {
-  label: string;
-  items: { title: string; explanation: string; rank: number }[];
-}) {
-  if (!items.length) return null;
+function statusBadge(section: AgentReportSection) {
+  if (section.dataStatus === "error") {
+    return { label: "שגיאה בטעינה", color: "var(--peach-ink)", bg: "rgba(218,111,68,.1)" };
+  }
+  if (section.dataStatus === "missing") {
+    return { label: "נתונים חסרים", color: "var(--text-muted)", bg: "var(--surface-sunken)" };
+  }
+  if (section.recommendationStatus === "hasRecommendations") {
+    return { label: "יש המלצות", color: "var(--mint-ink)", bg: "var(--mint-soft)" };
+  }
+  return { label: "נבדק — ללא המלצות מהותיות", color: "var(--lav-600)", bg: "var(--lav-50)" };
+}
+
+function RecommendationView({ rec }: { rec: PreservedRecommendation }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--lav-600)", marginBottom: 8 }}>{label}</div>
-      <ul style={{ margin: 0, paddingInlineStart: 18, display: "flex", flexDirection: "column", gap: 8 }}>
-        {items.map((item) => (
-          <li key={`${label}-${item.rank}-${item.title}`} style={{ lineHeight: 1.5 }}>
-            <strong style={{ color: "var(--text-strong)" }}>{item.title}</strong>
-            {item.explanation ? (
-              <span style={{ color: "var(--text-muted)", fontSize: 14 }}> — {item.explanation}</span>
-            ) : null}
-          </li>
-        ))}
-      </ul>
-    </div>
+    <article
+      style={{
+        border: "1px solid var(--border-hair)",
+        borderRadius: "var(--r-md)",
+        padding: "16px 18px",
+        background: "var(--surface-sunken)",
+      }}
+    >
+      <h4 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 900, color: "var(--text-strong)" }}>{rec.title}</h4>
+      {rec.description ? (
+        <p style={{ margin: "0 0 8px", fontSize: 14, lineHeight: 1.6, color: "var(--text-muted)" }}>{rec.description}</p>
+      ) : null}
+      {rec.reason ? (
+        <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-muted)" }}>
+          <strong>למה זה חשוב:</strong> {rec.reason}
+        </p>
+      ) : null}
+      {rec.expectedBenefit ? (
+        <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--mint-ink)", fontWeight: 700 }}>
+          צעד מומלץ: {rec.expectedBenefit}
+        </p>
+      ) : null}
+      {rec.source ? (
+        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>מקור: {rec.source}</p>
+      ) : null}
+    </article>
+  );
+}
+
+function AgentSectionView({ section, index }: { section: AgentReportSection; index: number }) {
+  const badge = statusBadge(section);
+  return (
+    <SectionCard
+      id={`report-agent-${section.agentId}`}
+      icon={<FileText size={18} />}
+      title={`${index + 1}. ${section.title}`}
+    >
+      <div
+        style={{
+          display: "inline-flex",
+          padding: "4px 12px",
+          borderRadius: 999,
+          fontSize: 12,
+          fontWeight: 800,
+          color: badge.color,
+          background: badge.bg,
+          marginBottom: 14,
+        }}
+      >
+        {badge.label}
+      </div>
+
+      {section.statusMessage ? (
+        <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.7, color: "var(--text-strong)", fontWeight: 600 }}>
+          {section.statusMessage}
+        </p>
+      ) : null}
+
+      {section.missingDetail ? (
+        <div style={{ marginBottom: 16, padding: 14, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>מה חסר</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{section.missingDetail.whatIsMissing}</div>
+          <div style={{ fontWeight: 800, margin: "12px 0 6px" }}>מה ייפתח לאחר העלאה</div>
+          <div style={{ color: "var(--text-muted)", fontSize: 14 }}>{section.missingDetail.whatEnables}</div>
+        </div>
+      ) : null}
+
+      {section.dataSummary.length > 0 ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>סיכום נתונים</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8 }}>
+            {section.dataSummary.map(item => (
+              <div key={`${item.label}-${item.value}`} style={{ padding: 12, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{item.label}</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}>{item.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {section.findings.length > 0 ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>ממצאי הסוכן</div>
+          <ul style={{ margin: 0, paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14, lineHeight: 1.6 }}>
+            {section.findings.map(f => (
+              <li key={f.title}>
+                <strong style={{ color: "var(--text-strong)" }}>{f.title}</strong>
+                {f.explanation ? ` — ${f.explanation}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {section.recommendations.length > 0 ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, marginBottom: 10 }}>המלצות</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {section.recommendations.map(rec => (
+              <RecommendationView key={`${rec.recommendationId || rec.title}`} rec={rec} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {section.plainLanguageExplanation ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>הסבר בשפה פשוטה</div>
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: "var(--text-muted)" }}>{section.plainLanguageExplanation}</p>
+        </div>
+      ) : null}
+
+      {section.nextActions.length > 0 ? (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>צעדים מעשיים</div>
+          <ul style={{ margin: 0, paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14 }}>
+            {section.nextActions.map(action => (
+              <li key={action}>{action}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {section.sourceData ? (
+        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>מקור נתונים: {section.sourceData}</p>
+      ) : null}
+    </SectionCard>
   );
 }
 
 export default function ExecutiveReportPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [report, setReport] = useState<ExecutiveReport | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const loadReport = useCallback(async () => {
     setLoading(true);
+    setGenerating(true);
     setError(null);
     const result = await generateExecutiveReport();
     if (!result.success) {
@@ -129,12 +239,32 @@ export default function ExecutiveReportPage() {
     } else {
       setReport(result.report);
       setRunId(result.runId);
+      setFromCache(false);
     }
     setLoading(false);
+    setGenerating(false);
   }, []);
 
   useEffect(() => {
-    void loadReport();
+    const wantsFresh = (location.state as { fresh?: boolean } | null)?.fresh === true;
+    if (wantsFresh) {
+      void loadReport();
+      return;
+    }
+    void (async () => {
+      setLoading(true);
+      setError(null);
+      const latest = await getLatestExecutiveReport();
+      if (latest.success && latest.found) {
+        setReport(latest.report);
+        setRunId(latest.runId);
+        setFromCache(true);
+        setLoading(false);
+        return;
+      }
+      await loadReport();
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadReport]);
 
   const handleDownloadPdf = async () => {
@@ -155,19 +285,25 @@ export default function ExecutiveReportPage() {
   };
 
   const sections = report?.sections;
+  const agentReport = sections?.agentReport;
 
-  const tocItems = sections
+  const feeProducts = agentReport?.combinedSummary.managementFees?.products ?? [];
+  const hasCombined = (agentReport?.combinedSummary.notes.length ?? 0) > 0 || feeProducts.length > 0;
+
+  const tocItems = agentReport
     ? [
-        { id: "report-summary", label: "סיכום מנהלים" },
-        { id: "report-actions", label: "פעולות בעדיפות עליונה" },
-        ...(sections.conflicts.length ? [{ id: "report-conflicts", label: "נושאים שדורשים איזון" }] : []),
-        ...(sections.financialStrengths.length ? [{ id: "report-strengths", label: "חוזקות פיננסיות" }] : []),
-        ...(sections.risks.length ? [{ id: "report-risks", label: "סיכונים" }] : []),
-        ...(sections.opportunities.length ? [{ id: "report-opportunities", label: "הזדמנויות" }] : []),
-        { id: "report-roadmap", label: "מפת דרכים" },
-        { id: "report-review", label: "דברים לבדיקה שוטפת" },
+        { id: "report-overview", label: "התמונה הפיננסית שלי" },
+        ...agentReport.agentSections.map(s => ({
+          id: `report-agent-${s.agentId}`,
+          label: s.title,
+        })),
+        ...(hasCombined ? [{ id: "report-combined", label: "סיכום משולב" }] : []),
+        ...(sections?.conflicts?.length ? [{ id: "report-conflicts", label: "הערות והתלבטויות" }] : []),
+        ...(agentReport.whatToDo.length ? [{ id: "report-actions", label: "מה כדאי לעשות" }] : []),
+        ...(agentReport.missingData.length ? [{ id: "report-missing", label: "מידע שחסר" }] : []),
       ]
     : [];
+
   const generatedLabel = report?.meta.generatedAt
     ? new Date(report.meta.generatedAt).toLocaleDateString("he-IL", {
         day: "numeric",
@@ -208,16 +344,37 @@ export default function ExecutiveReportPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
             <Sparkles size={17} color="var(--lav-500)" />
             <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: ".12em", color: "var(--lav-600)" }}>
-              יועץ פיננסי אחד · דוח מנהלים
+              יועץ פיננסי אחד · דוח אישי
             </span>
           </div>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <div>
               <h1 style={{ margin: "0 0 8px", fontSize: "clamp(28px,3.5vw,40px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>
-                הדוח הפיננסי שלך
+                {sections?.title || "הדוח הפיננסי האישי שלי"}
               </h1>
               {generatedLabel ? (
-                <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>נוצר ב-{generatedLabel}</p>
+                <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>
+                  נוצר ב-{generatedLabel}
+                  {fromCache ? (
+                    <span
+                      style={{
+                        marginInlineStart: 10,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        background: "var(--lav-50)",
+                        color: "var(--lav-600)",
+                        borderRadius: 999,
+                        padding: "3px 10px",
+                        fontSize: 12,
+                        fontWeight: 800,
+                        verticalAlign: "middle",
+                      }}
+                    >
+                      <History size={12} /> הניתוח האחרון שנשמר
+                    </span>
+                  ) : null}
+                </p>
               ) : null}
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -240,7 +397,7 @@ export default function ExecutiveReportPage() {
                   opacity: loading ? 0.6 : 1,
                 }}
               >
-                <RefreshCw size={16} /> רענון
+                <RefreshCw size={16} /> {fromCache ? "ניתוח חדש" : "רענון"}
               </button>
               <button
                 type="button"
@@ -255,15 +412,15 @@ export default function ExecutiveReportPage() {
                   border: "none",
                   background: "var(--ink)",
                   color: "#fff",
-                  cursor: loading || downloading || !report ? "not-allowed" : "pointer",
+                  cursor: loading || downloading ? "not-allowed" : "pointer",
                   fontFamily: "inherit",
                   fontWeight: 800,
                   fontSize: 14,
-                  opacity: loading || downloading || !report ? 0.6 : 1,
+                  opacity: loading || downloading ? 0.6 : 1,
                 }}
               >
                 <Download size={16} />
-                {downloading ? "מוריד..." : "הורדת דוח פיננסי (PDF)"}
+                {downloading ? "מוריד..." : "הורדת PDF"}
               </button>
             </div>
           </div>
@@ -273,7 +430,7 @@ export default function ExecutiveReportPage() {
           <section style={{ textAlign: "center", padding: "60px 20px" }}>
             <Loader />
             <p style={{ marginTop: 16, color: "var(--text-muted)", fontWeight: 600 }}>
-              מרכזים את כל הסוכנים לדוח אחד...
+              {generating ? "מרכזים את כל הסוכנים לדוח אחד..." : "טוענים את הניתוח האחרון שלך..."}
             </p>
           </section>
         ) : null}
@@ -293,7 +450,7 @@ export default function ExecutiveReportPage() {
           </section>
         ) : null}
 
-        {sections ? (
+        {sections && agentReport ? (
           <>
             <nav
               aria-label="תוכן הדוח"
@@ -317,161 +474,122 @@ export default function ExecutiveReportPage() {
               </ul>
             </nav>
 
-            <SectionCard id="report-summary" icon={<FileText size={18} />} title="סיכום מנהלים">
-              <p style={{ margin: 0, fontSize: 16, lineHeight: 1.75, color: "var(--text-strong)" }}>
+            <SectionCard id="report-overview" icon={<FileText size={18} />} title="התמונה הפיננסית שלי">
+              <p style={{ margin: "0 0 12px", fontSize: 16, lineHeight: 1.75, color: "var(--text-strong)" }}>
                 {sections.executiveSummary}
               </p>
-              {report.meta.globalHealthScore != null ? (
-                <div
-                  style={{
-                    marginTop: 16,
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    background: "var(--mint-soft)",
-                    color: "var(--mint-ink)",
-                    borderRadius: 999,
-                    padding: "6px 14px",
-                    fontSize: 13,
-                    fontWeight: 800,
-                  }}
-                >
-                  ציון בריאות פיננסית: {report.meta.globalHealthScore}/100
-                </div>
+              {agentReport.intro ? (
+                <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)" }}>{agentReport.intro}</p>
               ) : null}
             </SectionCard>
 
-            <SectionCard id="report-actions" icon={<Target size={18} />} title="פעולות בעדיפות עליונה">
-              {sections.topPriorityActions.length === 0 ? (
-                <p style={{ margin: 0, color: "var(--text-muted)" }}>לא זוהו פעולות דחופות כרגע.</p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {sections.topPriorityActions.map((action) => (
-                    <article
-                      key={action.rank}
-                      style={{
-                        border: "1px solid var(--border-hair)",
-                        borderRadius: "var(--r-md)",
-                        padding: "18px 20px",
-                        background: action.rank === 1 ? "linear-gradient(135deg,var(--lav-50),var(--card))" : "var(--surface-sunken)",
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 22, fontWeight: 900, color: "var(--lav-600)" }}>#{action.rank}</span>
-                        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 900, color: "var(--text-strong)" }}>{action.title}</h3>
-                      </div>
-                      <p style={{ margin: "0 0 12px", fontSize: 14.5, lineHeight: 1.6, color: "var(--text-muted)" }}>{action.explanation}</p>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10, fontSize: 13.5 }}>
-                        <div>
-                          <div style={{ fontWeight: 800, color: "var(--text-strong)", marginBottom: 4 }}>למה עכשיו?</div>
-                          <div style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>{action.whyNow}</div>
+            {agentReport.agentSections.map((section, index) => (
+              <AgentSectionView key={section.agentId} section={section} index={index} />
+            ))}
+
+            {hasCombined ? (
+              <SectionCard id="report-combined" icon={<Target size={18} />} title="סיכום משולב">
+                {agentReport.combinedSummary.notes.length > 0 ? (
+                  <ul style={{ margin: "0 0 16px", paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14, lineHeight: 1.7 }}>
+                    {agentReport.combinedSummary.notes.map(note => (
+                      <li key={note}>{note}</li>
+                    ))}
+                  </ul>
+                ) : null}
+                {feeProducts.length > 0 ? (
+                  <div style={{ overflowX: "auto" }}>
+                    <div style={{ fontWeight: 800, marginBottom: 8 }}>דמי ניהול — השוואה בין תחומים</div>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ textAlign: "right", borderBottom: "1px solid var(--border-hair)" }}>
+                          <th style={{ padding: 8 }}>מוצר</th>
+                          <th style={{ padding: 8 }}>דמ"נ נוכחי</th>
+                          <th style={{ padding: 8 }}>השוואה</th>
+                          <th style={{ padding: 8 }}>עודף שנתי</th>
+                          <th style={{ padding: 8 }}>מסקנה</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {feeProducts.map(p => (
+                          <tr key={p.product} style={{ borderBottom: "1px solid var(--border-hair)" }}>
+                            <td style={{ padding: 8 }}>{p.product}</td>
+                            <td style={{ padding: 8 }}>{p.currentFee ?? "—"}</td>
+                            <td style={{ padding: 8 }}>{p.comparisonValue ?? "—"}</td>
+                            <td style={{ padding: 8 }}>
+                              {p.estimatedAnnualExcess != null
+                                ? `₪${Math.round(p.estimatedAnnualExcess).toLocaleString("he-IL")}`
+                                : "—"}
+                            </td>
+                            <td style={{ padding: 8 }}>{p.conclusion ?? "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {agentReport.combinedSummary.managementFees?.totalEstimatedAnnualExcess != null ? (
+                      <p style={{ marginTop: 12, fontWeight: 800 }}>
+                        סה"כ עודף שנתי מוערך: ₪
+                        {Math.round(agentReport.combinedSummary.managementFees.totalEstimatedAnnualExcess).toLocaleString("he-IL")}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </SectionCard>
+            ) : null}
+
+            {(sections.conflicts?.length ?? 0) > 0 ? (
+              <SectionCard id="report-conflicts" icon={<AlertTriangle size={18} />} title="הערות והתלבטויות">
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {sections.conflicts.map(c => (
+                    <article key={c.title} style={{ padding: 14, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
+                      <div style={{ fontWeight: 900, color: "var(--text-strong)", marginBottom: 6 }}>{c.title}</div>
+                      <div style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>{c.explanation}</div>
+                      {c.tradeOff ? (
+                        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
+                          <strong>התלבטות:</strong> {c.tradeOff}
                         </div>
-                        <div>
-                          <div style={{ fontWeight: 800, color: "var(--text-strong)", marginBottom: 4 }}>תועלת צפויה</div>
-                          <div style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>{action.expectedBenefit}</div>
+                      ) : null}
+                      {c.recommendation ? (
+                        <div style={{ fontSize: 13, color: "var(--mint-ink)", fontWeight: 700, marginTop: 6 }}>
+                          המלצת האורקסטרטור: {c.recommendation}
                         </div>
-                        <div>
-                          <div style={{ fontWeight: 800, color: "var(--text-strong)", marginBottom: 4 }}>עדיפות · דחיפות · השפעה</div>
-                          <div style={{ color: "var(--text-muted)" }}>
-                            {action.priorityLabel} · {action.urgency} · <ImpactStars count={action.impactStars} />
-                          </div>
-                        </div>
-                      </div>
-                      {action.conflictNote ? (
-                        <p style={{ margin: "12px 0 0", fontSize: 13, color: "var(--peach-ink)", fontWeight: 600 }}>
-                          הערה: {action.conflictNote}
-                        </p>
                       ) : null}
                     </article>
-                  ))}
-                </div>
-              )}
-            </SectionCard>
-
-            {sections.conflicts.length > 0 ? (
-              <SectionCard id="report-conflicts" icon={<AlertTriangle size={18} />} title="נושאים שדורשים איזון">
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {sections.conflicts.map((c) => (
-                    <div key={c.title} style={{ padding: "14px 16px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)" }}>
-                      <div style={{ fontWeight: 900, marginBottom: 6 }}>{c.title}</div>
-                      <p style={{ margin: "0 0 6px", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.55 }}>{c.explanation}</p>
-                      <p style={{ margin: "0 0 6px", fontSize: 13.5, color: "var(--text-muted)" }}>
-                        <strong>הפשרה:</strong> {c.tradeOff}
-                      </p>
-                      <p style={{ margin: 0, fontSize: 13.5, fontWeight: 700, color: "var(--lav-600)" }}>
-                        המלצה: {c.recommendation}
-                      </p>
-                    </div>
                   ))}
                 </div>
               </SectionCard>
             ) : null}
 
-            <SectionCard id="report-strengths" icon={<CheckCircle2 size={18} />} title="חוזקות פיננסיות">
-              {sections.financialStrengths.length === 0 ? (
-                <p style={{ margin: 0, color: "var(--text-muted)" }}>נמשיך לזהות חוזקות ככל שייכנסו עוד נתונים.</p>
-              ) : (
-                <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 10 }}>
-                  {sections.financialStrengths.map((s) => (
-                    <li key={s.title} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                      <CheckCircle2 size={18} color="var(--mint-ink)" style={{ flexShrink: 0, marginTop: 2 }} />
-                      <div>
-                        <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>{s.title}</div>
-                        {s.explanation ? <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 2 }}>{s.explanation}</div> : null}
-                      </div>
+            {agentReport.whatToDo.length > 0 ? (
+              <SectionCard id="report-actions" icon={<Target size={18} />} title="מה כדאי לעשות">
+                <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
+                  {agentReport.whatToDo.map(item => (
+                    <li key={`${item.agentId}-${item.title}-${item.action}`} style={{ padding: "12px 14px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)" }}>
+                      <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>{item.title}</div>
+                      <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{item.action}</div>
                     </li>
                   ))}
                 </ul>
-              )}
-            </SectionCard>
+              </SectionCard>
+            ) : null}
 
-            <SectionCard id="report-risks" icon={<AlertTriangle size={18} />} title="סיכונים">
-              {sections.risks.length === 0 ? (
-                <p style={{ margin: 0, color: "var(--text-muted)" }}>לא זוהו סיכונים משמעותיים.</p>
-              ) : (
-                <ul style={{ margin: 0, paddingInlineStart: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-                  {sections.risks.map((r) => (
-                    <li key={r.title} style={{ lineHeight: 1.55 }}>
-                      <strong>{r.title}</strong>
-                      {r.explanation ? <span style={{ color: "var(--text-muted)" }}> — {r.explanation}</span> : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </SectionCard>
-
-            <SectionCard id="report-opportunities" icon={<Lightbulb size={18} />} title="הזדמנויות">
-              {sections.opportunities.length === 0 ? (
-                <p style={{ margin: 0, color: "var(--text-muted)" }}>אין הזדמנויות חדשות כרגע.</p>
-              ) : (
-                <ul style={{ margin: 0, paddingInlineStart: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-                  {sections.opportunities.map((o) => (
-                    <li key={o.title} style={{ lineHeight: 1.55 }}>
-                      <strong>{o.title}</strong>
-                      {o.explanation ? <span style={{ color: "var(--text-muted)" }}> — {o.explanation}</span> : null}
-                      {o.possibleSavings ? (
-                        <span style={{ color: "var(--mint-ink)", fontWeight: 800, fontSize: 13 }}> · חיסכון פוטנציאלי</span>
+            {agentReport.missingData.length > 0 ? (
+              <SectionCard id="report-missing" icon={<AlertTriangle size={18} />} title="מידע שחסר">
+                <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
+                  {agentReport.missingData.map(item => (
+                    <li key={item.agentId} style={{ padding: "12px 14px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)" }}>
+                      <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>{item.title}</div>
+                      <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{item.message}</div>
+                      {item.whatIsMissing ? (
+                        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>חסר: {item.whatIsMissing}</div>
+                      ) : null}
+                      {item.whatEnables ? (
+                        <div style={{ fontSize: 13, color: "var(--text-muted)" }}>לאחר העלאה: {item.whatEnables}</div>
                       ) : null}
                     </li>
                   ))}
                 </ul>
-              )}
-            </SectionCard>
-
-            <SectionCard id="report-roadmap" icon={<Target size={18} />} title="מפת דרכים">
-              <RoadmapBucket label="מיידי" items={sections.roadmap.immediate} />
-              <RoadmapBucket label="ב-30 יום" items={sections.roadmap.within30Days} />
-              <RoadmapBucket label="ב-3 חודשים" items={sections.roadmap.within3Months} />
-              <RoadmapBucket label="ארוך טווח" items={sections.roadmap.longTerm} />
-            </SectionCard>
-
-            <SectionCard id="report-review" icon={<RefreshCw size={18} />} title="דברים לבדיקה שוטפת">
-              <ul style={{ margin: 0, paddingInlineStart: 18, display: "flex", flexDirection: "column", gap: 8 }}>
-                {sections.thingsToReviewRegularly.map((item) => (
-                  <li key={item} style={{ color: "var(--text-muted)", lineHeight: 1.5 }}>{item}</li>
-                ))}
-              </ul>
-            </SectionCard>
+              </SectionCard>
+            ) : null}
 
             <p style={{ fontSize: 12.5, color: "var(--text-muted)", lineHeight: 1.6, marginTop: 8 }} role="note">
               {report.disclaimer}

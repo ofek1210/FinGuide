@@ -57,14 +57,14 @@ describe('executive global priority engine', () => {
     });
 
     const result = runGlobalPriorityEngine({ pension: pensionPkg, insurance: insurancePkg });
-    expect(result.priorityActions.length).toBeGreaterThan(0);
-    expect(result.priorityActions[0].title).toMatch(/דמי ניהול|פנסיה/i);
-    expect(result.priorityActions[0].priorityScore).toBeGreaterThan(
-      result.priorityActions[1]?.priorityScore ?? 0,
+    expect(result.scoredItems.length).toBeGreaterThan(0);
+    expect(result.scoredItems[0].title).toMatch(/דמי ניהול|פנסיה/i);
+    expect(result.scoredItems[0].priorityScore).toBeGreaterThan(
+      result.scoredItems[1]?.priorityScore ?? 0,
     );
   });
 
-  it('limits output to maximum 8 priority actions', () => {
+  it('preserves all recommendations after merge (no truncation)', () => {
     const recs = Array.from({ length: 12 }, (_, i) => ({
       type: `rec-${i}`,
       title: `המלצה ${i}`,
@@ -75,20 +75,19 @@ describe('executive global priority engine', () => {
     }));
     const pkg = buildAgentPackage('pension', { legacyRecs: recs });
     const result = runGlobalPriorityEngine({ pension: pkg });
-    expect(result.priorityActions.length).toBeLessThanOrEqual(8);
+    expect(result.scoredItems.length).toBe(12);
+    expect(result.stats.preservedCount).toBe(12);
   });
 
   it('computes higher score for critical high-savings items', () => {
     const high = computePriorityScore({
       severity: 'critical',
-      urgency: 'immediate',
       possibleSavings: 20000,
       confidence: 0.9,
       financialCategory: 'pension_fees',
     });
     const low = computePriorityScore({
       severity: 'low',
-      urgency: 'long_term',
       possibleSavings: 100,
       confidence: 0.5,
       financialCategory: 'general',

@@ -19,16 +19,19 @@ describe('insurancePolicyMergeService', () => {
 });
 
 describe('insuranceHealthCheckService', () => {
-  it('scores lower when duplicates exist', () => {
+  it('disables numerical score until evidence-backed dimensions exist', () => {
     const profileDTO = { policies: [{ type: 'life' }, { type: 'life' }] };
     const analysis = {
       duplicateCount: 1,
       totalMonthlyWaste: 300,
+      premiumUnderReviewMonthly: 300,
       missingCoverage: ['disability'],
-      savings: { annualSavings: 3600 },
+      savings: { annualSavings: 0 },
     };
     const health = runInsuranceHealthCheck(profileDTO, analysis);
-    expect(health.score).toBeLessThan(70);
-    expect(health.categories.length).toBe(4);
+    expect(health.score).toBeNull();
+    expect(health.scoreDisabled).toBe(true);
+    expect(health.messageHe).toMatch(/השלמת מידע/);
+    expect(health.categories).toHaveLength(0);
   });
 });

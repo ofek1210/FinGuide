@@ -13,7 +13,6 @@ const {
   getGemelSummary,
   generateGemelRecommendations,
   findGemelHoldings,
-  GEMEL_FUND_TYPES,
 } = require('../ai/tools/gemelTools');
 const { buildGemelMarketAdvice } = require('./gemelNetAdvisorService');
 const { buildFundDepositFindings } = require('../utils/detectFundWithoutDeposit');
@@ -32,6 +31,10 @@ const {
   sanitizeBenchmarkForClient,
   sanitizeEvidenceForClient,
 } = require('../utils/sanitizeClientInsights');
+const {
+  isThreeCardAnalysis,
+  buildThreeCardClientPayload,
+} = require('./financialAdvisory/threeCardAnalysisPayload');
 
 function isGemelFinding(finding) {
   const id = finding?.id || '';
@@ -63,22 +66,6 @@ async function buildGemelPayslipFindings(userId) {
     ...fundFindings,
     ...rateGapFindings,
   ].filter(isGemelFinding);
-}
-
-function toGemelProduct(f) {
-  return {
-    companyName: f.provider,
-    productName: f.fundName,
-    productType: f.fundType,
-    totalSavings: f.currentBalance,
-    depositFee: f.managementFeeDeposit != null
-      ? (f.managementFeeDeposit < 0.05 ? f.managementFeeDeposit * 100 : f.managementFeeDeposit)
-      : null,
-    assetFee: f.managementFeeAccumulation != null
-      ? (f.managementFeeAccumulation < 0.05 ? f.managementFeeAccumulation * 100 : f.managementFeeAccumulation)
-      : null,
-    status: 'פעיל',
-  };
 }
 
 function unifiedToGemelDisplay(ins) {
@@ -121,37 +108,9 @@ async function buildGemelAnalysis(userId, options = {}) {
     buildGemelPayslipFindings(userId),
   ]);
 
-  const gemelProducts = (summary.funds || []).map(toGemelProduct);
-  const marketAdvice = await buildGemelMarketAdvice(gemelProducts, {
-    ...profile,
-    currentAge: summary.currentAge,
-  });
-
   const allClearinghouseRecs = await generateClearinghouseInsightRecommendations(userId);
   const clearinghouseRecs = filterClearinghouseRecsByDomain(allClearinghouseRecs, 'gemel');
   const clearinghouseTypes = new Set(clearinghouseRecs.map(r => r.type));
-
-  let recommendations = [
-    ...clearinghouseRecs,
-    ...generateGemelRecommendations(summary, { marketAdvice })
-      .filter(r => !clearinghouseTypes.has(r.type)),
-  ];
-
-  const findingRecs = payslipFindings
-    .filter(f => f.severity === 'critical' || f.severity === 'warning')
-    .map(f => ({
-      type: f.id,
-      title: f.title,
-      reason: f.details,
-      urgency: f.severity === 'critical' ? 'high' : 'medium',
-      financialImpact: null,
-      confidenceScore: 80,
-    }));
-  const recTypes = new Set(recommendations.map(r => r.type));
-  recommendations = [
-    ...recommendations,
-    ...findingRecs.filter(r => !recTypes.has(r.type)),
-  ].sort((a, b) => (b.impactAmount || 0) - (a.impactAmount || 0));
 
   let structuredInsights = [];
   let insightMeta = null;
@@ -179,9 +138,11 @@ async function buildGemelAnalysis(userId, options = {}) {
       userId,
       productType: options.productTypeFilter === 'HISHTALMUT' ? 'HISHTALMUT' : 'GEMEL',
       skipLLM: options.skipLLM,
+      options: { funds: gemelFundsForAnalysis },
       precomputed: {
         unifiedInsights: mergedUnified,
         engineMeta: engineResult.meta,
+        funds: gemelFundsForAnalysis,
         matchResults: (engineResult.meta.marketMatches || []).map(m => ({
           matchConfidence: (m.matchConfidence ?? 0) * 100,
         })),
@@ -189,9 +150,6 @@ async function buildGemelAnalysis(userId, options = {}) {
         rawStructured: engineResult.insights,
       },
       legacyFields: {
-        recommendationsForDisplay: recommendations,
-        marketAdvice,
-        payslipFindings,
         insightMeta: engineResult.meta,
       },
       summaryOverride: {
@@ -202,6 +160,55 @@ async function buildGemelAnalysis(userId, options = {}) {
   } catch (err) {
     console.error('[buildGemelAnalysis] structured insights failed:', err.message);
   }
+
+  if (isThreeCardAnalysis(advisoryEnvelope)) {
+    return buildThreeCardClientPayload({
+      advisoryEnvelope,
+      summary,
+      profile,
+      productType: advisoryEnvelope.productType || productType,
+    });
+  }
+
+  const gemelProducts = (summary.funds || []).map(f => ({
+    companyName: f.provider,
+    productName: f.fundName,
+    productType: f.fundType,
+    totalSavings: f.currentBalance,
+    depositFee: f.managementFeeDeposit != null
+      ? (f.managementFeeDeposit < 0.05 ? f.managementFeeDeposit * 100 : f.managementFeeDeposit)
+      : null,
+    assetFee: f.managementFeeAccumulation != null
+      ? (f.managementFeeAccumulation < 0.05 ? f.managementFeeAccumulation * 100 : f.managementFeeAccumulation)
+      : null,
+    status: 'פעיל',
+  }));
+  const marketAdvice = await buildGemelMarketAdvice(gemelProducts, {
+    ...profile,
+    currentAge: summary.currentAge,
+  });
+
+  let recommendations = [
+    ...clearinghouseRecs,
+    ...generateGemelRecommendations(summary, { marketAdvice })
+      .filter(r => !clearinghouseTypes.has(r.type)),
+  ];
+
+  const findingRecs = payslipFindings
+    .filter(f => f.severity === 'critical' || f.severity === 'warning')
+    .map(f => ({
+      type: f.id,
+      title: f.title,
+      reason: f.details,
+      urgency: f.severity === 'critical' ? 'high' : 'medium',
+      financialImpact: null,
+      confidenceScore: 80,
+    }));
+  const recTypes = new Set(recommendations.map(r => r.type));
+  recommendations = [
+    ...recommendations,
+    ...findingRecs.filter(r => !recTypes.has(r.type)),
+  ].sort((a, b) => (b.impactAmount || 0) - (a.impactAmount || 0));
 
   const hasUnifiedRecs = (advisoryEnvelope?.primaryRecommendations?.length ?? 0) > 0;
 
@@ -245,6 +252,7 @@ async function buildGemelAnalysis(userId, options = {}) {
       productDisclaimer: advisoryEnvelope.productDisclaimer,
       prioritizationStats: advisoryEnvelope.summary?.prioritizationStats,
       llmSummary: advisoryEnvelope.llm?.summary,
+      recommendationEngine: advisoryEnvelope.recommendationEngine ?? undefined,
     } : {}),
   };
 }

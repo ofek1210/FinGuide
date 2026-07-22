@@ -49,6 +49,8 @@ async function runPensionRecommendationEngine(userId, options = {}) {
     fundCount: funds.length,
     analyzersRun: [],
     marketMatches: [],
+    marketContexts: [],
+    userContext,
     dataCompleteness: {},
     generatedAt: new Date().toISOString(),
     disclaimer: config.licensedAdvisorDisclaimer,
@@ -70,6 +72,7 @@ async function runPensionRecommendationEngine(userId, options = {}) {
         compounded12MPercentile: m.trackPerformance?.peerBenchmark?.percentile12M ?? null,
         compounded12MReturn: m.trackPerformance?.compounded?.return12M?.compoundedReturnPct ?? null,
       }));
+      meta.marketContexts = marketContexts;
     } catch (err) {
       console.error('[pensionRecommendationEngine] market data load failed:', err.message);
       meta.marketDataError = err.message;

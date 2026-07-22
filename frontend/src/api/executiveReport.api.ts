@@ -1,35 +1,70 @@
 import { apiBlob, apiJson } from "./client";
 
-export type ExecutivePriorityAction = {
-  rank: number;
+export type AgentDataStatus = "available" | "missing" | "error";
+export type AgentRecommendationStatus = "hasRecommendations" | "noRecommendations" | "unavailable";
+
+export type PreservedRecommendation = {
+  agentId: string;
+  recommendationId: string | null;
   title: string;
-  explanation: string;
-  whyNow: string;
-  expectedBenefit: string;
-  priorityScore: number;
-  priorityLabel: string;
-  urgency: string;
-  impactStars: number;
-  possibleSavings: number | null;
-  sourceAgents?: string[];
-  confidence?: number | null;
-  conflictNote?: string | null;
+  description: string;
+  reason: string | null;
+  expectedBenefit: string | null;
+  source: string | null;
+  confidence: number | null;
+};
+
+export type AgentReportSection = {
+  agentId: string;
+  title: string;
+  dataStatus: AgentDataStatus;
+  recommendationStatus: AgentRecommendationStatus;
+  statusMessage: string | null;
+  missingDetail: { whatIsMissing: string; whatEnables: string } | null;
+  dataSummary: { label: string; value: string }[];
+  findings: { title: string; explanation: string; severity?: string | null }[];
+  recommendations: PreservedRecommendation[];
+  plainLanguageExplanation: string | null;
+  nextActions: string[];
+  sourceData: string | null;
+};
+
+export type ManagementFeeProduct = {
+  product: string;
+  currentFee?: number | null;
+  comparisonValue?: number | null;
+  estimatedAnnualExcess?: number | null;
+  conclusion?: string | null;
+  sourceAgent?: string;
+};
+
+export type AgentFirstReport = {
+  title: string;
+  intro: string;
+  agentSections: AgentReportSection[];
+  combinedSummary: {
+    notes: string[];
+    managementFees?: {
+      products: ManagementFeeProduct[];
+      totalEstimatedAnnualExcess: number | null;
+    };
+  };
+  whatToDo: { title: string; action: string; agentId: string }[];
+  missingData: {
+    agentId: string;
+    title: string;
+    message: string;
+    whatIsMissing: string | null;
+    whatEnables: string | null;
+  }[];
 };
 
 export type ExecutiveReportSection = {
+  title: string;
   executiveSummary: string;
-  topPriorityActions: ExecutivePriorityAction[];
-  financialStrengths: { title: string; explanation: string }[];
-  risks: { title: string; explanation: string; severity?: string }[];
-  opportunities: { title: string; explanation: string; possibleSavings?: number | null }[];
+  agentReport: AgentFirstReport;
+  preservedRecommendations: PreservedRecommendation[];
   conflicts: { title: string; explanation: string; tradeOff: string; recommendation: string }[];
-  roadmap: {
-    immediate: { title: string; explanation: string; rank: number }[];
-    within30Days: { title: string; explanation: string; rank: number }[];
-    within3Months: { title: string; explanation: string; rank: number }[];
-    longTerm: { title: string; explanation: string; rank: number }[];
-  };
-  thingsToReviewRegularly: string[];
 };
 
 export type ExecutiveReport = {
@@ -38,12 +73,7 @@ export type ExecutiveReport = {
     generatedAt: string;
     reportVersion: string;
     agentCount: number;
-    globalHealthScore: number | null;
-    stats?: {
-      rawRecommendationCount: number;
-      mergedCount: number;
-      conflictCount: number;
-    };
+    stats?: Record<string, number>;
   };
   sections: ExecutiveReportSection;
   disclaimer: string;
@@ -79,6 +109,31 @@ export const generateExecutiveReport = async (options?: { skipLLM?: boolean }) =
   return { success: true, ...payload.data } as const;
 };
 
+type LatestExecutiveReportResponse = {
+  success: boolean;
+  data?: {
+    runId: string;
+    report: ExecutiveReport;
+    savedAt: string;
+  } | null;
+};
+
+export const getLatestExecutiveReport = async () => {
+  const result = await apiJson<LatestExecutiveReportResponse>("/api/executive/report/latest", {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו לטעון את הדוח האחרון.",
+  });
+
+  if (!result.ok) {
+    return { success: false, message: result.error.message } as const;
+  }
+  const latest = result.data?.data;
+  if (!latest?.report) {
+    return { success: true, found: false } as const;
+  }
+  return { success: true, found: true, ...latest } as const;
+};
+
 export const downloadExecutiveReportPdf = async (options?: { runId: string }) => {
   if (!options?.runId) {
     return { success: false, message: "חסר מזהה דוח. יש ליצור דוח לפני ההורדה." } as const;
@@ -95,7 +150,7 @@ export const downloadExecutiveReportPdf = async (options?: { runId: string }) =>
 
   const disposition = result.response.headers.get("Content-Disposition") || "";
   const match = disposition.match(/filename="([^"]+)"/);
-  const filename = match?.[1] || `FinGuide-Financial-Report-${new Date().toISOString().slice(0, 10)}.pdf`;
+  const filename = match?.[1] || `FinGuide-Personal-Report-${new Date().toISOString().slice(0, 10)}.pdf`;
 
   return { success: true, blob: result.blob, filename } as const;
 };

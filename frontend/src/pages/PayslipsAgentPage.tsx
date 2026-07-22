@@ -11,7 +11,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Upload, FileText, Sparkles, Check, ArrowLeft, ChevronRight,
   History, Plus, Wallet, TrendingUp, Landmark, ShieldCheck,
-  PiggyBank, GraduationCap, CalendarDays, HeartPulse, type LucideIcon,
+  PiggyBank, GraduationCap, CalendarDays, HeartPulse, Trash2, Pencil, Loader2,
+  type LucideIcon,
 } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
@@ -20,9 +21,10 @@ import DocumentsRibbonWave from "../components/documents/DocumentsRibbonWave";
 import PayslipsAgentTabs from "../components/payslips/PayslipsAgentTabs";
 import TaxAssistantPanel from "../components/payslips/TaxAssistantPanel";
 import Loader from "../components/ui/Loader";
-import AgentOnboardingFlow from "../components/onboarding/AgentOnboardingFlow";
+import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
 import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
-import { listDocuments, type DocumentItem } from "../api/documents.api";
+import { listDocuments, removeDocument, type DocumentItem } from "../api/documents.api";
+import MissingFieldsModal from "../components/payslip-history/MissingFieldsModal";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
 import { APP_ROUTES } from "../types/navigation";
 import { getUserProfile, type UserProfileResponseData } from "../api/userProfile.api";
@@ -41,6 +43,7 @@ import {
 } from "../utils/payslipAnalysisSummary";
 import { documentToPayslipDetail } from "../utils/documentToPayslip";
 import { formatCurrencyPositiveOrDash } from "../utils/formatters";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
 /* ── Types & helpers ─────────────────────────────────────────── */
 interface IntakeData {
@@ -93,7 +96,7 @@ const TONES: Record<Tone, [string, string]> = {
   neutral: ["var(--surface-sunken)", "var(--text-faint)"],
 };
 
-type WizardStep = "upload" | "results";
+type WizardStep = "questions" | "upload" | "results";
 
 /* ════════════════════════════════════════════════════════════════
    MAIN PAGE
@@ -110,6 +113,7 @@ export default function PayslipsAgentPage() {
   const [intake, setIntake] = useState<IntakeData>(EMPTY_INTAKE);
   const [step, setStep] = useState<WizardStep>("upload");
   const [bootstrapping, setBootstrapping] = useState(!forceUpload && !isSubView);
+  const [hasExistingPayslips, setHasExistingPayslips] = useState(false);
   const [resultsRefreshKey, setResultsRefreshKey] = useState(0);
   const [resultsSeedDocs, setResultsSeedDocs] = useState<DocumentItem[] | null>(null);
 
@@ -133,11 +137,7 @@ export default function PayslipsAgentPage() {
     let cancelled = false;
     void fetchLastPayslipAnalysis(1)
       .then(data => {
-        if (cancelled) return;
-        if (data.count > 0) {
-          setStep("results");
-          setResultsRefreshKey(k => k + 1);
-        }
+        if (!cancelled) setHasExistingPayslips(data.count > 0);
       })
       .finally(() => {
         if (!cancelled) setBootstrapping(false);
@@ -146,7 +146,19 @@ export default function PayslipsAgentPage() {
     return () => { cancelled = true; };
   }, [forceUpload, isSubView]);
 
-  if (bootstrapping) {
+  useEffect(() => {
+    if (bootstrapping || agentOnboarding.loading || forceUpload || isSubView) return;
+    if (agentOnboarding.needsQuestions) {
+      setStep("questions");
+    } else if (hasExistingPayslips) {
+      setStep("results");
+      setResultsRefreshKey(k => k + 1);
+    } else {
+      setStep("upload");
+    }
+  }, [bootstrapping, agentOnboarding.loading, agentOnboarding.needsQuestions, hasExistingPayslips, forceUpload, isSubView]);
+
+  if (bootstrapping || (!forceUpload && !isSubView && agentOnboarding.loading)) {
     return (
       <div data-agent="payslips" style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
         <PrivateTopbar />
@@ -168,10 +180,32 @@ export default function PayslipsAgentPage() {
 
         {isTaxView ? (
           <TaxAssistantPanel />
+        ) : step === "questions" ? (
+          <>
+            <div style={{ maxWidth: 640, margin: "0 auto", padding: "44px 24px 0" }}>
+              <StepIndicator step="questions" />
+            </div>
+            <AgentOnboardingStep
+              agentId="payslip"
+              compactTop
+              agentLabel="תלושי שכר"
+              estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+              questions={agentOnboarding.state?.missingQuestions ?? []}
+              phases={["questions", "document", "analysis"]}
+              activePhase="questions"
+              headline="לפני שמעלים תלושים — כמה שאלות קצרות"
+              subhead="כדי שהסוכן ינתח נכון את השכר, ההפרשות והמס — נשלים קודם את מה שחסר. אחר כך תעלה תלושים ותקבל ניתוח מלא."
+              onSkip={async () => { await agentOnboarding.skip(); setStep(hasExistingPayslips ? "results" : "upload"); }}
+              onSubmit={async answers => {
+                const ok = await agentOnboarding.submit(answers);
+                if (ok) setStep(hasExistingPayslips ? "results" : "upload");
+                return ok;
+              }}
+            />
+          </>
         ) : step === "upload" ? (
           <UploadStep
             intake={intake}
-            agentOnboarding={agentOnboarding}
             onComplete={(analyzableCount, uploadedDocs) => {
               setResultsSeedDocs(analyzableCount > 0 ? uploadedDocs : null);
               setResultsRefreshKey(k => k + 1);
@@ -201,7 +235,8 @@ export default function PayslipsAgentPage() {
 function StepIndicator({ step }: { step: WizardStep }) {
   const steps: { label: string; state: "done" | "active" | "todo" }[] = [
     { label: "פרטים אישיים", state: "done" },
-    { label: "העלאת תלושים", state: step === "upload" ? "active" : "done" },
+    { label: "שאלון קצר", state: step === "questions" ? "active" : step === "upload" || step === "results" ? "done" : "todo" },
+    { label: "העלאת תלושים", state: step === "upload" ? "active" : step === "results" ? "done" : "todo" },
     { label: "תובנות AI", state: step === "results" ? "active" : "todo" },
   ];
   return (
@@ -229,9 +264,8 @@ function StepIndicator({ step }: { step: WizardStep }) {
 /* ════════════════════════════════════════════════════════════════
    STEP 1 — UPLOAD (manual PDF only)
 ════════════════════════════════════════════════════════════════ */
-function UploadStep({ intake, agentOnboarding, onComplete, onBack }: {
+function UploadStep({ intake, onComplete, onBack }: {
   intake: IntakeData;
-  agentOnboarding: ReturnType<typeof useAgentOnboarding>;
   onComplete: (analyzableCount: number, uploadedDocs: DocumentItem[]) => void;
   onBack: () => void;
 }) {
@@ -241,6 +275,8 @@ function UploadStep({ intake, agentOnboarding, onComplete, onBack }: {
   const [uploadedEntries, setUploadedEntries] = useState<UploadedEntry[]>([]);
   const [passwordInputs, setPasswordInputs] = useState<Record<string, string>>({});
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editDocId, setEditDocId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -271,6 +307,25 @@ function UploadStep({ intake, agentOnboarding, onComplete, onBack }: {
     } else {
       setMsg({ type: "error", text: res.message || `שגיאה בפתיחת ${entry.name}` });
     }
+  };
+
+  const handleDeleteEntry = async (entry: UploadedEntry) => {
+    const label = entryDisplayLabel(entry);
+    if (!window.confirm(`למחוק את ${label}? לא ניתן לשחזר את הקובץ.`)) return;
+    setDeletingId(entry.id);
+    setMsg(null);
+    const docId = entry.doc._id || entry.doc.id;
+    if (docId) {
+      const res = await removeDocument(docId);
+      if (!res.success) {
+        setDeletingId(null);
+        setMsg({ type: "error", text: res.message ?? "שגיאה במחיקת התלוש" });
+        return;
+      }
+    }
+    setUploadedEntries(prev => prev.filter(e => e.id !== entry.id));
+    setDeletingId(null);
+    setMsg({ type: "success", text: `${label} נמחק` });
   };
 
   const handleFileUpload = async (files: FileList) => {
@@ -310,32 +365,6 @@ function UploadStep({ intake, agentOnboarding, onComplete, onBack }: {
     <main style={{ maxWidth: 640, margin: "0 auto", padding: "44px 24px 80px" }}>
       <StepIndicator step="upload" />
 
-      {agentOnboarding.needsQuestions ? (
-        <>
-          <div style={{ textAlign: "center", marginBottom: 28 }}>
-            <h1 style={{ fontSize: "clamp(28px,3.4vw,40px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.1, margin: "0 0 12px", color: "var(--text-strong)" }}>
-              לפני שמעלים תלושים
-            </h1>
-            <p style={{ fontSize: 16.5, color: "var(--text-muted)", lineHeight: 1.55, fontWeight: 500, margin: "0 auto", maxWidth: 420 }}>
-              כמה שאלות קצרות שיעזרו לנו לנתח את התלושים שלך בצורה מדויקת יותר.
-            </p>
-          </div>
-          <AgentOnboardingFlow
-            variant="inline"
-            agentLabel="תלושי שכר"
-            estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
-            questions={agentOnboarding.state?.missingQuestions || []}
-            onSkip={async () => { await agentOnboarding.skip(); }}
-            onSubmit={agentOnboarding.submit}
-          />
-          <div style={{ marginTop: 26 }}>
-            <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, color: "var(--text-muted)" }}>
-              <ChevronRight size={16} strokeWidth={2.4} /> חזרה
-            </button>
-          </div>
-        </>
-      ) : (
-        <>
       <div style={{ textAlign: "center", marginBottom: 32 }}>
         <h1 style={{ fontSize: "clamp(28px,3.4vw,40px)", fontWeight: 900, letterSpacing: "-.035em", lineHeight: 1.1, margin: "0 0 12px", color: "var(--text-strong)" }}>
           {intake.firstName ? `${intake.firstName}, נמשוך את התלושים שלך.` : "בוא נמשוך את התלושים שלך."}
@@ -370,6 +399,14 @@ function UploadStep({ intake, agentOnboarding, onComplete, onBack }: {
                       <span style={{ width: 30, height: 30, borderRadius: 8, flex: "none", background: bg, color: fg, display: "grid", placeItems: "center" }}><FileText size={16} /></span>
                       <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-strong)" }}>{entryDisplayLabel(entry)}</span>
                       <span style={{ fontSize: 11, fontWeight: 800, color: fg }}>{ok ? "מוכן" : needsPassword ? "סיסמה" : "שגיאה"}</span>
+                      {ok && (
+                        <button type="button" title="עריכה" onClick={() => setEditDocId(entry.doc._id || entry.doc.id || entry.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "grid", placeItems: "center", padding: 4 }}>
+                          <Pencil size={15} />
+                        </button>
+                      )}
+                      <button type="button" title="מחיקה" disabled={deletingId === entry.id} onClick={() => void handleDeleteEntry(entry)} style={{ background: "none", border: "none", cursor: deletingId === entry.id ? "wait" : "pointer", color: "var(--danger)", display: "grid", placeItems: "center", padding: 4 }}>
+                        {deletingId === entry.id ? <Loader2 size={15} style={{ animation: "fgspin 1s linear infinite" }} /> : <Trash2 size={15} />}
+                      </button>
                     </div>
                     {needsPassword && (
                       <div style={{ marginTop: 6, padding: "10px 12px", borderRadius: "var(--r-sm)", background: "var(--butter-soft)", border: "1px solid var(--butter)" }}>
@@ -399,6 +436,28 @@ function UploadStep({ intake, agentOnboarding, onComplete, onBack }: {
         </div>
       </div>
 
+      {editDocId && (
+        <MissingFieldsModal
+          docId={editDocId}
+          onClose={() => setEditDocId(null)}
+          onSaved={() => {
+            setEditDocId(null);
+            setUploadedEntries(prev => prev.map(e => {
+              if ((e.doc._id || e.doc.id) !== editDocId) return e;
+              return e;
+            }));
+            void listDocuments().then(res => {
+              if (!res.success || !res.data) return;
+              setUploadedEntries(prev => prev.map(e => {
+                const id = e.doc._id || e.doc.id;
+                const updated = res.data!.find(d => (d._id || d.id) === id);
+                return updated ? { ...e, doc: updated } : e;
+              }));
+            });
+          }}
+        />
+      )}
+
       {msg && (
         <div style={{ marginTop: 16, padding: "12px 18px", borderRadius: "var(--r-btn)", fontWeight: 700, fontSize: 13.5, textAlign: "center",
           background: msg.type === "error" ? "#FEF2F2" : msg.type === "success" ? "var(--mint-soft)" : "var(--accent-soft)",
@@ -420,8 +479,6 @@ function UploadStep({ intake, agentOnboarding, onComplete, onBack }: {
           </PrimaryBtn>
         </div>
       </div>
-        </>
-      )}
     </main>
   );
 }
@@ -447,6 +504,29 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
   const [passwordDoc, setPasswordDoc] = useState<DocumentItem | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [unlocking, setUnlocking] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editDocId, setEditDocId] = useState<string | null>(null);
+
+  const payslipLabel = summary
+    ? `סוכן תלושים · ${summary.count} תלושים`
+    : "סוכן תלושים";
+  const payslipDetail = summary
+    ? [
+        `מספר תלושים: ${summary.count}`,
+        summary.avgGross != null
+          ? `ברוטו ממוצע: ₪${Math.round(summary.avgGross).toLocaleString("he-IL")}`
+          : null,
+        summary.avgNet != null
+          ? `נטו ממוצע: ₪${Math.round(summary.avgNet).toLocaleString("he-IL")}`
+          : null,
+        summary.avgPensionTotal != null
+          ? `פנסיה ממוצעת: ₪${Math.round(summary.avgPensionTotal).toLocaleString("he-IL")}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
+  useRegisterPageContext(payslipLabel, payslipDetail);
 
   useEffect(() => {
     if (document.getElementById("res-anim")) return;
@@ -488,6 +568,18 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
     if (res.success && res.data && isAnalyzableUpload(res.data)) { setUploadMsg("התלוש הועלה ועובד בהצלחה!"); await loadAnalysis(); }
     else if (res.success && res.data?.status === "needs_password") { setPasswordDoc(res.data); setUploadMsg("נדרשת סיסמה לפתיחת הקובץ"); }
     else setUploadMsg(res.message || res.data?.processingError || "שגיאה בהעלאה — נסה שוב");
+  };
+
+  const handleDeletePayslip = async (payslipId: string, label: string) => {
+    if (!window.confirm(`למחוק את ${label}? לא ניתן לשחזר את הקובץ.`)) return;
+    setDeletingId(payslipId);
+    const res = await removeDocument(payslipId);
+    setDeletingId(null);
+    if (!res.success) {
+      setUploadMsg(res.message ?? "שגיאה במחיקת התלוש");
+      return;
+    }
+    await loadAnalysis();
   };
 
   const handleResultsUnlock = async () => {
@@ -595,18 +687,26 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
           <ResSection title={`${summary.count} תלושים`}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {rows.map(p => (
-                <button key={p.id} onClick={() => navigate(`${APP_ROUTES.payslipHistory}/${p.id}`)}
-                  style={{ width: "100%", textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
-                  <span style={{ width: 40, height: 40, borderRadius: 11, flex: "none", background: "var(--lav-100)", color: "var(--lav-600)", display: "grid", placeItems: "center" }}><FileText size={20} strokeWidth={1.85} /></span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text-strong)" }}>{p.displayLabel}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>ברוטו {fmt(p.grossSalary)} · {p.employerName || "מעסיק"}{p.extractionStatus === "needs_review" ? " · דורש סקירה" : ""}</div>
-                  </div>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontWeight: 900, fontSize: 16, color: "var(--mint-ink)", fontVariantNumeric: "tabular-nums" }}>{fmt(p.netSalary)}</div>
-                    <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>נטו</div>
-                  </div>
-                </button>
+                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button onClick={() => navigate(`${APP_ROUTES.payslipHistory}/${p.id}`)}
+                    style={{ flex: 1, textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
+                    <span style={{ width: 40, height: 40, borderRadius: 11, flex: "none", background: "var(--lav-100)", color: "var(--lav-600)", display: "grid", placeItems: "center" }}><FileText size={20} strokeWidth={1.85} /></span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text-strong)" }}>{p.displayLabel}</div>
+                      <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>ברוטו {fmt(p.grossSalary)} · {p.employerName || "מעסיק"}{p.extractionStatus === "needs_review" ? " · דורש סקירה" : ""}</div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontWeight: 900, fontSize: 16, color: "var(--mint-ink)", fontVariantNumeric: "tabular-nums" }}>{fmt(p.netSalary)}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>נטו</div>
+                    </div>
+                  </button>
+                  <button type="button" title="עריכה" onClick={() => setEditDocId(p.id)} style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", border: "1px solid var(--border-soft)", background: "var(--card)", cursor: "pointer", display: "grid", placeItems: "center", color: "var(--text-muted)" }}>
+                    <Pencil size={16} />
+                  </button>
+                  <button type="button" title="מחיקה" disabled={deletingId === p.id} onClick={() => void handleDeletePayslip(p.id, p.displayLabel)} style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", border: "1px solid rgba(214,69,69,.3)", background: "var(--card)", cursor: deletingId === p.id ? "wait" : "pointer", display: "grid", placeItems: "center", color: "var(--danger)" }}>
+                    {deletingId === p.id ? <Loader2 size={16} style={{ animation: "fgspin 1s linear infinite" }} /> : <Trash2 size={16} />}
+                  </button>
+                </div>
               ))}
             </div>
           </ResSection>
@@ -650,6 +750,14 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
             <InsightsPanel agent="payslip" trigger={refreshKey + (summary?.count ?? 0)} />
           </div>
         </ResSection>
+      )}
+
+      {editDocId && (
+        <MissingFieldsModal
+          docId={editDocId}
+          onClose={() => setEditDocId(null)}
+          onSaved={() => { setEditDocId(null); void loadAnalysis(); }}
+        />
       )}
 
       <div style={{ textAlign: "center" }}>

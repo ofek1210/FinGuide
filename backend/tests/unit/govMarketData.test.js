@@ -1,6 +1,7 @@
 'use strict';
 
-const { parseGovCsv } = require('../../utils/govCsvParser');
+const path = require('path');
+const { parseGovCsv, readGovCsvFile } = require('../../utils/govCsvParser');
 const { mapApiRecordToGemelNet } = require('../../utils/gemelNetFieldMapper');
 const { mapApiRecordToBituahNet } = require('../../utils/bituahNetFieldMapper');
 const { analyzeProduct, VERDICT } = require('../../services/govFundMarketAdvisorService');
@@ -12,6 +13,19 @@ describe('govCsvParser', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0].FUND_ID).toBe('101');
     expect(rows[0].FUND_NAME).toBe('Test Fund');
+  });
+
+  it('reads local gemel CSV with Hebrew SUG_KRN when present', () => {
+    const csvPath = path.join(__dirname, '../../data/gov/gemel-net.csv');
+    try {
+      const text = readGovCsvFile(csvPath);
+      expect(/[\u0590-\u05FF]/.test(text.slice(0, 8000))).toBe(true);
+      const rows = parseGovCsv(text);
+      const classifications = new Set(rows.map((row) => row.FUND_CLASSIFICATION).filter(Boolean));
+      expect(classifications.has('קרנות השתלמות')).toBe(true);
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
+    }
   });
 });
 

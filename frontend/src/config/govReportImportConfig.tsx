@@ -12,3 +12,6 @@ export const PENSION_SITE_URL = "https://harkesher.mof.gov.il/ReportAnonymous/ga
 
 /** הר הביטוח — the official insurance policies registry. */
 export const INSURANCE_SITE_URL = "https://www.gov.il/he/service/har-habituach";
+
+/** המסלקה הפנסיונית — Swiftness (משרד האוצר). */
+export const CLEARINGHOUSE_SITE_URL = "https://www.swiftness.co.il/";

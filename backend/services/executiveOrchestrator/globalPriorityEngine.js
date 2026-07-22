@@ -1,16 +1,11 @@
 'use strict';
 
 const {
-  URGENCY_SCORE,
   SEVERITY_SCORE,
   CATEGORY_BOOST,
   MERGE_GROUPS,
-  MAX_PRIORITY_ACTIONS,
+  MAX_MAIN_DECISIONS,
 } = require('../../config/executiveReportConfig');
-
-function tokenize(text) {
-  return String(text || '').toLowerCase().replace(/[^\w\u0590-\u05FF\s]/g, ' ').split(/\s+/).filter(Boolean);
-}
 
 function mergeGroupForItem(item) {
   const text = `${item.title} ${item.explanation}`;
@@ -24,53 +19,19 @@ function computePriorityScore(item) {
   const savings = item.possibleSavings || 0;
   const impactNorm = Math.min(100, savings > 0 ? Math.log10(savings + 1) * 25 : 20);
   const sev = SEVERITY_SCORE[item.severity] ?? 40;
-  const urgency = URGENCY_SCORE[item.urgency] ?? 50;
   const confidence = (item.confidence ?? 0.7) * 100;
   const categoryBoost = CATEGORY_BOOST[item.financialCategory] ?? 0;
   const retirementBoost = item.financialCategory === 'retirement' || item.financialCategory === 'pension_fees' ? 8 : 0;
   const insuranceBoost = item.financialCategory === 'insurance_waste' ? 6 : 0;
 
   return Math.round(
-    impactNorm * 0.35
-    + sev * 0.25
-    + urgency * 0.2
-    + confidence * 0.07
+    impactNorm * 0.4
+    + sev * 0.35
+    + confidence * 0.15
     + categoryBoost
     + retirementBoost
     + insuranceBoost,
   );
-}
-
-function impactStars(score) {
-  if (score >= 85) return 5;
-  if (score >= 70) return 4;
-  if (score >= 55) return 3;
-  if (score >= 40) return 2;
-  return 1;
-}
-
-function urgencyLabel(severity, savings) {
-  if (severity === 'critical' || savings >= 10000) return 'immediate';
-  if (severity === 'high' || savings >= 3000) return 'soon';
-  if (severity === 'medium') return 'planned';
-  return 'long_term';
-}
-
-function urgencyLabelHe(urgency) {
-  const map = {
-    immediate: 'מיידי',
-    soon: 'בקרוב',
-    planned: 'בטווח של 3 חודשים',
-    long_term: 'ארוך טווח',
-  };
-  return map[urgency] || urgency;
-}
-
-function priorityLabelHe(score) {
-  if (score >= 85) return 'קריטי';
-  if (score >= 70) return 'גבוה';
-  if (score >= 55) return 'בינוני';
-  return 'נמוך';
 }
 
 function flattenRecommendations(packages) {
@@ -81,6 +42,8 @@ function flattenRecommendations(packages) {
       items.push({
         ...rec,
         sourceAgents: [agentId],
+        sourceReports: rec.sourceReport ? [rec.sourceReport] : [],
+        originalRecommendationIds: [rec.id],
         mergeGroup: mergeGroupForItem(rec),
       });
     }
@@ -107,9 +70,11 @@ function mergeSimilarItems(items) {
     group.sort((a, b) => (b.possibleSavings || 0) - (a.possibleSavings || 0));
     const primary = { ...group[0] };
     primary.sourceAgents = [...new Set(group.flatMap(g => g.sourceAgents || []))];
+    primary.sourceReports = [...new Set(group.flatMap(g => g.sourceReports || []))];
+    primary.originalRecommendationIds = group.map(g => g.id);
     primary.mergedFrom = group.length;
     primary.explanation = mergeExplanations(group);
-    primary.possibleSavings = Math.max(...group.map(g => g.possibleSavings || 0));
+    primary.possibleSavings = Math.max(...group.map(g => g.possibleSavings || 0)) || null;
     primary.confidence = group.reduce((s, g) => s + (g.confidence || 0), 0) / group.length;
     if (group.some(g => g.severity === 'critical')) primary.severity = 'critical';
     else if (group.some(g => g.severity === 'high')) primary.severity = 'high';
@@ -129,9 +94,14 @@ function mergeCrossDomainCashFlow(items) {
   const merged = {
     ...insurance,
     sourceAgents: [...new Set([...(insurance.sourceAgents || []), ...(cash.sourceAgents || [])])],
+    sourceReports: [...new Set([...(insurance.sourceReports || []), ...(cash.sourceReports || [])])],
+    originalRecommendationIds: [
+      ...(insurance.originalRecommendationIds || [insurance.id]),
+      ...(cash.originalRecommendationIds || [cash.id]),
+    ],
     mergedFrom: (insurance.mergedFrom || 1) + (cash.mergedFrom || 1),
     explanation: 'צמצום הוצאות ביטוח מיותרות יכול לשפר מיד את תזרים המזומנים החודשי שלך.',
-    possibleSavings: Math.max(insurance.possibleSavings || 0, cash.possibleSavings || 0),
+    possibleSavings: Math.max(insurance.possibleSavings || 0, cash.possibleSavings || 0) || null,
     confidence: ((insurance.confidence || 0) + (cash.confidence || 0)) / 2,
     severity: insurance.severity === 'critical' || cash.severity === 'critical'
       ? 'critical'
@@ -196,43 +166,43 @@ function detectConflicts(items) {
   return conflicts;
 }
 
-function buildPriorityActions(items, conflicts) {
-  const scored = items.map(item => {
-    const urgency = urgencyLabel(item.severity, item.possibleSavings);
-    const priorityScore = computePriorityScore({ ...item, urgency });
+function attachConflictNotes(items, conflicts) {
+  return items.map(item => ({
+    ...item,
+    conflictNote: conflicts.find(c =>
+      c.involvedGroups?.includes(item.mergeGroup)
+      || c.involvedGroups?.includes(item.financialCategory),
+    )?.recommendation || null,
+  }));
+}
+
+function scoreAllItems(items, conflicts) {
+  return items.map(item => {
+    const priorityScore = computePriorityScore(item);
     return {
       ...item,
-      urgency,
-      urgencyLabelHe: urgencyLabelHe(urgency),
       priorityScore,
-      priorityLabelHe: priorityLabelHe(priorityScore),
-      impactStars: impactStars(priorityScore),
-      whyNow: item.whyNow || defaultWhyNow(item, urgency),
+      whyItMatters: item.whyItMatters || defaultWhyItMatters(item),
       expectedBenefit: item.expectedBenefit || defaultBenefit(item),
       conflictNote: conflicts.find(c =>
         c.involvedGroups?.includes(item.mergeGroup)
         || c.involvedGroups?.includes(item.financialCategory),
       )?.recommendation || null,
     };
-  });
-
-  return scored
-    .sort((a, b) => b.priorityScore - a.priorityScore)
-    .slice(0, MAX_PRIORITY_ACTIONS)
-    .map((item, index) => ({ ...item, rank: index + 1 }));
+  }).sort((a, b) => b.priorityScore - a.priorityScore);
 }
 
-function defaultWhyNow(item, urgency) {
-  if (urgency === 'immediate') return 'כל חודש שעובר — ההשפעה הכספית מצטברת.';
+function defaultWhyItMatters(item) {
   if (item.financialCategory === 'pension_fees') return 'דמי ניהול גבוהים שוחקים את החיסכון לאורך שנים.';
-  if (item.financialCategory === 'insurance_waste') return 'פרמיות מיותרות פוגעות בתזרים החודשי כבר עכשיו.';
-  return 'פעולה קטנה היום יכולה לחסוך כסף משמעותי בטווח הארוך.';
+  if (item.financialCategory === 'insurance_waste') return 'פרמיות מיותרות פוגעות בתזרים החודשי.';
+  if (item.evidenceDeadline) return `יש מועד מוגדר: ${item.evidenceDeadline}.`;
+  return 'שיפור זה יכול להשפיע על החיסכון, התזרים או ההגנה הפיננסית שלך.';
 }
 
 function defaultBenefit(item) {
-  if (item.possibleSavings >= 10000) return 'חיסכון משמעותי לאורך זמן';
-  if (item.possibleSavings >= 1000) return 'שיפור בתזרים או בחיסכון שנתי';
-  return 'שיפור במצב הפיננסי והבהירות';
+  if (item.possibleSavings >= 10000) return 'חיסכון משמעותי לאורך זמן — יש לבדוק מול הספק.';
+  if (item.possibleSavings >= 1000) return 'שיפור בתזרים או בחיסכון שנתי.';
+  return 'שיפור במצב הפיננסי והבהירות.';
 }
 
 function collectStrengths(packages) {
@@ -255,7 +225,7 @@ function collectStrengths(packages) {
   return dedupeByTitle(strengths).slice(0, 6);
 }
 
-function collectRisks(packages, priorityActions) {
+function collectRisks(packages) {
   const risks = [];
   for (const pkg of Object.values(packages)) {
     for (const f of pkg.findings || []) {
@@ -265,23 +235,13 @@ function collectRisks(packages, priorityActions) {
       }
     }
   }
-  for (const action of priorityActions.filter(a => a.severity === 'critical' || a.severity === 'high')) {
-    risks.push({ title: action.title, explanation: action.explanation, severity: action.severity });
-  }
   return dedupeByTitle(risks).slice(0, 6);
 }
 
-function collectOpportunities(packages, priorityActions) {
+function collectOpportunities(packages) {
   const opps = [];
   for (const pkg of Object.values(packages)) {
     opps.push(...(pkg.opportunities || []));
-  }
-  for (const action of priorityActions) {
-    opps.push({
-      title: action.title,
-      explanation: action.expectedBenefit || action.explanation,
-      possibleSavings: action.possibleSavings,
-    });
   }
   return dedupeByTitle(opps).slice(0, 6);
 }
@@ -301,20 +261,34 @@ function runGlobalPriorityEngine(normalizedPackages) {
   let merged = mergeSimilarItems(flat);
   merged = mergeCrossDomainCashFlow(merged);
   const conflicts = detectConflicts(merged);
-  const priorityActions = buildPriorityActions(merged, conflicts);
+  const scoredItems = scoreAllItems(merged, conflicts);
 
   return {
-    priorityActions,
+    scoredItems,
+    mainDecisionCandidates: scoredItems.slice(0, MAX_MAIN_DECISIONS),
     conflicts,
     strengths: collectStrengths(normalizedPackages),
-    risks: collectRisks(normalizedPackages, priorityActions),
-    opportunities: collectOpportunities(normalizedPackages, priorityActions),
+    risks: collectRisks(normalizedPackages),
+    opportunities: collectOpportunities(normalizedPackages),
     stats: {
       rawRecommendationCount: flat.length,
       mergedCount: merged.length,
       conflictCount: conflicts.length,
+      preservedCount: scoredItems.length,
     },
   };
+}
+
+/** @deprecated — kept for tests that import legacy helpers */
+function urgencyLabelHe() {
+  return null;
+}
+
+function priorityLabelHe(score) {
+  if (score >= 85) return 'גבוה';
+  if (score >= 70) return 'בינוני-גבוה';
+  if (score >= 55) return 'בינוני';
+  return 'נמוך';
 }
 
 module.exports = {
@@ -325,4 +299,5 @@ module.exports = {
   detectConflicts,
   urgencyLabelHe,
   priorityLabelHe,
+  scoreAllItems,
 };

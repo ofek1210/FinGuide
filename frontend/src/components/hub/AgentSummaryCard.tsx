@@ -17,6 +17,7 @@ type AgentSummaryCardProps = {
   agent: AgentDef;
   index: number;
   metric: string;
+  readinessDetail?: string;
   spark: number[];
   loading: boolean;
   agentResult?: AgentResult;
@@ -27,7 +28,7 @@ type AgentSummaryCardProps = {
 };
 
 export default function AgentSummaryCard({
-  agent: a, index, metric, spark, loading, agentResult, running, disabled, onOpen, onAnalyze,
+  agent: a, index, metric, readinessDetail, spark, loading, agentResult, running, disabled, onOpen, onAnalyze,
 }: AgentSummaryCardProps) {
   const tone = AGENT_TONE[a.id];
   const c1 = a.tone.soft, c2 = a.tone.accent;
@@ -107,7 +108,7 @@ export default function AgentSummaryCard({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: "auto" }}>
         <div>
           <div style={{ fontWeight: 900, fontSize: 18, letterSpacing: "-.02em", color: "var(--text-strong)" }}>{a.label}</div>
-          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3, fontWeight: 500 }}>{a.sub}</div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3, fontWeight: 500 }}>{readinessDetail ?? a.sub}</div>
         </div>
         <span style={{ width: 34, height: 34, borderRadius: 10, flex: "none", background: c1, color: c2, display: "grid", placeItems: "center" }}>
           <ArrowLeft size={17} strokeWidth={2.2} />

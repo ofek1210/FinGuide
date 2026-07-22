@@ -16,6 +16,7 @@ router.get('/agents/:agentId', ctrl.getAgentState);
 router.put('/agents/:agentId', ctrl.saveAgentAnswers);
 router.post('/agents/:agentId/complete', ctrl.completeAgent);
 router.post('/agents/:agentId/skip', ctrl.skipAgent);
+router.delete('/agents/:agentId', ctrl.resetAgent);
 router.get('/agents/:agentId/context', ctrl.getAgentContext);
 
 router.get('/profile', ctrl.getFullProfile);

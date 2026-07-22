@@ -3,15 +3,11 @@
  * Flow: Agent → Tool → Service → DTO
  */
 
-
-
 const UserProfile = require('../../models/UserProfile');
-const { runMissingCoverageRules } = require('../engines/ruleEngine');
-const { estimateInsuranceSavings } = require('../engines/calculationEngine');
 const { analyzeAggregatedInsurance } = require('../../services/insurancePolicyAggregationService');
+const { analyzeCoverageGaps } = require('../../services/insurance/insuranceCoverageGapService');
+const { buildPrimaryInsuranceRecommendations } = require('../../services/insurance/insuranceRecommendationService');
 
-// Hebrew labels for the coverage-type keys ruleEngine emits — user-facing
-// recommendation text must never leak the English keys ("life", "disability").
 const COVERAGE_LABELS_HE = {
   life: 'ביטוח חיים',
   health: 'ביטוח בריאות',
@@ -23,19 +19,14 @@ const COVERAGE_LABELS_HE = {
   critical_illness: 'ביטוח מחלות קשות',
 };
 
-// ── Tool: getInsuranceProfile ─────────────────────────────────────────────────
-
-/**
- * Get user's insurance profile from UserProfile (onboarding answers).
- * @param {string} userId
- * @returns {Promise<InsuranceProfileDTO>}
- */
 async function getInsuranceProfile(userId) {
   if (!userId) throw new Error('userId is required');
   const profile = await UserProfile.findOne({ user: userId }).lean();
   if (!profile) return { hasProfile: false, policies: [], profile: null };
 
   const ins = profile.insurance || {};
+  const onboardingAnswers = profile.insuranceOnboarding?.answers || {};
+
   return {
     hasProfile: true,
     profile: {
@@ -55,110 +46,67 @@ async function getInsuranceProfile(userId) {
       ownsCar: profile.assets?.ownsCar ?? null,
       hasMortgage: profile.assets?.hasMortgage ?? null,
     },
-    // Will be populated when InsurancePolicy model data exists
+    vehiclesOwned: onboardingAnswers['insuranceOnboarding.vehicle.vehiclesOwned']
+      ?? onboardingAnswers.vehiclesOwned
+      ?? null,
+    vehicles: onboardingAnswers.vehicles ?? null,
     policies: [],
   };
 }
 
-// ── Tool: analyzeInsuranceCoverage ────────────────────────────────────────────
+function analyzeInsuranceCoverage(insuranceProfile, options = {}) {
+  const { policies = [], profile, personal, assets, vehiclesOwned } = insuranceProfile;
 
-/**
- * Run duplicate + gap detection and estimate savings.
- * @param {object} insuranceProfile - from getInsuranceProfile
- * @returns {InsuranceAnalysisDTO}
- */
-function analyzeInsuranceCoverage(insuranceProfile) {
-  const { policies = [], profile, personal, assets } = insuranceProfile;
+  const aggResult = analyzeAggregatedInsurance(policies, { vehiclesOwned });
+  const { aggregatedPolicies } = aggResult;
 
-  const hasKupatHolimSupplement = profile?.hasHealthInsurance !== false;
-  const aggResult = analyzeAggregatedInsurance(policies, { hasKupatHolimSupplement });
-  const {aggregatedPolicies} = aggResult;
-  const duplicateResult = {
-    duplicates: aggResult.duplicates,
-    totalWaste: aggResult.totalMonthlyWaste,
-  };
+  const gapResult = analyzeCoverageGaps(
+    { profile, personal, assets, insurance: profile },
+    aggregatedPolicies,
+    { pensionFunds: options.pensionFunds || [] },
+  );
 
-  const missingResult = runMissingCoverageRules({ insurance: profile, personal, assets }, aggregatedPolicies);
-  const savingsResult = estimateInsuranceSavings(duplicateResult.duplicates);
-
-  // Build profile-based flags
-  const flags = [];
+  const flags = [...(gapResult.flags || [])];
   if (personal?.maritalStatus === 'married' && profile?.hasLifeInsurance === false) {
-    flags.push({ code: 'life_insurance_needed', urgency: 'high', label: 'ביטוח חיים מומלץ לנשואים' });
-  }
-  if (!profile?.hasDisabilityInsurance) {
-    flags.push({ code: 'disability_recommended', urgency: 'high', label: 'ביטוח אכ"ע מומלץ לשכירים' });
+    flags.push({ code: 'life_insurance_needed', urgency: 'high', label: 'ביטוח חיים מומלץ לנשואים — יש לבדוק סכומים ומטרה' });
   }
 
   return {
     aggregatedPolicies,
+    normalizedPolicies: aggResult.normalizedPolicies,
     aggregationSummary: aggResult.aggregationSummary,
-    duplicates: duplicateResult.duplicates,
-    duplicateCount: duplicateResult.duplicates.length,
-    totalMonthlyWaste: duplicateResult.totalWaste,
-    missingCoverage: missingResult.missingTypes,
-    missingUrgency: missingResult.urgency,
+    duplicates: aggResult.duplicates,
+    duplicateFindings: aggResult.duplicateFindings,
+    duplicateCount: aggResult.duplicateCount,
+    vehiclePackages: aggResult.vehiclePackages,
+    vehicleVerificationNeeded: aggResult.vehicleVerificationNeeded,
+    totalMonthlyWaste: 0,
+    premiumUnderReviewMonthly: aggResult.premiumUnderReviewMonthly,
+    verifiedSavingMonthly: 0,
+    missingCoverage: gapResult.missingTypes,
+    gapFindings: gapResult.gapFindings,
+    missingUrgency: gapResult.urgency,
     flags,
-    savings: savingsResult,
-    hasCriticalGap: missingResult.urgency === 'high' || duplicateResult.duplicates.some(d => d.recommendCancellation),
+    savings: {
+      totalSavings: 0,
+      annualSavings: 0,
+      monthlyEstimate: 0,
+      annualEstimate: 0,
+      verified: false,
+      premiumUnderReviewMonthly: aggResult.premiumUnderReviewMonthly,
+    },
+    hasCriticalGap: gapResult.gapFindings.some(g => g.type === 'disability'),
+    disabilityCheckedSources: gapResult.disabilityCheckedSources,
   };
 }
 
-// ── Tool: generateInsuranceRecommendations ────────────────────────────────────
-
-/**
- * @param {object} analysisResult - from analyzeInsuranceCoverage
- * @returns {Array<RecommendationDTO>}
- */
-function generateInsuranceRecommendations(analysisResult) {
-  const recs = [];
-
-  for (const dup of analysisResult.duplicates || []) {
-    if (dup.recommendCancellation === false) {
-      recs.push({
-        type: 'insurance_cross_company_overlap',
-        title: `חפיפת כיסוי — ${dup.typeLabelHe || dup.type}`,
-        reason: dup.reasonHe || `יש ${dup.policyCount} פוליסות נפרדות לאותו סיכון.`,
-        urgency: 'medium',
-        financialImpact: dup.isCatastrophic
-          ? null
-          : dup.estimatedMonthlyWaste
-            ? `₪${dup.estimatedMonthlyWaste}/חודש — בדוק לפני ביטול`
-            : null,
-        confidenceScore: 85,
-      });
-      continue;
-    }
-
-    recs.push({
-      type: 'duplicate_insurance',
-      title: `ביטוח כפול — ${dup.typeLabelHe || dup.type}`,
-      reason: dup.reasonHe || `יש ${dup.policyCount} פוליסות נפרדות לאותו סיכון.`,
-      urgency: 'high',
-      financialImpact: dup.estimatedMonthlyWaste
-        ? `₪${dup.estimatedMonthlyWaste}/חודש אפשרי לחסוך`
-        : null,
-      confidenceScore: 90,
-    });
-  }
-
-  for (const missing of analysisResult.missingCoverage || []) {
-    const missingHe = COVERAGE_LABELS_HE[missing] || missing;
-    recs.push({
-      type: `missing_${missing}`,
-      title: `כיסוי חסר — ${missingHe}`,
-      reason: `לפי הפרופיל שלך, ${missingHe} מומלץ.`,
-      urgency: analysisResult.missingUrgency,
-      financialImpact: null,
-      confidenceScore: 75,
-    });
-  }
-
-  return recs;
+function generateInsuranceRecommendations(analysisResult, marketAdvice = null) {
+  return buildPrimaryInsuranceRecommendations(analysisResult, marketAdvice || {});
 }
 
 module.exports = {
   getInsuranceProfile,
   analyzeInsuranceCoverage,
   generateInsuranceRecommendations,
+  COVERAGE_LABELS_HE,
 };

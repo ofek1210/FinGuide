@@ -16,13 +16,10 @@ const BASE = `http://127.0.0.1:${PORT}`;
 
 const AGENT_KEYS = ['onboarding', 'payslip', 'insurance', 'pension', 'gemel'];
 const SECTION_KEYS = [
+  'title',
   'executiveSummary',
-  'topPriorityActions',
-  'financialStrengths',
-  'risks',
-  'opportunities',
-  'roadmap',
-  'thingsToReviewRegularly',
+  'agentReport',
+  'preservedRecommendations',
 ];
 
 function hebrewRatio(text) {
@@ -113,29 +110,32 @@ async function main() {
   assert(summary.length >= 50, 'Executive summary has substance (≥50 chars)', results);
   assert(hebrewRatio(summary) > 0.3, 'Executive summary is primarily Hebrew', results);
 
-  const actions = report?.sections?.topPriorityActions || [];
-  assert(actions.length <= 8, `Priority actions count ≤8 (got ${actions.length})`, results);
+  const agentReport = report?.sections?.agentReport;
+  assert(agentReport?.agentSections?.length === 4, 'All four specialist agents appear in report', results);
 
-  if (actions.length >= 2) {
-    const scores = actions.map(a => a.priorityScore);
-    const sorted = [...scores].sort((a, b) => b - a);
-    assert(JSON.stringify(scores) === JSON.stringify(sorted), 'Actions sorted by priorityScore descending', results);
+  for (const section of (agentReport?.agentSections || [])) {
+    assert(['available', 'missing', 'error'].includes(section.dataStatus), `${section.agentId} has dataStatus`, results);
+    assert(['hasRecommendations', 'noRecommendations', 'unavailable'].includes(section.recommendationStatus), `${section.agentId} has recommendationStatus`, results);
+    if (section.dataStatus === 'missing' || section.dataStatus === 'error' || section.recommendationStatus === 'noRecommendations') {
+      assert(!!section.statusMessage, `${section.agentId} has status message (no empty heading)`, results);
+    }
   }
 
-  for (const [i, action] of actions.entries()) {
-    const required = ['title', 'explanation', 'whyNow', 'expectedBenefit', 'priorityLabel', 'urgency', 'impactStars'];
-    for (const field of required) {
-      assert(action[field] != null && action[field] !== '', `Action #${i + 1} has ${field}`, results);
-    }
-    assert(Array.isArray(action.sourceAgents) && action.sourceAgents.length > 0, `Action #${i + 1} has sourceAgents`, results);
-    if (action.possibleSavings != null) {
-      assert(typeof action.possibleSavings === 'number' && action.possibleSavings >= 0, `Action #${i + 1} savings is valid number`, results);
-    }
+  const preserved = report?.sections?.preservedRecommendations || [];
+  for (const [i, rec] of preserved.entries()) {
+    assert(rec.agentId && rec.title, `Preserved recommendation #${i + 1} has agentId and title`, results);
+  }
+
+  const forbiddenUrgency = ['בקרוב', 'בטווח של 3 חודשים', 'עד 30 יום', 'דחוף'];
+  const reportJson = JSON.stringify(report?.sections || {});
+  for (const label of forbiddenUrgency) {
+    assert(!reportJson.includes(label), `Report does not contain unsupported urgency "${label}"`, results);
   }
 
   // Cross-agent merge heuristic
-  const mergedInsuranceCash = actions.some(a =>
-    /ביטוח|פרמיה/i.test(a.title + a.explanation) && /תזרים|מזומן/i.test(a.explanation),
+  const allRecs = preserved;
+  const mergedInsuranceCash = allRecs.some(a =>
+    /ביטוח|פרמיה/i.test(a.title + (a.description || '')) && /תזרים|מזומן/i.test(a.description || ''),
   );
   if (agentStatuses.insurance === 'success' && agentStatuses.payslip === 'success') {
     if (mergedInsuranceCash) results.passed.push('Cross-agent: insurance/cash-flow merge detected');
@@ -147,11 +147,10 @@ async function main() {
     results.passed.push(`Conflict resolution: ${report.sections.conflicts.length} conflict(s) surfaced`);
   }
 
-  results.samples.topActions = actions.slice(0, 3).map(a => ({
-    rank: a.rank,
+  results.samples.topActions = (agentReport?.whatToDo || []).slice(0, 3).map(a => ({
     title: a.title,
-    priorityScore: a.priorityScore,
-    sourceAgents: a.sourceAgents,
+    action: a.action,
+    agentId: a.agentId,
   }));
 
   // PDF via cached runId
@@ -171,7 +170,7 @@ async function main() {
       'PDF contains expected content markers',
       results,
     );
-    const titleFragment = actions[0]?.title?.slice(0, 6);
+    const titleFragment = (agentReport?.whatToDo?.[0]?.title || preserved[0]?.title || '').slice(0, 6);
     if (titleFragment) {
       const titleOk = pdfText.includes(titleFragment)
         || pdfBuf.includes(Buffer.from(titleFragment.slice(0, 4), 'utf8'));

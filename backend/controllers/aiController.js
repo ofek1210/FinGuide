@@ -4,11 +4,23 @@ const UserProfile = require('../models/UserProfile');
 const Insight = require('../models/Insight');
 const Recommendation = require('../models/Recommendation');
 const ChatMessage = require('../models/ChatMessage');
-const { askLLM } = require('../services/aiService');
-const { chat: claudeChat, streamChat: claudeStreamChat, askClaude } = require('../services/claudeChatService');
+const Conversation = require('../models/Conversation');
+const {
+  chat: claudeChat,
+  streamChat: claudeStreamChat,
+  askClaude,
+  LLM_UNAVAILABLE_MESSAGE,
+} = require('../services/claudeChatService');
 const { detectSalaryAnomalies } = require('../utils/detectSalaryAnomalies');
 const { simulateWhatIf } = require('../utils/simulateWhatIf');
 const { selectRecentPayslipDocuments } = require('../utils/selectRecentPayslipDocuments');
+const { buildPensionAnalysis } = require('../services/pensionAnalysisService');
+const { buildInsuranceAnalysis } = require('../services/insuranceAnalysisService');
+const { toPensionSummary, toInsuranceSummary } = require('../utils/domainSummaryMapper');
+const {
+  buildFindingsForUser,
+  toChatFindingsSummary,
+} = require('../services/findingsForUserService');
 
 const RLM = '\u200F';
 
@@ -22,8 +34,174 @@ function normalizeMessage(message) {
 // the LLM prompt — never for intent detection or as a trusted financial source.
 function sanitizePageContext(value) {
   if (typeof value !== 'string') return null;
-  const trimmed = value.trim().slice(0, 900);
-  return trimmed || null;
+  let text = value
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 900);
+  // Strip common prompt-injection delimiters from untrusted UI hints.
+  text = text
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\b(ignore|disregard|system prompt|התעלם מהוראות)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text || null;
+}
+
+/**
+ * History is always loaded from DB — never trust client-supplied turns.
+ */
+function resolveMergedHistory(_clientConversationId, dbHistory) {
+  return (dbHistory || []).map((m) => ({ role: m.role, content: m.content }));
+}
+
+function buildContextUsed(userContext, pageContext) {
+  const contextUsed = [];
+  if (userContext.profile) contextUsed.push('profile');
+  if (userContext.documents?.length) contextUsed.push(`${userContext.documents.length} documents`);
+  if (userContext.insights?.length) contextUsed.push(`${userContext.insights.length} insights`);
+  if (userContext.recommendations?.length) {
+    contextUsed.push(`${userContext.recommendations.length} recommendations`);
+  }
+  if (userContext.findings?.length) contextUsed.push(`${userContext.findings.length} findings`);
+  if (userContext.grossSalary != null || userContext.netSalary != null) {
+    contextUsed.push('latest payslip');
+  }
+  if (typeof pageContext === 'string' && pageContext.trim()) contextUsed.push('page context');
+  return contextUsed;
+}
+
+function buildCitations(userContext, pageContext) {
+  const citations = [];
+  if (userContext.findings?.length) {
+    citations.push({
+      type: 'findings',
+      label: `${userContext.findings.length} ממצאים`,
+      href: '/hub',
+    });
+  }
+  if (userContext.grossSalary != null || userContext.netSalary != null) {
+    citations.push({
+      type: 'payslip',
+      label: 'תלוש אחרון',
+      href: '/documents/history',
+    });
+  }
+  if (userContext.documents?.length) {
+    citations.push({
+      type: 'documents',
+      label: `${userContext.documents.length} מסמכים`,
+      href: '/documents/history',
+    });
+  }
+  if (typeof pageContext === 'string' && pageContext.trim()) {
+    citations.push({ type: 'page', label: 'מסך נוכחי', href: null });
+  }
+  return citations;
+}
+
+function buildChatMeta({
+  intent,
+  source,
+  conversationId,
+  contextUsed,
+  citations,
+  degradedReason,
+  tokensUsed,
+  latencyMs,
+  model,
+  messageId,
+}) {
+  return {
+    intent: intent || null,
+    source: source || null,
+    conversationId: conversationId ? String(conversationId) : null,
+    contextUsed: Array.isArray(contextUsed) ? contextUsed : [],
+    citations: Array.isArray(citations) ? citations : [],
+    degradedReason: degradedReason || null,
+    tokensUsed: tokensUsed ?? null,
+    latencyMs: latencyMs ?? null,
+    model: model || null,
+    messageId: messageId ? String(messageId) : null,
+  };
+}
+
+function logChatMeta(payload) {
+  try {
+    console.info('[ai-chat]', JSON.stringify(payload));
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Resolve a client conversation id to an owned ObjectId.
+ * Rejects ids that belong to another user (403). Creates a new id when none given.
+ */
+async function resolveOwnedConversationId(userId, clientConversationId) {
+  if (!clientConversationId || !mongoose.Types.ObjectId.isValid(clientConversationId)) {
+    return { ok: true, conversationId: new mongoose.Types.ObjectId() };
+  }
+  const conversationId = new mongoose.Types.ObjectId(clientConversationId);
+  const owned = await Conversation.findOne({ _id: conversationId, user: userId }).lean();
+  if (owned) return { ok: true, conversationId };
+
+  const foreignConv = await Conversation.findById(conversationId).select('_id user').lean();
+  if (foreignConv) {
+    return { ok: false, status: 403, message: 'אין הרשאה לשיחה זו' };
+  }
+
+  const foreignMsg = await ChatMessage.exists({
+    conversationId,
+    user: { $ne: userId },
+  });
+  if (foreignMsg) {
+    return { ok: false, status: 403, message: 'אין הרשאה לשיחה זו' };
+  }
+
+  // Brand-new id or legacy thread that only has this user's messages.
+  return { ok: true, conversationId };
+}
+
+/**
+ * Upsert conversation metadata.
+ * - `title` is applied only on insert (stable first-question title).
+ * - `renameTitle` forces a title overwrite (explicit user rename).
+ */
+async function touchConversation(userId, conversationId, patch = {}) {
+  const insertTitle =
+    typeof patch.title === 'string' && patch.title.trim()
+      ? patch.title.trim().slice(0, 80)
+      : 'שיחה';
+  const renameTitle =
+    typeof patch.renameTitle === 'string' && patch.renameTitle.trim()
+      ? patch.renameTitle.trim().slice(0, 80)
+      : undefined;
+
+  const $set = {
+    user: userId,
+    ...(renameTitle ? { title: renameTitle } : {}),
+    ...(patch.lastSource != null ? { lastSource: patch.lastSource } : {}),
+    ...(patch.degradedReason !== undefined ? { degradedReason: patch.degradedReason } : {}),
+    ...(patch.preview != null ? { preview: String(patch.preview).slice(0, 120) } : {}),
+  };
+
+  // Avoid Mongo conflict: same path cannot appear in both $set and $setOnInsert.
+  const update = renameTitle
+    ? { $set }
+    : { $set, $setOnInsert: { title: insertTitle } };
+
+  await Conversation.findOneAndUpdate(
+    { _id: conversationId, user: userId },
+    update,
+    { upsert: true, new: true },
+  );
+}
+
+function titleFromMessage(message) {
+  const t = String(message || '').trim();
+  if (!t) return 'שיחה';
+  return t.slice(0, 48) + (t.length > 48 ? '…' : '');
 }
 
 function isSameMonth(dateA, dateB) {
@@ -108,7 +286,13 @@ function detectIntent(message) {
     return 'anomaly_check';
   }
 
-  if (msg.includes('יש לי ביטוח') || msg.includes('האם יש לי')) {
+  // Profile insurance checklist — factual ownership/status only, not advisory questions
+  if (
+    msg.includes('מצב הביטוח') ||
+    msg.includes('מצב הביטוחים') ||
+    msg.includes('ביטוחים שלי') ||
+    (msg.includes('יש לי ביטוח') && !msg.includes('מספיק') && !msg.includes('כדאי'))
+  ) {
     return 'profile_insurance';
   }
 
@@ -136,13 +320,16 @@ function detectIntent(message) {
     return 'salary_why_down';
   }
 
+  // Payslip pension amounts only — advisory/general pension questions go to the LLM
   if (
     msg.includes('פנסיה') &&
+    (msg.includes('הפרש') || msg.includes('בתלוש') || msg.includes('מעסיק') || msg.includes('עובד')) &&
     !msg.includes('ממוצע') &&
     !msg.includes('בארץ') &&
     !msg.includes('בישראל') &&
     !msg.includes('מה זה') &&
-    !msg.includes('שיעור')
+    !msg.includes('שיעור') &&
+    !msg.includes('כדאי')
   ) {
     if (msg.includes('מעסיק')) return 'pension_employer';
     return 'pension_employee';
@@ -152,7 +339,13 @@ function detectIntent(message) {
     return 'training_fund';
   }
 
-  if (msg.includes('קופת גמל') || msg.includes('קופות גמל') || msg.includes('גמל להשקעה')) {
+  // Gemel fund status on payslip — comparisons/definitions go to the LLM
+  if (
+    (msg.includes('קופת גמל') || msg.includes('קופות גמל') || msg.includes('גמל להשקעה')) &&
+    !msg.includes('הבדל') &&
+    !msg.includes('מה זה') &&
+    !msg.includes('כדאי')
+  ) {
     return 'gemel_fund';
   }
 
@@ -231,7 +424,18 @@ function countDocumentsThisMonth(documents) {
   }).length;
 }
 
-function getRecommendedAction(documents) {
+function getRecommendedAction(ctx) {
+  const documents = ctx.documents || [];
+  const findings = Array.isArray(ctx.findings) ? ctx.findings : [];
+
+  const warningFinding = findings.find(f => f.severity === 'warning');
+  if (warningFinding) {
+    return `הפעולה הכי חשובה כרגע: ${warningFinding.title}. ${warningFinding.details}`;
+  }
+  if (findings.length > 0) {
+    return `כדאי לטפל בממצא: ${findings[0].title}. ${findings[0].details}`;
+  }
+
   if (!documents.length) {
     return 'עדיין לא העלית מסמכים. הפעולה הכי חשובה כרגע היא להעלות תלוש שכר ראשון.';
   }
@@ -246,6 +450,36 @@ function getRecommendedAction(documents) {
     return `יש לך ${pending.length} מסמכים שהועלו אבל עדיין לא נותחו. המתין לסיום הניתוח.`;
   }
 
+  const pension = ctx.pensionAnalysis;
+  if (pension?.hasData && pension.healthScore != null && pension.healthScore < 70) {
+    const tip = Array.isArray(pension.topRecs) && pension.topRecs[0]
+      ? ` כדאי להתחיל ב: ${pension.topRecs[0]}.`
+      : ' כדאי לפתוח את מסך הפנסיה ולבדוק את ההמלצות.';
+    return `ציון בריאות הפנסיה שלך הוא ${pension.healthScore}/100.${tip}`;
+  }
+
+  const insurance = ctx.insuranceAnalysis;
+  if (insurance?.hasData && insurance.duplicateCount > 0) {
+    return `זוהו ${insurance.duplicateCount} כפילויות ביטוח. כדאי לבדוק את מסך הביטוחים ולסמן מה מיותר.`;
+  }
+  if (insurance?.hasData && insurance.healthScore != null && insurance.healthScore < 70) {
+    const tip = Array.isArray(insurance.topRecs) && insurance.topRecs[0]
+      ? ` המלצה מובילה: ${insurance.topRecs[0]}.`
+      : '';
+    return `ציון בריאות הביטוח שלך הוא ${insurance.healthScore}/100.${tip}`;
+  }
+
+  const recommendations = ctx.recommendations || [];
+  if (recommendations.length > 0) {
+    const top = recommendations[0];
+    return `ההמלצה החשובה ביותר כרגע: ${top.title}.`;
+  }
+
+  const insights = ctx.insights || [];
+  if (insights.length > 0) {
+    return `יש תובנה פעילה שכדאי לבדוק: ${insights[0].title}.`;
+  }
+
   const hasPayslip = documents.some(d => d.type === 'payslip');
   if (!hasPayslip) {
     return 'כדאי להעלות תלוש שכר כדי שאוכל לנתח את הנתונים הפיננסיים שלך.';
@@ -256,7 +490,52 @@ function getRecommendedAction(documents) {
 
 // ── server-side RAG: build context from DB ────────────────────────────────────
 
-async function buildUserContext(userId) {
+const USER_CONTEXT_CACHE_TTL_MS = 45_000;
+/** @type {Map<string, { at: number, light: object, heavy: object | null }>} */
+const userContextCache = new Map();
+
+function getCachedUserContext(userId, heavy) {
+  const key = String(userId);
+  const hit = userContextCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > USER_CONTEXT_CACHE_TTL_MS) {
+    userContextCache.delete(key);
+    return null;
+  }
+  if (heavy) return hit.heavy || null;
+  return hit.light || (hit.heavy ? stripHeavyContext(hit.heavy) : null);
+}
+
+function putCachedUserContext(userId, ctx, heavy) {
+  const key = String(userId);
+  const prev = userContextCache.get(key) || { at: Date.now(), light: null, heavy: null };
+  userContextCache.set(key, {
+    at: Date.now(),
+    light: heavy ? prev.light || stripHeavyContext(ctx) : ctx,
+    heavy: heavy ? ctx : prev.heavy,
+  });
+}
+
+function stripHeavyContext(ctx) {
+  return {
+    ...ctx,
+    insights: [],
+    recommendations: [],
+    pensionAnalysis: null,
+    insuranceAnalysis: null,
+    findings: [],
+  };
+}
+
+/**
+ * @param {string|import('mongoose').Types.ObjectId} userId
+ * @param {{ heavy?: boolean }} [opts] — heavy=false skips pension/insurance/findings/insights (rule path)
+ */
+async function buildUserContext(userId, opts = {}) {
+  const heavy = opts.heavy !== false;
+  const cached = getCachedUserContext(userId, heavy);
+  if (cached) return cached;
+
   const documents = await Document.find({
     user: userId,
     status: { $in: ['completed', 'needs_review'] },
@@ -267,10 +546,17 @@ async function buildUserContext(userId) {
     .limit(50)
     .lean();
 
+  const profilePromise = UserProfile.findOne({ user: userId }).lean();
+  const heavyPromises = heavy
+    ? [
+        Insight.find({ user: userId, status: 'active' }).sort({ createdAt: -1 }).limit(5).lean(),
+        Recommendation.find({ user: userId, status: 'active' }).sort({ importance: 1 }).limit(5).lean(),
+      ]
+    : [Promise.resolve([]), Promise.resolve([])];
+
   const [profile, insights, recommendations] = await Promise.all([
-    UserProfile.findOne({ user: userId }).lean(),
-    Insight.find({ user: userId, status: 'active' }).sort({ createdAt: -1 }).limit(5).lean(),
-    Recommendation.find({ user: userId, status: 'active' }).sort({ importance: 1 }).limit(5).lean(),
+    profilePromise,
+    ...heavyPromises,
   ]);
 
   const completedPayslips = selectRecentPayslipDocuments(documents, 3);
@@ -290,22 +576,33 @@ async function buildUserContext(userId) {
   }));
 
   let pensionAnalysis = null;
-  try {
-    const analysis = await buildPensionAnalysis(userId);
-    pensionAnalysis = toPensionSummary(analysis);
-  } catch {
-    // Non-fatal — copilot works without pension import data
-  }
-
   let insuranceAnalysis = null;
-  try {
-    const analysis = await buildInsuranceAnalysis(userId);
-    insuranceAnalysis = toInsuranceSummary(analysis);
-  } catch {
-    // Non-fatal
+  let findings = [];
+
+  if (heavy) {
+    try {
+      const analysis = await buildPensionAnalysis(userId);
+      pensionAnalysis = toPensionSummary(analysis);
+    } catch {
+      // Non-fatal — copilot works without pension import data
+    }
+
+    try {
+      const analysis = await buildInsuranceAnalysis(userId);
+      insuranceAnalysis = toInsuranceSummary(analysis);
+    } catch {
+      // Non-fatal
+    }
+
+    try {
+      const allFindings = await buildFindingsForUser(userId);
+      findings = toChatFindingsSummary(allFindings, 5);
+    } catch {
+      // Non-fatal — chat works without findings
+    }
   }
 
-  return {
+  const ctx = {
     documents: documents.map(d => ({
       status: d.status,
       type: d.metadata?.category || 'unknown',
@@ -347,7 +644,11 @@ async function buildUserContext(userId) {
     recommendations,
     pensionAnalysis,
     insuranceAnalysis,
+    findings,
   };
+
+  putCachedUserContext(userId, ctx, heavy);
+  return ctx;
 }
 
 // ── rule-based answers ────────────────────────────────────────────────────────
@@ -389,6 +690,40 @@ function buildRuleBasedAnswer(intent, ctx) {
         insights.slice(0, 3).forEach(i => parts.push(`- ${i.title}: ${i.description}`));
       }
 
+      const pension = ctx.pensionAnalysis;
+      if (pension?.hasData) {
+        parts.push('', '**פנסיה (ייבוא):**');
+        if (pension.healthScore != null) parts.push(`- ציון בריאות: ${pension.healthScore}/100`);
+        if (pension.fundCount != null) parts.push(`- מספר קרנות: ${pension.fundCount}`);
+        if (pension.totalPotentialSavings > 0) {
+          parts.push(`- חיסכון פוטנציאלי עד פרישה: ₪${Math.round(pension.totalPotentialSavings).toLocaleString('he-IL')}`);
+        }
+        if (Array.isArray(pension.topRecs) && pension.topRecs.length) {
+          parts.push(`- המלצות: ${pension.topRecs.slice(0, 2).join('; ')}`);
+        }
+      }
+
+      const insurance = ctx.insuranceAnalysis;
+      if (insurance?.hasData) {
+        parts.push('', '**ביטוח (ייבוא):**');
+        if (insurance.healthScore != null) parts.push(`- ציון בריאות: ${insurance.healthScore}/100`);
+        if (insurance.duplicateCount > 0) parts.push(`- כפילויות: ${insurance.duplicateCount}`);
+        if (insurance.totalMonthlyWaste > 0) {
+          parts.push(`- בזבוז חודשי משוער: ₪${Math.round(insurance.totalMonthlyWaste).toLocaleString('he-IL')}`);
+        }
+        if (Array.isArray(insurance.topRecs) && insurance.topRecs.length) {
+          parts.push(`- המלצות: ${insurance.topRecs.slice(0, 2).join('; ')}`);
+        }
+      }
+
+      const findings = Array.isArray(ctx.findings) ? ctx.findings : [];
+      if (findings.length) {
+        parts.push('', '**ממצאים פעילים:**');
+        findings.slice(0, 4).forEach(f => {
+          parts.push(`- [${f.severity === 'warning' ? 'אזהרה' : 'מידע'}] ${f.title}`);
+        });
+      }
+
       if (parts.length <= 2) {
         return null; // Not enough data — use LLM for better context
       }
@@ -413,7 +748,7 @@ function buildRuleBasedAnswer(intent, ctx) {
     }
 
     case 'recommended_action':
-      return getRecommendedAction(docs);
+      return getRecommendedAction(ctx);
 
     case 'anomaly_check': {
       const gross = ctx.grossSalary;
@@ -422,16 +757,60 @@ function buildRuleBasedAnswer(intent, ctx) {
         return 'אין לי נתוני שכר מנותחים. העלה תלוש שכר כדי שאוכל לבדוק חריגות.';
       }
       const { hasAnomalies, anomalies } = detectSalaryAnomalies({ grossSalary: gross, netSalary: net });
-      if (!hasAnomalies) {
-        return `לא זיהיתי חריגות בתלוש האחרון שלך (ברוטו ${formatAmount(gross)}, נטו ${formatAmount(net)}).`;
-      }
       const msgMap = {
         NET_TOO_CLOSE_TO_GROSS: 'הנטו קרוב מאוד לברוטו — ייתכן שחסרים ניכויים.',
         GROSS_UNUSUALLY_HIGH: `שכר הברוטו (${formatAmount(gross)}) גבוה מהרגיל.`,
         GROSS_UNUSUALLY_LOW: `שכר הברוטו (${formatAmount(gross)}) נמוך מאוד.`,
         ZERO_DEDUCTIONS: 'לא זוהו ניכויים בתלוש — כדאי לבדוק זאת.',
       };
-      const parts = anomalies.map(a => msgMap[a.code] || a.message);
+      const parts = hasAnomalies
+        ? anomalies.map(a => msgMap[a.code] || a.message)
+        : [];
+
+      // Month-over-month swings vs prior payslips
+      const history = Array.isArray(ctx.payslipHistory) ? ctx.payslipHistory : [];
+      for (const prev of history.slice(0, 2)) {
+        if (prev.grossSalary == null || !Number.isFinite(Number(prev.grossSalary))) continue;
+        const prevGross = Number(prev.grossSalary);
+        if (prevGross <= 0) continue;
+        const grossDeltaPct = ((Number(gross) - prevGross) / prevGross) * 100;
+        if (Math.abs(grossDeltaPct) >= 15) {
+          const label = prev.date || 'החודש הקודם';
+          const dir = grossDeltaPct > 0 ? 'עלייה' : 'ירידה';
+          parts.push(
+            `${dir} של כ-${Math.abs(grossDeltaPct).toFixed(0)}% בברוטו לעומת ${label} (${formatAmount(prevGross)} → ${formatAmount(gross)}).`,
+          );
+        }
+        if (prev.netSalary != null && Number.isFinite(Number(prev.netSalary)) && Number(prev.netSalary) > 0) {
+          const prevNet = Number(prev.netSalary);
+          const netDeltaPct = ((Number(net) - prevNet) / prevNet) * 100;
+          if (Math.abs(netDeltaPct) >= 15) {
+            const label = prev.date || 'החודש הקודם';
+            const dir = netDeltaPct > 0 ? 'עלייה' : 'ירידה';
+            parts.push(
+              `${dir} של כ-${Math.abs(netDeltaPct).toFixed(0)}% בנטו לעומת ${label} (${formatAmount(prevNet)} → ${formatAmount(net)}).`,
+            );
+          }
+        }
+      }
+
+      if (parts.length === 0) {
+        const findingParts = (Array.isArray(ctx.findings) ? ctx.findings : [])
+          .filter(f => f.severity === 'warning')
+          .slice(0, 3)
+          .map(f => f.title);
+        if (findingParts.length) {
+          return `לא זיהיתי חריגות מספריות בתלוש האחרון, אבל יש ממצאים במערכת:\n${findingParts.map(p => `• ${p}`).join('\n')}`;
+        }
+        return `לא זיהיתי חריגות בתלוש האחרון שלך (ברוטו ${formatAmount(gross)}, נטו ${formatAmount(net)})${history.length ? ' ביחס לתלושים הקודמים' : ''}.`;
+      }
+      const findingExtras = (Array.isArray(ctx.findings) ? ctx.findings : [])
+        .filter(f => f.severity === 'warning')
+        .slice(0, 2)
+        .map(f => f.title);
+      findingExtras.forEach(t => {
+        if (!parts.some(p => String(p).includes(t))) parts.push(t);
+      });
       return `${parts.length > 1 ? 'כמה נקודות לתשומת לב' : 'נקודה לתשומת לב'}:\n${parts.map(p => `• ${p}`).join('\n')}`;
     }
 
@@ -606,7 +985,7 @@ async function saveChatMessage(userId, conversationId, role, content, metadata) 
   });
 }
 
-async function getChatHistory(userId, conversationId, limit = 10) {
+async function getChatHistory(userId, conversationId, limit = 20) {
   return ChatMessage.find({ user: userId, conversationId })
     .sort({ createdAt: -1 })
     .limit(limit)
@@ -615,7 +994,8 @@ async function getChatHistory(userId, conversationId, limit = 10) {
 }
 
 async function chatWithAI(req, res) {
-  const { message, history, conversationId: clientConversationId } = req.body;
+  const startedAt = Date.now();
+  const { message, conversationId: clientConversationId } = req.body;
   const pageContext = sanitizePageContext(req.body.pageContext);
 
   if (!message || typeof message !== 'string') {
@@ -625,28 +1005,26 @@ async function chatWithAI(req, res) {
     return res.status(400).json({ success: false, message: 'message too long (max 2000 chars)' });
   }
 
-  const conversationId = clientConversationId && mongoose.Types.ObjectId.isValid(clientConversationId)
-    ? new mongoose.Types.ObjectId(clientConversationId)
-    : new mongoose.Types.ObjectId();
+  const resolved = await resolveOwnedConversationId(req.user._id, clientConversationId);
+  if (!resolved.ok) {
+    return res.status(resolved.status).json({ success: false, message: resolved.message });
+  }
+  const { conversationId } = resolved;
 
-  const userContext = await buildUserContext(req.user._id);
   const intent = detectIntent(message);
+  // Rule intents only need payslip/profile; defer heavy RAG until LLM path.
+  let userContext = await buildUserContext(req.user._id, { heavy: false });
 
   let finalAnswer;
   let source;
   let model = null;
   let tokensUsed = null;
-  const contextUsed = [];
-
-  if (userContext.profile) contextUsed.push('profile');
-  if (userContext.documents?.length) contextUsed.push(`${userContext.documents.length} documents`);
-  if (userContext.insights?.length) contextUsed.push(`${userContext.insights.length} insights`);
-  if (userContext.recommendations?.length) contextUsed.push(`${userContext.recommendations.length} recommendations`);
+  let degradedReason = null;
+  let contextUsed = buildContextUsed(userContext, pageContext);
+  let citations = buildCitations(userContext, pageContext);
 
   const dbHistory = await getChatHistory(req.user._id, conversationId);
-  const mergedHistory = dbHistory.length
-    ? dbHistory.map(m => ({ role: m.role, content: m.content }))
-    : (Array.isArray(history) ? history : []);
+  const mergedHistory = resolveMergedHistory(clientConversationId, dbHistory);
 
   if (intent === 'whatif') {
     const change = parseWhatIfChange(normalizeMessage(message));
@@ -679,6 +1057,9 @@ async function chatWithAI(req, res) {
   } else {
     const ruleAnswer = buildRuleBasedAnswer(intent, userContext);
     if (ruleAnswer === null) {
+      userContext = await buildUserContext(req.user._id, { heavy: true });
+      contextUsed = buildContextUsed(userContext, pageContext);
+      citations = buildCitations(userContext, pageContext);
       const chatResult = await claudeChat(message, {
         userContext,
         profile: userContext.profile,
@@ -686,11 +1067,37 @@ async function chatWithAI(req, res) {
         recommendations: userContext.recommendations,
         history: mergedHistory,
         pageContext,
+        userId: req.user._id,
       });
-      finalAnswer = chatResult.answer || 'השירות אינו זמין כרגע. אנא נסה שנית בקרוב, או שאל שאלה ספציפית כמו "כמה נטו?", "כמה פנסיה?".';
+      if (chatResult.unavailable || !chatResult.answer) {
+        await saveChatMessage(req.user._id, conversationId, 'user', message, { intent });
+        await saveChatMessage(req.user._id, conversationId, 'assistant', LLM_UNAVAILABLE_MESSAGE, {
+          intent,
+          contextUsed,
+          model: null,
+          tokensUsed: null,
+          degradedReason: 'unavailable',
+        });
+        logChatMeta({
+          path: 'chat',
+          intent,
+          source: 'unavailable',
+          latencyMs: Date.now() - startedAt,
+          conversationId: conversationId.toString(),
+        });
+        return res.status(503).json({
+          success: false,
+          message: LLM_UNAVAILABLE_MESSAGE,
+          intent,
+          source: 'unavailable',
+          conversationId: conversationId.toString(),
+        });
+      }
+      finalAnswer = chatResult.answer;
       source = chatResult.source;
       model = chatResult.model;
       tokensUsed = chatResult.tokensUsed;
+      degradedReason = chatResult.degradedReason || null;
     } else {
       finalAnswer = ruleAnswer;
       source = 'rule';
@@ -699,25 +1106,65 @@ async function chatWithAI(req, res) {
 
   // Safety net: should never reach here, but guard against undefined
   if (!finalAnswer) {
-    finalAnswer = 'לא הצלחתי לענות כרגע. נסה שוב או שאל שאלה ספציפית.';
-    source = 'rule';
+    await saveChatMessage(req.user._id, conversationId, 'user', message, { intent });
+    await saveChatMessage(req.user._id, conversationId, 'assistant', LLM_UNAVAILABLE_MESSAGE, {
+      intent,
+      contextUsed,
+      degradedReason: 'unavailable',
+    });
+    logChatMeta({
+      path: 'chat',
+      intent,
+      source: 'unavailable',
+      latencyMs: Date.now() - startedAt,
+      conversationId: conversationId.toString(),
+    });
+    return res.status(503).json({
+      success: false,
+      message: LLM_UNAVAILABLE_MESSAGE,
+      intent,
+      source: 'unavailable',
+      conversationId: conversationId.toString(),
+    });
   }
 
   await saveChatMessage(req.user._id, conversationId, 'user', message, { intent });
-  await saveChatMessage(req.user._id, conversationId, 'assistant', finalAnswer, {
+  const latencyMs = Date.now() - startedAt;
+  const assistantMsg = await saveChatMessage(req.user._id, conversationId, 'assistant', finalAnswer, {
     intent,
+    source,
     contextUsed,
     model,
     tokensUsed,
+    degradedReason,
+    latencyMs,
   });
+
+  await touchConversation(req.user._id, conversationId, {
+    title: titleFromMessage(message),
+    preview: message,
+    lastSource: source,
+    degradedReason: degradedReason || null,
+  });
+
+  const meta = buildChatMeta({
+    intent,
+    source,
+    conversationId,
+    contextUsed,
+    citations,
+    degradedReason,
+    tokensUsed,
+    latencyMs,
+    model,
+    messageId: assistantMsg._id,
+  });
+  logChatMeta({ path: 'chat', ...meta });
 
   return res.json({
     success: true,
     answer: `${RLM}${finalAnswer}`,
-    intent,
-    source,
-    conversationId: conversationId.toString(),
-    contextUsed,
+    ...meta,
   });
 }
 
@@ -740,34 +1187,174 @@ async function getChatHistoryHandler(req, res) {
 }
 
 async function listConversations(req, res) {
-  const conversations = await ChatMessage.aggregate([
-    { $match: { user: req.user._id, role: 'user' } },
-    { $sort: { createdAt: -1 } },
-    {
-      $group: {
-        _id: '$conversationId',
-        lastMessage: { $first: '$content' },
-        updatedAt: { $first: '$createdAt' },
-      },
-    },
+  const rows = await Conversation.find({ user: req.user._id })
+    .sort({ updatedAt: -1 })
+    .limit(20)
+    .lean();
+
+  if (rows.length > 0) {
+    return res.json({
+      success: true,
+      data: rows.map((c) => ({
+        conversationId: c._id.toString(),
+        title: c.title || 'שיחה',
+        preview: c.preview || c.title || '',
+        updatedAt: c.updatedAt,
+        lastSource: c.lastSource || null,
+        degraded: Boolean(c.degradedReason),
+        degradedReason: c.degradedReason || undefined,
+      })),
+    });
+  }
+
+  // Legacy fallback: conversations that only exist as ChatMessage rows
+  const grouped = await ChatMessage.aggregate([
+    { $match: { user: req.user._id } },
+    { $group: { _id: '$conversationId', updatedAt: { $max: '$createdAt' } } },
     { $sort: { updatedAt: -1 } },
     { $limit: 20 },
   ]);
 
-  return res.json({
-    success: true,
-    data: conversations.map(c => ({
-      conversationId: c._id.toString(),
-      preview: c.lastMessage,
-      updatedAt: c.updatedAt,
-    })),
+  const enriched = await Promise.all(
+    grouped.map(async (c) => {
+      const firstUser = await ChatMessage.findOne({
+        user: req.user._id,
+        conversationId: c._id,
+        role: 'user',
+      })
+        .sort({ createdAt: 1 })
+        .select('content metadata')
+        .lean();
+      const lastUser = await ChatMessage.findOne({
+        user: req.user._id,
+        conversationId: c._id,
+        role: 'user',
+      })
+        .sort({ createdAt: -1 })
+        .select('content')
+        .lean();
+      const lastAssistant = await ChatMessage.findOne({
+        user: req.user._id,
+        conversationId: c._id,
+        role: 'assistant',
+      })
+        .sort({ createdAt: -1 })
+        .select('metadata')
+        .lean();
+
+      const metaTitle = firstUser?.metadata?.title;
+      const titleSource = (metaTitle || firstUser?.content || lastUser?.content || 'שיחה').trim();
+      const title = titleFromMessage(titleSource);
+      const preview = (lastUser?.content || titleSource).trim().slice(0, 80);
+      const model = lastAssistant?.metadata?.model || null;
+      const degradedReason = lastAssistant?.metadata?.degradedReason || null;
+      let lastSource = 'rule';
+      if (model) {
+        lastSource = String(model).toLowerCase().includes('claude') ? 'claude' : 'ollama';
+      } else if (degradedReason) {
+        lastSource = 'ollama';
+      } else if (!lastAssistant) {
+        lastSource = null;
+      }
+
+      await touchConversation(req.user._id, c._id, {
+        title,
+        preview,
+        lastSource,
+        degradedReason,
+      }).catch(() => {});
+
+      return {
+        conversationId: c._id.toString(),
+        title,
+        preview,
+        updatedAt: c.updatedAt,
+        lastSource,
+        degraded: Boolean(degradedReason),
+        degradedReason: degradedReason || undefined,
+      };
+    }),
+  );
+
+  return res.json({ success: true, data: enriched });
+}
+
+async function deleteConversation(req, res) {
+  const { id } = req.params;
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ success: false, message: 'conversationId required' });
+  }
+  const conversationId = new mongoose.Types.ObjectId(id);
+  const msgResult = await ChatMessage.deleteMany({ user: req.user._id, conversationId });
+  const convResult = await Conversation.deleteOne({ _id: conversationId, user: req.user._id });
+  if (msgResult.deletedCount === 0 && convResult.deletedCount === 0) {
+    return res.status(404).json({ success: false, message: 'שיחה לא נמצאה' });
+  }
+  return res.json({ success: true, deletedCount: msgResult.deletedCount });
+}
+
+async function renameConversation(req, res) {
+  const { id } = req.params;
+  const title = typeof req.body?.title === 'string' ? req.body.title.trim().slice(0, 80) : '';
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ success: false, message: 'conversationId required' });
+  }
+  if (!title) {
+    return res.status(400).json({ success: false, message: 'title required' });
+  }
+  const conversationId = new mongoose.Types.ObjectId(id);
+  const owned = await ChatMessage.exists({ user: req.user._id, conversationId });
+  const conv = await Conversation.findOne({ _id: conversationId, user: req.user._id });
+  if (!owned && !conv) {
+    return res.status(404).json({ success: false, message: 'שיחה לא נמצאה' });
+  }
+  await touchConversation(req.user._id, conversationId, { renameTitle: title });
+  const firstUser = await ChatMessage.findOne({
+    user: req.user._id,
+    conversationId,
+    role: 'user',
+  }).sort({ createdAt: 1 });
+  if (firstUser) {
+    firstUser.metadata = { ...(firstUser.metadata?.toObject?.() || firstUser.metadata || {}), title };
+    await firstUser.save();
+  }
+  return res.json({ success: true, title });
+}
+
+async function submitMessageFeedback(req, res) {
+  const { id } = req.params;
+  const ratingRaw = req.body?.rating;
+  const rating = ratingRaw === 0 || ratingRaw === '0' ? 0 : Number(ratingRaw);
+  const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 500) : null;
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ success: false, message: 'message id required' });
+  }
+  if (rating !== 1 && rating !== -1 && rating !== 0) {
+    return res.status(400).json({ success: false, message: 'rating must be 1, -1, or 0' });
+  }
+  const msg = await ChatMessage.findOne({
+    _id: id,
+    user: req.user._id,
+    role: 'assistant',
   });
+  if (!msg) {
+    return res.status(404).json({ success: false, message: 'הודעה לא נמצאה' });
+  }
+  msg.metadata = {
+    ...(msg.metadata?.toObject?.() || msg.metadata || {}),
+    feedbackRating: rating === 0 ? null : rating,
+    feedbackNote: rating === 0 ? null : note,
+    feedbackAt: rating === 0 ? null : new Date(),
+  };
+  await msg.save();
+  return res.json({ success: true, rating: rating === 0 ? null : rating });
 }
 
 // ── streaming handler ─────────────────────────────────────────────────────────
 
 async function chatWithAIStream(req, res) {
-  const { message, history, conversationId: clientConversationId } = req.body;
+  const startedAt = Date.now();
+  const { message, conversationId: clientConversationId } = req.body;
   const pageContext = sanitizePageContext(req.body.pageContext);
 
   if (!message || typeof message !== 'string') {
@@ -777,17 +1364,19 @@ async function chatWithAIStream(req, res) {
     return res.status(400).json({ success: false, message: 'message too long (max 2000 chars)' });
   }
 
-  const conversationId = clientConversationId && mongoose.Types.ObjectId.isValid(clientConversationId)
-    ? new mongoose.Types.ObjectId(clientConversationId)
-    : new mongoose.Types.ObjectId();
+  const resolved = await resolveOwnedConversationId(req.user._id, clientConversationId);
+  if (!resolved.ok) {
+    return res.status(resolved.status).json({ success: false, message: resolved.message });
+  }
+  const { conversationId } = resolved;
 
-  const userContext = await buildUserContext(req.user._id);
   const intent = detectIntent(message);
+  let userContext = await buildUserContext(req.user._id, { heavy: false });
+  let contextUsed = buildContextUsed(userContext, pageContext);
+  let citations = buildCitations(userContext, pageContext);
 
   const dbHistory = await getChatHistory(req.user._id, conversationId);
-  const mergedHistory = dbHistory.length
-    ? dbHistory.map(m => ({ role: m.role, content: m.content }))
-    : (Array.isArray(history) ? history : []);
+  const mergedHistory = resolveMergedHistory(clientConversationId, dbHistory);
 
   // Rule-based intents: resolve immediately without streaming
   let ruleAnswer = null;
@@ -826,28 +1415,64 @@ async function chatWithAIStream(req, res) {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders?.();
 
+  const abortController = new AbortController();
+  let clientClosed = false;
+  const onClientClose = () => {
+    clientClosed = true;
+    abortController.abort();
+  };
+  req.on('close', onClientClose);
+
   const sendEvent = (data) => {
+    if (clientClosed || res.writableEnded) return;
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
 
   // Send conversationId immediately so frontend can track it
-  sendEvent({ type: 'meta', conversationId: conversationId.toString(), intent });
+  sendEvent({ type: 'meta', conversationId: conversationId.toString(), intent, contextUsed, citations });
 
   await saveChatMessage(req.user._id, conversationId, 'user', message, { intent });
+  await touchConversation(req.user._id, conversationId, {
+    title: titleFromMessage(message),
+    preview: message,
+  });
 
   if (ruleAnswer !== null) {
-    // Rule-based: send as a single token then done
-    sendEvent({ type: 'token', token: `${RLM}${ruleAnswer}` });
-    sendEvent({ type: 'done', source: 'rule' });
-    await saveChatMessage(req.user._id, conversationId, 'assistant', ruleAnswer, {
-      intent, contextUsed: [], model: null, tokensUsed: null,
+    const latencyMs = Date.now() - startedAt;
+    const assistantMsg = await saveChatMessage(req.user._id, conversationId, 'assistant', ruleAnswer, {
+      intent, source: 'rule', contextUsed, model: null, tokensUsed: null, latencyMs,
     });
+    const meta = buildChatMeta({
+      intent,
+      source: 'rule',
+      conversationId,
+      contextUsed,
+      citations,
+      latencyMs,
+      messageId: assistantMsg._id,
+    });
+    sendEvent({ type: 'token', token: `${RLM}${ruleAnswer}` });
+    sendEvent({ type: 'done', ...meta });
+    await touchConversation(req.user._id, conversationId, {
+      lastSource: 'rule',
+      degradedReason: null,
+      preview: message,
+    });
+    logChatMeta({ path: 'chat/stream', ...meta });
+    req.off('close', onClientClose);
     res.end();
     return;
   }
 
+  // LLM path — enrich with pension/insurance/findings before streaming
+  userContext = await buildUserContext(req.user._id, { heavy: true });
+  contextUsed = buildContextUsed(userContext, pageContext);
+  citations = buildCitations(userContext, pageContext);
+  sendEvent({ type: 'meta', conversationId: conversationId.toString(), intent, contextUsed, citations });
+
   // LLM streaming
   let fullAnswer = '';
+  let completed = false;
   try {
     await claudeStreamChat(
       message,
@@ -858,24 +1483,96 @@ async function chatWithAIStream(req, res) {
         recommendations: userContext.recommendations,
         history: mergedHistory,
         pageContext,
+        signal: abortController.signal,
+        userId: req.user._id,
       },
       (token) => {
         fullAnswer += token;
         sendEvent({ type: 'token', token });
       },
-      async (full, tokensUsed, meta = {}) => {
-        const source = meta.source || 'claude';
-        const model = meta.model || null;
-        sendEvent({ type: 'done', source, tokensUsed });
-        await saveChatMessage(req.user._id, conversationId, 'assistant', full, {
-          intent, contextUsed: [], model, tokensUsed,
+      async (full, tokensUsed, streamMeta = {}) => {
+        completed = true;
+        const source = streamMeta.source || 'claude';
+        const model = streamMeta.model || null;
+        const latencyMs = Date.now() - startedAt;
+        const assistantMsg = await saveChatMessage(req.user._id, conversationId, 'assistant', full, {
+          intent,
+          source,
+          contextUsed,
+          model,
+          tokensUsed,
+          degradedReason: streamMeta.degradedReason || null,
+          latencyMs,
         });
-        res.end();
+        const meta = buildChatMeta({
+          intent,
+          source,
+          conversationId,
+          contextUsed,
+          citations,
+          degradedReason: streamMeta.degradedReason || null,
+          tokensUsed,
+          latencyMs,
+          model,
+          messageId: assistantMsg._id,
+        });
+        sendEvent({ type: 'done', ...meta });
+        await touchConversation(req.user._id, conversationId, {
+          lastSource: source,
+          degradedReason: streamMeta.degradedReason || null,
+          preview: message,
+        });
+        logChatMeta({ path: 'chat/stream', ...meta });
+        req.off('close', onClientClose);
+        if (!res.writableEnded) res.end();
       },
     );
-  } catch {
-    sendEvent({ type: 'error', message: 'שגיאה בעיבוד התשובה.' });
-    res.end();
+  } catch (err) {
+    if (abortController.signal.aborted || clientClosed) {
+      if (!completed && !fullAnswer.trim()) {
+        await ChatMessage.deleteOne({
+          user: req.user._id,
+          conversationId,
+          role: 'user',
+          content: message,
+        }).catch(() => {});
+      } else if (!completed && fullAnswer.trim()) {
+        await saveChatMessage(req.user._id, conversationId, 'assistant', fullAnswer, {
+          intent,
+          contextUsed,
+          degradedReason: 'client_aborted',
+        }).catch(() => {});
+      }
+      logChatMeta({
+        path: 'chat/stream',
+        intent,
+        source: 'aborted',
+        latencyMs: Date.now() - startedAt,
+        conversationId: conversationId.toString(),
+      });
+      req.off('close', onClientClose);
+      if (!res.writableEnded) res.end();
+      return;
+    }
+    const messageText =
+      err?.code === 'LLM_UNAVAILABLE'
+        ? LLM_UNAVAILABLE_MESSAGE
+        : 'שגיאה בעיבוד התשובה.';
+    sendEvent({ type: 'error', message: messageText });
+    await saveChatMessage(req.user._id, conversationId, 'assistant', messageText, {
+      intent,
+      contextUsed,
+      degradedReason: err?.code === 'LLM_UNAVAILABLE' ? 'unavailable' : 'error',
+    }).catch(() => {});
+    logChatMeta({
+      path: 'chat/stream',
+      intent,
+      source: 'error',
+      latencyMs: Date.now() - startedAt,
+      conversationId: conversationId.toString(),
+    });
+    req.off('close', onClientClose);
+    if (!res.writableEnded) res.end();
   }
 }
 
@@ -1026,4 +1723,22 @@ function buildPersonalizedTips(ctx) {
   return tips.slice(0, 4);
 }
 
-module.exports = { chatWithAI, chatWithAIStream, getChatHistoryHandler, listConversations, getFinancialTips, detectIntent };
+module.exports = {
+  chatWithAI,
+  chatWithAIStream,
+  getChatHistoryHandler,
+  listConversations,
+  deleteConversation,
+  renameConversation,
+  submitMessageFeedback,
+  getFinancialTips,
+  detectIntent,
+  resolveMergedHistory,
+  buildRuleBasedAnswer,
+  buildChatMeta,
+  sanitizePageContext,
+  resolveOwnedConversationId,
+  touchConversation,
+  titleFromMessage,
+};
+

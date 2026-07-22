@@ -136,13 +136,14 @@ describe('Executive report API', () => {
 
     const { report } = res.body.data;
     expect(report.sections.executiveSummary).toBeTruthy();
-    expect(report.sections.topPriorityActions.length).toBeLessThanOrEqual(8);
-    expect(report.sections.roadmap).toBeTruthy();
-    expect(report.sections.thingsToReviewRegularly.length).toBeGreaterThan(0);
+    expect(report.meta.reportVersion).toBe('2.1.0');
+    expect(report.sections.agentReport.agentSections).toHaveLength(4);
+    expect(report.sections.agentReport.agentSections.find(s => s.agentId === 'pension').dataStatus).toBe('available');
+    expect(report.sections.preservedRecommendations.length).toBeGreaterThan(0);
 
     const cached = await ExecutiveReport.findOne({ runId: res.body.data.runId, user: userId });
     expect(cached).toBeTruthy();
-    expect(cached.report.sections.topPriorityActions[0].title).toBeTruthy();
+    expect(cached.report.sections.agentReport).toBeTruthy();
   });
 
   it('GET /api/executive/report/pdf uses cached report without re-running agents', async () => {
@@ -182,6 +183,56 @@ describe('Executive report API', () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.data.report.sections.executiveSummary).toBeTruthy();
     expect(res.body.data.meta.agentStatuses.insurance).toBe('error');
+  });
+
+  it('GET /api/executive/report/latest returns the last saved report without re-running agents', async () => {
+    mockAgents();
+    const app = harness.getApp();
+    const { token } = await harness.register();
+
+    const emptyRes = await request(app)
+      .get('/api/executive/report/latest')
+      .set('Authorization', `Bearer ${token}`);
+    expect(emptyRes.statusCode).toBe(200);
+    expect(emptyRes.body.success).toBe(true);
+    expect(emptyRes.body.data).toBeNull();
+
+    const gen = await request(app)
+      .post('/api/executive/report?skipLLM=true')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    const runId = gen.body.data.runId;
+    jest.clearAllMocks();
+
+    const res = await request(app)
+      .get('/api/executive/report/latest')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data.runId).toBe(runId);
+    expect(res.body.data.savedAt).toBeTruthy();
+    expect(res.body.data.report.sections.executiveSummary).toBeTruthy();
+    expect(runPayslipAgent).not.toHaveBeenCalled();
+    expect(runPensionAgent).not.toHaveBeenCalled();
+  });
+
+  it('does not expose another user\'s latest report', async () => {
+    mockAgents();
+    const app = harness.getApp();
+    const { token } = await harness.register();
+
+    await request(app)
+      .post('/api/executive/report?skipLLM=true')
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    const { token: otherToken } = await harness.register();
+    const res = await request(app)
+      .get('/api/executive/report/latest')
+      .set('Authorization', `Bearer ${otherToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.data).toBeNull();
   });
 
   it('returns 400 when PDF requested without runId', async () => {

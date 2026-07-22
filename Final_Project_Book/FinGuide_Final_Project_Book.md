@@ -1,4 +1,11 @@
-# FinGuide: An Automated Platform for Israeli Payslip Analysis and Personalized Financial Guidance
+<div class="cover-logo">
+<img src="../frontend/public/favicon.svg" alt="FinGuide logo" />
+<span>FinGuide</span>
+</div>
+
+# FinGuide: Your AI-Powered Financial Companion
+
+<p class="cover-tagline">Payslips. Pension. Insurance. Savings.<br />One intelligent financial picture, built around you.</p>
 
 <div class="title-page-meta">
 
@@ -10,7 +17,10 @@
 <strong>Ofir Raz</strong><br />
 <strong>Emily Belenky</strong></p>
 
-<p>Approved by the supervisor: Eliav Menashe</p>
+<p><strong>Final Project — Full Stack<br />
+Group 116</strong></p>
+
+<p>Supervisor: Eliav Menashe</p>
 
 <p>Submitted to the Computer Science Faculty of College of Management</p>
 
@@ -22,9 +32,11 @@
 
 ## Acknowledgments
 
-We thank the Computer Science Faculty of the College of Management for the academic environment, project-day structure, and support throughout our degree. We are especially grateful to our supervisor, Eliav Menashe, for sustained guidance, technical feedback, and availability during the research and implementation phases.
+We would like to thank the Computer Science Faculty of the College of Management for the academic framework and resources provided during the Full Stack final project. The project gave us the opportunity to transform a financial-technology idea into an integrated system.
 
-We also thank the open-source communities behind Tesseract OCR, Node.js, React, and MongoDB, whose tools form the technical foundation of FinGuide. Finally, we thank our families and teammates for their patience and encouragement during the development of this work.
+We are especially grateful to our supervisor, Eliav Menashe, for supervising the research, design, implementation, evaluation, and documentation of FinGuide.
+
+We also acknowledge the open-source communities behind Tesseract OCR, Poppler, Node.js, Express, React, MongoDB, and the supporting libraries that form the technical foundation of FinGuide. Finally, Group 116 thanks every team member for the collaborative work required to integrate and document the project.
 
 ---
 
@@ -32,55 +44,64 @@ We also thank the open-source communities behind Tesseract OCR, Node.js, React, 
 
 Israeli salaried employees receive monthly payslips (תלושי שכר) that encode salary, statutory deductions, and employer contributions, yet most lack tools to verify compliance or act on the data. Employers and payroll vendors issue complex documents governed by income tax, National Insurance, and mandatory pension law; employees rarely have the expertise or software to detect missing deposits, rate inconsistencies, or longitudinal gaps. FinGuide addresses this gap with a full-stack web platform that automates payslip ingestion, Hebrew-aware extraction, compliance checking, and personalized financial guidance.
 
-The system applies a multi-path PDF and OCR pipeline, normalizes results into a canonical `analysisData` schema (version 1.9), and runs rule-based detectors for missing pension deposits, contribution-rate gaps, and deposit continuity breaks. A hybrid AI assistant combines deterministic intent routing with Claude and Ollama fallback; a multi-agent layer synthesizes payslip, pension, insurance, and profile analysis into a financial health score and prioritized action items. The implementation uses a Node.js and Express backend with a React 19 and TypeScript frontend, connected through twenty REST route modules.
+The system applies a multi-path PDF and OCR pipeline, normalizes results into a canonical `analysisData` schema (version 1.9), and runs rule-based detectors for missing pension deposits, contribution-rate gaps, and deposit continuity breaks. A hybrid AI assistant combines deterministic intent routing with Claude and Ollama fallback; a multi-agent layer synthesizes payslip, pension, provident-fund, insurance, and profile analysis into a financial health score and prioritized action items. The implementation uses a Node.js and Express backend with a React 19 and TypeScript frontend, connected through 23 mounted REST route modules.
 
-Development followed an iterative, backend-first methodology with golden-fixture regression tests, reproducible `eval:*` scripts, and Jest-based unit and integration testing (115 backend and 5 frontend test files). Evaluation on a seven-fixture OCR corpus reported 100% accuracy on `gross_total` and `period_month`, with `net_payable` at 85.7%; a ten-scenario findings set (seven synthetic plus three golden-derived) achieved 100% precision and recall; a thirty-nine-query Hebrew routing set reached 94.9% intent classification accuracy; and Path-1 extraction latency on the same corpus measured a 16 ms median on development hardware. FinGuide demonstrates that employee-facing, Hebrew-native payslip analysis is feasible and establishes a foundation for expanded regulatory coverage and advisory features.
+Development followed an iterative full-stack methodology supported by committed fixtures, reproducible `eval:*` scripts, and Jest unit and integration tests. The recorded OCR evaluation run discovered nine fixtures: seven contain scored annotations, while two IDF image fixtures currently contain no scored fields. Across the seven scored fixtures, `gross_total` reached 85.7%, `period_month` 57.1%, and `net_payable` 42.9%; three Malam Plus files used direct PDF text and four Michpal files required Tesseract OCR. The two unscored IDF images verified that the image path executes but cannot support accuracy claims. A ten-scenario findings set achieved 100% precision and recall on that limited set, while a thirty-nine-query Hebrew routing set reached 92.3% intent accuracy. These results demonstrate an implemented, testable pipeline while also exposing extraction and routing weaknesses that require further work before broad real-world deployment.
 
 ---
 
 ## Table of Contents
 
-- [Chapter 1: Introduction](#chapter-1-introduction)
-  - [1.1 Background](#11-background)
-  - [1.2 Problem Statement](#12-problem-statement)
-  - [1.3 Objectives](#13-objectives)
-  - [1.4 Scope and Limitations](#14-scope-and-limitations)
-  - [1.5 Methodology](#15-methodology)
-  - [1.6 Organization of the Project Book](#16-organization-of-the-project-book)
-  - [1.7 Team Contributions](#17-team-contributions)
-- [Chapter 2: Literature Review](#chapter-2-literature-review)
-  - [2.1 Overview of Relevant Literature](#21-overview-of-relevant-literature)
-  - [2.2 Document Digitization and Optical Character Recognition](#22-document-digitization-and-optical-character-recognition)
-  - [2.3 Hebrew Language Processing](#23-hebrew-language-processing)
-  - [2.4 Israeli Financial Regulations Governing Employment](#24-israeli-financial-regulations-governing-employment)
-  - [2.5 Personal Financial Management Systems](#25-personal-financial-management-systems)
-  - [2.6 Web Application Architecture Patterns](#26-web-application-architecture-patterns)
-  - [2.7 AI and Large Language Models in Fintech](#27-ai-and-large-language-models-in-fintech)
-  - [2.8 Literature Synthesis and Research Gap](#28-literature-synthesis-and-research-gap)
-- [Chapter 3: System Design and Implementation](#chapter-3-system-design-and-implementation)
-  - [3.1 System Architecture](#31-system-architecture)
-  - [3.2 Data Collection and Preprocessing](#32-data-collection-and-preprocessing)
-  - [3.3 Implementation Details](#33-implementation-details)
-  - [3.4 Evaluation Metrics](#34-evaluation-metrics)
-  - [3.5 Software and Hardware Specifications](#35-software-and-hardware-specifications)
-  - [3.6 Security and Data Privacy](#36-security-and-data-privacy)
-- [Chapter 4: Results and Analysis](#chapter-4-results-and-analysis)
-  - [4.1 Experimental Setup](#41-experimental-setup)
-    - [4.1.5 Regression and Continuous Verification](#415-regression-and-continuous-verification)
-  - [4.2 Presentation of Results](#42-presentation-of-results)
-  - [4.2.5 Error Analysis — Deduction Fields and Net Mismatch](#425-error-analysis--deduction-fields-and-net-mismatch)
-  - [4.2.6 Functional Verification for Objectives 4–6](#426-functional-verification-for-objectives-46)
-  - [4.3 Data Analysis and Interpretation](#43-data-analysis-and-interpretation)
-  - [4.4 Comparison with Existing Approaches](#44-comparison-with-existing-approaches)
-  - [4.5 Discussion of Findings](#45-discussion-of-findings)
-- [Chapter 5: Conclusion and Future Work](#chapter-5-conclusion-and-future-work)
-  - [5.1 Summary of Contributions](#51-summary-of-contributions)
-  - [5.2 Limitations](#52-limitations)
-  - [5.3 Future Work](#53-future-work)
-- [References](#references)
-- [Appendix A: API Endpoint Reference](#appendix-a-api-endpoint-reference)
-- [Appendix B: Project Setup and Reproduction](#appendix-b-project-setup-and-reproduction)
-- [Appendix C: analysisData v1.9 Field Reference](#appendix-c-analysisdata-v19-field-reference)
+- [Chapter 1: Introduction](#chapter-1-introduction) — 9
+  - [1.1 Background](#11-background) — 9
+  - [1.2 Problem Statement](#12-problem-statement) — 9
+  - [1.3 Objectives](#13-objectives) — 10
+  - [1.4 Scope and Limitations](#14-scope-and-limitations) — 10
+  - [1.5 Methodology](#15-methodology) — 10
+  - [1.6 Organization of the Project Book](#16-organization-of-the-project-book) — 11
+  - [1.7 Team Contributions](#17-team-contributions) — 11
+  - [1.8 Full-Stack Requirements and User Journey](#18-full-stack-requirements-and-user-journey) — 11
+- [Chapter 2: Literature Review](#chapter-2-literature-review) — 13
+  - [2.1 Overview of Relevant Literature](#21-overview-of-relevant-literature) — 13
+  - [2.2 Document Digitization and Optical Character Recognition](#22-document-digitization-and-optical-character-recognition) — 13
+  - [2.3 Hebrew Language Processing](#23-hebrew-language-processing) — 14
+  - [2.4 Israeli Financial Regulations Governing Employment](#24-israeli-financial-regulations-governing-employment) — 14
+  - [2.5 Personal Financial Management Systems](#25-personal-financial-management-systems) — 15
+  - [2.6 Web Application Architecture Patterns](#26-web-application-architecture-patterns) — 16
+  - [2.7 AI and Large Language Models in Fintech](#27-ai-and-large-language-models-in-fintech) — 16
+  - [2.8 Literature Synthesis and Research Gap](#28-literature-synthesis-and-research-gap) — 16
+- [Chapter 3: System Design and Implementation](#chapter-3-system-design-and-implementation) — 18
+  - [3.1 System Architecture](#31-system-architecture) — 18
+  - [3.2 Data Collection and Preprocessing](#32-data-collection-and-preprocessing) — 20
+  - [3.3 Implementation Details](#33-implementation-details) — 23
+  - [3.4 Evaluation Metrics](#34-evaluation-metrics) — 37
+  - [3.5 Software and Hardware Specifications](#35-software-and-hardware-specifications) — 37
+  - [3.6 Security and Data Privacy](#36-security-and-data-privacy) — 39
+- [Chapter 4: Results and Analysis](#chapter-4-results-and-analysis) — 41
+  - [4.1 Experimental Setup](#41-experimental-setup) — 41
+    - [4.1.1 Automated Test Suite](#411-automated-test-suite) — 41
+    - [4.1.2 OCR Evaluation Framework](#412-ocr-evaluation-framework) — 41
+    - [4.1.3 Findings Detection Evaluation Framework](#413-findings-detection-evaluation-framework) — 42
+    - [4.1.4 AI Assistant Evaluation Framework](#414-ai-assistant-evaluation-framework) — 42
+    - [4.1.5 Regression and Continuous Verification](#415-regression-and-continuous-verification) — 42
+  - [4.2 Presentation of Results](#42-presentation-of-results) — 42
+    - [4.2.1 Document Processing Pipeline Outcomes](#421-document-processing-pipeline-outcomes) — 42
+    - [4.2.2 Field-Level Extraction Accuracy](#422-field-level-extraction-accuracy) — 44
+    - [4.2.3 Findings Detection](#423-findings-detection) — 45
+    - [4.2.4 AI Assistant Intent Classification](#424-ai-assistant-intent-classification) — 45
+    - [4.2.5 Error Analysis — Period, Salary, and Deduction Fields](#425-error-analysis--period-salary-and-deduction-fields) — 46
+    - [4.2.6 Functional Verification for Objectives 4–6](#426-functional-verification-for-objectives-46) — 46
+  - [4.3 Data Analysis and Interpretation](#43-data-analysis-and-interpretation) — 46
+  - [4.4 Comparison with Existing Approaches](#44-comparison-with-existing-approaches) — 47
+  - [4.5 Discussion of Findings](#45-discussion-of-findings) — 48
+- [Chapter 5: Conclusion and Future Work](#chapter-5-conclusion-and-future-work) — 49
+  - [5.1 Summary of Contributions](#51-summary-of-contributions) — 49
+  - [5.2 Limitations](#52-limitations) — 49
+  - [5.3 Future Work](#53-future-work) — 50
+- [References](#references) — 51
+- [Appendix A: API Endpoint Reference](#appendix-a-api-endpoint-reference) — 52
+- [Appendix B: Project Setup and Reproduction](#appendix-b-project-setup-and-reproduction) — 56
+- [Appendix C: analysisData v1.9 Field Reference](#appendix-c-analysisdata-v19-field-reference) — 58
 
 ---
 
@@ -118,35 +139,38 @@ Development followed an iterative, backend-first methodology with golden-fixture
 
 ## Table of Figures
 
-- **Figure 1:** High-level system architecture diagram
-- **Figure 2:** Document processing pipeline (OCR extraction flow)
-- **Figure 3:** Backend layered architecture
-- **Figure 4:** analysisData canonical schema (version 1.9) structure
-- **Figure 5:** Multi-agent AI orchestration pipeline
-- **Figure 6:** Financial health score computation model
-- **Figure 7:** Frontend route tree
-- **Figure 8:** Authentication flow (JWT and Google OAuth 2.0)
-- **Figure 9:** Findings detection decision tree
-- **Figure 10:** OCR accuracy results by extraction path
-- **Figure 11:** Verification and regression test flow
-- **Figure 12:** Capability comparison summary
-- **Figure 13:** Authenticated Hub dashboard (Hebrew RTL UI)
-- **Figure 14:** Pension and findings-oriented UI view
-- **Figure 15:** Public landing page (Hebrew marketing surface)
-- **Figure 16:** Login screen with email/password and Google OAuth
-- **Figure 17:** Public team page
+<div class="front-list">
+<div class="front-list-row"><span><strong>Figure 1:</strong> High-level system architecture diagram</span><span class="front-list-dots"></span><span class="front-list-page">18</span></div>
+<div class="front-list-row"><span><strong>Figure 2:</strong> Financial-document dispatch and payslip extraction pipeline</span><span class="front-list-dots"></span><span class="front-list-page">20</span></div>
+<div class="front-list-row"><span><strong>Figure 3:</strong> Backend request, dependency, and response flow</span><span class="front-list-dots"></span><span class="front-list-page">23</span></div>
+<div class="front-list-row"><span><strong>Figure 4:</strong> analysisData canonical schema (version 1.9) structure</span><span class="front-list-dots"></span><span class="front-list-page">23</span></div>
+<div class="front-list-row"><span><strong>Figure 5:</strong> Multi-agent AI orchestration pipeline</span><span class="front-list-dots"></span><span class="front-list-page">31</span></div>
+<div class="front-list-row"><span><strong>Figure 6:</strong> Financial health score computation model</span><span class="front-list-dots"></span><span class="front-list-page">32</span></div>
+<div class="front-list-row"><span><strong>Figure 7:</strong> Frontend route tree</span><span class="front-list-dots"></span><span class="front-list-page">33</span></div>
+<div class="front-list-row"><span><strong>Figure 8:</strong> Authentication flow (JWT and Google OAuth 2.0)</span><span class="front-list-dots"></span><span class="front-list-page">28</span></div>
+<div class="front-list-row"><span><strong>Figure 9:</strong> Fund-without-deposit detection decision tree</span><span class="front-list-dots"></span><span class="front-list-page">26</span></div>
+<div class="front-list-row"><span><strong>Figure 10:</strong> OCR field-extraction evaluation</span><span class="front-list-dots"></span><span class="front-list-page">43</span></div>
+<div class="front-list-row"><span><strong>Figure 11:</strong> Verification and regression test flow</span><span class="front-list-dots"></span><span class="front-list-page">42</span></div>
+<div class="front-list-row"><span><strong>Figure 12:</strong> Capability comparison summary</span><span class="front-list-dots"></span><span class="front-list-page">48</span></div>
+<div class="front-list-row"><span><strong>Figure 13:</strong> Hebrew AI assistant UI</span><span class="front-list-dots"></span><span class="front-list-page">35</span></div>
+<div class="front-list-row"><span><strong>Figure 14:</strong> Payslip history UI (demonstration records)</span><span class="front-list-dots"></span><span class="front-list-page">36</span></div>
+<div class="front-list-row"><span><strong>Figure 15:</strong> Public landing page (illustrative marketing values)</span><span class="front-list-dots"></span><span class="front-list-page">34</span></div>
+<div class="front-list-row"><span><strong>Figure 16:</strong> Login screen (decorative sample payslip values)</span><span class="front-list-dots"></span><span class="front-list-page">29</span></div>
+<div class="front-list-row"><span><strong>Figure 17:</strong> Public team page</span><span class="front-list-dots"></span><span class="front-list-page">34</span></div>
+</div>
 
 ---
 
 ## Table of Tables
 
-- **Table 1:** Field extraction accuracy on golden fixture corpus (§4.2.2)
-- **Table 2:** Findings engine precision and recall (§4.2.3)
-- **Table 3:** AI assistant intent routing accuracy (§4.2.4)
-- **Table 4:** Document processing latency (§4.2.1)
-- **Table 5:** Capability comparison matrix (§4.4)
-- **Table 6:** Functional verification evidence for Objectives 4–6 (§4.2.6)
-- **Table 7:** Forced Path 3 image-OCR outcomes (§4.2.1)
+<div class="front-list">
+<div class="front-list-row"><span><strong>Table 1:</strong> Field extraction accuracy on golden fixture corpus (§4.2.2)</span><span class="front-list-dots"></span><span class="front-list-page">44</span></div>
+<div class="front-list-row"><span><strong>Table 2:</strong> Findings engine precision and recall (§4.2.3)</span><span class="front-list-dots"></span><span class="front-list-page">45</span></div>
+<div class="front-list-row"><span><strong>Table 3:</strong> AI assistant intent routing accuracy (§4.2.4)</span><span class="front-list-dots"></span><span class="front-list-page">45</span></div>
+<div class="front-list-row"><span><strong>Table 4:</strong> Document processing latency (§4.2.1)</span><span class="front-list-dots"></span><span class="front-list-page">43</span></div>
+<div class="front-list-row"><span><strong>Table 5:</strong> Capability comparison matrix (§4.4)</span><span class="front-list-dots"></span><span class="front-list-page">47</span></div>
+<div class="front-list-row"><span><strong>Table 6:</strong> Functional verification evidence for Objectives 4–6 (§4.2.6)</span><span class="front-list-dots"></span><span class="front-list-page">46</span></div>
+</div>
 
 ---
 
@@ -156,7 +180,7 @@ This chapter introduces the problem FinGuide addresses, the objectives and scope
 
 ### 1.1 Background
 
-The management of personal finances is a complex and deeply consequential activity that affects every employed individual. For Israeli salaried workers, this complexity is amplified by the structure of the local labor market and the regulatory environment. Every employee in Israel receives a monthly payslip (תלוש שכר) that documents not only their gross and net salary but also a web of statutory deductions and employer contributions governed by multiple legislative frameworks: the Income Tax Ordinance (פקודת מס הכנסה), the National Insurance Law (חוק הביטוח הלאומי), the Pension Obligation Law (חוק הפנסיה החובה, 2008), and the Individual Labor Agreements and Collective Bargaining Agreements that set the terms for study fund (קרן השתלמות) participation.
+The management of personal finances is a complex and deeply consequential activity that affects every employed individual. For Israeli salaried workers, this complexity is amplified by the structure of the local labor market and the regulatory environment. Every employee in Israel receives a monthly payslip (תלוש שכר) that documents not only their gross and net salary but also a web of statutory deductions and employer contributions governed by multiple legislative frameworks: the Income Tax Ordinance (פקודת מס הכנסה), the National Insurance Law (חוק הביטוח הלאומי), the 2008 Extension Order for Comprehensive Pension Insurance in the Economy (צו ההרחבה לביטוח פנסיוני מקיף במשק), and individual or collective agreements that may set the terms for study fund (קרן השתלמות) participation.
 
 A typical Israeli payslip includes dozens of distinct line items. Gross salary may be composed of base salary, travel allowance, meal allowance, commissions, overtime premiums, and other components. From this gross amount, the employer deducts income tax (מס הכנסה), the employee's share of National Insurance (ביטוח לאומי), and the employee's health insurance levy (מס בריאות). Simultaneously, the employer transfers contributions to the employee's pension fund (קרן פנסיה) or provident fund (קופת גמל) — an amount that includes the employee's own contribution (typically 6% of pensionable salary), the employer's contribution (typically 6.5%), and a severance provision (typically 6%) — as well as employer and employee contributions to a study fund when applicable. The result is a document that functions as both a wage statement and a compliance certificate for multiple overlapping regulatory obligations.
 
@@ -194,7 +218,7 @@ The primary objectives of this project are:
 
 ### 1.4 Scope and Limitations
 
-**In scope:** The system processes Israeli salary payslips (תלושי שכר) in PDF format from standard Hebrew-language payroll exports. Regulatory models reflect Israeli law as of 2026, including prevailing income tax brackets, National Insurance rates, pension minimum contribution rates, and study fund thresholds. The system supports one to approximately fifty payslip documents per user and stores data in a MongoDB instance.
+**In scope:** The system processes Israeli salary payslips (תלושי שכר) in PDF format from standard Hebrew-language payroll exports. Regulatory models reflect Israeli law as of 2026, including prevailing income tax brackets, National Insurance rates, pension minimum contribution rates, and study fund thresholds. The system stores multiple payslip documents per user in MongoDB; the assistant context query currently reads at most the 50 most recent documents, but this is a query limit rather than a declared storage capacity.
 
 **Out of scope:** The system does not provide certified financial advice; all outputs are informational and disclaimed accordingly. It does not file taxes, interact with pension fund management companies directly, or support the full range of Form 106 (annual income report) processing beyond basic metadata extraction. Support for languages other than Hebrew and English is not implemented. The savings forecast model is a linear projection that does not account for investment returns or inflation. Integration with banking APIs, pension fund portals, or the Israeli Tax Authority API is not part of the current implementation but is discussed as future work.
 
@@ -202,16 +226,16 @@ The primary objectives of this project are:
 
 ### 1.5 Methodology
 
-The project was developed using an iterative, feature-driven approach broadly aligned with the Agile methodology. Work was organized into thematic verticals — document ingestion, findings detection, AI assistant, multi-agent analysis, and frontend — which were developed and tested independently before integration. Each feature was validated against a corpus of real payslips obtained with user consent, supplemented by synthetic documents generated for testing edge cases.
+The project was developed using an iterative, feature-driven approach broadly aligned with Agile practice. Work was organized around document ingestion, financial findings, AI capabilities, domain agents, and the frontend, with frequent integration through the shared repository. Verification used committed golden PDF fixtures and their companion `expected.json` annotations, synthetic scenario files, automated tests, and manual product review. The repository does not record the provenance or consent procedure for every source fixture; consequently, this book makes no unsupported claim about how those source documents were obtained.
 
 **Development timeline.** The project proceeded in four phases aligned with repository history:
 
-1. **Phase 1 — Backend foundation (months 1–3).** Definition of the `analysisData` v1.9 schema, document upload API, authentication, and the multi-path OCR pipeline (`payslipOcr.js`, golden fixtures). Findings detectors and statutory threshold configuration.
-2. **Phase 2 — Core product (months 4–6).** React frontend with RTL layout, payslip history, findings UI, and `documentToPayslip.ts` mapping layer. Integration of insights, recommendations, and savings forecast.
-3. **Phase 3 — AI layer (months 7–9).** Hybrid assistant (`detectIntent`, `claudeChatService`), multi-agent orchestration (`full-analysis`), financial health score, and extended domains (pension, insurance, copilot, Gmail import).
-4. **Phase 4 — Evaluation and documentation (months 10–12).** Reproducible `eval:ocr`, `eval:findings`, and `eval:ai-routing` scripts; Jest regression suite; project book and submission packaging.
+1. **January–February 2026 — Product foundation.** The repository began on 28 January with the initial backend, request validation, API documentation, document uploads, and the first React/Vite frontend. Authentication, route guards, upload screens, dashboard and chat surfaces, findings utilities, and the initial LLM integration followed during February.
+2. **March–April 2026 — Full-stack integration and extraction hardening.** Work expanded the Hebrew payslip pipeline, label maps, document metadata and processing-status support, onboarding, history views, what-if and savings-forecast behavior, AI context, and the frontend/API contracts. OCR evaluation coverage and contribution resolution were hardened during April.
+3. **May–June 2026 — OCR, AI, and domain-agent expansion.** The team extended OCR and document handling, AI answer grounding and streaming, Form 106 and Gmail-related flows, pension and insurance capabilities, multi-agent analysis, automated agent tests, and a broad Hebrew UI redesign.
+4. **July 2026 — Domain completion and stabilization.** The final stage added and refined the provident-fund, pension, insurance, tax, and payslip agent surfaces; government-data-backed advisor functions; smart onboarding and the Hub executive report; then concentrated on regression fixes, cleanup, documentation, and submission preparation.
 
-The backend was developed first, as it defines the data contracts on which all other functionality depends. The `analysisData` canonical schema was defined early and treated as a stable interface; all OCR improvements, golden-fixture regression tests, and manual field-filling flows were constrained to produce outputs conforming to this schema. The frontend was developed in parallel after the core API endpoints were stabilized, using mock responses during the period before backend integration was complete.
+This chronology is a summary of dated repository commits from 28 January through 21 July 2026. It intentionally avoids invented “month 1–12” milestones. Backend and frontend foundations appeared in parallel at the start of the project, and their contracts evolved iteratively as extraction and agent capabilities expanded. The `analysisData` schema became the common persistence and API contract used by document processing, findings, assistant responses, and UI mapping.
 
 Testing followed a mixed strategy: unit tests verified the correctness of isolated financial calculations (contribution rate gap detection, deposit continuity timeline construction, savings forecast arithmetic); integration tests verified the full request-to-response cycle including database writes; and manual exploratory testing evaluated OCR quality on real documents. The full test suite is executed via Jest with the `--runInBand` flag to prevent database contention.
 
@@ -219,21 +243,52 @@ Reproducible evaluation harnesses complement manual testing: `npm run eval:ocr` 
 
 ### 1.6 Organization of the Project Book
 
-Chapter 2 reviews the relevant academic and technical literature. Chapter 3 presents system architecture, implementation details, and evaluation metrics. Chapter 4 reports experimental setup, results, analysis, and comparison with existing approaches. Chapter 5 concludes with contributions, limitations, and future work. The front matter includes tables of abbreviations, figures, and tables, plus references; appendices provide API documentation, setup instructions, and schema reference.
+The remainder of this project book follows the course template:
+
+- **Chapter 1 — Introduction** defines the background, problem, objectives, scope, methodology, team responsibilities, and full-stack requirements.
+- **Chapter 2 — Literature Review** examines OCR and Hebrew-processing research, Israeli financial regulation, personal-finance systems, full-stack architecture, and AI methods relevant to the design.
+- **Chapter 3 — System Design and Implementation** explains the architecture, data flow, processing pipeline, application modules, technologies, evaluation metrics, deployment assumptions, security, and privacy.
+- **Chapter 4 — Results and Analysis** documents the reproducible setup, measured results, error analysis, comparison with existing approaches, and interpretation of the evidence.
+- **Chapter 5 — Conclusion and Future Work** summarizes the implemented contributions, acknowledges limitations, and identifies practical extensions.
+- **References** list the academic, technical, and official sources cited in the book.
+- **Appendices** provide the API endpoint reference, setup and reproduction instructions, and the `analysisData` schema reference.
 
 ### 1.7 Team Contributions
 
-Contributions reflect primary ownership areas verified against repository commit history:
+The following primary ownership summary reflects the team’s agreed division of work. Integration, review, and testing were collaborative, so it is not intended as an exclusive list of every commit made by each person.
 
 | Team member | Primary contributions |
 |---|---|
-| **Shahar Mayster** | Project coordination, findings utilities (`detectContributionRateGap`, `detectDepositContinuityGap`), evaluation scripts, project book authoring, integration testing |
-| **Ofek Dil** | Frontend architecture (React/Vite), Hub and payslip UI, OCR service integration, primary UI development |
-| **Ofir Raz** | Backend controllers and API layer, AI assistant wiring, document processing, authentication flows |
-| **Emily Belenky** | Backend services (OCR pipeline, financial document processing), frontend components, test coverage |
-| **Segev Partush** | Multi-agent orchestration, pension and insurance domains, AI prompt and agent tooling |
+| **Emily Belenky** | OCR and financial-document processing; AI features and agent behavior/integration |
+| **Ofir Raz** | OCR and financial-document processing; AI features and agent behavior/integration |
+| **Shahar Mayster** | Frontend implementation, user-interface flows, and full-stack integration support |
+| **Ofek Dil** | Backend services and APIs; AI features and domain-agent integration |
+| **Segev Partush** | Backend services and APIs; AI features and domain-agent integration |
 
-All team members participated in code review, manual payslip validation, and end-to-end testing of the integrated platform.
+The five ownership areas were integrated through the shared full-stack codebase and common release process.
+
+### 1.8 Full-Stack Requirements and User Journey
+
+FinGuide was specified as an end-to-end web application rather than as an isolated OCR experiment. Its requirements connect the browser experience, API, persistence layer, document-processing pipeline, and external integrations.
+
+**Primary actors.** The primary actor is an Israeli salaried employee who wants to understand personal payslip, pension, provident-fund, and insurance information. A system operator is responsible for deployment configuration, secrets, backups, and government-data synchronization. External actors include Google OAuth/Gmail, optional AI providers, and public government datasets.
+
+**Functional requirements.** The deployed system shall:
+
+1. Register and authenticate users through email/password or Google Sign-In.
+2. Accept supported financial documents while validating type, size, and ownership.
+3. Extract Hebrew payslip fields through the multi-path PDF/OCR pipeline and expose uncertain fields for manual completion.
+4. Persist each user's documents and structured financial records in MongoDB with user-level isolation.
+5. Detect deposit, contribution-rate, continuity, and salary-history findings from stored data.
+6. Present a responsive Hebrew RTL dashboard, document history, domain analyses, notifications, and recommendations.
+7. Answer financial questions using stored user context through deterministic routing and an optional configured LLM provider.
+8. Allow users to download or delete their own documents and associated financial data.
+
+**Non-functional requirements.** The system shall provide authenticated access control for private resources, validate required production secrets at startup, constrain uploads and request rates, preserve MongoDB and upload data across container restarts, and support deployment behind HTTPS. Extraction and findings behavior must remain reproducible through golden fixtures and automated tests. The user interface must support Hebrew RTL layout, modern desktop and mobile widths, explicit processing/error states, and manual recovery when OCR confidence is insufficient. Because the evaluation corpus is limited, the system must communicate uncertainty rather than present every extracted value as authoritative.
+
+**Principal user journey.** A user creates an account, completes the relevant onboarding questions, and uploads a payslip. The backend validates ownership and metadata, stores the file under a generated identifier, and runs text-layer extraction, numeric rescue, or image OCR as needed. The normalized `analysisData` record is persisted in MongoDB and evaluated by the findings services. The frontend then displays the document status, extracted values, quality warnings, historical trends, and actionable findings. If required fields are missing, the user can review the original document and complete them manually. Subsequent dashboard, pension, insurance, financial-health, and AI-assistant views reuse the stored record rather than re-parsing the source document.
+
+**Acceptance traceability.** Objective 1 is accepted through OCR fixture evaluation and document integration tests; Objective 2 through annotated findings scenarios; Objective 3 through Hebrew routing evaluation and assistant tests; Objectives 4 and 5 through orchestration, forecast, and integration tests; and Objective 6 through frontend component tests, TypeScript compilation, production build verification, and manual RTL review. Chapter 4 reports the measured evidence and explicitly separates limited-corpus accuracy from functional verification.
 
 ---
 
@@ -249,7 +304,7 @@ Section 2.2 reviews document digitization and OCR. Its central conclusion is tha
 
 Section 2.3 reviews Hebrew language processing. It argues that for a finite-vocabulary, semi-structured domain such as payslip fields, deterministic label dictionaries and positional heuristics dominate general-purpose morphological analysis or transformer layout models — the marginal accuracy gain is not worth the loss of auditability, the opacity of failure modes, and the risk of numeric confabulation in a compliance-adjacent tool [5], [6], [18]. This underwrites the rule-based extractors documented in Section 3.2 and the decision not to fine-tune a layout model despite the availability of pre-trained checkpoints.
 
-Section 2.4 reviews Israeli employment regulation. Findings are defined against statutory floors published by the Tax Authority, the National Insurance Institute, and the Ministry of Finance rather than against thresholds derived from user history [7], [14], [15]. This directly shapes the findings analyzers in Section 3.3.3, the tuning knobs codified in `contributionRateThresholds.js`, and the boundary between rule-based determinations and LLM narrative in Section 3.3.5.
+Section 2.4 reviews Israeli employment regulation. Findings are screened against version-controlled reference thresholds informed by primary regulatory sources rather than thresholds derived from user history [7], [14], [15]. This directly shapes the findings analyzers in Section 3.3.3, the tuning knobs codified in `contributionRateThresholds.js`, and the boundary between rule-based screening and LLM narrative in Section 3.3.5.
 
 Section 2.5 reviews the personal financial management (PFM) category. It identifies the recurrent trade-offs of that space — comprehensive aggregation versus privacy, automation versus user agency, awareness versus behavior change [8] — and shows that the dominant international products do not localize to Hebrew, Israeli payslip structure, or the specific line items required for statutory compliance checking [16]. Coupled with the still-early state of Israeli open-banking rollout [17], this justifies FinGuide's payslip-first ingestion model over a banking-API model and reduces the trust surface accordingly.
 
@@ -271,7 +326,7 @@ The Tesseract engine, originally developed at Hewlett-Packard and later open-sou
 
 #### 2.2.3 Preprocessing and Evaluation Challenges
 
-Image preprocessing prior to OCR significantly affects recognition quality. Converting to grayscale, normalizing contrast, and applying threshold binarization improve character recognition on both printed and scanned documents [4]. For the target domain — payslips generated by commercial payroll software (Michpal, Malam Plus, and comparable vendors) and rendered from digital PDF sources — illumination is uniform and background noise is negligible. Under these conditions, a fixed global threshold is empirically effective and avoids the computational overhead of adaptive schemes such as Otsu's method [4], which pay dividends primarily on scanned or unevenly illuminated inputs. Evaluation of extraction systems is further complicated by semi-structured layouts: character error rate alone is insufficient because downstream compliance checking depends on the *correct numeric value being attributed to the correct field*. A single-character transposition inside a gross-salary figure is a functional failure regardless of how many surrounding characters were recognized. Field-level accuracy — computed on labeled ground-truth annotations — is therefore the appropriate measure for a payslip extraction system [6], and it is the metric adopted by FinGuide's evaluation harness (Section 4.2.2).
+Image preprocessing prior to OCR can affect recognition quality. Grayscale conversion, contrast normalization, and threshold binarization are standard options for printed and scanned documents [4]. FinGuide currently uses a fixed threshold; the repository does not include a controlled comparison against adaptive methods such as Otsu thresholding. Evaluation is further complicated by semi-structured layouts: character error rate alone is insufficient because downstream compliance checking depends on the *correct numeric value being attributed to the correct field*. A single-character transposition inside a gross-salary figure is a functional failure regardless of surrounding characters. Field-level accuracy is therefore the metric used by FinGuide's evaluation harness (Section 4.2.2) [6].
 
 #### 2.2.4 Mixed-Script and Bidirectional Text
 
@@ -291,11 +346,11 @@ The financial calculations performed in employee-facing compliance tools are gro
 
 **National Insurance Law (חוק הביטוח הלאומי).** The National Insurance Institute (ביטוח לאומי) collects compulsory contributions from both employee and employer [15]. Employee contributions fund old-age, disability, survivors', and unemployment benefits, together with a health levy. Employer NII contributions are paid in addition to the employee's deduction. FinGuide's deduction validators compare extracted amounts against NII rate tables for the active tax year [15].
 
-**Pension Obligation Law (חוק הפנסיה החובה, 2008) and subsequent amendments.** Since 2008, pension participation has been mandatory for most salaried employees in Israel with limited exceptions [7]. Minimum contribution rates (2026 statutory floors, as a percentage of pensionable salary): employee 6%, employer contribution 6.5%, and employer severance provision 6% (or a combined contribution-and-severance model at 12.5%) [7]. Collective bargaining agreements and individual contracts frequently specify higher rates.
+**Extension Order for Comprehensive Pension Insurance in the Economy (צו ההרחבה לביטוח פנסיוני מקיף במשק) and subsequent amendments.** Since 2008, the extension-order framework has required pension coverage for most salaried employees in Israel, subject to eligibility conditions, waiting periods, applicable agreements, and later amendments [7]. FinGuide stores configurable reference rates for employee, employer, and severance contributions. These are screening thresholds rather than a legal determination: the rate applicable to a specific employee can depend on the pensionable salary definition, an individual or collective agreement, and the employee's circumstances.
 
 **Study Fund (קרן השתלמות).** Study funds are a tax-advantaged savings vehicle. Employer contributions of up to 7.5% of salary and employee contributions of up to 2.5% may receive tax exemptions up to statutory caps [14]. Participation is not universally mandatory but is common under collective agreements.
 
-Compliance checking maps finding types to legal bases: *missing deposit* → Pension Obligation Law minimum allocation [7]; *rate gap* → stated vs implied percent against statutory floors in `contributionRateThresholds.js` [7]; *continuity gap* → uninterrupted pensionable service expectation under pension accumulation practice [7], [15].
+The findings engine maps *missing deposit*, *rate gap*, and *continuity gap* signals to configurable reference rules informed by the extension-order framework [7]. Its output is a screening aid: it does not determine legal compliance and does not replace advice from a licensed pension, tax, financial, or legal professional.
 
 ### 2.5 Personal Financial Management Systems
 
@@ -321,11 +376,11 @@ Employer portals excel as authoritative payslip viewers tied to payroll systems;
 
 Consumer-facing financial applications commonly use a REST API backend with a single-page application (SPA) frontend [9]. Fielding's original specification of the REST architectural style identifies uniform-interface constraints — resource identification, self-descriptive messages, statelessness of the server, and a layered system — that map naturally onto the domain: each document, finding, and pension record is a resource with a stable identifier, authentication is carried per-request via a Bearer token so the server holds no session state, and the API can be evolved without breaking clients as long as the media type remains stable [9]. For FinGuide these constraints have three concrete consequences discussed below: the layering choice, the persistence choice, and the frontend/monorepo choice.
 
-**Layering.** A REST server that carries no session state and exposes cross-cutting concerns (rate limiting, CORS, body parsing, authentication) as ordered middleware benefits from a strict horizontal separation between routes, controllers, services, and persistence [9]. Each layer has a single responsibility: routes bind HTTP verbs and paths to controllers, controllers translate requests into service calls, services encapsulate business logic and hold no request-level state, and models express persistence. Node.js and Express together provide the non-blocking I/O model that suits an I/O-bound workload — file reads for uploaded PDFs, OCR subprocesses (`pdftotext`, `pdftoppm`, Tesseract), MongoDB reads and writes, and external LLM API calls — where request threads spend most of their time waiting on system calls or the network rather than on CPU-bound computation. The alternative of a thread-per-request server model was rejected on the same grounds identified in the REST literature [9]: for I/O-bound workloads it adds context-switching overhead and per-thread memory cost without a proportional improvement in throughput.
+**Layering.** A REST server benefits from separating HTTP routing, domain operations, and persistence, while ordered middleware handles rate limiting, CORS, parsing, and authentication [9]. Node.js and Express provide an asynchronous I/O model suited to filesystem access, OCR subprocess coordination, MongoDB, and external APIs. FinGuide uses these conceptual layers but not a strict Clean Architecture: some controllers access Mongoose models directly, while complex work is delegated to services, as documented in Section 3.3.1.
 
 **Persistence.** Document-oriented databases such as MongoDB match a workload in which the extraction schema evolves faster than any relational migration cycle would tolerate. Each Israeli payslip vendor introduces layout variants that surface new fields on the `analysisData` object; a document-oriented store admits these fields without a coordinated schema migration, at the acknowledged cost of reduced query expressiveness over nested fields and the absence of database-level referential integrity [9]. The trade-off is deliberate — the same `schema_version` field on the document body that Section 2.8 identifies as the versioning mechanism is what makes this cost tolerable, because backfill scripts (`npm run reprocess:payslips`) can rewrite older documents to the current schema on demand.
 
-**Frontend and monorepo.** The frontend pattern — React with TypeScript, compiled by Vite, with a dedicated mapping layer at the API boundary — provides compile-time type safety without freezing the backend contract. The mapping layer (`documentToPayslip.ts`) is the only place in the frontend that reads `analysisData` field names directly; the rest of the UI consumes typed `PayslipDetail` and `PayslipHistoryItem` values. This isolates schema drift to a single file and keeps the REST contract as the single source of coordination between the two workspaces [9]. Right-to-left layout is handled through CSS `direction: rtl` at the document root, with component-level overrides for Latin and numeric content. The choice of a monorepo containing both workspaces — rather than two separate repositories — follows from the same layering argument: because the mapping layer must move in lockstep with the backend's `analysisData` contract, an atomic commit across both sides is preferable to coordinating two independent version streams. The trade-off is that deployment is coupled and that both workspaces must share a release cadence; this is acceptable for a two-developer academic project but would be revisited at team scales where independent release trains dominate. Development ergonomics reinforce the choice: `concurrently` starts both dev servers from the root, and the Vite reverse proxy of `/api` and `/uploads` to the local Express server removes CORS complexity from the day-to-day loop.
+**Frontend and monorepo.** React with TypeScript, compiled by Vite, provides typed components and API models. `documentToPayslip.ts` is the main mapper for payslip history and detail DTOs, while `DocumentDetailsPage.tsx`, `payslipAnalysisSummary.ts`, and `payslipEnrichment.ts` also read selected `analysisData` fields for their specialized views. The contract is therefore centralized in several typed boundary utilities rather than one exclusive file. Right-to-left layout is applied globally and reinforced on Hebrew page containers, with local handling for Latin and numeric content. Keeping the backend and frontend in one repository allows these related consumers to change in the same commit, at the cost of a shared release cadence [9]. `concurrently` starts both development servers, and Vite proxies `/api` and `/uploads` to the Express server.
 
 ### 2.7 AI and Large Language Models in Fintech
 
@@ -341,7 +396,7 @@ The four bodies of literature reviewed above — document digitization, Hebrew N
 
 1. **Document / OCR.** A multi-path extraction cascade (text layer → numeric rescue → image OCR) with field-level evaluation on Hebrew payslips with mixed scripts and vendor-specific layouts is necessary rather than optional [1]–[4], [6].
 2. **Hebrew NLP.** For a finite-vocabulary, semi-structured domain, domain-specific label dictionaries and deterministic parsers dominate general-purpose morphological analysis; the marginal accuracy of a transformer layout model does not justify its opacity for a compliance-adjacent tool [5], [6].
-3. **Israeli labor regulation.** Compliance findings must be defined against statutory floors published by the Ministry of Finance, the Tax Authority, and the National Insurance Institute — not against heuristic thresholds derived from the user's own history [7], [14], [15].
+3. **Israeli labor regulation.** Financial warning rules should use dated, version-controlled reference thresholds supported by primary sources—not heuristic thresholds derived from the user's own history—and must remain distinguishable from a case-specific legal determination [7], [14], [15].
 4. **Fintech AI.** Rule-first routing with LLM fallback, augmented by multi-agent orchestration for cross-domain synthesis, is the design pattern that best balances natural-language coverage with resistance to numeric hallucination in a regulated advisory setting [10]–[13].
 
 **Research gap.** No prior integrated platform, to the authors' knowledge, combines all three of the following properties simultaneously: (a) automated Hebrew payslip extraction with field-level quality gating; (b) rule-based compliance checking against Israeli statutory minimums along the *deposit*, *rate*, and *continuity* dimensions of pension and study-fund contributions [7], [14], [15]; and (c) a hybrid AI advisory layer grounded in the user's own extracted payslip history — all delivered as an employee-facing, Hebrew-native web application that does not require banking-API access [16], [17]. Employer portals address the display of a current payslip but not cross-employer longitudinal analysis; international PFM tools lack Israeli regulatory models and Hebrew-specific parsing; and academic OCR work targets character- and layout-level accuracy rather than downstream statutory compliance [18]. FinGuide is positioned to fill this gap, and its evaluation scope, measured performance, and residual limitations are reported in Chapters 4 and 5.
@@ -356,45 +411,63 @@ This chapter describes FinGuide's architecture, data pipeline, and implementatio
 
 FinGuide is organized as a monorepo containing two workspaces: `backend/` (Node.js + Express) and `frontend/` (React 19 + TypeScript). **Why a monorepo:** both workspaces share release cadence and the `finguide-monorepo` workspace dependency, and `concurrently` starts both dev servers from the root. **Alternative considered:** separate repositories with published API contracts. **Trade-off:** the monorepo simplifies local development and cross-cutting refactors (e.g., renaming `analysisData` fields) but couples deployment and requires coordinated versioning of the mapping layer in `documentToPayslip.ts`.
 
-The root `package.json` orchestrates both via `concurrently`, which starts the backend development server on port 5000 and the Vite development server on port 5173 simultaneously. The Vite configuration reverse-proxies `/api` and `/uploads` requests to `127.0.0.1:5000`, eliminating cross-origin request complexity during development.
+The root `package.json` orchestrates both development processes via `concurrently`. The backend listens on `PORT` (server fallback 5000; the committed `.env.example` uses 5001), while Vite serves the SPA on 5173. `frontend/vite.config.ts` proxies `/api` and `/uploads` to `VITE_API_URL`, defaulting to `http://127.0.0.1:5001`. This is a development arrangement: the browser receives frontend assets from Vite and Vite forwards API requests to Express.
 
 ![Figure 1: High-level system architecture](figures/fig01-architecture.png)
 
-At the top sits the browser client running the React SPA. The client communicates with the Express API server over HTTPS. The API server interacts with four external systems: MongoDB (data persistence), Tesseract and Poppler utilities (OCR processing, run as child processes), the Anthropic Claude API (LLM inference), and optionally an Ollama local server as an LLM fallback. The filesystem stores uploaded PDF files under `backend/uploads/`.
+Figure 1 is a logical runtime view rather than a claim that every box is a separate container. The browser runs a client-rendered React SPA; there is no server-side rendering. It calls Express through JSON REST endpoints and receives chat tokens through Server-Sent Events (SSE). Express uses MongoDB for structured persistence, `backend/uploads/` for original files, and `.work/` for temporary OCR artifacts. It invokes Poppler and Tesseract as child processes, uses Sharp in-process, and calls external providers only from backend code. HTTPS is expected to terminate at the university reverse proxy; the Express process itself is plain HTTP in the repository's local topology.
+
+Architecturally, FinGuide is a **client/server modular monolith**, not a microservice system. The backend domains are separate modules within one Node.js process and one MongoDB database. OCR binaries are subprocesses, not services; Claude/Ollama, Google, and government endpoints are external integrations. There is no Redis, message broker, durable job queue, Kubernetes definition, or backend-to-backend service mesh in the current repository.
+
+The most important end-to-end path is: **React page → typed API helper → Vite/reverse proxy → Express middleware → route → controller → service/domain engine → Mongoose/filesystem/external adapter → serializer/DTO → JSON or SSE response**. This is a layered design with pragmatic shortcuts, not strict Clean Architecture: several controllers query Mongoose models directly, while complex domains delegate to services.
 
 #### 3.1.1 Request Lifecycle
 
 Every request served by the Express application in `backend/app.js` passes through a fixed ordered pipeline of middleware before reaching the route handler. The order is a design choice rather than an incidental one, and each stage is placed where it is because the stages downstream depend on invariants it establishes.
 
-1. **Rate limiting.** `express-rate-limit` is installed as the first middleware, with a fixed 15-minute sliding window and a threshold that switches on `NODE_ENV`: 2 000 requests per window in development and 100 in production. Placing rate limiting first ensures that abusive clients are rejected before any per-request work is performed — no CORS preflight logic, no body parsing, no database lookup. Rejected requests return a Hebrew error message consistent with the rest of the user-facing surface.
-2. **CORS.** A dynamic origin function accepts requests either with no `Origin` header (server-to-server, health checks, curl) or from a whitelist consisting of the configured `CLIENT_URL` and the two localhost development origins (`http://localhost:5173`, `http://127.0.0.1:5173`); requests from any other origin are refused without adding CORS headers. `credentials: true` is enabled so that authenticated cross-origin `fetch` calls carry the Authorization header. Placing CORS before body parsing avoids reading a request body only to discover the response cannot legally be delivered to the caller.
+1. **Rate limiting.** `express-rate-limit` is installed as the first middleware, with a 15-minute window and a threshold that switches on `NODE_ENV`: 2 000 requests per window in development and 100 in production. Placing rate limiting first rejects excess traffic before body parsing or database work. Rejected requests return a Hebrew error message consistent with the rest of the user-facing surface.
+2. **CORS.** A dynamic origin function accepts requests either with no `Origin` header (for example, curl or server-to-server calls) or from a whitelist consisting of the configured `CLIENT_URL` and the two localhost development origins (`http://localhost:5173`, `http://127.0.0.1:5173`). `credentials: true` permits credentialed cross-origin requests if the application later uses cookies; current authentication is carried explicitly in an `Authorization: Bearer …` header by the frontend API helper.
 3. **Body parsing.** `express.json({ strict: false })` and `express.urlencoded({ extended: true })` parse JSON and form-encoded request bodies respectively; `strict: false` accepts JSON primitives at the top level, which some clients emit for single-value updates. The Multer middleware responsible for multipart file uploads is not installed here — it is attached only to the specific upload routes that require it (`POST /api/documents/upload`, `POST /api/auth/profile/image`) so that the general request path is not burdened with multipart parsing overhead.
 4. **Static uploads.** A narrow static file route serves `/uploads/profile-images` from the local filesystem. This is intentionally the *only* subdirectory of `backend/uploads/` exposed as static content: payslip PDFs are not served statically. Downloads of payslip files go through the authenticated `GET /api/documents/:id/download` handler, which resolves the requested path and rejects any path that escapes the uploads directory.
 5. **Health check.** `GET /api/health` is defined before the authenticated route modules and returns a JSON payload with a server timestamp. It is deliberately unauthenticated so that container orchestrators and reverse proxies can probe liveness without holding a JWT.
-6. **Route modules.** Twenty route modules are mounted under `/api`, one per bounded domain (auth, documents, ai, findings, onboarding, profile, insights, recommendations, notifications, integrations/gmail, tax-assistant, financial-health, copilot, score-agent, pension, insurance, dashboard, agents, gov, and summary-email). Each module owns its own path prefix and internally applies the `protect` middleware from `backend/middleware/auth.js` to every route that requires authentication. `protect` extracts the Bearer token from the `Authorization` header, verifies it against `JWT_SECRET`, loads the corresponding user via `User.findById(decoded.id).select('-password')`, and attaches the loaded document to `req.user`. Any failure — missing header, invalid signature, expired token, or a user id whose record has been deleted — is converted into a typed `AuthError` and delegated to the error handler with a Hebrew message; the route handler never runs. This design keeps the identity check at the boundary of the routing layer rather than inside individual controllers, so a controller that reads `req.user` can assume it has been populated by an authenticated request.
+6. **Route modules.** Twenty-three route modules are mounted under `/api`, one per bounded domain (auth, documents, ai, findings, onboarding, smart-onboarding, profile, insights, recommendations, notifications, integrations/gmail, tax-assistant, financial-health, copilot, score-agent, pension, gemel, insurance, dashboard, agents, gov, summary-email, and executive report). Each module owns its own path prefix and applies the `protect` middleware from `backend/middleware/auth.js` where authentication is required. `protect` extracts the Bearer token from the `Authorization` header, verifies it against `JWT_SECRET`, loads the corresponding user via `User.findById(decoded.id).select('-password')`, and attaches the loaded document to `req.user`. Any failure — missing header, invalid signature, expired token, or a user id whose record has been deleted — is converted into a typed `AuthError` and delegated to the error handler with a Hebrew message; the protected route handler never runs. This design keeps the identity check at the boundary of the routing layer rather than inside individual controllers.
 7. **404 handler and error handler.** Any request that reaches the end of the middleware chain without a match is answered by a `404` JSON body, and any error passed via `next(err)` — whether raised by `protect`, by a controller, by a Mongoose operation, or by Multer — is centralized in `middleware/errorHandler.js`. The error handler maps Mongoose validation errors, JWT errors, Multer errors, and custom `AppError` subclasses to typed responses with appropriate status codes and Hebrew messages.
 
-This lifecycle establishes the invariant that every route handler runs with a valid `req.user` (except for the small set of unauthenticated auth and health routes), a parsed request body of a known shape, and a caller whose origin and rate have already been accepted. Controllers therefore contain no cross-cutting concerns of their own — they translate the validated request into service calls and return the shaped response.
+This lifecycle establishes origin, rate, and parsing rules globally. Authentication and input validation remain route-specific: protected modules attach `req.user`, while public authentication actions and `/api/health` do not. Controllers translate HTTP requests into domain operations, but the repository does not enforce a rule that controllers may never access models directly.
 
 #### 3.1.2 Deployment Topology
 
-The deployment topology for local development is defined by `docker-compose.yml` and the `backend/Dockerfile`. The `dev:docker` command provisions two services on a shared Docker network. The `mongo` service uses the `mongo:7` image and exposes port 27017 to the host, with a named `mongo_data` volume so that database state survives container restarts. The `backend` service is built from `backend/Dockerfile`, which starts from `node:20-bullseye` and installs the `tesseract-ocr`, `tesseract-ocr-heb`, and `poppler-utils` system packages — the same binaries required by Paths 1 and 3 of the extraction pipeline described in Section 3.2.2. Bundling these binaries into the container image removes the ordinary macOS developer requirement of installing them via Homebrew and guarantees that OCR behavior is reproducible across development machines; without them, `pdftotext` and `pdftoppm` would fail with `ENOENT` and the extraction pipeline would fall through to a `failed` document status.
+The checked-in container topology is a **development topology**, defined by `docker-compose.yml` and `backend/Dockerfile`. `npm run dev:docker` provisions exactly two services: `mongo` and `backend`. It does **not** build or serve the React frontend, and it does not include Nginx, Apache, TLS termination, or a production process manager. The `mongo` service uses `mongo:7`, exposes port 27017 to the host, and stores data in the named `mongo_data` volume. The backend image starts from `node:20-bullseye` and installs `tesseract-ocr`, `tesseract-ocr-heb`, and `poppler-utils`. Containerizing those native dependencies improves consistency; it does not by itself prove identical OCR results across CPU architectures or future image rebuilds.
 
-Inside the container the Node.js server listens on port 5000, but the Compose file publishes it to host port **5001** to avoid conflicts with a native `npm run dev:backend` process that may already occupy 5000 on the developer's machine. This is the single practical caveat of the containerized workflow: the Vite proxy hard-coded in `frontend/vite.config.ts` targets `127.0.0.1:5000`, so when the backend runs under `dev:docker`, the frontend must either be pointed at port 5001 via `VITE_API_URL` or the proxy target adjusted. The container environment sets `MONGODB_URI=mongodb://mongo:27017/finguide` to reach the sibling `mongo` service by its Compose service name, and mounts `backend/uploads` and `backend/.work` as bind volumes so that uploaded PDFs and intermediate OCR artifacts persist across container rebuilds and remain visible to the host filesystem for inspection during development.
+Inside the container Express listens on port 5000 and Compose publishes it as host port **5001**, which matches Vite's default proxy target. `VITE_API_URL` can override that target. The backend reaches MongoDB through `MONGODB_URI=mongodb://mongo:27017/finguide`. Bind mounts preserve `backend/uploads` and `backend/.work` across backend-container rebuilds; the named volume preserves MongoDB data.
+
+For the university server, an additional deployment edge is required: build `frontend/dist` with Vite, serve those static files from Nginx or Apache, proxy `/api` (and the permitted profile-image path) to Express, and terminate HTTPS with the university DNS certificate. Express and MongoDB can run under Docker Compose, but the current Compose file must be extended or paired with a host-level web server. This is a deployment requirement, not functionality already present in the repository.
+
+The checked-in backend image also sets `NODE_ENV=development` and starts `npm run dev` (Nodemon). A production university deployment should use `NODE_ENV=production` and `npm start`, inject secrets rather than use Compose defaults, avoid exposing MongoDB publicly unless administration requires it, and back up both `mongo_data` and the uploads volume. These are required hardening changes; the current Docker files should not be presented as production-ready unchanged.
 
 ### 3.2 Data Collection and Preprocessing
 
 #### 3.2.1 Document Ingestion
 
-Documents are submitted to the system via the `POST /api/documents/upload` endpoint. Multer middleware validates the uploaded file against two criteria: the MIME type must be `application/pdf` or one of the Microsoft Excel types (`application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`), and the file size must not exceed a configurable limit (default 10 MB, governed by the `MAX_UPLOAD_SIZE_MB` environment variable). Files that pass validation are stored with a UUID-generated filename under `backend/uploads/`. A SHA-256 checksum of the file content is computed immediately after storage and recorded on the Document record to enable future deduplication.
+Documents are submitted through `POST /api/documents/upload`. Route-scoped Multer middleware accepts PDF and Excel MIME types, enforces `MAX_UPLOAD_SIZE_MB` (default 10 MB), and writes a UUID-named staging file under `backend/uploads/`. `processFinancialDocument` computes a SHA-256 checksum and rejects a duplicate before analysis.
 
-![Figure 2: Document processing pipeline](figures/fig02-ocr-pipeline.png)
+The upload service is also a **document-type dispatcher**, not merely a payslip OCR endpoint:
 
-The upload handler calls `processFinancialDocument`, which creates a MongoDB Document record with `status: 'pending'` and immediately invokes the synchronous extraction pipeline. The pipeline proceeds through up to three extraction paths in order of reliability, falls back to the next path upon failure, and ultimately writes the result back to the Document record as `analysisData` with `status: 'completed'`, `status: 'needs_review'`, `status: 'needs_password'`, or `status: 'failed'`.
+1. A recognized Har HaBituach Excel file is parsed into insurance-policy records and imported through `insuranceImportService`; the staging file is removed and no ordinary `Document` record is returned.
+2. A recognized Har HaKesef or pension report (Excel or PDF) is parsed into pension-fund records and imported through `pensionImportService`; the staging file is then removed.
+3. Other files create a `Document` with `pending`, then `processing`, status. A PDF text peek routes Form 106 to `form106Service`; remaining PDFs enter payslip extraction. Remaining Excel files use the structured Har HaBituach parser and may fail if they are unsupported.
+
+This explains why the MongoDB domain contains separate `InsurancePolicy` and `PensionFund` collections in addition to `Document`: recognized domain reports are normalized into their target collections rather than all being stored as `analysisData` documents.
+
+![Figure 2: Financial-document dispatch and payslip extraction pipeline](figures/fig02-ocr-pipeline.png)
+
+For files that reach the `Document` path, the HTTP handler awaits parsing/extraction before returning. The persisted outcome is `completed`, `needs_review`, `needs_password`, or `failed`. After a successful completion, `runPostUploadSideEffects` uses `setImmediate` to start notification creation, insights/recommendations, and optional AI digest generation without delaying the upload response. These are best-effort tasks in the same Node.js process—not durable queue jobs—and therefore have no persisted retry if the process stops.
 
 #### 3.2.2 Multi-Path Text Extraction
 
-The extraction pipeline attempts three paths in sequence, choosing the highest-quality result:
+`extractPayslipFile` first checks `PAYSLIP_EXTRACTION_MODE`. The default, `legacy`, uses the three-stage text/OCR cascade below. When set to `vision`, it bypasses that cascade: pages are rendered at the configured vision DPI (default 250), sent to the configured Claude vision model (default Sonnet 4.6), merged, sanity-checked, and normalized to the same schema. Vision mode requires an Anthropic API key and is an alternative production path, not a fourth fallback after Tesseract.
+
+The default legacy mode attempts three paths in sequence:
 
 **Path 1 — Direct PDF text extraction (pdf_text).** The pipeline first attempts text extraction via Poppler's `pdftotext` utility, which handles Hebrew encoding more reliably than pure JavaScript PDF parsers on many Israeli payroll exports. If `pdftotext` yields fewer than 50 characters, the system falls back to the `pdf-parse` Node.js module. If the combined text contains at least 200 characters and does not exhibit the broken-Hebrew encoding pattern described in Section 2.2, the text is passed directly to `extractPayslipFinancialEN`. An additional quality gate requires that the extracted `analysisData` contains `gross_total > 500` and `net_payable > 500` — without both of these salary fields, the extraction is considered to have failed even if the text was successfully read. The gate is implemented as follows:
 
@@ -403,11 +476,11 @@ The extraction pipeline attempts three paths in sequence, choosing the highest-q
 const gross = data?.salary?.gross_total;
 const net = data?.salary?.net_payable;
 if (!(gross > 500 && net > 500)) {
-  // fall through to Path 2 or Path 3
+  // non-broken text falls through to image OCR
 }
 ```
 
-**Why synchronous processing:** the upload handler runs extraction inside the HTTP request cycle. **Alternative:** `processDocumentAsync` with a job queue (tested but not wired to upload). **Trade-off:** synchronous processing simplifies status handling and avoids polling infrastructure, but multi-page image OCR can add 10–20 seconds of request latency (see Section 5.2).
+**Why synchronous processing:** the upload handler runs extraction inside the HTTP request cycle. **Alternative:** place the existing extractor behind a persistent job queue and expose status polling. **Trade-off:** synchronous processing simplifies status handling and avoids queue infrastructure, but the reproduced image fixtures required roughly 23–27 seconds each in the development environment (see Section 4.2.1).
 
 **Path 2 — Numeric rescue.** If Path 1 yields text of adequate length but broken Hebrew encoding (as detected by the `isLikelyBrokenHebrew` heuristic, which checks for a ratio of Unicode replacement characters above 1.5% or fewer than 8 Hebrew characters in a 400-character sample), the system still attempts extraction. Hebrew labels cannot be reliably matched, but numeric values — salary amounts, percentages, identification numbers — can often still be extracted from the corrupted text because Arabic numerals survive encoding corruption.
 
@@ -420,9 +493,9 @@ Before submission to Tesseract, each page image undergoes a preprocessing chain 
 1. **Auto-rotation.** Sharp applies EXIF-based rotation to correct orientation artifacts from scanning.
 2. **Grayscale conversion.** The color image is converted to an 8-bit grayscale representation, eliminating color variation that adds noise without contributing to character recognition.
 3. **Contrast normalization.** Sharp's `normalize()` operation stretches the grayscale histogram to the full 0–255 range, improving contrast on faded or low-contrast documents.
-4. **Thresholding.** A global threshold of 170 binarizes the image: pixels with luminance above 170 become white, those below become black. This produces a clean black-on-white binary image that Tesseract's LSTM network processes most effectively. The threshold value of 170 was determined empirically on a development corpus of payslips.
+4. **Thresholding.** A fixed global threshold of 170 binarizes the image before OCR. This is the value implemented in the current pipeline; the repository does not contain a parameter-sweep experiment proving that it is optimal across payslip layouts.
 
-The preprocessing chain is intentionally simple and deterministic. Adaptive preprocessing (e.g., Otsu's method for automatic threshold selection) was considered but rejected because the uniformly illuminated, printer-generated documents in the target domain consistently benefited from a fixed threshold value.
+The preprocessing chain is simple and deterministic. The current code does not implement adaptive threshold selection, and the fixed value should be treated as a tunable implementation parameter rather than a proven optimum.
 
 After preprocessing, the image is submitted to Tesseract with the combined Hebrew and English language model (`heb+eng`), LSTM-based OEM 1, the `preserve_interword_spaces=1` configuration, and three PSM candidates (6, 4, 3) run in sequence. The raw text output from each candidate is scored by `rankExtractionCandidates`, which sorts candidates by resolution score, confidence, and warning count:
 
@@ -442,17 +515,17 @@ The highest-scoring candidate advances to field extraction.
 
 #### 3.2.4 LLM Adjudication for Ambiguous Fields
 
-When multiple extraction candidates are available and their extracted values for a specific field conflict, the system invokes an LLM adjudication step. The `adjudicateField` function submits the conflicting candidates to Claude Haiku 4.5 (`claude-haiku-4-5`) with a structured prompt requesting selection of the most plausible value given the field's domain constraints. The adjudication model returns a chosen value and a confidence score in the range [0, 1]. The final field score is adjusted upward from the base candidate score using the formula:
+Inside the legacy parser, a field can have several heuristic candidates. The system invokes LLM adjudication only when at least two candidates exist and the gate in `shouldAdjudicate` reports low confidence, a close tie, or a reconciliation violation. It skips confident fields and becomes a no-op when no Anthropic key or LLM budget is available. Claude Haiku 4.5 must return an index into the existing candidate list (or `null`), so it cannot create a new monetary value. The final field score for an accepted candidate is adjusted using:
 
 ```
 finalScore = max(chosenScore, min(1.0, 0.85 + (confidence − 0.6) × 0.3))
 ```
 
-This formula ensures that high-confidence adjudications produce field-level scores near 0.85–1.0, providing a calibrated quality signal to downstream components. The use of Claude Haiku for this task (rather than the more capable Sonnet model used for the chat assistant) reflects a deliberate cost-performance trade-off: adjudication requires only short-context field comparison, a task well within Haiku's capabilities at substantially lower cost.
+This formula ensures that high-confidence adjudications produce field-level scores near 0.85–1.0, providing a calibrated quality signal to downstream components. The field adjudicator uses the fixed `claude-haiku-4-5` model for short candidate comparisons. The separate vision-extraction path defaults to `claude-sonnet-4-6` through `PAYSLIP_VISION_MODEL`, while the standard chat service also defaults to Haiku 4.5 through `CHAT_MODEL`. Keeping these call sites explicit makes the accuracy/cost choice configurable without conflating chat, vision, and field adjudication.
 
 #### 3.2.5 analysisData Canonical Schema
 
-All extraction paths ultimately produce an `analysisData` object conforming to schema version 1.9. This object is stored as a schema-less BSON `Object` in the MongoDB `Document` record. **Why schema-less storage:** the extraction algorithm evolves frequently; new fields are added without relational migrations. **Alternative:** a normalized relational schema with migration scripts. **Trade-off:** MongoDB's `Schema.Types.Mixed` enables rapid iteration and backfill via `npm run reprocess:payslips`, but nested-field queries are not enforced at the database level.
+All payslip extraction paths ultimately produce an `analysisData` object conforming to schema version 1.9. `Document.js` declares it as `type: Object`, which Mongoose treats as a flexible nested object rather than a field-by-field schema. This permits iterative additions and backfill via `npm run reprocess:payslips`, but MongoDB/Mongoose do not enforce the nested extraction contract; the Zod validation layer enforces only the critical fields at processing time.
 
 The schema is versioned via the `schema_version` field, allowing the reprocessing script to identify and backfill documents produced by older extraction algorithms.
 
@@ -481,7 +554,7 @@ The top-level structure of `analysisData` v1.9 is:
 
 ![Figure 4: analysisData canonical schema structure](figures/fig04-analysis-data-schema.png)
 
-The `quality` sub-object records the extraction path taken, an overall quality score, and a list of validation issues detected during extraction. Documents with quality scores below a threshold are given `status: 'needs_review'` rather than `status: 'completed'`, which triggers a prompt in the UI encouraging the user to manually verify the extracted values.
+The `quality` sub-object records extraction metadata, field scores, warnings, and internal debug information. Final document status is not determined by a single overall quality threshold. `validatePayslipAnalysis` requires a valid period, positive gross and net, and a non-negative mandatory-deduction total, then applies cross-field checks such as net not exceeding gross. A failed critical-schema or cross-field check produces `needs_review`; otherwise the document is `completed`. `documentSerializer.js` removes raw OCR text and `quality.debug` before API delivery.
 
 ### 3.3 Implementation Details
 
@@ -489,25 +562,22 @@ The subsections below trace the data flow from backend request handling through 
 
 #### 3.3.1 Backend Architecture
 
-![Figure 3: Backend layered architecture](figures/fig03-backend-layers.png)
+![Figure 3: Backend request, dependency, and response flow](figures/fig03-backend-layers.png)
 
-The backend is structured as five horizontal layers:
+The backend follows a layered organization, but the dependencies are pragmatic rather than perfectly strict:
 
-- **Routes (`backend/routes/`).** Twenty Express router modules are mounted in `app.js`: auth, documents, ai, findings, onboarding, profile, insights, recommendations, notifications, Gmail integration, tax-assistant, financial-health, copilot, score-agent, pension, insurance, dashboard, agents, gov (government data nets), and summary-email. Each module mounts on a URL prefix and delegates request handling to the corresponding controller. Route modules are responsible only for URL-level concerns: HTTP method, URL parameters, middleware application, and controller dispatch.
+- **Global and route middleware.** `app.js` applies rate limiting, CORS, body parsing, health, 404, and error handling. Individual route modules attach authentication, express-validator rules, and Multer only where needed.
+- **Routes (`backend/routes/`).** Twenty-three mounted modules define HTTP methods and prefixes and dispatch to controllers. Auth contains both public and protected actions; most domain modules apply `protect` to the entire router.
+- **Controllers (`backend/controllers/`).** Controllers translate HTTP inputs and outputs. Complex operations delegate to services, but some controllers also perform ownership-scoped Mongoose reads or updates directly. The repository therefore should not be described as a strict controller/service/repository architecture.
+- **Services and domain engines (`backend/services/`, `backend/ai/`).** These contain OCR, document dispatch, findings, forecasting, imports, government-data adapters, chat, and both agent orchestration systems. Services may call Mongoose models, filesystem/native tools, or external APIs.
+- **Utilities and schemas (`backend/utils/`, `backend/schemas/`).** These hold reusable normalization, calculations, timelines, duplicate checks, and Zod validation. Many are pure and unit-testable, although not every utility is guaranteed dependency-free.
+- **Persistence and response boundaries.** `backend/models/` defines Mongoose collections and indexes. Serializers and DTO helpers remove internal fields and shape API responses; for example, `documentSerializer.js` strips raw OCR text and debug details.
 
-- **Controllers (`backend/controllers/`).** Controller functions extract validated inputs from the request object, call the appropriate services, and format the HTTP response. Controllers contain no business logic; they translate between HTTP and the internal domain model.
-
-- **Services (`backend/services/`).** Service modules implement business logic. The `financialDocumentService` orchestrates the extraction pipeline. The `savingsForecastService` computes pension projections. The `claudeChatService` manages communication with the Anthropic API.
-
-- **Utilities (`backend/utils/`).** Utility modules implement pure algorithmic logic without external dependencies: the findings detectors (`detectFundWithoutDeposit`, `detectContributionRateGap`, `detectDepositContinuityGap`), the financial health score utilities, and the payslip period normalization functions.
-
-- **Models (`backend/models/`).** Mongoose schema definitions and model constructors. The User model and Document model are described in detail in Section 3.3.4.
-
-Request lifecycle: An incoming HTTP request is processed by the global middleware stack defined in `app.js` — rate limiter (2,000 requests per 15 minutes in development, 100 per 15 minutes in production), CORS whitelisting (CLIENT_URL and localhost:5173), JSON body parsing — before reaching the matching route handler. Protected routes pass through the `protect` middleware, which extracts the Bearer token from the Authorization header, verifies it using `jsonwebtoken.verify`, and attaches the retrieved User document to `req.user`. Error propagation uses Express's `next(error)` pattern; the global `errorHandler` middleware normalizes Mongoose `ValidationError`, `CastError`, duplicate key (error code 11000), JWT verification failures, Multer upload errors, and custom `AppError` subclasses into typed JSON error responses.
+Request lifecycle: An incoming HTTP request is processed by the global middleware stack defined in `app.js` before reaching a matching route. Protected routes pass through `protect`, which verifies the Bearer token and attaches the retrieved User to `req.user`. Controllers and async route wrappers propagate errors through Express's `next(error)` convention; `errorHandler` converts supported Mongoose, JWT, Multer, and application errors into JSON responses. Depending on the endpoint, the successful response may be JSON, a protected file download, or an SSE stream.
 
 #### 3.3.2 Golden-Fixture Regression Testing
 
-The extraction pipeline is regression-tested against a labeled golden corpus stored under `backend/services/__fixtures__/golden/` (seven anonymized payslips spanning Michpal and Malam Plus templates as of July 2026). The `npm run eval:ocr` script uploads each fixture programmatically, compares extracted fields against ground-truth annotations, and reports per-field accuracy and confusion details. This provides a repeatable baseline for measuring extraction quality as the label dictionary and preprocessing chain evolve. A next-generation extraction architecture (extraction-v2) is under evaluation using additional fixtures under `backend/fixtures/extraction-v2/`; it is not yet wired into the production upload path.
+The extraction pipeline is regression-tested against fixtures stored under `backend/services/__fixtures__/golden/`. As of July 2026, the evaluator discovers nine fixtures: seven annotated Michpal/Malam Plus payslips contribute field-level scores, and two IDF image fixtures exercise the image path but have no scorable expected fields. The `npm run eval:ocr` script processes each fixture, compares extracted fields with its committed `expected.json`, and reports per-field accuracy and confusion details. This provides a repeatable baseline for measuring extraction quality as the label dictionary and preprocessing chain evolve. A next-generation extraction architecture (extraction-v2) is under evaluation using additional fixtures under `backend/fixtures/extraction-v2/`; it is not yet wired into the production upload path.
 
 Once a document reaches `status: 'completed'` with a populated `analysisData` object, the findings engine consumes the same canonical schema without re-parsing the PDF. This separation — extract once, analyze many times — keeps compliance logic deterministic and testable independently of OCR variance.
 
@@ -519,9 +589,9 @@ The findings detection engine is invoked by `GET /api/findings` and produces a s
 
 **Layer 2 — Financial findings.** Three specialized detectors analyze the content of completed payslips. Each detector is a pure function of the `analysisData` payload plus the user's onboarding data, which makes the layer independently unit-testable and reproducible against the golden fixture corpus (Section 4.1.3).
 
-*Fund deposit detection* (`detectFundWithoutDeposit.js`). **What:** for each payslip, and for both `pension` and `study_fund`, the detector determines whether a fund section was identified in extraction and whether the summed employee-plus-employer deposit for that section is zero. **How:** section presence is established from any of four positive signals — a stored OCR detection flag (`storedDetection.sectionDetected`), a positive `base_salary_for_pension` (or study-fund equivalent), the presence of un-abstained contribution candidates in the quality object, or a non-empty contribution block without the `missingLine` warning. Deposit-zero is inferred from a stored `noDeposit` flag when available, otherwise from the sum of extracted amounts. **Why this way:** the four-signal disjunction addresses OCR variance across vendors — one vendor emits a `base_salary_for_pension` line without an explicit pension header, another emits the header without a base — so a single indicator would either miss cases (low recall) or over-flag them (low precision). A special case exempts a `severance`-only pension deposit, because Israeli pension law recognises employer-side severance provisioning independently of the employee/employer contribution channel [7]. **Alternative considered:** flagging on a single high-confidence indicator (for example, only when the OCR emits `noDeposit: true`). This alternative was rejected as too conservative: extraction confidence on the golden corpus is not high enough to make a single-signal detector reach the 100% recall observed in the seven-scenario evaluation. In addition to per-document findings, the detector performs an onboarding cross-check: if the user declared `hasPension` or `hasStudyFund` during onboarding but the most recent payslip shows no fund section, it emits a mismatch finding, closing the loop between user-declared expectations and payslip reality.
+*Fund deposit detection* (`detectFundWithoutDeposit.js`). **What:** for each payslip, and for both `pension` and `study_fund`, the detector determines whether a fund section was identified in extraction and whether the summed employee-plus-employer deposit for that section is zero. **How:** section presence is established from any of four positive signals — a stored OCR detection flag (`storedDetection.sectionDetected`), a positive `base_salary_for_pension` (or study-fund equivalent), the presence of un-abstained contribution candidates in the quality object, or a non-empty contribution block without the `missingLine` warning. Deposit-zero is inferred from a stored `noDeposit` flag when available, otherwise from the sum of extracted amounts. **Why this way:** the four-signal disjunction addresses OCR variance across vendors — one vendor emits a `base_salary_for_pension` line without an explicit pension header, another emits the header without a base — so a single indicator would either miss cases (low recall) or over-flag them (low precision). A special case exempts a `severance`-only pension deposit, because Israeli pension law recognises employer-side severance provisioning independently of the employee/employer contribution channel [7]. **Alternative considered:** flagging on a single high-confidence indicator (for example, only when the OCR emits `noDeposit: true`). This alternative was rejected as too conservative because extraction confidence on the golden corpus is not high enough to rely on a single signal. The current multi-signal detector reached full recall only on the limited scenario evaluation reported in Chapter 4; that result is not presented as population-level evidence. In addition to per-document findings, the detector performs an onboarding cross-check: if the user declared `hasPension` or `hasStudyFund` during onboarding but the most recent payslip shows no fund section, it emits a mismatch finding, closing the loop between user-declared expectations and payslip reality.
 
-*Contribution rate gap detection* (`detectContributionRateGap.js`). **What:** for each fund side (employee, employer, and — for pension — severance), the detector computes an *implied* percentage as `(amount / base) × 100` and compares it against the *stated* percentage extracted from the payslip and against the statutory minimum configured in `config/contributionRateThresholds.js`. **How:** three finding types can be emitted per side: `inconsistency` (stated vs implied differ by more than `inconsistencyTolerancePercent`, default 0.35 pp), `belowMinimum` (the effective rate — stated when available, otherwise implied — is below the statutory floor), and `dataIncomplete` (the section is present but neither amount nor rate can be recovered). The statutory floors used are pension employee 6.0%, pension employer 6.5%, pension severance 6.0%, study-fund employee 2.5%, and study-fund employer 7.5%, matching the 2026 obligations discussed in Section 2.4 [7], [14]. All thresholds are overridable through environment variables (`PENSION_EMPLOYEE_MIN_RATE_PERCENT`, `CONTRIBUTION_RATE_INCONSISTENCY_TOLERANCE`, and related keys) so that the compliance layer can be tuned per collective-agreement scenario without a code change. The core comparison logic is:
+*Contribution rate gap detection* (`detectContributionRateGap.js`). **What:** for each fund side (employee, employer, and — for pension — severance), the detector computes an *implied* percentage as `(amount / base) × 100` and compares it against the *stated* percentage extracted from the payslip and the configured reference minimum in `config/contributionRateThresholds.js`. **How:** three finding types can be emitted per side: `inconsistency` (stated vs implied differ by more than `inconsistencyTolerancePercent`, default 0.35 pp), `belowMinimum` (the effective rate — stated when available, otherwise implied — is below the configured reference), and `dataIncomplete` (the section is present but neither amount nor rate can be recovered). Defaults are pension employee 6.0%, pension employer 6.5%, pension severance 6.0%, study-fund employee 2.5%, and study-fund employer 7.5%. The study-fund values represent a common contribution arrangement, not a universal statutory obligation. All thresholds are overridable through environment variables (`PENSION_EMPLOYEE_MIN_RATE_PERCENT`, `CONTRIBUTION_RATE_INCONSISTENCY_TOLERANCE`, and related keys) so the screening layer can be tuned for an applicable agreement without a code change. The core comparison logic is:
 
 ```javascript
 // detectContributionRateGap.js — implied vs stated rate check
@@ -535,44 +605,48 @@ const belowMinimum =
   effectivePercent < minimumPercent;
 ```
 
-**Why the 0.35 pp tolerance:** payslip PDFs frequently round percentage displays to the tenth or half of a percent, so a strict equality check on stated versus implied would produce a large volume of false positives that carry no compliance meaning. The 0.35 pp band was chosen to remain inside the smallest published rounding step used by observed vendors while still surfacing genuine discrepancies. **Alternative considered:** deriving statutory floors dynamically from an authoritative online source. This was rejected for the same reason discussed in Section 2.7 for LLM confabulation — a static, version-controlled configuration file that engineers can review is the auditable ground truth [7], [14], [15]. **Trade-off:** the configuration file must be refreshed when statutory rates change, which is a documented operational task rather than a system property.
+The 0.35 percentage-point tolerance is a configurable engineering threshold intended to avoid strict floating-point/rate equality. The repository does not contain a calibration study proving it optimal. Reference floors are version-controlled configuration and must be reviewed when law or applicable employment agreements change [7], [14], [15].
 
 *Deposit continuity gap detection* (`detectDepositContinuityGap.js`). **What:** across a user's uploaded payslip history, the detector distinguishes between two structurally different kinds of contribution breaks: *on-payslip gaps*, where a payslip exists for a month but the deposit column is zero; and *missing-payslip gaps*, where two deposit-bearing payslips are separated by one or more months for which no payslip was uploaded at all. **How:** the shared `buildFundTimeline` utility (`utils/contributionTimeline.js`) constructs a monthly timeline across the user's history, classifying every month as `hasDeposit`, `noDepositOnPayslip`, `missing`, `uncertain`, or `beforeEmployment`. The detector then runs a windowed scan that looks for runs of `noDepositOnPayslip` bracketed by `hasDeposit` months (an internal on-payslip break) or `hasDeposit` followed by trailing `noDepositOnPayslip` (a trailing break). A separate branch counts contiguous `missing` months to emit missing-payslip findings, and an uncertainty counter tracks months where extraction quality is too low to classify confidently. **Why two categories:** the two break types have different remediation actions — on-payslip zero deposits require the user to contact the employer or fund manager, while missing-payslip gaps typically require the user to upload the corresponding months. Collapsing them into a single "gap" finding would obscure this distinction. **Why the `beforeEmployment` filter:** without it, the detector would flag every month prior to the user's employment start date as a missing-payslip gap. The detector consults `analysisData.employment.employment_start_date` and skips months earlier than the resolved employment start, treating unknown start dates as a soft signal rather than a hard mask [15]. The behaviour is tunable through `config/depositContinuityConfig.js` (minimum-gap length, lookback window, and required deposit density), reflecting the same configuration-first discipline used for the rate detector.
 
 All findings are assigned a severity level and sorted with `warning` findings listed before informational findings. Each finding carries a `meta` object containing the relevant fund type, the affected period months, the associated document identifiers, and a `findingKind` discriminator (`deposit`, `rate`, or `continuity`), enabling the frontend to render deep-link URLs into the payslip history view with the relevant periods highlighted.
 
-Findings feed both the Hub dashboard and the AI assistant: rule-based intents such as `pension_status` read the same `contributions` fields that the detectors analyze, ensuring consistent answers whether the user views a finding card or asks a conversational question.
+Findings feed both the Hub dashboard and the AI assistant: rule-based intents such as `pension_employee`, `pension_employer`, and `pension_total` read the same contribution fields that the detectors analyze, ensuring consistent source data whether the user views a finding card or asks a conversational question.
 
-![Figure 9: Findings detection decision tree](figures/fig09-findings-tree.png)
+![Figure 9: Fund-without-deposit detection decision tree](figures/fig09-findings-tree.png)
 
-The figure illustrates the three-level decision tree for pension deposit detection: (1) Was a pension section identified in extraction? If not, skip. (2) Is the sum of employee and employer deposits zero? If not, skip. (3) Is the missingLine warning absent? If so, emit `PENSION_MISSING_DEPOSIT` finding.
+Figure 9 summarizes the per-document branch shared by pension and study-fund detection. Section presence can come from stored OCR detection metadata, a positive contribution base, an un-abstained quality candidate, or a populated contribution block. A `missingLine` warning overrides those weak signals and suppresses the finding. Pension severance-only payments are treated as a deposit exception. Separately from the diagram, the detector compares the latest payslip with the user's onboarding declarations and can emit an onboarding-mismatch finding.
 
 #### 3.3.4 Data Models
 
-**User model** (`backend/models/User.js`). The user schema stores authentication credentials and onboarding data:
+The database is not a single payslip collection. Mongoose models fall into four groups: identity/profile (`User`, `UserProfile`), user-owned financial data (`Document`, `InsurancePolicy`, `PensionFund`, deposits and import snapshots), generated application state (`ChatMessage`, `Insight`, `Recommendation`, `Notification`, `ExecutiveReport`, `AgentRunLog`), and government-market datasets/caches (`PensiaNet*`, `GemelNet*`, `BituahNetFund`). User-owned queries are normally scoped by `user`; government collections are shared reference data.
+
+**User and UserProfile models.** `User` stores credentials, lightweight onboarding compatibility fields, password-reset fields, and Gmail connection metadata:
 - `name`: string, max 100 characters.
 - `email`: string, unique indexed, lowercase normalized.
 - `googleId`: string, sparse unique index (null for non-Google users).
 - `password`: string, `select: false` (never returned in queries by default), minimum 6 characters.
-- `onboarding`: nested object containing `completed` (boolean), `completedAt` (date), and `data` (a sub-document recording salary type, expected monthly gross, employment start date, pension and study fund participation flags).
+- `onboarding`: a legacy-compatible subset containing completion state and basic employment/pension declarations used by auth responses and older checks.
 - `gmailIntegration`: nested object recording Gmail OAuth tokens for the optional email integration feature.
-Password hashing is handled by a Mongoose `pre('save')` hook that calls `bcryptjs.genSalt(10)` followed by `bcryptjs.hash` on the plain-text password whenever the password field is modified.
+Password hashing is handled by a Mongoose `pre('save')` hook that calls `bcryptjs.genSalt(10)` followed by `bcryptjs.hash` whenever the password changes. The separate `UserProfile` collection owns the comprehensive onboarding/settings data: personal attributes, employment, expenses, assets, insurance declarations, retirement data, goals, and risk preferences. This dual-model arrangement exists for backward compatibility; exam explanations should not imply that the full profile lives inside `User`.
 
-**Document model** (`backend/models/Document.js`). The document schema represents a single uploaded payslip:
+**Document model** (`backend/models/Document.js`). A Document represents an uploaded file that remains in the general document pipeline—usually a payslip, but also potentially Form 106 or another supported structured document. Insurance and pension reports recognized by the dispatcher can instead be normalized directly into their domain collections:
 - `user`: ObjectId reference to the User, with a compound index on `{user, uploadedAt}` for efficient per-user queries sorted by upload date.
 - `filename`: string, unique — the UUID filename assigned at upload time.
 - `checksumSha256`: string — the hex-encoded SHA-256 digest of the file content.
 - `status`: enum `['uploaded', 'pending', 'processing', 'completed', 'needs_review', 'needs_password', 'failed']`.
-- `analysisData`: `Schema.Types.Mixed` — the schema-less extraction result object.
+- `analysisData`: Mongoose `type: Object` (treated as a flexible nested object) containing the versioned extraction result.
 - `processingError`: string — the error message recorded when status is `failed`.
 - `source`: enum `['manual', 'gmail']` — whether the document was uploaded manually or imported via the Gmail integration.
 - `emailMetadata`: nested object storing Gmail message and attachment identifiers for deduplicated Gmail imports.
+
+The model also stores category/period/source metadata, file size and MIME type, timestamps, and indexes for per-user chronological reads and Gmail attachment deduplication. The original file path is deliberately absent from serialized API responses; downloads use the authenticated controller.
 
 #### 3.3.5 Authentication
 
 ![Figure 8: Authentication flow](figures/fig08-auth-flow.png)
 
-![Figure 16: Login screen with email/password and Google OAuth](figures/fig16-login-ui.png)
+![Figure 16: Login screen with email/password and Google OAuth; payslip values are decorative sample data](figures/fig16-login-ui.png)
 
 **Figure 16** shows the Hebrew login surface that exposes the JWT and Google OAuth entry points summarized in Figure 8.
 
@@ -588,28 +662,31 @@ All protected API routes pass through the `protect` middleware. JWT verification
 
 The AI assistant is exposed through the `POST /api/ai/chat` (standard request/response) and `POST /api/ai/chat/stream` (Server-Sent Events streaming) endpoints, and the `GET /api/ai/financial-tips` endpoint.
 
-*Intent detection.* Before invoking any language model, the `detectIntent` function in `aiController.js` performs keyword-based intent classification over the user's message text. The classifier recognises roughly two dozen distinct intents covering the domain of Israeli personal finance: gross/net salary questions, pension and study-fund status, income-tax and credit-point queries, what-if salary simulations, month-over-month comparisons, insurance gap detection, savings forecast requests, onboarding-status questions, and general financial-health inquiries. Each intent branch is a small set of Hebrew (and English fallback) keyword tests, with explicit *negative* keywords to avoid false positives — for example, a message that mentions "פנסיה" together with "ממוצע" or "בישראל" is treated as a general knowledge query rather than a personal `pension_employee` intent, so the response is routed to the LLM rather than to the rule layer.
+*Intent detection.* Before invoking a language model, `detectIntent` in `aiController.js` performs keyword classification. The current function can return 26 labels, including greeting and fallback. Its financial labels cover gross and net salary, employee/employer/total pension, study and provident funds, income tax, National Insurance, mandatory deductions, leave balances, documents, notifications, recommendations, insurance profile, what-if questions, anomalies, employer information, salary changes, and financial summaries. Hebrew patterns are supplemented by selected English fallbacks and negative conditions; for example, general pension questions containing "ממוצע" or "בישראל" are kept out of the personal pension handlers.
 
-**Why rule-first routing:** the deterministic handlers reach into the user's own `analysisData` and return values that can be traced back to a specific payslip field, labelled `source: "rule"` in the response. This is the layer at which numeric hallucination is *structurally* impossible, because no LLM is on the answer path [11]. **Alternative considered:** LLM-first classification, i.e., ask the model to both classify and answer. This was rejected because it removes the auditability guarantee — a wrong answer becomes indistinguishable from a right one until it is caught by a downstream check — and because it would move the rate of numeric-correctness under a probabilistic model instead of a deterministic one. **Trade-off:** keyword routing is brittle to paraphrase, as the two misclassified queries in the n = 39 evaluation set (Section 4.2.4) illustrate. Extending intent coverage is a matter of adding keyword rules and regression tests to the AI-routing evaluation script; each added intent monotonically increases the deterministic surface without changing the LLM contract.
+**Why rule-first routing:** deterministic handlers read stored user fields and return `source: "rule"`; the LLM does not generate those numeric values. This improves traceability but does not make an answer infallible, because an OCR field or rule can still be wrong. **Alternative considered:** asking an LLM to classify and answer every request. That would reduce auditability and increase cost. **Trade-off:** keyword routing is brittle to paraphrase, as the three misclassified queries in the n = 39 evaluation set illustrate. New rules therefore require matching regression cases.
 
 ```javascript
 // aiController.js — keyword intent routing (excerpt)
 function detectIntent(message) {
   const msg = normalizeMessage(message);
   if (msg.includes('חריג') || msg.includes('anomaly')) return 'anomaly_check';
-  if (msg.includes('פנסיה') && msg.includes('הפקדה')) return 'pension_status';
+  if (msg.includes('פנסיה') && (msg.includes('כמה') || msg.includes('שילמתי'))) return 'pension_total';
+  if (msg.includes('קופת גמל') || msg.includes('גמל להשקעה')) return 'gemel_fund';
   // ... additional intent patterns
   return 'fallback';
 }
 ```
 
-*Rule-based responses.* When `detectIntent` returns a recognised intent, `buildRuleBasedAnswer` produces a deterministic, data-grounded response by reading from the user context assembled earlier in the request (payslips, profile, insights, recommendations). For example, the `pension_status` intent retrieves the most recent payslip, reads `contributions.pension.employee` and `contributions.pension.employer`, compares them against the statutory minimums from `contributionRateThresholds.js`, and returns a Hebrew-language message quoting the exact shekel amounts and percentage rates taken directly from the document. Because these responses read from `analysisData` (already extracted by the OCR pipeline) rather than from the raw PDF, they are consistent with the findings engine described in §3.3.3 by construction.
+*Rule-based responses.* When a supported label is returned, `buildRuleBasedAnswer` reads the assembled user context. For example, `pension_employee` and `pension_employer` format the corresponding amounts from the latest payslip, while `pension_total` reports both when available. These answers reuse values already normalized from `analysisData`; their accuracy therefore remains dependent on the extraction quality documented in Chapter 4.
 
 *LLM fallback.* When `buildRuleBasedAnswer` returns `null` — either because the intent is `'fallback'` or because the user context lacks the fields needed for a deterministic answer — control passes to `claudeChatService.chat()`. The service constructs an enhanced system prompt that includes the user's completed payslip data (up to 50 documents), active insights and recommendations, pension and insurance analysis results, and a reference block covering Israeli pension rates, common insurance types, the 2026 income-tax brackets, and mortgage-rate ranges. The user and assistant turns are persisted as `ChatMessage` documents so that subsequent turns pass conversation history to the model. **API contract:** the JSON response includes a `source` field that takes exactly one of three values — `"rule"` for deterministic answers, `"claude"` for Anthropic-served LLM answers, and `"ollama"` for locally-served fallback answers. This label is the primary observability signal for evaluating routing quality (Section 4.2.4) and for triaging user complaints about wrong numeric answers.
 
-The primary LLM is Claude Sonnet 4.6, selected for its strong performance on Hebrew financial reasoning tasks. When `ANTHROPIC_API_KEY` is unset — for example, during local development or offline testing — the service transparently falls back to an Ollama-hosted local model (default `llama3.1:8b`), and the response is labelled `source: "ollama"`. This keeps the assistant demonstrable without an external key while preserving a single call site for downstream code.
+The standard chat service defaults to Claude Haiku 4.5 (`claude-haiku-4-5`) and can be overridden through `CHAT_MODEL`. When `ANTHROPIC_API_KEY` is unset — for example, during local development or offline testing — the service falls back to an Ollama-hosted local model (default `llama3.1:8b`), and the response is labelled `source: "ollama"`. The vision-extraction path is configured separately and defaults to Sonnet 4.6. This separation keeps chat demonstrable without an external key and prevents OCR-model configuration from silently changing conversational behavior.
 
-*Streaming.* The `/chat/stream` endpoint uses Node.js's `res.write()` to deliver Server-Sent Events. **Why SSE over WebSockets:** LLM token delivery in this application is strictly unidirectional server-to-client, and SSE requires no protocol handshake, no separate authentication surface, and works over the same HTTP/1.1 connection as the rest of the API [13]. **Trade-off:** SSE does not support client-to-server streaming within the same connection. For the current chat UX — where the user submits a full message and receives a streamed answer — that limitation is not binding. If future work introduces client-side audio streaming during the same turn, WebSockets would be reconsidered.
+There are two provider adapters in the backend. `claudeChatService` powers standard chat, streaming, and most `backend/ai` explanations using the Anthropic SDK with Ollama fallback. Separately, `aiProviderService` is used by selected domain narratives/advisory services and supports `AI_PROVIDER=claude`, `openai`, or `ollama` through direct HTTP calls. Therefore setting `AI_PROVIDER=openai` does not change `/api/ai/chat`; `CHAT_PROVIDER`/`CHAT_MODEL` govern that path.
+
+*Streaming.* The `/chat/stream` endpoint uses Node.js's `res.write()` to deliver SSE frames over the response to an authenticated POST request. The frontend consumes the stream with `fetch` rather than browser `EventSource`, because a JSON request body is submitted first. This avoids a WebSocket upgrade and bidirectional protocol for a flow that only streams server-to-client after the message is sent [13]. It would not support simultaneous client audio streaming on that same response channel.
 
 The response header sets `Content-Type: text/event-stream` and `Cache-Control: no-cache`. The LLM response is streamed token by token using the `@anthropic-ai/sdk` streaming API, with each token chunk wrapped in an SSE `data:` frame of type `token`. A final `done` event signals stream completion, and error events deliver error metadata to the client for graceful degradation.
 
@@ -617,38 +694,43 @@ The response header sets `Content-Type: text/event-stream` and `Cache-Control: n
 
 ![Figure 5: Multi-agent AI orchestration pipeline](figures/fig05-multi-agent.png)
 
-The orchestration layer is exposed through the `POST /api/ai/full-analysis` endpoint (`backend/controllers/fullAnalysisController.js` → `ai/agents/orchestratorAgent.js`). On the Hub page it runs only when the user explicitly triggers it via the Run control in `MasterAgentPanel`; it is not invoked automatically on page load. **Why user-triggered rather than automatic:** a full analysis fans out to four domain agents and can make one or more LLM calls per agent plus a final orchestrator call, which is both cost-bearing (LLM tokens) and latency-bearing (several seconds of wall-clock time). Triggering it on page load would tax the API budget and delay first paint for a majority of visits in which the user did not intend to re-analyse. **Alternative considered:** running a subset automatically on data change (e.g., after a new payslip upload) and caching the result. This remains a plausible future direction but was deferred because the orchestrator's outputs depend on multiple sources (payslips, insurance profile, onboarding), which complicates cache-invalidation logic.
+The orchestration layer is exposed through `POST /api/ai/full-analysis` (`fullAnalysisController.js` → `parallelAnalysisService.js` → `ai/agents/orchestratorAgent.js`). On the Hub it runs only when the user invokes a full or focused run; there is no page-load effect that starts it automatically. A focused run passes one domain plus `skipLLM: true`; a full run uses `focus: 'all'` and may call multiple model-backed explanation paths plus the final orchestrator summary.
 
-The pipeline proceeds through four steps:
+The pipeline proceeds through five stages:
 
-**Step 0 — Execution Canvas.** `buildExecutionCanvas` loads the user's onboarding data, completed documents, user profile, existing recommendations, and insurance and pension records to construct a domain task inventory. The canvas determines which domain agents need to run (based on `focus`: `'all'`, `'payslip'`, `'insurance'`, or `'pension'`) and records the data availability status for each domain.
+**Step 0 — Execution Canvas.** `buildExecutionCanvas` reads `UserProfile` and counts completed payslips, active insurance policies, pension funds, and provident/study funds. It combines those counts with selected profile facts to create domain tasks and data-availability flags. `focus` controls which of payslip, insurance, pension, and gemel are enabled; the profile agent is added only for `focus: 'all'`. The canvas does not load or execute existing recommendations.
 
-**Step 0.5 — Government data prefetch and global score (parallel).** `prefetchGovMarketData` warms an in-memory cache with Israeli government data from data.gov.il — pension fund market returns, indexed contribution rates, and similar benchmark data — by making HTTP requests to the public API. Concurrently, `buildFinancialHealthScore` computes the user's financial health score for the current year.
+**Step 0.5 — Government data prefetch and global score (parallel).** `prefetchGovMarketData` loads pension-track and insurance-service-index data through adapters that can return process-memory cache, local/fixture/static fallback, or remote `data.gov.il` data. It also reads the persisted PensiaNet/GemelNet/BituahNet sync status from MongoDB. Concurrently, `buildFinancialHealthScore` computes the user's score for the current year. Government-data failure is represented in metadata and does not abort the five agents.
 
-The financial health score is a composite of five weighted categories, totaling 100 points:
-- *Document completeness* (max 25 points): rewards users who have uploaded payslips for most months of the year.
-- *Salary stability* (max 20 points): rewards consistent month-over-month salary, penalizes unexplained drops.
-- *Tax readiness* (max 20 points): rewards timely Form 106 availability and absence of tax anomalies.
-- *Pension consistency* (max 20 points): rewards regular, above-minimum pension contributions.
-- *Risk insurance* (max 15 points): rewards completion of the insurance profile onboarding questionnaire.
+The financial health score is a deterministic composite totaling 100 points:
+- *Document completeness* (25): up to 15 for payslip-month coverage, 7 for Form 106, and 3 for a pension document.
+- *Salary stability* (20): 5 for employer identification plus up to 15 based on gross-salary stability.
+- *Tax readiness* (20): starts at 20 and deducts for missing payslip coverage, missing Form 106, and tax issues.
+- *Pension consistency* (20): starts at 20 and deducts for missing employee/employer pension deposits.
+- *Risk insurance* (15): profile completion contributes 5; critical recommendations, high-severity issues, and duplicates subtract 6, 2, and 2 respectively.
 
 ![Figure 6: Financial health score computation model](figures/fig06-health-score.png)
 
 Each sub-score is computed by a dedicated function within `financialHealthScoreService.js` using the user's payslip history and profile data.
 
-**Step 1 — Domain agents in parallel.** Four agent functions run concurrently via `Promise.allSettled`:
+**Step 1 — Agents in parallel.** Five agent functions run concurrently via `Promise.allSettled`:
 - `runPayslipAgent`: retrieves payslip summaries, runs salary trend analysis, generates rule-based recommendations, and optionally calls Claude for an LLM explanation.
-- `runInsuranceAgent`: loads the user's insurance profile and compares declared coverage types against benchmark coverage expectations for the user's income bracket.
-- `runPensionAgent`: fetches pension data from the pension database model and PensiaNet comparison data, evaluates contribution adequacy, and generates recommendations.
-- `runFinancialProfileAgent`: analyzes the user's overall financial profile across all domains.
+- `runInsuranceAgent`: builds policy aggregation, duplicate/missing-coverage analysis, health checks, market/service comparisons, recommendations, and an optional explanation.
+- `runPensionAgent`: runs the pension analysis service, including contribution, projection, benchmark, health, fund-advice, and deterministic/LLM-formatted insights.
+- `runGemelAgent`: runs provident/study-fund analysis plus the gemel advisor report and market comparison when data exists.
+- `runFinancialProfileAgent`: computes profile completeness, a risk profile, and deterministic priorities; it does not call Claude.
 
-Each agent follows the same internal pipeline: fetch data via tool functions → run deterministic analysis → generate rule-based recommendations → optionally call Claude for an LLM-generated narrative explanation. Agents return structured DTOs; they never pass raw database documents to the LLM. **Why `Promise.allSettled` rather than `Promise.all`:** a transient failure inside one agent (for example, a Claude timeout) must not fail the entire analysis run. `allSettled` allows the orchestrator to record a per-agent error status and continue synthesis with the remaining agents, so the user still receives a partial result and an explanatory summary rather than an empty response. **Alternative considered:** running the four agents sequentially. This was rejected because the domain agents have no data dependencies on each other — payslip analysis does not need insurance data, and vice-versa — so serialising them would only add latency.
+The agents return structured DTOs, and the orchestrator builds a reduced context instead of passing raw Mongoose documents to its final LLM prompt. Their internals are similar but not identical: payslip and insurance explicitly add optional explanations, pension and gemel delegate explanation/fallback behavior to their analysis services, and profile is rule-only. `Promise.allSettled` prevents one rejected agent promise from failing the entire run; the orchestrator converts that rejection into a per-agent error result.
 
-**Step 2 — Recommendation merging and action items.** `mergeRecommendations` deduplicates and ranks recommendations from all four agents by priority and domain overlap, so that identical recommendations produced by two agents (e.g., "check your pension deposit" from both the payslip and pension agents) collapse into a single, higher-confidence item. `buildActionItems` then selects the highest-priority subset and formats them as concrete actions with urgency indicators, bridging automated analysis to user-visible next steps on the Hub.
+**Step 2 — Recommendation merging and action items.** `mergeRecommendations` attaches the agent id, deduplicates by recommendation `type`, and sorts by urgency. `buildActionItems` adds domain verdicts, insurance-waste signals, high/medium recommendations, score actions, and missing-data tasks; it deduplicates by domain plus title and returns at most eight Hub actions.
 
-**Step 3 — Orchestrator summary.** The orchestrator assembles a *safe context object* from the canvas, government data, global score, action items, and agent results. This object is explicitly stripped of raw credentials and of raw document text before it is passed to the LLM — the goal is to give the model a compact structured summary of what the deterministic layers already concluded, not to re-run analysis inside the prompt. The context forms the system prompt for a final Claude call that produces a unified Hebrew narrative summarising the user's financial health and highest-priority next actions. If Claude is unavailable or the caller sets `skipLLM: true`, the `generateHebSummary` fallback in `explanationAgent.js` produces a deterministic rule-based summary from the same agent results, prefixed with the numeric health score. The response body identifies which path was taken via the `finalSummarySource` field (`"claude"` or `"rule"`), preserving the same auditability discipline as the chat endpoint.
+**Step 3 — Orchestrator summary.** The orchestrator assembles a reduced context from the canvas, government data, global score, action items, and agent results. The context forms the prompt for a final Claude call that produces a unified Hebrew narrative. If Claude is unavailable or `skipLLM: true`, `generateHebSummary` produces a rule-based summary from the same results. The response identifies the path through `summarySource` (`"claude"` or `"rule"`).
 
-Every analysis run is logged to an `AgentRunLog` document recording the run identifier, start time, duration, per-agent statuses, total recommendation count, and summary source. This log supports post-hoc debugging of individual runs and provides a longitudinal record for evaluating LLM reliability over time.
+Every analysis run attempts to write an `AgentRunLog` containing its run id, user, agents, statuses, duration, recommendation count, and summary source. Logging failure is non-fatal, and a TTL index removes logs after 90 days.
+
+**Relationship to the second agent API.** The repository also exposes `/api/agents/*`, which is a separate question-routing and RAG subsystem under `backend/services/agents/`; it is not called by `/api/ai/full-analysis`. `POST /api/agents/ask` builds user context in `agentController`, classifies a question rule-first (then Claude/Ollama if needed), and routes it to one of six specialists: payslip, pension, gemel, financial analysis, financial planning, or insurance. General questions can retrieve up to three chunks from the local embedding/vector-store subsystem before Claude/Ollama answers. `/api/agents/embed` and `/rag/index` populate that store explicitly. In short: `/api/ai/full-analysis` is a parallel five-domain report pipeline for the Hub, while `/api/agents/ask` is a single-question specialist router with optional RAG.
+
+**Executive-report composition.** `/api/executive/report` is a third entry point that reuses the same five `backend/ai/agents` functions but does not consume or cache the preceding `/api/ai/full-analysis` response. When `ExecutiveReportPage` mounts, it starts a new server run: canvas, health score, and five agents are collected; outputs are normalized; `globalPriorityEngine` merges conflicts and ranks actions; `reportSectionBuilder` creates the report; and an optional LLM call polishes only the executive summary. The report is stored in `ExecutiveReport` for seven days. PDF download looks up that user-owned cached report by `runId` and renders it with PDFKit. Thus navigating from a completed Hub run to the executive report currently performs a second agent computation.
 
 #### 3.3.8 Savings Forecast
 
@@ -666,32 +748,33 @@ The model is intentionally simple: it does not account for investment returns on
 
 ![Figure 7: Frontend route tree](figures/fig07-route-tree.png)
 
-![Figure 15: Public landing page](figures/fig15-landing-ui.png)
+![Figure 15: Public landing page; displayed financial values are illustrative marketing data](figures/fig15-landing-ui.png)
 
 ![Figure 17: Public team page](figures/fig17-team-ui.png)
 
-The React 19 application is organized around a route tree declared in `App.tsx`. Public routes (accessible without authentication) include the landing page, login, registration, password reset, and marketing pages such as `/team`. All other routes are wrapped in `RequireAuth`, a route guard component that reads the authentication state from `AuthProvider` and redirects unauthenticated users to the login screen. Figures 15 and 17 illustrate the public Hebrew marketing surfaces; Figure 16 shows the authentication screen.
+The React 19 application is organized around a route tree declared in `App.tsx`. Guest-only routes include login and registration; open routes include password reset and informational pages such as `/team`, `/contact`, `/faq`, `/privacy`, and `/terms`. Application areas such as `/hub`, `/documents`, `/assistant`, `/pension`, `/gemel`, `/insurance`, and `/settings` are wrapped in `RequireAuth`, which reads the authentication state from `AuthProvider` and redirects unauthenticated users to the login screen. Compatibility paths such as `/dashboard`, `/findings`, and `/ai-agents` redirect to their current destinations. Figures 15 and 17 illustrate public Hebrew surfaces; Figure 16 shows the authentication screen.
 
 The primary application areas accessible after authentication are:
-- **Welcome / Welcome Back** (`/welcome`, `/welcome-back`): First-run and return-session onboarding screens (completion signaled via `POST /api/auth/welcome/complete`).
-- **Hub** (`/hub`): The main dashboard; the user triggers multi-agent analysis via the Run control and the page displays the health score, key findings, recent payslips, and action items (Figure 13).
-- **Documents** (`/documents`): The document upload area with drag-and-drop support, OCR status indicators, and document management actions.
-- **Payslip History** (`/documents/history`): A chronological view of all uploaded payslips with salary trend visualizations implemented primarily as custom inline SVG components with CSS animation, providing pixel-level control over the Hub trend chart.
-- **Pension** (`/pension`): A dedicated view combining extracted payslip pension data with PensiaNet market comparison (Figure 14).
-- **Insurance** (`/insurance`): The insurance coverage assessment page.
-- **Financial Planning** (`/planning`): The savings forecast calculator.
-- **AI Assistant** (`/assistant`): The conversational chat interface with streaming response support.
-- **Tax Assistant** (`/tax-assistant`): A Form 106 and tax-year summary view.
-- **Financial Health** (`/financial-health`): The detailed health score breakdown.
-- **Copilot / Insights / AI Agents** (`/copilot`, `/insights`, `/ai-agents`): Extended advisory surfaces that consume the same analysis and recommendation APIs.
+- **First-run flow** (`/onboarding`): authenticated users whose backend response does not report `onboardingCompleted: true` are redirected directly to the smart-onboarding page before data-dependent routes become available.
+- **Hub and executive report** (`/hub`, `/hub/report`): aggregate score, actions, agent results, and the consolidated report.
+- **Documents and payslip history** (`/documents`, `/documents/scan`, `/documents/history`, and detail routes): upload, processing status, chronological records, and manual completion of missing fields.
+- **Financial domains** (`/pension`, `/insurance`, `/gemel`): pension, insurance, and provident-fund analysis.
+- **AI surfaces** (`/assistant` plus the floating panel): `/assistant` uses `POST /api/agents/ask`, the specialist-agent/RAG router described in Section 3.3.7. The floating assistant is owned by `AiChatProvider` and uses `POST /api/ai/chat/stream`, the rule-first/SSE chat described in Section 3.3.6. They are related user experiences but separate backend pipelines.
+- **Account tools** (`/notifications`, `/settings`, `/integrations/email`, `/help`): notifications, profile/security settings, Gmail integration, and help.
 
-![Figure 13: Authenticated Hub dashboard](figures/fig13-hub-ui.png)
+Legacy URLs such as `/dashboard`, `/findings`, `/planning`, `/copilot`, `/insights`, and `/financial-health` redirect to current routes rather than rendering independent pages. `/ai-agents` redirects to `/assistant`, and the tax surface is mounted at `/documents/tax`.
 
-![Figure 14: Pension and findings-oriented UI](figures/fig14-pension-findings-ui.png)
+![Figure 13: Hebrew AI assistant interface](figures/fig18-assistant-ui.png)
 
-The application entry (`main.tsx`) composes four nested providers: `BrowserRouter` → `AuthProvider` → `AiChatProvider` → `App`. `AuthProvider` calls `GET /api/auth/me` on mount to restore an authenticated session from the JWT stored in `localStorage`. `AiChatProvider` manages the global floating AI assistant state — conversation history, streaming SSE connection, and voice input — so that the chat panel remains accessible on every authenticated page without re-mounting. The API client (`client.ts`) reads the JWT on every request and attaches it as a `Bearer` token in the `Authorization` header. All UI strings are in Hebrew, and the document root receives `direction: rtl` at the page container level to ensure correct bidirectional text rendering.
+![Figure 14: Payslip history interface using demonstration records](figures/fig20-payslip-history-ui.png)
 
-The single mapping layer between the backend `analysisData` structure and the frontend UI types is `documentToPayslip.ts`. This module exports two primary mappers: `documentToPayslipHistoryItem` (for the compact list view) and `documentToPayslipDetail` (for the detailed payslip view), both of which translate the snake_case backend field names to camelCase TypeScript types. Changes to the backend schema are propagated to the frontend exclusively by editing this file, preventing drift between the two representations. The frontend never reads raw OCR text or internal `quality.debug` fields — those are stripped by `documentSerializer.js` before API responses leave the backend.
+Figures 13–16 document implemented interface surfaces. Names, salaries, balances, rates, notification counts, and other values visible inside these screenshots are demonstration or decorative data; they are not evaluation measurements and are not used in Tables 1–6.
+
+The application entry (`main.tsx`) composes `BrowserRouter` → `AuthProvider` → `AiChatProvider` → `App` inside React Strict Mode. `AuthProvider` reads the token from `localStorage` and calls `GET /api/auth/me`; a failed 401 clears the session and `RequireAuth` redirects. `AiChatProvider` keeps short-lived UI/conversation state in `sessionStorage`, adds page context, consumes the POST-based SSE stream through `fetch`, and exposes browser speech recognition when supported. Shared API helpers attach the JWT as a Bearer token and normalize JSON/blob errors. Primary product surfaces use Hebrew RTL layout, while technical fallbacks and development/error strings may still contain English.
+
+The frontend does not use Redux or a server-state framework. Cross-cutting state is limited to the authentication and chat providers; pages and feature hooks own their loading/error/domain state with React hooks and call modules under `frontend/src/api/`. Client route guards improve navigation and hide protected pages, but they are not the security boundary—the backend `protect` middleware and ownership-scoped database queries remain authoritative.
+
+`documentToPayslip.ts` exports the two primary payslip mappers: `documentToPayslipHistoryItem` and `documentToPayslipDetail`. Additional specialized consumers read selected `analysisData` fields through typed shapes in `DocumentDetailsPage.tsx`, `payslipAnalysisSummary.ts`, and `payslipEnrichment.ts`. Raw OCR text and internal `quality.debug` data are removed by `documentSerializer.js` before API responses, so none of these frontend consumers receives the sensitive diagnostic payload.
 
 #### 3.3.10 Extended Domain Modules
 
@@ -705,21 +788,46 @@ Beyond the core payslip pipeline, FinGuide implements additional REST domains mo
 
 **Dashboard aggregation** (`/api/dashboard/summary`). Combines documents, profile, policies, and recommendations in a single `Promise.all` response for overview screens.
 
-These modules share the same authentication, error-handling, and MongoDB persistence patterns described in Section 3.3.1; their detailed route tables appear in Appendix A.
+**Government-market synchronization** (`backend/jobs/govMarketMonthlySync.js`). After Express begins listening, `server.js` starts an in-process `node-cron` task unless `GOV_MARKET_CRON_ENABLED=false`. The default schedule is `0 2 18 * *` in `Asia/Jerusalem` (02:00 on the 18th of each month). It synchronizes PensiaNet, GemelNet, and BituahNet data into MongoDB and performs an initial seed when the pension-market collection is empty. An in-memory flag prevents overlap within one process. This is not a durable distributed scheduler: a missed run is not replayed when the server was down, and multiple server replicas would each own a scheduler unless deployment disables all but one.
+
+These modules reuse the same authentication and error-handling boundaries, but their persistence differs: some write user-owned models, government sync writes shared market collections, and chat/RAG maintain their own stores. Detailed route tables appear in Appendix A.
 
 ### 3.4 Evaluation Metrics
 
 The system is evaluated along three dimensions, using the same thresholds reported in Chapter 4:
 
-**OCR accuracy.** Field-level extraction rate on the golden fixture corpus (n = 7): a numeric field counts as correct when its value is within **0.5%** of the annotated ground truth (`npm run eval:ocr`). String fields require exact match.
+**OCR accuracy.** Field-level extraction is measured on the seven fixtures with scorable annotations; two additional IDF image fixtures exercise the pipeline but are skipped in field denominators because their `expected.json` files contain no tracked values. A numeric field counts as correct when its value is within **0.5%** of the committed expected value (`npm run eval:ocr`). Strings require exact match.
 
-**Findings precision and recall.** On the annotated scenario corpus (n = 7), precision is the fraction of generated findings that correspond to genuine anomalies; recall is the fraction of annotated anomalies detected (`npm run eval:findings`).
+**Findings precision and recall.** On the annotated scenario corpus (n = 10: seven synthetic controls and three golden-derived cases), precision is the fraction of generated findings that correspond to genuine anomalies; recall is the fraction of annotated anomalies detected (`npm run eval:findings`).
 
 **AI assistant routing.** Intent classification accuracy on the Hebrew query set (n = 39): a query is correct when `detectIntent()` returns the expected intent label (`npm run eval:ai-routing`). Rule-based responses are additionally checked for factual accuracy against payslip fixtures.
 
 **Functional verification (Objectives 4–6).** Automated unit and integration tests confirm multi-agent orchestration, savings-forecast calculation, and frontend mapping contracts (Table 6). These tests do not measure end-user usability; they establish that the implemented code paths succeed under fixture-driven assertions.
 
 ### 3.5 Software and Hardware Specifications
+
+FinGuide uses a deliberately layered technology stack. Each technology has a specific responsibility, and the boundaries between them are reflected in the repository structure and deployment model.
+
+| Technology | Responsibility in FinGuide | Reason for selection and interaction |
+|---|---|---|
+| React 19 | Component-based Hebrew RTL single-page interface | Supports reusable screens, providers, route guards, and responsive state-driven updates. React consumes only the typed REST contract exposed by the backend. |
+| TypeScript | Static typing for frontend components, API DTOs, and mapping utilities | Detects incompatible data shapes during compilation and makes the `analysisData`-to-UI boundary explicit. |
+| Vite | Frontend development server and production bundler | Provides fast development reloads, TypeScript/React compilation, environment variables, and a development proxy for `/api`. |
+| Node.js 20 | JavaScript runtime for the server and background jobs | Its asynchronous I/O model suits database operations, filesystem access, external APIs, and OCR subprocess coordination. |
+| Express | REST API, middleware pipeline, routing, validation, and error handling | Keeps HTTP concerns separate from controllers and domain services while allowing authentication, CORS, rate limiting, and uploads to be composed per route. |
+| MongoDB 7 | Persistent storage for users/profiles, documents, chats, insights, recommendations, policies, funds, generated reports, agent logs, and market-reference records | A document model fits nested and evolving structures such as `analysisData`; findings themselves are generated on request rather than stored in a dedicated Finding collection. |
+| Mongoose | MongoDB object modeling and validation | Defines schemas, indexes, ownership relationships, defaults, and query helpers while keeping persistence logic explicit. |
+| Multer | Multipart upload handling | Enforces file type and size limits before a document enters the processing pipeline. |
+| `pdf-parse` and Poppler | PDF text extraction, rasterization, and metadata handling | Digital PDFs first use their embedded text layer; `pdftotext` and `pdftoppm` provide deterministic native fallbacks and page images for OCR. |
+| Tesseract OCR (`heb` + `eng`) | Text recognition for scanned or text-deficient payslips | Provides offline Hebrew/English OCR without requiring a cloud vision service. Multiple page-segmentation modes are ranked by downstream field quality. |
+| Sharp | Image normalization and preprocessing | Corrects orientation and prepares image inputs before OCR or profile-image storage. |
+| Anthropic Claude / Ollama | Optional natural-language reasoning and ambiguous-field assistance | Claude supplies hosted LLM inference, while Ollama provides a local alternative. Deterministic rules remain the first choice for numeric financial answers. |
+| Google OAuth and Gmail APIs | Google Sign-In and optional payslip attachment import | OAuth tokens are verified server-side; Gmail access uses a restricted read-only scope and is isolated behind authenticated integration routes. |
+| JWT and bcrypt | Stateless API authentication and password hashing | bcrypt protects stored passwords; signed JWTs identify users on protected requests. Ownership checks then scope every financial query to that user. |
+| Jest, Supertest, Testing Library | Unit, integration, API, and frontend component verification | The testing layers validate pure calculations, database-backed request flows, UI mappings, and regression fixtures. |
+| Docker and Docker Compose | Development runtime for the backend, OCR binaries, and MongoDB | The checked-in Compose file has backend and MongoDB services only; frontend static hosting, TLS, and a reverse proxy remain deployment work. |
+
+**End-to-end technology flow.** A browser loads the Vite-built SPA and calls an Express route through the development proxy or production reverse proxy. Global and route middleware apply rate, origin, parsing, authentication, validation, and upload rules. Controllers either query an ownership-scoped model or delegate to a service. The upload service first dispatches recognized insurance/pension reports; otherwise it creates a Document and routes Form 106 or payslip extraction. Default payslip extraction uses direct text, numeric rescue, then Tesseract OCR; configured vision mode replaces that cascade. The normalized result is persisted as `analysisData`, after which findings, forecasts, chat context, and agents reuse it. A serializer/DTO boundary removes raw OCR/debug fields before frontend mapping. Google, government-data, and AI credentials stay in backend environment variables.
 
 **Backend software (from `backend/package.json`):**
 
@@ -746,23 +854,23 @@ The system is evaluated along three dimensions, using the same thresholds report
 
 **System binaries (OCR pipeline):** Tesseract OCR with Hebrew language pack (`tesseract-ocr-heb`), Poppler utilities (`pdftoppm`, `pdftotext`). These are bundled in the backend Docker image (`dev:docker`); on macOS development hosts they must be installed separately or accessed via Docker.
 
-**Hardware and deployment environment:** Development was carried out on macOS and Linux workstations. Docker Compose provisions MongoDB and the backend with OCR dependencies. Uploaded PDFs are stored on the local filesystem under `backend/uploads/` (not object storage). Production-oriented constraints include synchronous upload processing latency, dev rate limits of 2,000 requests per 15 minutes (100 in production), and optional Ollama (`llama3.1:8b`) as an LLM fallback when `ANTHROPIC_API_KEY` is unset.
+**Hardware and deployment environment:** The repository defines a Linux container environment with Node.js 20, MongoDB, Poppler, and Hebrew/English Tesseract dependencies. The OCR-equipped host used for the recorded July evaluation was not benchmarked for CPU and RAM, so the latency figures are environment-specific. For the university deployment, the team intends to request a Linux VM with at least 4 vCPU, 8 GB RAM, and 50 GB persistent storage, with separate persistence for MongoDB and uploaded files. This is a proposed deployment target, not a measured minimum. The application applies rate limits of 2,000 requests per 15 minutes in development and 100 in production, and can use Ollama (`llama3.1:8b`) when `ANTHROPIC_API_KEY` is unset.
 
 ### 3.6 Security and Data Privacy
 
 Payslips (תלושי שכר) contain sensitive personal and financial data — national ID numbers, salary amounts, employer names, and contribution details. FinGuide treats this data as confidential employee information subject to access control, transport security assumptions, and informational-use disclaimers (see §1.4).
 
-**Authentication.** Local accounts use bcrypt-hashed passwords (`bcryptjs`, salt rounds 10) with the password field stored as `select: false` on the User model so that it is never returned by default queries. JSON Web Tokens are issued on register and login using `JWT_SECRET` (minimum 10 characters, validated at server boot in `server.js`). Google OAuth 2.0 verifies ID tokens via `OAuth2Client.verifyIdToken`, checking signature, issuer, expiry, and audience against `GOOGLE_CLIENT_ID`. All non-auth routes pass through the `protect` middleware (`middleware/auth.js`), which extracts the Bearer token from the `Authorization` header, verifies it with `jsonwebtoken`, attaches the corresponding User document to `req.user`, and returns a standardised 401 `AuthError` on any failure. **Why a Bearer-token model:** it decouples authentication from cookies, simplifies the CORS story, and lets the same API serve the browser SPA and, in the future, headless mobile clients. **Trade-off:** JWTs cannot be revoked before expiry without a stateful denylist, so the default 7-day `JWT_EXPIRE` window is a deliberate compromise between session ergonomics and blast radius; a shorter window would improve security at the cost of more frequent re-authentication.
+**Authentication.** Local accounts use bcrypt-hashed passwords (`bcryptjs`, salt rounds 10) with the password field stored as `select: false` on the User model so that it is never returned by default queries. JSON Web Tokens are issued on register and login using `JWT_SECRET` (minimum 10 characters, validated at server boot in `server.js`). Google OAuth 2.0 verifies ID tokens via `OAuth2Client.verifyIdToken`, checking signature, issuer, expiry, and audience against `GOOGLE_CLIENT_ID`. Protected routes pass through the `protect` middleware (`middleware/auth.js`), which extracts the Bearer token from the `Authorization` header, verifies it with `jsonwebtoken`, attaches the corresponding User document to `req.user`, and returns a standardised 401 `AuthError` on any failure. **Why a Bearer-token model:** it decouples authentication from cookies, simplifies the CORS story, and lets the same API serve the browser SPA and, in the future, headless mobile clients. **Trade-off:** JWTs cannot be revoked before expiry without a stateful denylist, so the default 7-day `JWT_EXPIRE` window is a deliberate compromise between session ergonomics and blast radius; a shorter window would improve security at the cost of more frequent re-authentication.
 
-**Authorization and data isolation.** Every Document record is indexed by `user`, and controllers scope queries to `req.user._id`. Download endpoints resolve filesystem paths and reject traversal using an anchored prefix check: `path.resolve(document.filePath).startsWith(path.resolve(process.cwd(), 'uploads'))` must hold before the PDF is streamed (`documentController.js`). **Why resolve-and-prefix rather than substring:** `path.resolve` normalises `..` segments and symbolic links before the check, closing the class of attacks in which a malicious filename encodes `../` to escape the uploads directory. Users cannot access another user's payslips or `analysisData` because both the ownership check (`document.user.equals(req.user._id)`) and the path check must succeed on every read.
+**Authorization and data isolation.** Document queries are scoped to `req.user._id`, and download handlers combine an ownership check with `path.resolve(...).startsWith(uploadsDir)` before streaming a file. `path.resolve` normalizes ordinary `..` segments, but it does not resolve symbolic links and a raw prefix comparison is weaker than a separator-aware containment check. Production hardening should use `fs.realpath`, `path.relative`, and an explicit uploads-directory boundary. The implemented ownership check remains the primary user-isolation control.
 
 **AI data grounding.** The assistant's `buildUserContext(userId)` loads payslips, profile, insights, and recommendations exclusively from the database for the authenticated user. Client-supplied `userData` in chat requests is not treated as a trusted financial source — preventing clients from injecting fabricated payslip values that would then be quoted by rule-based answers. **Why this matters:** the rule layer is designed to be numerically auditable (§3.3.6). If client data were accepted, the source label `"rule"` would no longer guarantee that the numbers came from a stored, extractable payslip.
 
-**Storage and transport.** PDFs are stored locally under `backend/uploads/{uuid}.pdf` with SHA-256 checksums recorded on the Document for deduplication. The API is intended to run behind HTTPS in production; development uses localhost with Vite proxying `/api` and `/uploads` to `127.0.0.1:5000`. Gmail OAuth tokens, when the optional Gmail integration is enabled, may be encrypted at rest with `GOOGLE_TOKEN_ENCRYPTION_KEY` (or `JWT_SECRET` as a fallback) via `tokenCrypto.js`. **Alternative considered:** object storage (S3 or equivalent) for uploads. This was deferred because local filesystem storage keeps the local-development experience simple and does not require additional secrets or IAM configuration; the migration path is a services-level change with no schema impact.
+**Storage and transport.** General uploaded files are stored locally under `backend/uploads/` with SHA-256 checksums recorded for deduplication; recognized pension/insurance imports can remove the staging file after normalization. The API is intended to run behind HTTPS in production; development uses Vite proxying `/api` and `/uploads` to `VITE_API_URL` (default `127.0.0.1:5001`). Gmail OAuth tokens may be encrypted at rest with `GOOGLE_TOKEN_ENCRYPTION_KEY` (or `JWT_SECRET` fallback) via `tokenCrypto.js`. Object storage is not implemented; moving uploads there would require replacing the filesystem adapter and download path.
 
-**Rate limiting and boot validation.** The `express-rate-limit` middleware is installed as the first entry in the app-wide middleware chain, applying **2,000 requests per 15 minutes in development** and **100 requests per 15 minutes in production** per client IP (`app.js`). CORS is configured with an allow-list including `CLIENT_URL` and the Vite development origins (`http://localhost:5173`, `http://127.0.0.1:5173`); unknown origins are rejected. `server.js` refuses to start without `JWT_SECRET` (≥ 10 characters) and `MONGODB_URI`, so the process fails fast on misconfiguration rather than boot with an unsafe fallback. **Why 100 requests per 15 minutes in production:** the volume was chosen to accommodate a single authenticated user's typical browsing session (dashboard load, a payslip upload, several chat turns) while still throttling brute-force login attempts. The development value is deliberately much higher so that the Jest integration tests, which issue hundreds of requests per file, do not spuriously trip the limit.
+**Rate limiting and boot validation.** The `express-rate-limit` middleware is installed as the first entry in the app-wide middleware chain, applying **2,000 requests per 15 minutes in development** and **100 requests per 15 minutes in production** per client IP (`app.js`). CORS is configured with an allow-list including `CLIENT_URL` and the Vite development origins. `server.js` refuses to start without `JWT_SECRET` (at least 10 characters) and `MONGODB_URI`. These are implemented constants, not values derived from a recorded capacity or security study; production tuning should be based on deployment traffic and threat monitoring.
 
-**Privacy posture.** FinGuide does not sell or share payslip data with third parties. When the user invokes the assistant, the payslip context is included in the system prompt sent to the configured LLM provider (Anthropic or, in fallback mode, a locally-hosted Ollama model); no other outbound traffic transports personal financial data. Outputs are informational only and do not constitute certified financial, tax, or legal advice (§1.4, §5.2).
+**Privacy posture and current limitations.** FinGuide does not sell payslip data. When the user invokes an externally hosted AI provider, selected payslip context may be included in the request sent to that provider; a locally hosted Ollama configuration keeps that inference path on the deployment host. Deployment documentation must disclose the configured provider and obtain appropriate user consent before real personal documents are processed. Original upload files are not currently application-encrypted at rest, retention is controlled through user deletion and server operations, and production backup encryption and retention depend on the hosting environment. Logs, screenshots, fixtures, and backups must therefore be reviewed for personal identifiers. Production deployment should add encrypted storage, documented retention and backup-deletion periods, secret management, and an explicit consent notice. Outputs are informational only and do not constitute certified financial, tax, pension, or legal advice (§1.4, §5.2).
 
 ---
 
@@ -772,17 +880,17 @@ This chapter reports evaluation results against the objectives stated in Section
 
 ### 4.1 Experimental Setup
 
-Evaluation was conducted in a development environment on macOS with Node.js 20.x, MongoDB (local or Atlas via `MONGODB_URI`), and Poppler/Tesseract available either natively or through `dev:docker`. No production load test was performed. All reproducible metrics are produced by `npm run eval:ocr`, `npm run eval:findings`, `npm run eval:ai-routing`, and `npm run bench:upload-latency`, supplemented by the Jest unit and integration test suite described below. Rate limiting during development is set to 2,000 requests per 15 minutes (100 in production), which did not constrain the evaluation runs.
+Evaluation was conducted in an OCR-equipped development environment with Node.js 20.x, MongoDB (local or Atlas via `MONGODB_URI`), and Poppler/Tesseract available either natively or through `dev:docker`. The host's detailed hardware and operating-system configuration was not recorded, and no production load test was performed. Reproduction commands are `npm run eval:ocr`, `npm run eval:findings`, `npm run eval:ai-routing`, and `npm run bench:upload-latency`, supplemented by the Jest unit and integration test suite described below. Rate limiting during development is set to 2,000 requests per 15 minutes (100 in production), which did not constrain the recorded evaluation runs.
 
 #### 4.1.1 Automated Test Suite
 
-The backend test suite comprises **115** `*.test.js` files (excluding `node_modules`), executed against an in-process MongoDB instance provided by `mongodb-memory-server` (v11). Jest 30 runs with `--runInBand` to prevent race conditions from concurrent database writes. Tests are organized under:
+At the documented repository revision, the backend test suite comprises **147** `*.test.js` files (excluding `node_modules`), executed against an in-process MongoDB instance provided by `mongodb-memory-server` (v11). Jest 30 runs with `--runInBand` to prevent race conditions from concurrent database writes. Tests are organized under:
 
 - `backend/__tests__/` — unit tests for parsers, OCR resolver, and service modules
 - `backend/tests/unit/` — additional unit tests for utilities and controllers
 - `backend/tests/integration/` — end-to-end API tests via Supertest (auth, documents, findings, pension, recommendations)
 
-The frontend test suite comprises **5** test files under `frontend/src/`, running in jsdom with ts-jest and `@testing-library/react` 16. Root `npm test` also runs `vite build`, enforcing TypeScript compile checks.
+The frontend test suite comprises **13** test files under `frontend/src/`, running in jsdom with ts-jest and `@testing-library/react` 16. Root `npm test` also runs `vite build`, enforcing TypeScript compile checks.
 
 **Not covered:** browser-based end-to-end (Playwright/Cypress) tests, production load tests, and formal penetration testing. OCR quality on unseen vendors relies on golden fixtures plus manual exploratory review.
 
@@ -802,13 +910,13 @@ The key test files and what each covers are:
 
 #### 4.1.2 OCR Evaluation Framework
 
-The golden fixture corpus comprises **n = 7** anonymized Israeli payslip PDFs from Michpal and Malam Plus payroll systems (July 2026), stored under `backend/services/__fixtures__/golden/`. Each fixture has a companion `expected.json` annotation file with ground-truth values for primary financial fields.
+The golden directory contains **nine** Israeli payslip fixtures as of July 2026: three Malam Plus PDFs, four Michpal PDFs, and two IDF image-based fixtures. Every directory includes `expected.json`, but only the seven Malam Plus/Michpal files contain tracked expected values and therefore contribute to the accuracy denominators. The two IDF fixtures currently contribute execution evidence only and are reported separately.
 
-**Annotation protocol.** Two team members independently annotated each fixture by reading the PDF and recording `gross_total`, `net_payable`, deduction line items, and identifiers. Disagreements were resolved by a third review against the source PDF. Personal identifiers in fixtures were anonymized; only payroll-vendor structure and numeric values needed for field matching were retained.
+**Annotation evidence.** The committed `expected.json` files are the evaluator's source of truth. The repository does not encode who annotated each value, whether annotation was independent, or a formal adjudication procedure. Therefore, this book reports the fixture values as committed test expectations and does not claim an unrecorded multi-review annotation protocol.
 
 Each document is processed via `extractPayslipFile`. A numeric field counts as correct when within **0.5%** of ground truth; string fields require exact match. Reproduction: `cd backend && npm run eval:ocr`.
 
-Password-protected PDFs are pre-unlocked before evaluation. The corpus consists entirely of digital PDFs with intact text layers; scanned payslips are not yet represented (Section 5.2).
+The production extraction function is invoked directly. In the reproduced run, the three Malam Plus PDFs completed through `pdf_text`; all four scored Michpal PDFs fell back to Tesseract OCR. The two IDF image fixtures also executed through OCR but had zero tracked expected fields.
 
 #### 4.1.3 Findings Detection Evaluation Framework
 
@@ -826,7 +934,7 @@ The AI routing evaluation set comprises **n = 39** Hebrew queries in `backend/sc
 
 Regression is enforced at three layers: (1) Jest unit and integration tests on every `npm test`; (2) golden-fixture OCR evaluation via `npm run eval:ocr`; (3) annotated scenario sets for findings and AI routing. The `analysisData` schema version (`1.9`) is treated as a stable contract — changes to extraction must pass golden fixtures before merge.
 
-**Latency benchmarking.** Synchronous Path-1 extraction latency was measured on the golden corpus using `npm run bench:upload-latency` (see Table 4). This characterizes development-machine performance only; production latency under concurrent uploads was not evaluated.
+**Latency benchmarking.** End-to-end synchronous extraction latency was measured on all nine discovered fixtures using `npm run bench:upload-latency` (see Table 4). Despite the script's historical “Path 1” heading, it invokes the production extractor and therefore includes OCR fallback when required. The measurements characterize one development environment only; production latency under concurrent uploads was not evaluated.
 
 ### 4.2 Presentation of Results
 
@@ -841,58 +949,50 @@ The pipeline assigns one of four terminal statuses to every uploaded document:
 
 The `needs_review` status is the key graceful-degradation mechanism: it ensures that even partial extractions are preserved and can be corrected through manual field entry, rather than silently discarding the document.
 
-![Figure 10: OCR accuracy results by extraction path](figures/fig10-ocr-results.png)
+![Figure 10: OCR field-extraction evaluation](figures/fig10-ocr-results.png)
 
-On the seven-fixture golden corpus evaluated in July 2026, all documents (100%) were resolved via Path 1 direct text extraction (`pdf_text` via `pdftotext` / `pdf-parse`) when the native PDF was supplied. Average extraction confidence was 0.653 and average resolution score was 12.36 across fixtures. Paths 2 and 3 were measured separately as forced-path probes (July 2026 re-run).
+The July 2026 reproduction ran the current production extractor over nine discovered fixtures. Three Malam Plus PDFs completed through direct `pdf_text`; four Michpal PDFs fell back to image OCR after the text path failed its gross/net quality check. The two IDF image fixtures also ran through OCR, but their expected files contain no tracked field values and therefore cannot be used to claim field accuracy. Across all nine executions, average confidence was 0.596, average resolution score was 11.392, and the extractor produced an average of 2.44 warnings per fixture. These values describe this repository revision and environment, not all payslip formats.
 
-**Table 7:** Forced Path 3 (image OCR) outcomes — golden PDFs rasterized with `pdftoppm` at 200 DPI, first page only (`npm run eval:ocr-path3`, n = 7)
+**Path 2 probe.** The repository includes a synthetic PDF with intact Arabic numerals but deliberately broken labels (`services/__fixtures__/path-eval/broken-encoding-synthetic.pdf`). It is used to exercise numeric-rescue path selection; it is not included in the field-accuracy table and is not presented as a representative accuracy sample.
 
-| Vendor | Fixtures | Quality-gate pass (`gross>500` ∧ `net>500`) | Gross recovered | Median latency (ms) |
-|---|---|---|---|---|
-| Michpal | 4 | 0 / 4 | 4 / 4 | ~3,200 |
-| Malam Plus | 3 | 0 / 3 | 0 / 3 | ~2,300 |
-| **All** | **7** | **0 / 7** | **4 / 7** | **3,166** |
+**Table 4:** End-to-end document processing latency (`npm run bench:upload-latency`, n = 9, July 2026)
 
-Path 3 always selected `extractionMethod: "ocr"` with multi-PSM ranking. On Michpal rasterizations, gross salary was recovered but `net_payable` remained null, so the quality gate failed and the upload path would surface `needs_review`. Malam Plus image OCR recovered neither core salary field on this probe. Absolute latency is about two orders of magnitude above Path 1 (median 16 ms), matching the Section 5.2 warning about synchronous image OCR.
+| Fixture | Extraction behavior | Latency (ms) |
+|---|---|---|
+| malam-plus-202512 | direct PDF text | 81 |
+| malam-plus-202601 | direct PDF text | 50 |
+| malam-plus-202602 | direct PDF text | 47 |
+| michpal-202209 | OCR fallback | 7,427 |
+| michpal-202210 | OCR fallback | 7,293 |
+| michpal-202211 | OCR fallback | 7,874 |
+| michpal-202212 | OCR fallback | 7,800 |
+| vision-idf-june-2026 | image OCR | 22,549 |
+| vision-idf-may-2026 | image OCR | 26,957 |
+| **Median** |  | **7,427** |
+| **Mean** |  | **8,898** |
+| **Min / Max** |  | **47 / 26,957** |
 
-**Path 2 probe.** A synthetic PDF with intact Arabic numerals but deliberately broken Latin-mojibake labels (`services/__fixtures__/path-eval/broken-encoding-synthetic.pdf`) triggered the broken-Hebrew branch (`numeric_rescue` attempt logged). Rescue alone did not satisfy the quality gate, so the pipeline fell through to Path 3 OCR and recovered `net_payable` only. This confirms path *selection* logic under encoding failure; it does not claim Path 2 field accuracy on a large corpus.
-
-**Table 4:** Document processing latency — Path 1 extraction (`npm run bench:upload-latency`, n = 7, July 2026)
-
-| Fixture | Latency (ms) |
-|---|---|
-| michpal-202209 | 16 |
-| michpal-202210 | 16 |
-| michpal-202211 | 16 |
-| michpal-202212 | 16 |
-| malam-plus-202512 | 107 |
-| malam-plus-202601 | 50 |
-| malam-plus-202602 | 49 |
-| **Median** | **16** |
-| **Mean** | **39** |
-| **Min / Max** | **16 / 107** |
-
-Malam Plus fixtures exhibit higher Path-1 latency due to larger PDF size and more complex layout parsing, but all remain under one second on the development machine. Path-3 image OCR on the same payslips incurs multi-second latency (Table 7).
+The timing difference follows the selected path: direct PDF-text extraction completed in under 100 ms in this run, while multi-candidate OCR required seconds. These are single-run development-machine measurements without warm-up, concurrency, or a production load profile.
 
 #### 4.2.2 Field-Level Extraction Accuracy
 
-**Table 1:** Field extraction accuracy on golden fixture corpus (n = 7, July 2026)
+**Table 1:** Field extraction accuracy on the seven scored fixtures (two additional IDF fixtures skipped per field, July 2026)
 
 | Field | Correct | Mismatch | Missing | Accuracy |
 |---|---|---|---|---|
-| `period_month` | 7 | 0 | 0 | 100.0% |
-| `gross_total` | 7 | 0 | 0 | 100.0% |
-| `net_payable` | 6 | 1 | 0 | 85.7% |
-| `employee_id` | 7 | 0 | 0 | 100.0% |
-| `tax_credit_points` | 7 | 0 | 0 | 100.0% |
-| `base_salary` | 3 | 0 | 4 | 100.0% (of applicable) |
-| `mandatory_total` | 4 | 3 | 0 | 57.1% |
-| `national_insurance` | 4 | 3 | 0 | 57.1% |
+| `period_month` | 4 | 3 | 0 | 57.1% |
+| `gross_total` | 6 | 0 | 1 | 85.7% |
+| `net_payable` | 3 | 2 | 2 | 42.9% |
+| `employee_id` | 4 | 0 | 3 | 57.1% |
+| `tax_credit_points` | 4 | 0 | 3 | 57.1% |
+| `base_salary` | 0 | 3 | 0 | 0.0% (three applicable) |
+| `mandatory_total` | 3 | 4 | 0 | 42.9% |
+| `national_insurance` | 3 | 4 | 0 | 42.9% |
 | `health_insurance` | 4 | 3 | 0 | 57.1% |
-| `income_tax` | 4 | 3 | 0 | 57.1% |
+| `income_tax` | 5 | 2 | 0 | 71.4% |
 | `personal_credit` | 7 | 0 | 0 | 100.0% |
 
-`gross_total`, `period_month`, `employee_id`, `tax_credit_points`, and `personal_credit` achieved perfect accuracy on this corpus. `income_tax` and `personal_credit` were annotated as **0** (verifiably absent below the income-tax threshold); the eval harness treats expected `0` as matching a correctly omitted extraction. On Malam Plus fixtures, `income_tax` still mismatches (actuals 188.96–1,089.00) because the resolver confuses adjacent deduction cells — the same label-disambiguation failure mode as the other mandatory fields (57.1%). `net_payable` mismatched on one Michpal fixture (`michpal-202209`: expected 5,636.85, extracted 5,936.85), yielding 85.7%. Expanding the corpus beyond seven fixtures and additional payroll vendors is necessary before drawing generalization claims.
+The evaluator exposes several concrete failure modes. Malam Plus periods were shifted one month forward in all three files. `gross_total` was missing on `michpal-202211`; `net_payable` was correct in only three files, mismatched in two, and missing in two. All three applicable Malam Plus `base_salary` values differed from the committed expectations. Mandatory-deduction fields also showed cross-row candidate errors. `personal_credit` was the only tracked field correct in all seven scored fixtures. The result supports the existence and reproducibility of the extraction pipeline, but it does not support a claim of production-ready accuracy.
 
 #### 4.2.2a Format Diversity — IDF Payslip Profile (Unit Evidence)
 
@@ -901,9 +1001,8 @@ Beyond Michpal and Malam Plus golden PDFs, the repository includes three IDF (צ
 | Harness | Result (July 2026) |
 |---|---|
 | `idfPayslipProfile.test.js` | **15 / 15** passed |
-| Broader Jest filter matching `idf`/`IDF` identifiers | **26** related tests passed across **6** suites |
 
-This evidence supports Objective 1's claim that layout-specific handling exists for more than two payroll vendors, while remaining honest that field-level OCR accuracy for IDF **PDFs** was not scored in Table 1.
+This test confirms that layout-specific IDF parsing logic behaves as coded on the three text fixtures. Separately, the two IDF image fixtures executed through OCR but had no tracked expected values; neither result is presented as measured IDF PDF accuracy.
 
 #### 4.2.3 Findings Detection
 
@@ -933,25 +1032,26 @@ The findings engine applies a conservative definition of compliance gaps: any ca
 | Metric | Value |
 |---|---|
 | Queries evaluated | 39 |
-| Intent classification correct | 37 (94.9%) |
-| Misclassified | 2 |
-| Routed to rule-based layer | 33 |
-| Routed to LLM fallback | 6 |
+| Intent classification correct | 36 (92.3%) |
+| Misclassified | 3 |
+| Routed to rule-based layer | 34 |
+| Routed to LLM fallback | 5 |
 
-The expanded evaluation set adds pension employee/employer intents, vacation and sick days, documents summary, notifications, recommended actions, and additional what-if phrasing. Two misclassifications remain:
+The evaluation set covers pension employee/employer intents, vacation and sick days, documents summary, notifications, recommended actions, and what-if phrasing. Three misclassifications remain:
 
 1. *"האם יש לי ביטוח חיים מספיק בגיל 45?"* — classified as `profile_insurance` (expected `fallback`) because the `האם יש לי` pattern matches before advisory context is considered.
 2. *"מה מצב הביטוחים שלי?"* — classified as `fallback` (expected `profile_insurance`) because the query lacks the `יש לי ביטוח` trigger phrase.
+3. *"מה ההבדל בין קופת גמל לביטוח מנהלים?"* — classified as `gemel_fund` (expected `fallback`) because the provident-fund keyword wins even though the query asks for an open-ended comparison.
 
-These cases illustrate keyword-routing brittleness for compound insurance questions (Section 5.3).
+These cases illustrate keyword-routing brittleness for advisory, short-form insurance, and compound comparison questions (Section 5.3).
 
-#### 4.2.5 Error Analysis — Deduction Fields and Net Mismatch
+#### 4.2.5 Error Analysis — Period, Salary, and Deduction Fields
 
-The 57.1% accuracy on `mandatory_total`, `national_insurance`, and `health_insurance` is not a character-level OCR failure — Path 1 text extraction succeeds on all Malam Plus fixtures. The errors arise in **label disambiguation** within `payslipOcrResolver.js`: multi-row deduction tables place National Insurance, health levy, and income tax on adjacent lines with similar Hebrew labels. The resolver's `resolveMandatoryTotalCandidate` and related numeric candidate collectors sometimes attribute the summed mandatory block to the wrong row when labels repeat or when Malam Plus uses abbreviated column headers (see Figure 10 for per-field accuracy).
+The reproduced confusion report identifies both path-selection and candidate-resolution problems. All three Malam Plus files completed by direct PDF text, yet `period_month` was shifted one month forward and all three applicable `base_salary` values were wrong. This points to period interpretation and salary-component selection rather than character recognition.
 
-Separately, `net_payable` mismatched on `michpal-202209` by exactly ₪300 (expected 5,636.85 vs extracted 5,936.85). The Path 1 text layer is intact; the failure is a **candidate selection** error among competing net-like amounts on the page, not a missing field. This single case lowers `net_payable` accuracy from 100% to 85.7% and illustrates that even core salary fields remain sensitive to local label/amount pairing.
+The four Michpal PDFs required OCR fallback. One `gross_total` was missing. For `net_payable`, `michpal-202209` was ₪300 too high, `michpal-202211` selected 48,717.07 instead of 6,445.82, and two periods returned no net value. National Insurance was wrong on all four Michpal files, while health-insurance candidates were wrong on three. These errors show that successful OCR execution does not guarantee correct row-to-label association.
 
-**Mitigation path:** expand the label dictionary for Malam Plus-specific deduction headers, tighten net-vs-component ranking when multiple net-like amounts appear, add row-level spatial heuristics, or promote extraction-v2 layout-aware parsing once it exceeds the rule baseline on an expanded corpus.
+**Mitigation path:** add vendor-specific period rules, expand row and label dictionaries, improve gross/net and component ranking, use spatial table coordinates where available, and require a larger reviewed corpus before promoting extraction-v2. The UI's `needs_review` and manual-completion flow must remain active whenever the critical-field quality gate is not satisfied.
 
 #### 4.2.6 Functional Verification for Objectives 4–6
 
@@ -961,9 +1061,9 @@ Objectives 4–6 were not subjected to user-study metrics (task-completion time,
 
 | Objective | Scope verified | Harness / suites (examples) | Result |
 |---|---|---|---|
-| 4 — Multi-agent analysis | Parallel domain agents, orchestrator assembly, controller dispatch, Hub `POST /api/ai/full-analysis` path | `ai.parallelAnalysisService`, `ai.payslipAgent`, `agents.orchestrator`, `agentController` | **30 / 30** passed |
+| 4 — Multi-agent analysis | Parallel domain agents, orchestrator assembly, controller dispatch, Hub `POST /api/ai/full-analysis` path | `ai.parallelAnalysisService`, `ai.payslipAgent`, `agents.orchestrator`, `agentController` | **34 / 34** passed |
 | 5 — Savings forecast | Linear projection math and service resolution of document vs manual contribution sources | `linearSavingsForecast`, `savingsForecastService` | **10 / 10** passed |
-| 6 — Hebrew RTL UI mapping | `analysisData` → UI mappers, welcome-back session helpers, payslip upload hook, analysis summary helpers | frontend `documentToPayslip`, `welcomeBackSession`, `usePayslipUpload`, `payslipAnalysisSummary` | **10 / 10** passed |
+| 6 — Hebrew RTL UI mapping | `analysisData` → UI mapping, payslip upload hook, and analysis-summary helpers | frontend `documentToPayslip`, `usePayslipUpload`, `payslipAnalysisSummary` | **10 / 10** passed |
 
 These counts are *functional* evidence: they confirm that orchestrated analysis, forecast calculation, and frontend mapping behave as coded under controlled fixtures. They do **not** measure usability with end users. UI screenshots in Figures 13–17 document the Hebrew surfaces that the Objective 6 routes render.
 
@@ -971,15 +1071,15 @@ These counts are *functional* evidence: they confirm that orchestrated analysis,
 
 The results are interpreted against the six objectives defined in Section 1.3.
 
-**Objective 1 — Automated payslip ingestion and OCR (partially met).** On the n = 7 golden corpus, `gross_total` and `period_month` achieved 100% accuracy and Path 1 resolved every fixture, validating text extraction for Michpal and Malam Plus digital PDFs. `net_payable` reached 85.7% (one Michpal numeric near-miss of ₪300). Deduction line items (`mandatory_total`, `national_insurance`, `health_insurance`) reached only 57.1% due to systematic label-disambiguation failures on Malam Plus multi-row deduction tables — not OCR character recognition failures, but parser logic that conflates adjacent rows. Objective 1 is met for primary salary extraction on gross and period; net and deduction-level accuracy require corpus expansion and label-map refinement.
+**Objective 1 — Automated payslip ingestion and OCR (implemented, accuracy target not yet met).** The production pipeline processed all nine discovered fixtures and selected direct text or OCR fallback as designed. On the seven scored fixtures, however, `gross_total` reached 85.7%, `period_month` 57.1%, and `net_payable` 42.9%. The two IDF image fixtures contain no tracked expected values. Objective 1 is therefore met as an implemented ingestion and extraction workflow, but the current evidence does not justify a claim of reliable field accuracy.
 
 **Objective 2 — Financial findings detection (met on test corpus).** The n = 10 scenario set (synthetic + golden-derived) achieved 100% precision and recall on deposit, rate, and continuity kinds.
 
-**Objective 3 — Personalized AI assistant (largely met).** Intent routing reached 94.9% (37/39) on the expanded Hebrew query set. Two misclassifications involve compound insurance adequacy questions (Section 4.2.4).
+**Objective 3 — Personalized AI assistant (largely met).** Intent routing reached 92.3% (36/39) on the Hebrew query set. The three misses cover an advisory insurance question, a short insurance-status question, and an open-ended provident-fund comparison (Section 4.2.4).
 
-**Objectives 4–6 — Multi-agent analysis, savings forecast, Hebrew UI (implemented and functionally verified).** The multi-agent orchestration (30 automated tests), linear savings forecast (10 tests), and RTL mapping/UI helpers (10 frontend tests) passed on the July 2026 harness (Table 6). No end-user study was conducted; attainment is therefore architectural and functional rather than UX-scored. Figures 13–17 show the corresponding product surfaces.
+**Objectives 4–6 — Multi-agent analysis, savings forecast, Hebrew UI (implemented and functionally verified).** The multi-agent orchestration (34 automated tests), linear savings forecast (10 tests), and RTL mapping/UI helpers (10 frontend tests) passed on the July 2026 harness (Table 6). No end-user study was conducted; attainment is therefore architectural and functional rather than UX-scored. Figures 13–17 show the corresponding product surfaces.
 
-**Pipeline design validation.** Path 1 resolved 100% of the digital golden corpus. Separate forced-path probes (Table 7 and the Path 2 synthetic) show that Path 3 runs when only images are available and that Path 2's broken-encoding detector fires under mojibake labels, but neither probe currently meets the dual gross/net quality gate on these fixtures — confirming `needs_review` as the correct degradation mode rather than silent success.
+**Pipeline design validation.** The recorded evaluation demonstrates that the system changes paths: Malam Plus used direct text, while Michpal and IDF inputs executed through OCR. The low net and deduction accuracy confirms that path execution must be separated from field correctness and that `needs_review` is necessary rather than optional.
 
 **Findings and AI coupling.** The findings engine and AI assistant read the same `analysisData` contract, ensuring consistent answers whether the user views a finding card or asks a conversational question. Hybrid rule-first routing limits hallucination risk on factual queries [11].
 
@@ -1007,7 +1107,7 @@ The following comparison follows a structured format: each alternative's strengt
 - *FinGuide advantage:* Continuous monthly monitoring at no marginal cost per review; immediate findings on each uploaded payslip (Objectives 2, 5).
 - *FinGuide limitation:* Informational only — not certified financial or tax advice; linear savings forecast omits investment returns and inflation.
 
-**Table 5:** Capability comparison matrix (qualitative)
+**Table 5:** Capability comparison matrix (qualitative design comparison; not an empirical vendor benchmark)
 
 | Capability | Manual | Hilan / iCount | Bank PFM | Accountant | FinGuide |
 |---|---|---|---|---|---|
@@ -1020,19 +1120,19 @@ The following comparison follows a structured format: each alternative's strengt
 
 ![Figure 12: Capability comparison summary](figures/fig12-comparison.png)
 
-The matrix summarizes §4.4 in tabular form. FinGuide's measured advantages (Table 1 salary fields, Table 2 findings on n = 10 scenarios) support the compliance and parsing rows; the accountant column remains stronger on certified advice, which FinGuide explicitly disclaims (§1.4).
+The matrix summarizes §4.4 as a qualitative design comparison; it is not the result of direct empirical testing of the named alternatives. FinGuide's own parsing and compliance claims are supported separately by Tables 1 and 2. The accountant column remains stronger on certified advice, which FinGuide explicitly disclaims (§1.4).
 
 ### 4.5 Discussion of Findings
 
 Relative to the primary project aim — enabling Israeli employees to verify, analyze, and act on payslip data without specialist knowledge — the evaluation supports three conclusions.
 
-First, **automated Hebrew payslip extraction is feasible** for digital PDFs from major payroll vendors, with perfect accuracy on `gross_total` and `period_month` in the evaluated corpus and high (but not perfect) accuracy on `net_payable`. The remaining extraction weakness is localized to multi-row deduction tables and occasional net candidate mis-selection — parser refinement problems rather than a fundamental OCR limitation.
+First, **the multi-path Hebrew payslip workflow is operational, but extraction accuracy is not yet sufficient for unattended use**. The recorded evaluation switched correctly between direct text and OCR, but several period, net, base-salary, and deduction fields were wrong or missing. Manual review and correction are therefore part of the present product behavior, not merely an edge-case fallback.
 
-Second, **rule-based compliance checking is reliable** on annotated scenarios when extraction output is complete. The 100% precision and recall on n = 7 synthetic cases demonstrates that the three detectors (deposit, rate, continuity) implement the regulatory models in Section 2.4 correctly [7], [14], [15]. Confidence in real-world deployment requires expanding the findings corpus beyond synthetic payloads.
+Second, **rule-based compliance checking behaves consistently on the limited annotated scenarios when extraction output is complete**. The ten-scenario set produced nine true positives, no false positives, and no false negatives across deposit, rate, and continuity cases. This is regression evidence for the implemented rules, not proof of population-level reliability [7], [14], [15].
 
-Third, **hybrid AI routing is effective but not complete**. The 94.9% intent accuracy on n = 39 queries validates the rule-first design for structured Hebrew financial queries, while two remaining misclassifications on compound insurance questions indicate that keyword routing needs either priority rules for `fallback` or embedding-based classification (Section 5.3).
+Third, **hybrid AI routing is effective but not complete**. The 92.3% intent accuracy on n = 39 queries supports the rule-first design for many structured Hebrew financial queries, while three misses show that advisory and compound questions need improved priority logic or a semantic classifier (Section 5.3).
 
-The project objectives are **substantially met** for extraction (core fields), findings (on test corpus), and AI routing (94.9%), with acknowledged scope limits on corpus size and deduction parsing. Objectives 4–6 are functionally verified by automated tests (Table 6) but lack end-user UX scoring. These outcomes address the research gap stated in §2.8: an integrated Hebrew payslip compliance and advisory platform for employees, without banking API dependency [16], [17].
+The project objectives are **substantially met at the implementation level**, with mixed measured performance: findings scenarios and functional suites pass, AI routing reaches 92.3%, and OCR accuracy exposes material work still required. Objectives 4–6 are functionally verified by automated tests (Table 6) but lack end-user UX scoring. The integrated result addresses the system gap stated in §2.8 without claiming that the limited evaluation establishes production readiness [16], [17].
 
 ---
 
@@ -1042,29 +1142,29 @@ The project objectives are **substantially met** for extraction (core fields), f
 
 This project addressed the problem stated in Section 1.2 — Israeli employees' inability to independently verify payslip compliance and act on financial data — through six objectives. The contributions map to those objectives as follows:
 
-1. **Multi-path Hebrew PDF payslip extraction pipeline** (Objective 1). Combines `pdftotext` / `pdf-parse` direct extraction, numeric rescue, and Tesseract image OCR with PSM multi-candidate ranking, LLM adjudication for conflicting fields, and the `analysisData` v1.9 canonical schema. Golden-fixture evaluation (n = 7) reported 100% on `gross_total` and `period_month`, 85.7% on `net_payable`, and 57.1% on deduction line items.
+1. **Multi-path Hebrew PDF payslip extraction pipeline** (Objective 1). Combines `pdftotext` / `pdf-parse` direct extraction, numeric rescue, and Tesseract image OCR with PSM multi-candidate ranking, LLM adjudication for conflicting fields, and the `analysisData` v1.9 canonical schema. On the seven scored fixtures, the reproduced run reached 85.7% on `gross_total`, 57.1% on `period_month`, and 42.9% on `net_payable`; the result establishes a measurable baseline and documents the need for continued extraction work.
 
 2. **Rule-based financial findings engine** (Objective 2). Three detectors — missing fund deposits, contribution rate gaps (including below-statutory-minimum subtypes), and deposit continuity — achieved 100% precision and recall on the annotated findings scenario corpus.
 
-3. **Hybrid AI assistant** (Objective 3). Keyword intent routing (24 categories) with rule-based data-grounded responses and Claude/Ollama fallback; 94.9% intent classification accuracy on n = 39 Hebrew queries; SSE streaming for conversational delivery.
+3. **Hybrid AI assistant** (Objective 3). Keyword intent routing (26 possible labels, including greeting and fallback) with rule-based data-grounded responses and Claude/Ollama fallback; 92.3% intent classification accuracy on n = 39 Hebrew queries; SSE streaming for conversational delivery.
 
-4. **Multi-agent financial analysis orchestration** (Objective 4). Four parallel domain agents (payslip, insurance, pension, financial profile) with recommendation merging, a 100-point composite health score, and orchestrator narrative generation via `POST /api/ai/full-analysis`. Verified by 30 automated agent/orchestrator unit tests (Table 6).
+4. **Multi-agent financial analysis orchestration** (Objective 4). Five parallel agents (payslip, insurance, pension, provident fund, and financial profile) with recommendation merging, a 100-point composite health score, and orchestrator narrative generation via `POST /api/ai/full-analysis`. Verified by 34 automated agent/orchestrator unit tests (Table 6).
 
 5. **Longitudinal financial planning** (Objective 5). Linear savings forecast module with scenario comparison, grounded in extracted pension contribution rates from the most recent completed payslip. Verified by 10 automated forecast unit tests (Table 6).
 
-6. **Hebrew-native RTL web application** (Objective 6). React 19 and TypeScript SPA with Hub dashboard, payslip history, findings deep-links, AI assistant, and onboarding profile capture — all UI copy in Hebrew with `direction: rtl` (Figures 13–17). Verified by 10 frontend mapping and session helper tests (Table 6).
+6. **Hebrew-native RTL web application** (Objective 6). React 19 and TypeScript SPA with Hub dashboard, payslip history, findings deep-links, AI assistant, and onboarding profile capture. Primary user-facing surfaces use Hebrew and RTL layout (`direction: rtl`; Figures 13–17). Verified by 10 frontend mapping, upload-hook, and analysis-summary tests (Table 6).
 
 ### 5.2 Limitations
 
-**Evaluation corpus size.** OCR accuracy (n = 7), findings precision/recall (n = 10), and AI routing (n = 39) were measured on small, manually constructed corpora. Results validate the implementation on representative cases but do not support broad generalization across all Israeli payroll vendors and employment configurations.
+**Evaluation corpus size and annotations.** OCR accuracy uses seven scored fixtures, with two additional IDF image fixtures containing no tracked expected fields; findings use n = 10 and AI routing n = 39. The repository does not document a formal independent annotation protocol. These small, committed test sets support reproducibility and regression checking but do not support broad generalization across Israeli payroll vendors and employment configurations.
 
-**OCR completeness.** Deduction line items showed 57.1% accuracy on Malam Plus fixtures due to multi-row label disambiguation. `net_payable` mismatched on one Michpal fixture (85.7%). Non-standard employer layouts and scanned payslips may yield `needs_review` status requiring manual field entry.
+**OCR completeness.** In the reproduced run, `gross_total` reached 85.7%, `period_month` 57.1%, and `net_payable` 42.9% across the seven scored fixtures. Period shifts, missing or incorrect net values, and row-level deduction confusion may yield `needs_review` status requiring manual field entry.
 
 **Extraction quality gate.** The requirement that both `gross_total > 500` and `net_payable > 500` be present is a pragmatic heuristic that may reject legitimate edge cases (e.g., zero-gross unpaid-leave months).
 
-**Synchronous processing.** Upload extraction runs inside the HTTP request cycle. Multi-page image OCR may add 10–20 seconds of latency; `processDocumentAsync` exists but is not wired to the upload flow.
+**Synchronous processing.** Upload extraction runs inside the HTTP request cycle. In the reproduced run, the two IDF image fixtures required approximately 23 and 27 seconds. The current repository does not include a persistent job-queue integration, so long OCR requests have no durable retry mechanism.
 
-**Schema-less `analysisData`.** MongoDB `Schema.Types.Mixed` storage enables rapid schema iteration but sacrifices database-level query enforcement on nested extraction fields.
+**Flexible `analysisData`.** `Document.analysisData` is declared as Mongoose `type: Object`, enabling schema iteration but sacrificing database-level enforcement of nested extraction fields.
 
 **LLM knowledge cutoff.** The assistant may cite outdated regulatory figures unless overridden by system-prompt constants; users must verify specific statutory amounts.
 
@@ -1081,7 +1181,7 @@ This project addressed the problem stated in Section 1.2 — Israeli employees' 
 Future work is prioritized by expected impact on the objectives in Section 1.3:
 
 **High impact — extraction and scale**
-1. *Asynchronous processing.* Integrate `processDocumentAsync` with a job queue (Bull/BullMQ) to decouple upload latency from OCR duration and enable retry on transient failures.
+1. *Asynchronous processing.* Place the existing extraction service behind a persistent job queue such as BullMQ to decouple upload latency from OCR duration and enable retry after transient failures.
 2. *Expanded golden corpus.* Grow the OCR and findings evaluation sets across Hilan, iCount, Priority, and scanned payslips to strengthen generalization claims.
 3. *Extraction-v2 promotion.* Promote the offline-evaluated next-generation extractor to production once it exceeds the rule-based baseline on an expanded corpus.
 
@@ -1112,7 +1212,7 @@ Future work is prioritized by expected impact on the objectives in Section 1.3:
 
 [6] Xu, Y., Li, M., Cui, L., Huang, S., Wei, F., & Zhou, M. (2020). LayoutLM: Pre-training of text and layout for document image understanding. *Proceedings of the 26th ACM SIGKDD International Conference on Knowledge Discovery & Data Mining*, pp. 1192–1200.
 
-[7] Israel Ministry of Finance. (2008). *Pension Obligation Law (חוק הפנסיה החובה)*. State of Israel. Published in Reshumot (Official Gazette) 2156, 2008.
+[7] State of Israel. (2008). *Extension Order for Comprehensive Pension Insurance in the Economy (Combined Version)* (צו הרחבה [נוסח משולב] לפנסיה חובה), and subsequent amendments.
 
 [8] Lusardi, A., & Mitchell, O. S. (2014). The economic importance of financial literacy: Theory and evidence. *Journal of Economic Literature*, 52(1), 5–44.
 
@@ -1126,9 +1226,9 @@ Future work is prioritized by expected impact on the objectives in Section 1.3:
 
 [13] World Wide Web Consortium (W3C). (2015). *Server-Sent Events specification*. W3C Recommendation. https://www.w3.org/TR/eventsource/
 
-[14] Israel Tax Authority. (2026). *Income tax rates, brackets, and credit points for the 2026 tax year*. Israel Ministry of Finance. https://www.gov.il/he/departments/topics/income_tax
+[14] Israel Tax Authority. (2026). *Monthly deductions booklet and calculation tables for tax year 2026*. Israel Ministry of Finance. https://www.gov.il/BlobFolder/generalpage/income-tax-monthly-deductions-booklet/he/generalInformation_income-tax-monthly-deductions-booklet_monthly-deductions-booklet-2026.pdf
 
-[15] National Insurance Institute of Israel. (2026). *National Insurance and health levy contribution rates*. State of Israel. https://www.btl.gov.il/
+[15] National Insurance Institute of Israel. (2026). *Rates and amounts of National Insurance and health-insurance contributions for salaried employees*. https://www.btl.gov.il/INSURANCE/RATES/Pages/%D7%9C%D7%A2%D7%95%D7%91%D7%93%D7%99%D7%9D%20%D7%A9%D7%9B%D7%99%D7%A8%D7%99%D7%9D.aspx
 
 [16] OECD. (2020). *OECD/INFE 2020 International Survey of Adult Financial Literacy*. OECD Publishing. https://www.oecd.org/financial/education/
 
@@ -1140,7 +1240,7 @@ Future work is prioritized by expected impact on the objectives in Section 1.3:
 
 ## Appendix A: API Endpoint Reference
 
-The following table lists all API endpoints exposed by the FinGuide backend. All endpoints except those under `/api/auth` and `GET /api/health` require a valid JWT Bearer token in the `Authorization` header.
+The following tables summarize the FinGuide API. Authentication is applied per route rather than solely by prefix: public authentication actions and `GET /api/health` do not require a token, while user-specific operations require a valid JWT Bearer token unless the route documentation states otherwise. The route source is authoritative for deployment and security review.
 
 ### Authentication (`/api/auth`)
 
@@ -1151,7 +1251,6 @@ The following table lists all API endpoints exposed by the FinGuide backend. All
 | POST | `/api/auth/google` | Authenticate with a Google ID token |
 | GET | `/api/auth/me` | Return the authenticated user's profile |
 | PATCH | `/api/auth/me` | Update name or email |
-| POST | `/api/auth/welcome/complete` | Mark first-run welcome flow as completed |
 | POST | `/api/auth/change-password` | Change password for authenticated user |
 | POST | `/api/auth/profile/image` | Upload a profile image (JPEG/PNG/HEIC, resized to 512×512) |
 | POST | `/api/auth/forgot-password` | Send a password reset email |
@@ -1192,8 +1291,6 @@ The following table lists all API endpoints exposed by the FinGuide backend. All
 | GET | `/api/ai/chat/conversations` | List distinct conversation threads |
 | GET | `/api/ai/financial-tips` | Return rule-based financial tips |
 | POST | `/api/ai/full-analysis` | Run the full multi-agent financial analysis |
-| POST | `/api/ai/debate` | Multi-agent debate analysis (non-streaming) |
-| POST | `/api/ai/debate/stream` | Multi-agent debate via SSE |
 
 ### Pension (`/api/pension`)
 
@@ -1254,6 +1351,7 @@ The following table lists all API endpoints exposed by the FinGuide backend. All
 |---|---|---|
 | GET | `/api/health` | Health check (unauthenticated) |
 | GET/PUT/POST | `/api/onboarding/*` | User onboarding flow |
+| GET/POST | `/api/smart-onboarding/*` | Guided domain onboarding state and answers |
 | GET/PATCH | `/api/profile/*` | Extended user profile management |
 | GET/POST/DELETE | `/api/integrations/gmail/*` | Gmail OAuth and payslip import |
 | GET | `/api/financial-health/score` | Financial health score and breakdown |
@@ -1263,11 +1361,13 @@ The following table lists all API endpoints exposed by the FinGuide backend. All
 | GET | `/api/tax-assistant/summary` | Tax assistant and Form 106 support |
 | GET/POST/PUT/DELETE | `/api/copilot/*` | Copilot assistant endpoints |
 | GET/POST | `/api/score-agent/*` | Score agent gaps and answers |
+| GET/POST/DELETE | `/api/gemel/*` | Provident-fund analysis, records, and reports |
 | GET | `/api/dashboard/summary` | Dashboard aggregation |
 | GET/POST | `/api/agents/*` | Agent ask/list and RAG endpoints |
 | GET/POST | `/api/summary-email/*` | Summary email / WhatsApp helpers |
+| GET | `/api/executive/*` | Executive report data and PDF generation |
 
-Twenty Express route modules are mounted in `app.js` (auth, documents, ai, findings, onboarding, profile, insights, recommendations, notifications, Gmail, tax-assistant, financial-health, copilot, score-agent, pension, insurance, dashboard, agents, gov, summary-email).
+Twenty-three Express route modules are mounted in `app.js` (auth, documents, ai, findings, onboarding, smart-onboarding, profile, insights, recommendations, notifications, Gmail, tax-assistant, financial-health, copilot, score-agent, pension, gemel, insurance, dashboard, agents, gov, summary-email, executive report).
 
 ---
 
@@ -1294,22 +1394,29 @@ npm run install:all
 | `JWT_SECRET` | Yes (≥10 chars) | JWT signing |
 | `MONGODB_URI` | Yes | MongoDB connection |
 | `PORT` | No (default 5000) | API port |
-| `CLIENT_URL` | Yes | CORS whitelist |
+| `CLIENT_URL` | Production setting | Additional allowed frontend origin for CORS |
 | `GOOGLE_CLIENT_ID` | For OAuth | Google Sign-In |
-| `ANTHROPIC_API_KEY` | For Claude | AI assistant |
+| `GOOGLE_CLIENT_SECRET` | For Gmail | Gmail authorization-code exchange |
+| `GOOGLE_TOKEN_ENCRYPTION_KEY` | Recommended for Gmail | Encrypt stored Gmail tokens; falls back to `JWT_SECRET` |
+| `ANTHROPIC_API_KEY` | For Claude/vision | Standard chat, agent explanations, and vision extraction |
+| `CHAT_PROVIDER`, `CHAT_MODEL` | Optional | Standard `/api/ai/chat` provider/model controls |
+| `AI_PROVIDER`, `OPENAI_API_KEY`, `OPENAI_MODEL` | Optional | Separate domain-narrative provider adapter |
 | `OLLAMA_URL`, `OLLAMA_MODEL` | Optional | LLM fallback |
+| `PAYSLIP_EXTRACTION_MODE` | No (`legacy`) | Select legacy OCR cascade or Claude `vision` path |
+| `PAYSLIP_VISION_MODEL` | For vision tuning | Vision model, default `claude-sonnet-4-6` |
+| `GOV_MARKET_CRON_ENABLED`, `GOV_MARKET_CRON_SCHEDULE`, `GOV_MARKET_CRON_TZ` | Optional | In-process government-market synchronization |
 | `MAX_UPLOAD_SIZE_MB` | No (default 10) | Upload limit |
 
-Frontend `.env`: `VITE_API_URL`, `VITE_GOOGLE_CLIENT_ID`.
+Frontend development settings: `VITE_API_URL` controls the Vite proxy target and `VITE_GOOGLE_CLIENT_ID` configures Google Sign-In. Production API calls are relative paths, so the deployment reverse proxy should expose `/api` on the same public origin.
 
 ### B.4 Run development stack
 
 ```bash
-npm run dev              # backend :5000 + frontend :5173
+npm run dev              # backend on PORT (documented example: 5001) + frontend :5173
 npm run dev:docker       # MongoDB + backend with OCR tools; backend on host port 5001
 ```
 
-When using `dev:docker`, set frontend `VITE_API_URL` (or Vite proxy) to the backend on port **5001**.
+Vite already defaults its API proxy to **5001**; set `VITE_API_URL` only when the backend is exposed on a different address or port.
 
 ### B.5 Evaluation and benchmark commands
 
@@ -1326,13 +1433,11 @@ npm test
 
 ```bash
 cd Final_Project_Book
-export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"  # macOS; updates figures/puppeteer.config.json
+export CHROME_PATH="/usr/bin/google-chrome"  # Linux; use the Chrome executable path on macOS
 npm run build          # figures + PDF
 npm run build:pdf      # PDF only (if figures already rendered)
 npm run serve          # preview at http://127.0.0.1:8765
 ```
-
----
 
 ## Appendix C: analysisData v1.9 Field Reference
 
