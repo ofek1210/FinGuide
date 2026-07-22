@@ -32,8 +32,37 @@ const CARD: React.CSSProperties = {
   borderRadius: "var(--radius)",
   padding: "24px 26px",
   boxShadow: "var(--shadow-soft)",
-  maxWidth: 640,
 };
+
+/* the design's horizontal import strip */
+const STRIP: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 18,
+  padding: "22px 24px",
+  borderRadius: "var(--radius)",
+  background: "var(--lav-50)",
+  border: "1px solid var(--border-soft)",
+  flexWrap: "wrap",
+};
+
+function stripBtn(primary = false): React.CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 7,
+    padding: "10px 16px",
+    borderRadius: "var(--r-btn)",
+    border: primary ? "none" : "1px solid var(--border-soft)",
+    background: primary ? "var(--lav-600)" : "var(--card)",
+    color: primary ? "#fff" : "var(--text-strong)",
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontWeight: 700,
+    fontSize: 13,
+    whiteSpace: "nowrap",
+  };
+}
 
 function actionBtn(active = false): React.CSSProperties {
   return {
@@ -175,90 +204,84 @@ export default function HubDocumentCenter({
 
   const clearinghouseStatus = clearinghouseFundCount > 0 ? "ok" : "missing";
 
-  return (
-    <section ref={sectionRef} id="hub-document-center" style={{ marginBottom: 32, scrollMarginTop: 90 }}>
-      <h2 style={{ margin: "0 0 6px", fontSize: "clamp(20px,2.4vw,26px)", fontWeight: 900, color: "var(--text-strong)" }}>
-        דוח המסלקה הפנסיונית
-      </h2>
-      <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--text-muted)", fontWeight: 500, maxWidth: 520 }}>
-        מהסוכן הראשי מעלים רק את דוח המסלקה (~15 ₪). דוח אחד מזין את סוכן הפנסיה, סוכן הגמל וכיסויים פנסיוניים.
-        תלושים ודוח הר הביטוח — דרך הסוכנים שלהם.
-      </p>
+  const idle = clearinghouseFlow === "idle" && !clearinghouseSuccess.length;
 
-      <article data-document-card="clearinghouse" style={CARD}>
-        <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
-          <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--lav-100)", color: "var(--lav-600)", display: "grid", placeItems: "center" }}>
-            <FileSpreadsheet size={22} />
-          </span>
-          <div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>ייבוא דוח Excel מהמסלקה</h3>
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: clearinghouseStatus === "ok" ? "var(--mint-ink)" : "var(--text-muted)" }}>
-              {clearinghouseStatus === "ok" ? `${clearinghouseFundCount} מוצרים במעקב` : "טרם יובא דוח — הזמינו או העלו כשיגיע"}
-            </p>
+  return (
+    <section ref={sectionRef} id="hub-document-center" style={{ marginBottom: 20, scrollMarginTop: 90 }}>
+      {/* horizontal import strip */}
+      <div data-document-card="clearinghouse" style={STRIP}>
+        <span style={{ width: 48, height: 48, borderRadius: 13, flex: "none", background: "var(--card)", color: "var(--lav-600)", display: "grid", placeItems: "center", boxShadow: "var(--shadow-soft)" }}>
+          <FileSpreadsheet size={22} />
+        </span>
+        <div style={{ flex: 1, minWidth: 220 }}>
+          <div style={{ fontWeight: 900, fontSize: 16.5, letterSpacing: "-.015em", color: "var(--text-strong)" }}>ייבוא דוח Excel מהמסלקה הפנסיונית</div>
+          <div style={{ fontSize: 13.5, color: clearinghouseStatus === "ok" ? "var(--mint-ink)" : "var(--text-muted)", marginTop: 3, lineHeight: 1.5 }}>
+            {clearinghouseStatus === "ok"
+              ? `${clearinghouseFundCount} מוצרים במעקב · דוח אחד מזין את סוכן הפנסיה, סוכן הגמל וכיסויים פנסיוניים.`
+              : "דוח אחד (~15 ₪) מזין את סוכן הפנסיה, סוכן הגמל וכיסויים פנסיוניים — דרך הסוכנים שלהם."}
           </div>
         </div>
-
-        {clearinghouseFlow === "idle" && !clearinghouseSuccess.length && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {clearinghouseStatus === "ok" ? (
-              <button type="button" style={actionBtn(true)} onClick={() => setClearinghouseFlow("upload")}>
-                <Upload size={14} /> העלה דוח מעודכן
-              </button>
-            ) : null}
-            <button type="button" style={actionBtn()} onClick={() => setClearinghouseFlow("guide")}>איך מזמינים את הדוח</button>
-            <button type="button" style={actionBtn()} onClick={() => setClearinghouseFlow("upload")}>כבר יש לי דוח</button>
-            <button type="button" style={actionBtn()} onClick={() => {
+        {idle && (
+          <div style={{ display: "flex", gap: 9, flexWrap: "wrap" }}>
+            <button type="button" style={stripBtn()} onClick={() => setClearinghouseFlow("guide")}>איך מזמינים את הדוח</button>
+            <button type="button" style={stripBtn()} onClick={() => {
               if (user?.id) markClearinghouseIntakeWaiting(user.id);
               setClearinghouseFlow("waiting");
             }}>
               <Clock size={14} /> הזמנתי ואני ממתין/ה
             </button>
+            <button type="button" style={stripBtn(true)} onClick={() => setClearinghouseFlow("upload")}>
+              <Upload size={14} /> {clearinghouseStatus === "ok" ? "העלה דוח מעודכן" : "כבר יש לי דוח"}
+            </button>
           </div>
         )}
+      </div>
 
-        {clearinghouseFlow === "guide" && (
-          <div style={{ marginTop: 8 }}>
+      {/* expanded flow — opens below the strip */}
+      {!idle && (
+        <article style={{ ...CARD, marginTop: 14 }}>
+          {clearinghouseFlow === "guide" && (
             <ClearinghouseImportGuide
               compact
               onBack={() => setClearinghouseFlow("idle")}
               onContinue={() => setClearinghouseFlow("upload")}
               onVisitSite={() => window.open(CLEARINGHOUSE_SITE_URL, "_blank", "noopener,noreferrer")}
             />
-          </div>
-        )}
+          )}
 
-        {clearinghouseFlow === "waiting" && (
-          <div style={{ marginTop: 16 }}>
-            <button type="button" onClick={() => setClearinghouseFlow("idle")} style={{ ...actionBtn(), marginBottom: 12 }}>← חזרה</button>
-            <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.6, color: "var(--text-muted)" }}>
-              מצוין — הדוח יגיע תוך עד 24 שעות. כשיגיע, בחרו «כבר יש לי דוח» להעלאה.
-            </p>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--text-faint)" }}>
-              בינתיים אפשר להמשיך לסוכן התלושים ולסוכן הביטוח.
-            </p>
-          </div>
-        )}
+          {clearinghouseFlow === "waiting" && (
+            <div>
+              <button type="button" onClick={() => setClearinghouseFlow("idle")} style={{ ...actionBtn(), marginBottom: 12 }}>← חזרה</button>
+              <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.6, color: "var(--text-muted)" }}>
+                מצוין — הדוח יגיע תוך עד 24 שעות. כשיגיע, בחרו «כבר יש לי דוח» להעלאה.
+              </p>
+              <p style={{ margin: 0, fontSize: 13, color: "var(--text-faint)" }}>
+                בינתיים אפשר להמשיך לסוכן התלושים ולסוכן הביטוח.
+              </p>
+            </div>
+          )}
 
-        {clearinghouseFlow === "upload" && !clearinghouseSuccess.length && (
-          <ClearinghouseUploadPanel
-            onBack={() => setClearinghouseFlow("idle")}
-            onSuccess={readiness => {
-              setClearinghouseSuccess(clearinghouseReadinessLines(readiness));
-              setClearinghouseFlow("success");
-              if (user?.id) markClearinghouseIntakeComplete(user.id);
-              onUploadComplete?.();
-            }}
-          />
-        )}
+          {clearinghouseFlow === "upload" && !clearinghouseSuccess.length && (
+            <ClearinghouseUploadPanel
+              onBack={() => setClearinghouseFlow("idle")}
+              onSuccess={readiness => {
+                setClearinghouseSuccess(clearinghouseReadinessLines(readiness));
+                setClearinghouseFlow("success");
+                if (user?.id) markClearinghouseIntakeComplete(user.id);
+                onUploadComplete?.();
+              }}
+            />
+          )}
 
-        {clearinghouseSuccess.length > 0 && (
-          <UploadSuccessPanel
-            title="דוח המסלקה נקלט בהצלחה"
-            lines={clearinghouseSuccess}
-            onDone={() => { setClearinghouseFlow("idle"); setClearinghouseSuccess([]); }}
-          />
-        )}
-      </article>
+          {clearinghouseSuccess.length > 0 && (
+            <UploadSuccessPanel
+              title="דוח המסלקה נקלט בהצלחה"
+              lines={clearinghouseSuccess}
+              onDone={() => { setClearinghouseFlow("idle"); setClearinghouseSuccess([]); }}
+            />
+          )}
+        </article>
+      )}
     </section>
   );
 }
