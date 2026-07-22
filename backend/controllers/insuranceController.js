@@ -5,7 +5,7 @@ const { parseInsuranceExcel } = require('../services/insuranceExcelParser');
 const { isHarHaBituachBuffer } = require('../services/harHaBituachService');
 const { buildInsuranceAnalysis, importInsuranceExcel } = require('../services/insuranceImportService');
 const { buildMarketAdvice } = require('../services/insuranceMarketAdvisorService');
-const { computeBufferChecksum, assertUploadNotDuplicate } = require('../utils/duplicateUpload');
+const { computeBufferChecksum } = require('../utils/duplicateUpload');
 const {
   getSession,
   submitAnswer,
@@ -58,7 +58,8 @@ async function uploadInsuranceExcel(req, res, next) {
 
   try {
     const checksum = computeBufferChecksum(req.file.buffer);
-    await assertUploadNotDuplicate(req.user._id, checksum);
+    // Insurance reports may be re-uploaded (same Har HaBituach file) to refresh policies —
+    // upsertImportedPolicies replaces stale har_bituach rows; do not block on checksum.
 
     const parsed = parseInsuranceExcel(req.file.buffer, req.file.originalname);
 

@@ -156,42 +156,32 @@ export type PensionHealthCheckDTO = {
   disclaimer: string;
 };
 
-export type PensionFormattedRecommendationDTO = {
-  insightId: string;
-  title: string;
-  explanation: string;
-  whyItMatters?: string;
-  nextStep?: string;
-  financialImpact?: {
-    amount?: number | null;
-    currency?: string;
-    period?: "annual" | "retirement" | string;
-  } | null;
-  evidence?: Record<string, unknown> | null;
-};
+export type {
+  AccountAnalysis,
+  AdvisoryDataQuality,
+  AdvisoryLlmMeta,
+  AdvisoryMarketData,
+  AdvisoryMissingDataItem,
+  CardOutcome,
+  ConfidenceLevel,
+  PrimaryRecommendation,
+  RecommendationCard as RecommendationCardDTO,
+  RecommendationCardType,
+  RecommendationEngine,
+  ThreeCardAdvisoryData,
+  ThreeCardMeta,
+} from "./financialAdvisory.types";
+
+export type RecommendationConfidenceLevel = import("./financialAdvisory.types").ConfidenceLevel;
+
+export type PensionFormattedRecommendationDTO = import("./financialAdvisory.types").PrimaryRecommendation;
 
 export type PensionAnalysisData = {
   summary: PensionSummaryDTO;
   projection: PensionProjectionDTO | null;
-  benchmark?: PensionBenchmarkDTO;
-  healthCheck?: PensionHealthCheckDTO;
-  recommendations: PensionRecommendationDTO[];
-  structuredInsights?: PensionStructuredInsightDTO[];
-  primaryRecommendations?: PensionFormattedRecommendationDTO[];
-  positiveFindings?: PensionStructuredInsightDTO[];
-  additionalInsights?: PensionStructuredInsightDTO[];
-  llm?: { used: boolean; provider?: string | null; fallbackUsed?: boolean; reason?: string | null };
-  llmSummary?: string | null;
-  disclaimer?: string | null;
-  productDisclaimer?: string | null;
-  prioritizationStats?: {
-    rawCount?: number;
-    centralCount?: number;
-    positiveCount?: number;
-    mergedOrHidden?: number;
-  };
-  insightMeta?: PensionInsightMetaDTO | null;
-};
+  profile?: Record<string, unknown> | null;
+  productType?: "PENSION" | string;
+} & Partial<import("./financialAdvisory.types").ThreeCardAdvisoryData>;
 
 export type PensionAnalysisResponse = {
   success: boolean;
@@ -351,6 +341,14 @@ export type UploadPensionFileResponse = {
     warnings: string[];
     funds: PensionFundDTO[];
     summary?: { totalFunds: number; totalBalance: number | null; fundTypes: string[] };
+    agentReadiness?: {
+      pensionReady: boolean;
+      gemelReady: boolean;
+      pensionInsuranceReady: boolean;
+      pensionFundCount: number;
+      gemelFundCount: number;
+      pensionCoverageCount: number;
+    };
   };
 };
 
@@ -453,7 +451,7 @@ export const completeManualPensionFunds = async (funds: ManualFundEntry[]) => {
 export const getPensionLeadingFunds = (risk: PensionRiskLevel, refresh = false) => {
   const qs = new URLSearchParams({ risk });
   if (refresh) qs.set("refresh", "true");
-  return apiJson<PensionLeadingFundsResponse>(`/api/pension/leading-funds?${qs.toString()}`, { auth: true });
+  return apiJson<PensionLeadingFundsResponse>(`/api/pension/leading-funds/finq?${qs.toString()}`, { auth: true });
 };
 
 export const getPensionMarketFund = (id: string, risk?: PensionRiskLevel) => {

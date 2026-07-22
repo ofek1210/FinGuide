@@ -157,6 +157,14 @@ function buildQuestionBank(ctx) {
     );
   } else {
     bank.push(
+      q('vehicle.vehicles_owned', {
+        agent: 'general',
+        category: 'vehicle',
+        text: 'כמה רכבים רשומים כיום על שמך?',
+        why: 'מספר הרכבים נדרש כדי לבדוק אם מספר פוליסות הרכב בדוח מייצג כפילות או רכבים שונים.',
+        type: 'number',
+        profilePath: 'insuranceOnboarding.vehicle.vehiclesOwned',
+      }),
       q('vehicle.still_owns', {
         agent: 'general',
         category: 'vehicle',

@@ -1,6 +1,6 @@
 /**
- * PensionLeadingFundsTable — Finq leading comprehensive funds by risk cohort.
- * Tab switcher + RTL table wired to GET /api/pension/leading-funds?risk=
+ * PensionLeadingFundsTable — legacy Finq leading comprehensive funds by risk cohort.
+ * Dev-only when VITE_SHOW_FINQ_LEADING_FUNDS=true. Wired to GET /api/pension/leading-funds/finq
  */
 import { useCallback, useEffect, useState } from "react";
 import { AlertCircle, Info, Loader2, Sparkles, TrendingUp, UserCheck } from "lucide-react";

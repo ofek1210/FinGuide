@@ -344,8 +344,12 @@ export default function SettingsPage() {
             </div>
 
             {([
-              ["נתוני פנסיה", "מחיקת כל קרנות הפנסיה שצברת", "pension", "/api/pension/funds", "נתוני הפנסיה נמחקו"],
-              ["נתוני ביטוח", "מחיקת כל פוליסות הביטוח שמופו", "insurance", "/api/insurance/data", "נתוני הביטוח נמחקו"],
+              ["אונבורדינג — פנסיה", "מחיקת תשובות השאלון של סוכן הפנסיה (לא מוחק דוחות)", "onb-pension", "/api/smart-onboarding/agents/pension", "נתוני האונבורדינג של הפנסיה נמחקו"],
+              ["אונבורדינג — ביטוח", "מחיקת תשובות השאלון של סוכן הביטוח", "onb-insurance", "/api/insurance/onboarding", "נתוני האונבורדינג של הביטוח נמחקו"],
+              ["אונבורדינג — תלושים", "מחיקת תשובות השאלון של סוכן התלושים", "onb-payslip", "/api/smart-onboarding/agents/payslip", "נתוני האונבורדינג של התלושים נמחקו"],
+              ["אונבורדינג — גמל", "מחיקת תשובות השאלון של סוכן הגמל", "onb-gemel", "/api/smart-onboarding/agents/gemel", "נתוני האונבורדינג של הגמל נמחקו"],
+              ["דוח המסלקה הפנסיונית", "מחיקת נתונים שיובאו מדוח Excel של המסלקה (~15 ₪)", "clearinghouse", "/api/pension/clearinghouse", "דוח המסלקה נמחק"],
+              ["דוח הר הביטוח", "מחיקת פוליסות שיובאו מדוח Excel של הר הביטוח", "har-bituach", "/api/insurance/data", "דוח הר הביטוח נמחק"],
             ] as const).map(([t, d, key, endpoint, ok]) => (
               <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "15px 0", borderBottom: "1px solid rgba(214,69,69,.14)" }}>
                 <div>
@@ -357,6 +361,16 @@ export default function SettingsPage() {
                 </button>
               </div>
             ))}
+
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, padding: "15px 0", borderBottom: "1px solid rgba(214,69,69,.14)" }}>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: 14.5, color: "var(--text-strong)" }}>כל תלושי השכר</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>מחיקת כל התלושים והניתוחים — ניתן גם לנהל תלושים בסוכן התלושים</div>
+              </div>
+              <button style={dangerBtn} disabled={privacyLoading === "docs"} onClick={() => runDanger("docs", "למחוק את כל התלושים והניתוחים? פעולה זו אינה הפיכה.", "/api/documents/all", "כל התלושים נמחקו", "שגיאה במחיקת התלושים")}>
+                {privacyLoading === "docs" ? <Loader2 size={13} style={{ animation: "spin .8s linear infinite" }} /> : <Trash2 size={14} />} מחק
+              </button>
+            </div>
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, paddingTop: 16 }}>
               <div>

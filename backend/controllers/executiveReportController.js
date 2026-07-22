@@ -53,7 +53,7 @@ async function downloadExecutiveReportPdf(req, res) {
   const pdfBuffer = await generateExecutiveReportPdf(report);
   const date = new Date(report.meta?.generatedAt || Date.now()).toISOString().slice(0, 10);
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `attachment; filename="FinGuide-Financial-Report-${date}.pdf"`);
+  res.setHeader('Content-Disposition', `attachment; filename="FinGuide-Personal-Report-${date}.pdf"`);
   return res.send(pdfBuffer);
 }
 

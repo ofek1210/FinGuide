@@ -10,14 +10,17 @@ import { APP_ROUTES } from "../types/navigation";
 import { AGENT_KEY, DOMAIN_TO_AGENT } from "../components/hub/masterAgentMerge";
 import { useMasterAgent } from "../components/hub/useMasterAgent";
 import { useHubData } from "../components/hub/useHubData";
-import MasterBand from "../components/hub/MasterBand";
+import MasterBand, { type LastReportMeta } from "../components/hub/MasterBand";
 import AgentSummaryCard from "../components/hub/AgentSummaryCard";
 import CommandBar from "../components/hub/CommandBar";
 import AgentSyncOverlay from "../components/hub/AgentSyncOverlay";
 import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
 import { useRegisterPageContext } from "../assistant/AiChatProvider";
 import { getLatestExecutiveReport } from "../api/executiveReport.api";
-import type { LastReportMeta } from "../components/hub/MasterBand";
+import HubReadinessPanel from "../components/hub/HubReadinessPanel";
+import HubDocumentCenter from "../components/hub/HubDocumentCenter";
+import HubClearinghouseWelcomeModal from "../components/hub/HubClearinghouseWelcomeModal";
+import { parseHubDocumentParam, shouldShowClearinghouseWelcome } from "../utils/hubDocuments";
 
 /* ============================================================
    Hub — the master agent's home. One editorial page in the
@@ -49,12 +52,19 @@ export default function HubPage() {
       if (cancelled || !latest.success || !latest.found) return;
       setLastReport({
         savedAt: latest.savedAt,
-        score: latest.report.meta.globalHealthScore ?? null,
-        topAction: latest.report.sections.topPriorityActions[0]?.title ?? null,
+        score: null,
+        topAction: latest.report.sections.agentReport?.whatToDo[0]?.title
+          ?? latest.report.sections.agentReport?.agentSections
+            ?.find(s => s.recommendationStatus === "hasRecommendations")
+            ?.recommendations[0]?.title
+          ?? null,
       });
     });
     return () => { cancelled = true; };
   }, []);
+
+  // Deep-link from agent pages or readiness panel (/hub?document=clearinghouse|insurance|payslips)
+  const focusDocument = parseHubDocumentParam(new URLSearchParams(location.search).get("document"));
 
   // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
   // scroll to the master-agent chat and focus its input.
@@ -91,6 +101,14 @@ export default function HubPage() {
   const greeting = timeOfDayGreeting();
   const reviewLabel = new Date().toLocaleDateString("he-IL", { month: "long", year: "numeric" });
 
+  const showClearinghouseWelcome = shouldShowClearinghouseWelcome(
+    user?.id,
+    data.totalClearinghouseProducts,
+    data.loading,
+  );
+  const [welcomeDismissed, setWelcomeDismissed] = useState(false);
+  const clearinghouseModalOpen = showClearinghouseWelcome && !welcomeDismissed;
+
   const oppLine = data.loading
     ? "טוענים את התמונה הפיננסית שלך…"
     : data.opportunities === 1
@@ -118,6 +136,15 @@ export default function HubPage() {
       )}
 
       <PrivateTopbar />
+
+      {user?.id && (
+        <HubClearinghouseWelcomeModal
+          open={clearinghouseModalOpen}
+          userId={user.id}
+          onClose={() => setWelcomeDismissed(true)}
+          onUploadComplete={data.reload}
+        />
+      )}
 
       <main style={{ maxWidth: 1160, margin: "0 auto", padding: "44px 24px 80px" }}>
         {/* greeting */}
@@ -149,6 +176,18 @@ export default function HubPage() {
           savedScore={data.healthScore}
         />
 
+        <HubDocumentCenter
+          focusDocument={focusDocument === "clearinghouse" ? focusDocument : null}
+          clearinghouseFundCount={data.totalClearinghouseProducts}
+          onUploadComplete={data.reload}
+        />
+
+        <HubReadinessPanel
+          loading={data.loading}
+          documents={data.documentInventory}
+          advisors={data.advisorReadiness}
+        />
+
         {/* FOUR AGENT CARDS — status readout + gateway into each domain */}
         <div id="agent-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 20, marginBottom: 46, scrollMarginTop: 90 }}>
           {AGENTS.map((a, i) => {
@@ -159,6 +198,7 @@ export default function HubPage() {
                 agent={a}
                 index={i}
                 metric={data.agentMetric[a.id]}
+                readinessDetail={data.advisorReadiness.find(r => r.agentId === a.id)?.detail}
                 spark={data.agentSpark[a.id]}
                 loading={data.loading}
                 agentResult={master.result?.agents?.[key]}

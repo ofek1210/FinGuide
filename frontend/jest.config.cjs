@@ -3,6 +3,7 @@ module.exports = {
   collectCoverage: true,
   coverageDirectory: 'coverage',
   setupFiles: ['<rootDir>/jest.setup.cjs'],
+  setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
   transform: {
     '^.+\\.tsx?$': [

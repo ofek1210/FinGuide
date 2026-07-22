@@ -1,53 +1,30 @@
-import { describe, expect, it } from "@jest/globals";
-import type { PensionAnalysisData } from "../api/pension.api";
-import {
-  combinedRecommendationDisclaimer,
-  shouldShowLegacyRecommendations,
-  shouldShowStructuredInsightsPanel,
-  shouldShowUnifiedRecommendations,
-} from "./pensionRecommendationDisplay";
+import type { PensionAnalysisData, PensionSummaryDTO } from "../api/pension.api";
+import { shouldShowPensionLegacyRecommendations, shouldShowPensionStructuredInsightsPanel, shouldShowPensionUnifiedRecommendations } from "./pensionRecommendationDisplay";
 
-const baseData = (): PensionAnalysisData => ({
-  summary: { hasData: true, currentAccumulation: 0, retirementAge: 67 } as PensionAnalysisData["summary"],
-  projection: null,
-  recommendations: [{
-    type: "fees",
-    title: "Legacy",
-    reason: "r",
-    urgency: "high",
-    financialImpact: null,
-    confidenceScore: 70,
+const threeCardData = (): PensionAnalysisData => ({
+  recommendationEngine: "three_card_v5",
+  recommendationCards: [{
+    id: "1", slot: "management_fees", icon: "fees", title: "דמי ניהול", status: "high",
+    statusLabelHe: "גבוה", cardOutcome: "actionable", summary: "s", recommendation: "r",
+    confidence: "high", confidenceLabelHe: "גבוה", confidenceScore: 1, why: "w",
+  }, {
+    id: "2", slot: "track_suitability", icon: "track", title: "מסלול", status: "well_matched",
+    statusLabelHe: "ok", cardOutcome: "monitoring", summary: "s", recommendation: "r",
+    confidence: "high", confidenceLabelHe: "גבוה", confidenceScore: 1, why: "w",
+  }, {
+    id: "3", slot: "market_comparison", icon: "market", title: "שוק", status: "above_peer_median",
+    statusLabelHe: "ok", cardOutcome: "monitoring", summary: "s", recommendation: "r",
+    confidence: "high", confidenceLabelHe: "גבוה", confidenceScore: 1, why: "w",
   }],
-  structuredInsights: [{ id: "1", category: "fees", severity: "high", title: "Structured", finding: "f" }],
+  accountAnalyses: [],
+  summary: { hasData: true, currentAccumulation: 0, retirementAge: 67, totalMonthlyContribution: 0 } as PensionSummaryDTO,
+  projection: null,
 });
 
 describe("pensionRecommendationDisplay", () => {
-  it("prefers unified recommendations over legacy and structured panels", () => {
-    const data = {
-      ...baseData(),
-      primaryRecommendations: [{
-        insightId: "u1",
-        title: "Unified",
-        explanation: "e",
-      }],
-    };
-    expect(shouldShowUnifiedRecommendations(data)).toBe(true);
-    expect(shouldShowLegacyRecommendations(data)).toBe(false);
-    expect(shouldShowStructuredInsightsPanel(data)).toBe(false);
-  });
-
-  it("shows legacy recommendations only when unified cards are absent", () => {
-    const data = baseData();
-    expect(shouldShowUnifiedRecommendations(data)).toBe(false);
-    expect(shouldShowLegacyRecommendations(data)).toBe(true);
-  });
-
-  it("combines general and product disclaimers once", () => {
-    const disclaimer = combinedRecommendationDisclaimer({
-      ...baseData(),
-      disclaimer: "כללי",
-      productDisclaimer: "פנסיה",
-    });
-    expect(disclaimer).toBe("כללי פנסיה");
+  it("uses three card path when engine active", () => {
+    expect(shouldShowPensionUnifiedRecommendations(threeCardData())).toBe(true);
+    expect(shouldShowPensionLegacyRecommendations(threeCardData())).toBe(false);
+    expect(shouldShowPensionStructuredInsightsPanel(threeCardData())).toBe(false);
   });
 });

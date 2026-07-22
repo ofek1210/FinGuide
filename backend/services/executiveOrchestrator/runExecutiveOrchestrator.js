@@ -71,9 +71,7 @@ async function runExecutiveOrchestrator(userId, { skipLLM = false, includePdf = 
     generatedAt: new Date().toISOString(),
     packages: normalizedPackages,
     priorityEngine,
-    globalScore: globalScore?.score != null
-      ? { score: globalScore.score, label: globalScore.label }
-      : null,
+    globalScore,
     conflicts: priorityEngine.conflicts,
   });
 
@@ -102,7 +100,7 @@ async function runExecutiveOrchestrator(userId, { skipLLM = false, includePdf = 
       statuses: Object.fromEntries(
         Object.entries(normalizedPackages).map(([k, p]) => [k, p.status]),
       ),
-      totalRecommendations: priorityEngine.priorityActions.length,
+      totalRecommendations: priorityEngine.stats.preservedCount,
       durationMs,
       summarySource: polished.llm?.used ? 'claude' : 'rule',
     });

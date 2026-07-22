@@ -16,6 +16,10 @@ const gemelNetFundSchema = new mongoose.Schema(
     SHIUR_D_NIHUL_AHARON_HAFKADOT: { type: Number, default: null },
     SHIUR_D_NIHUL_MEANUAL: { type: Number, default: null },
     SHIUR_D_NIHUL_AHARON_TTVURAH: { type: Number, default: null },
+    /** 12-month trailing return (%) */
+    TSUA_12_HODASHIM: { type: Number, default: null },
+    /** 36-month trailing annualized return (%) */
+    TSUA_36_HODASHIM: { type: Number, default: null },
     TSUA_SHNATIT_MEMUZAAT_5_SHANIM: { type: Number, default: null, index: true },
     STIAT_TEKEN_36_HODASHIM: { type: Number, default: null },
     SHARPE_RATIO: { type: Number, default: null },

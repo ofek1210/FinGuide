@@ -45,6 +45,8 @@ backend/jest-results.json
 # Local smoke/verify script output (user-specific, regeneratable)
 backend/scripts/last-rec-output.json
 backend/scripts/live-verify-output/
+backend/scripts/audit-output/
+backend/scripts/three-card-fixture-output.json
 
 # Temporary files
 tmp/

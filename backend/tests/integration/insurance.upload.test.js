@@ -55,6 +55,21 @@ describe('Insurance upload integration', () => {
     expect(policies.every(p => p.sourceFile === 'second.xlsx')).toBe(true);
   });
 
+  it('re-uploading the same Excel file succeeds (refresh, not 409)', async () => {
+    const app = harness.getApp();
+    const { token, userId } = await harness.register();
+
+    const first = await uploadInsuranceFixture(app, token, 'same-report.xlsx');
+    expect(first.statusCode).toBe(200);
+
+    const second = await uploadInsuranceFixture(app, token, 'same-report.xlsx');
+    expect(second.statusCode).toBe(200);
+    expect(second.body.success).toBe(true);
+
+    const policies = await InsurancePolicy.find({ user: userId, source: 'har_bituach' });
+    expect(policies.length).toBeGreaterThan(0);
+  });
+
   it('accepts a valid empty Har HaBituach report and unlocks onboarding', async () => {
     const app = harness.getApp();
     const { token } = await harness.register();

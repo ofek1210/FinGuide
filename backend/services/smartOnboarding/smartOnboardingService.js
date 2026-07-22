@@ -9,6 +9,7 @@ const {
   applyAnswerToProfile,
   markLayerComplete,
   markLayerSkipped,
+  resetAgentLayer,
 } = require('./answerStore');
 const {
   getGeneralOnboardingState,
@@ -137,12 +138,25 @@ async function skipLayer(userId, layer) {
   return getAgentOnboardingState(userId, profile, layer);
 }
 
+async function resetLayer(userId, layer) {
+  if (!VALID_AGENTS.includes(layer)) {
+    throw new ValidationError('סוכן לא נתמך');
+  }
+  const profile = await UserProfile.findOrCreateForUser(userId);
+  resetAgentLayer(profile, layer);
+  await profile.save();
+  return layer === 'general'
+    ? getGeneralOnboardingState(userId, profile)
+    : getAgentOnboardingState(userId, profile, layer);
+}
+
 module.exports = {
   getState,
   saveAnswers,
   completeLayer,
   submitBatch,
   skipLayer,
+  resetLayer,
   getContextForAgent,
   findQuestionDef,
 };

@@ -3,7 +3,7 @@ import {
   combinedRecommendationDisclaimer,
   shouldShowLegacyRecommendations,
   shouldShowStructuredInsightsPanel,
-  shouldShowUnifiedRecommendations,
+  shouldShowThreeCardAdvisory,
   type AdvisoryRecommendationDisplayData,
 } from "./financialRecommendationDisplay";
 
@@ -11,21 +11,20 @@ export {
   combinedRecommendationDisclaimer,
   shouldShowLegacyRecommendations,
   shouldShowStructuredInsightsPanel,
-  shouldShowUnifiedRecommendations,
+  shouldShowThreeCardAdvisory as shouldShowUnifiedRecommendations,
 };
 export type { AdvisoryRecommendationDisplayData };
 
-/** Unified LLM/deterministic cards take precedence over legacy recommendation lists. */
 export function shouldShowPensionUnifiedRecommendations(data: PensionAnalysisData | null | undefined): boolean {
-  return shouldShowUnifiedRecommendations(data);
+  return shouldShowThreeCardAdvisory(data);
 }
 
-export function shouldShowPensionLegacyRecommendations(data: PensionAnalysisData | null | undefined): boolean {
-  return shouldShowLegacyRecommendations(data);
+export function shouldShowPensionLegacyRecommendations(_data: PensionAnalysisData | null | undefined): boolean {
+  return false;
 }
 
-export function shouldShowPensionStructuredInsightsPanel(data: PensionAnalysisData | null | undefined): boolean {
-  return shouldShowStructuredInsightsPanel(data);
+export function shouldShowPensionStructuredInsightsPanel(_data: PensionAnalysisData | null | undefined): boolean {
+  return false;
 }
 
 export function combinedPensionRecommendationDisclaimer(data: PensionAnalysisData | null | undefined): string | null {
