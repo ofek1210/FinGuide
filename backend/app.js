@@ -32,6 +32,10 @@ const smartOnboardingRoutes = require('./routes/smartOnboarding');
 const createApp = () => {
   const app = express();
 
+  // בפרוד האפליקציה יושבת מאחורי nginx (reverse proxy) — בלי זה
+  // ה-rate limiter רואה את כל המשתמשים כ-127.0.0.1 וחוסם את כולם יחד
+  app.set('trust proxy', 1);
+
   // Rate limiting – גבוה בפיתוח כדי למנוע "יותר מדי בקשות"
   const isDev = process.env.NODE_ENV !== 'production';
   const limiter = rateLimit({
