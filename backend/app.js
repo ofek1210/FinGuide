@@ -28,6 +28,7 @@ const govRoutes = require('./routes/gov');
 const summaryEmailRoutes = require('./routes/summaryEmail');
 const executiveReportRoutes = require('./routes/executiveReport');
 const smartOnboardingRoutes = require('./routes/smartOnboarding');
+const adminRoutes = require('./routes/admin');
 
 const createApp = () => {
   const app = express();
@@ -92,6 +93,7 @@ const createApp = () => {
 
   // API Routes
   app.use('/api/auth', authRoutes);
+  app.use('/api/admin', adminRoutes);
   app.use('/api/documents', documentRoutes);
   app.use('/api/ai', aiRoutes);
   app.use('/api/findings', findingsRoutes);

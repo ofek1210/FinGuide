@@ -33,4 +33,15 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+/**
+ * Middleware להרשאת מנהל — חייב לרוץ אחרי protect
+ * חוסם משתמשים שאינם admin עם 403
+ */
+const requireAdmin = (req, res, next) => {
+  if (req.user?.role !== 'admin') {
+    return next(new AuthError('אין הרשאת מנהל', 403));
+  }
+  return next();
+};
+
+module.exports = { protect, requireAdmin };

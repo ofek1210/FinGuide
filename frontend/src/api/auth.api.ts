@@ -40,6 +40,7 @@ export type AuthUser = {
   email: string;
   createdAt?: string;
   avatarUrl?: string;
+  role?: "user" | "admin";
   onboardingCompleted?: boolean;
   welcomeShown?: boolean;
 };
