@@ -20,6 +20,23 @@ export function uploadFailureMessage(doc: DocumentItem, fileName: string): strin
   return `${fileName}: לא ניתן לנתח את הקובץ`;
 }
 
+/**
+ * הודעה כשההעלאה נותבה לצינור אחר (ביטוח/פנסיה) — למשל בייבוא מ-Gmail.
+ * מחזיר null כשאין ניתוב.
+ */
+export function uploadRoutedMessage(
+  res: UploadDocumentResponse,
+  fileName: string,
+): string | null {
+  if (res.routedTo === "pension") {
+    return `${fileName}: זוהה כדוח פנסיה ויובא לעוזר הפנסיוני — לא נוסף כתלוש`;
+  }
+  if (res.routedTo === "insurance") {
+    return `${fileName}: זוהה כדוח ביטוח ויובא לדאשבורד הביטוחים — לא נוסף כתלוש`;
+  }
+  return null;
+}
+
 export function isAnalyzableUpload(doc?: DocumentItem | null): boolean {
   if (!doc) return false;
   if (doc.analyzable === true) return true;

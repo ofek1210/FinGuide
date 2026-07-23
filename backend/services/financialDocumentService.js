@@ -207,7 +207,12 @@ const processFinancialDocument = async ({
   const isXlsx = ext === '.xlsx' || ext === '.xls';
   const buffer = await fs.promises.readFile(filePath);
 
-  if (isXlsx && isHarHaBituachBuffer(buffer)) {
+  // המשתמש הצהיר במפורש שזה תלוש — מכבדים את הבחירה ולא מנסים ניתוב
+  // לביטוח/פנסיה. תלושים ישראליים מכילים שמות קרנות וסכומי הפקדות,
+  // ופרסר הר-הכסף עלול "לזהות" בהם דוח פנסיה ולבלוע את ההעלאה.
+  const declaredPayslip = metadata?.category === 'payslip';
+
+  if (!declaredPayslip && isXlsx && isHarHaBituachBuffer(buffer)) {
     const { parseInsuranceExcel } = require('./insuranceExcelParser');
     const { importInsuranceExcel } = require('./insuranceImportService');
     const parsed = parseInsuranceExcel(buffer, originalName);
@@ -222,7 +227,7 @@ const processFinancialDocument = async ({
     }
   }
 
-  if (isXlsx || ext === '.pdf') {
+  if (!declaredPayslip && (isXlsx || ext === '.pdf')) {
     try {
       const { parseHarHaKesef } = require('./harHaKesefService');
       const parsed = await parseHarHaKesef(buffer, { ext, originalName });
