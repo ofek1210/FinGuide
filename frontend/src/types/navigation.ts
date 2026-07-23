@@ -21,6 +21,7 @@ export const APP_ROUTES = {
   assistant: "/assistant",
   aiAgents: "/ai-agents",
   settings: "/settings",
+  admin: "/admin",
   integrationsEmail: "/integrations/email",
   help: "/help",
   team: "/team",

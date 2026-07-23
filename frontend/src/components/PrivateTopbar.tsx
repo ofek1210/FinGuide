@@ -303,6 +303,17 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{user?.email ?? ""}</div>
               </div>
               <div style={{ padding: "6px" }}>
+                {user?.role === "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => { setUserMenuOpen(false); navigate(APP_ROUTES.admin); }}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 10, background: "none", border: "none", cursor: "pointer", textAlign: "right", fontFamily: "inherit", fontSize: 13.5, color: "var(--lav-600)", fontWeight: 600, transition: "background var(--dur-fast) var(--ease)" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent-soft)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
+                  >
+                    מרכז בקרה
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={goToSettings}
