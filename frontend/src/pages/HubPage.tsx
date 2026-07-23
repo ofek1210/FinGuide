@@ -171,25 +171,15 @@ export default function HubPage() {
           opportunities={data.opportunities}
           completedDocs={data.completedDocs}
           heroRows={data.heroRows}
+          agentMetric={data.agentMetric}
+          advisorReadiness={data.advisorReadiness}
           onRunFull={master.runFull}
           lastReport={lastReport}
           savedScore={data.healthScore}
         />
 
-        <HubDocumentCenter
-          focusDocument={focusDocument === "clearinghouse" ? focusDocument : null}
-          clearinghouseFundCount={data.totalClearinghouseProducts}
-          onUploadComplete={data.reload}
-        />
-
-        <HubReadinessPanel
-          loading={data.loading}
-          documents={data.documentInventory}
-          advisors={data.advisorReadiness}
-        />
-
         {/* FOUR AGENT CARDS — status readout + gateway into each domain */}
-        <div id="agent-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 20, marginBottom: 46, scrollMarginTop: 90 }}>
+        <div id="agent-cards" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 20, scrollMarginTop: 90 }}>
           {AGENTS.map((a, i) => {
             const key = AGENT_KEY[a.id];
             return (
@@ -199,6 +189,7 @@ export default function HubPage() {
                 index={i}
                 metric={data.agentMetric[a.id]}
                 readinessDetail={data.advisorReadiness.find(r => r.agentId === a.id)?.detail}
+                readinessPhase={data.advisorReadiness.find(r => r.agentId === a.id)?.phase}
                 spark={data.agentSpark[a.id]}
                 loading={data.loading}
                 agentResult={master.result?.agents?.[key]}
@@ -211,7 +202,19 @@ export default function HubPage() {
           })}
         </div>
 
-        {/* FLOATING COMMAND BAR — talk to the master agent */}
+        <HubReadinessPanel
+          loading={data.loading}
+          documents={data.documentInventory}
+          advisors={data.advisorReadiness}
+        />
+
+        <HubDocumentCenter
+          focusDocument={focusDocument === "clearinghouse" ? focusDocument : null}
+          clearinghouseFundCount={data.totalClearinghouseProducts}
+          onUploadComplete={data.reload}
+        />
+
+        {/* COMMAND BAR — talk to the master agent */}
         <CommandBar busy={master.busy} onRunFocused={master.runFocused} />
       </main>
 
