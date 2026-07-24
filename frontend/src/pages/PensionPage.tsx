@@ -7,11 +7,13 @@
  * Step "results"  — flagship pension advisor (PensionAdvisor.jsx design),
  *                   wired to /api/pension/* (analysis, funds).
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FileText, PiggyBank } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import GlassCard from "../components/ui/GlassCard";
+import AgentLandingHero from "../components/agent/AgentLandingHero";
+import { AgentGhostButton, AgentPrimaryButton } from "../components/agent/AgentButtons";
 import PensionAdvisor from "../components/pension/PensionAdvisor";
 import PensionImportGuide from "../components/pension/PensionImportGuide";
 import PensionUpload from "../components/pension/PensionUpload";
@@ -28,7 +30,6 @@ import {
 } from "../api/pension.api";
 import { APP_ROUTES } from "../types/navigation";
 import { UPLOAD_PROGRESS_STEPS } from "../utils/pensionDisplay";
-import { GovReportImportFlow } from "../components/import/GovReportImportFlow";
 import { PENSION_IMPORT_CONFIG } from "../config/govReportImportConfig";
 import { useGovReportUploadProgress } from "../hooks/useGovReportUploadProgress";
 
@@ -44,7 +45,6 @@ type FlowStep = "landing" | "onboarding" | "guide" | "upload" | "results";
 
 export default function PensionPage() {
   const navigate = useNavigate();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { uploadProgressStep, start: startProgress, stop: stopProgress } = useGovReportUploadProgress(UPLOAD_PROGRESS_STEPS.length);
 
   const [step, setStep] = useState<FlowStep>("landing");
@@ -52,7 +52,6 @@ export default function PensionPage() {
   const [loading, setLoading] = useState(true);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [visitedSite, setVisitedSite] = useState(false);
 
   // Upload state
   const [uploading, setUploading] = useState(false);
@@ -70,6 +69,15 @@ export default function PensionPage() {
   const [lastImported, setLastImported] = useState<number | null>(null);
 
   const [showAgeModal, setShowAgeModal] = useState(false);
+
+  useEffect(() => {
+    if (!showAgeModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowAgeModal(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showAgeModal]);
 
   const loadFunds = useCallback(async () => {
     const res = await getPensionFunds();
@@ -201,7 +209,7 @@ export default function PensionPage() {
       <PensionImportGuide
         onBack={() => setStep("landing")}
         onContinue={() => setStep("upload")}
-        onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); setVisitedSite(true); }}
+        onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); }}
       />,
     );
   }
@@ -231,23 +239,32 @@ export default function PensionPage() {
     return shell(
       <>
         {showAgeModal && (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-            <GlassCard padding="lg" elevated style={{ maxWidth: 420, width: "100%" }}>
-              <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, margin: "0 0 10px", color: "var(--text-strong)" }}>חסר גיל בפרופיל</h2>
+          <div
+            role="presentation"
+            onClick={() => setShowAgeModal(false)}
+            onKeyDown={(e) => { if (e.key === "Escape") setShowAgeModal(false); }}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          >
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="pension-age-modal-title"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: 420, width: "100%", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-card)", boxShadow: "var(--shadow-card)", padding: "32px 36px" }}
+            >
+              <h2 id="pension-age-modal-title" style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 900, margin: "0 0 10px", color: "var(--text-strong)" }}>חסר גיל בפרופיל</h2>
               <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6, margin: "0 0 20px" }}>
                 לניתוח מסלול סיכון ותחזית פרישה מדויקת, הגדר את גילך בפרופיל.
               </p>
-              <div style={{ display: "flex", gap: 10 }}>
-                <button onClick={() => { setShowAgeModal(false); navigate(APP_ROUTES.settings); }}
-                  style={{ flex: 1, padding: "11px", borderRadius: "var(--r-card)", background: "var(--mint-ink)", color: "#fff", border: "none", cursor: "pointer", fontWeight: 700 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <AgentPrimaryButton size="sm" onClick={() => { setShowAgeModal(false); navigate(APP_ROUTES.settings); }} style={{ flex: 1 }}>
                   עדכן פרופיל
-                </button>
-                <button onClick={() => setShowAgeModal(false)}
-                  style={{ padding: "11px 16px", borderRadius: "var(--r-card)", background: "none", border: "1px solid var(--border-soft)", color: "var(--text-muted)", cursor: "pointer", fontWeight: 600 }}>
+                </AgentPrimaryButton>
+                <AgentGhostButton size="sm" onClick={() => setShowAgeModal(false)}>
                   המשך בכל זאת
-                </button>
+                </AgentGhostButton>
               </div>
-            </GlassCard>
+            </div>
           </div>
         )}
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "20px 24px 0" }}>
@@ -274,34 +291,62 @@ export default function PensionPage() {
     );
   }
 
-  // Landing (+ initial loading) — same mint shell as guide/upload/results
+  // Landing (+ initial loading) — FinGuide AgentLandingHero (mint)
   return shell(
     loading ? (
-      <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--mint-ink)", fontSize: 14 }}>
-        <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
+      <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--mint-ink)", fontSize: 14, fontWeight: 600 }}>
         טוען נתוני פנסיה...
       </div>
     ) : (
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "20px 24px 40px" }}>
-        <GovReportImportFlow
-          domain="pension"
-          step="landing"
-          progressSteps={UPLOAD_PROGRESS_STEPS}
-          onImport={() => setStep("onboarding")}
-          onManual={() => { setStep("results"); setShowAddForm(true); }}
-          visitedSite={visitedSite}
-          onVisitSite={() => { window.open(HAR_HAKESEF_URL, "_blank", "noopener,noreferrer"); setVisitedSite(true); }}
-          onContinue={() => setStep("upload")}
-          onBack={() => setStep("landing")}
-          fileInputRef={fileInputRef}
-          uploading={uploading}
-          uploadMsg={uploadMsg}
-          uploadProgressStep={uploadProgressStep}
-          isDragging={isDragging}
-          setIsDragging={setIsDragging}
-          onUpload={handleFileUpload}
-        />
-      </div>
+      <AgentLandingHero
+        agentId="pension"
+        title={<>כל הפנסיה שלך,<br />מנותחת במקום אחד.</>}
+        subtitle={
+          <>
+            ייבוא חד‑פעמי מ<b style={{ color: "var(--ink)", fontWeight: 800 }}>הר הכסף</b> והסוכן מזהה קרנות, דמי ניהול ומסלולי השקעה — עם תחזית פרישה ברורה.
+          </>
+        }
+        primaryLabel="ייבוא מהר הכסף"
+        primaryIcon={<PiggyBank size={18} strokeWidth={2} />}
+        onPrimary={() => setStep("onboarding")}
+        secondaryLabel="הזנה ידנית"
+        onSecondary={() => { setStep("results"); setShowAddForm(true); }}
+        trustNote="מבוסס על נתוני הר הכסף — אתר רשמי של משרד האוצר · ~2 דקות"
+        visual={
+          <div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+              <span style={{ fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>תחזית פרישה</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".04em" }}>דוגמה</span>
+            </div>
+            <div style={{ display: "grid", gap: 12 }}>
+              {[
+                { label: "צבירה נוכחית", value: "₪428,000" },
+                { label: "הפקדה חודשית", value: "₪3,200" },
+                { label: "גיל פרישה משוער", value: "67" },
+              ].map((row) => (
+                <div
+                  key={row.label}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px 14px",
+                    borderRadius: "var(--r-btn)",
+                    background: "var(--mint-soft)",
+                    border: "1px solid var(--mint)",
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>{row.label}</span>
+                  <span style={{ fontSize: 15, fontWeight: 800, color: "var(--mint-ink)" }}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, fontSize: 12.5, color: "var(--text-faint)", fontWeight: 600 }}>
+              <FileText size={14} /> ניתוח מלא אחרי ייבוא הדוח
+            </div>
+          </div>
+        }
+      />
     ),
   );
 }

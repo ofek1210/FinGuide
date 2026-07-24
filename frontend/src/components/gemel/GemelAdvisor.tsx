@@ -100,9 +100,29 @@ export default function GemelAdvisor({
 
   const activeFunds = funds.filter(f => f.isActive);
   const archivedFunds = funds.filter(f => !f.isActive);
+  const addFundForm = (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!saving && form.fundName?.trim()) onSaveFund();
+      }}
+      style={{ padding: "14px 14px 12px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)", border: "1px dashed var(--border-soft)", animation: "gaRise .3s var(--ease)" }}
+    >
+      <input aria-label="שם הקופה" value={form.fundName} onChange={e => setForm(s => ({ ...s, fundName: e.target.value }))} placeholder="שם הקופה (למשל: אלטשולר שחם השתלמות כללי)" style={addInput} />
+      <select aria-label="סוג הקופה" value={form.fundType} onChange={e => setForm(s => ({ ...s, fundType: e.target.value as GemelFundType }))} style={{ ...addInput, cursor: "pointer" }}>
+        {Object.entries(GEMEL_FUND_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+      </select>
+      <input aria-label="יתרה נוכחית" value={form.currentBalance || ""} onChange={e => setForm(s => ({ ...s, currentBalance: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 }))} inputMode="numeric" placeholder="יתרה נוכחית (₪)" style={addInput} />
+      <input aria-label="דמי ניהול מצבירה" value={form.managementFeeAccumulation || ""} onChange={e => setForm(s => ({ ...s, managementFeeAccumulation: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 }))} inputMode="decimal" placeholder="דמי ניהול מצבירה (% לשנה, למשל 0.6)" style={addInput} />
+      {saveMsg && <div role={saveMsg.type === "error" ? "alert" : "status"} style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8, color: saveMsg.type === "error" ? "var(--danger)" : "var(--butter-ink)" }}>{saveMsg.text}</div>}
+      <button type="submit" disabled={saving || !form.fundName?.trim()} style={{ ...btnPrimary, width: "100%", justifyContent: "center", opacity: saving || !form.fundName?.trim() ? 0.6 : 1 }}>
+        {saving ? <Loader2 size={15} style={{ animation: "spin .8s linear infinite" }} /> : <Check size={15} strokeWidth={2.6} />} הוסף קופה
+      </button>
+    </form>
+  );
 
   // empty state — no gemel data yet
-  if (!hasData && funds.length === 0 && !showAddForm) {
+  if (!hasData && funds.length === 0) {
     return (
       <main style={{ maxWidth: 1080, margin: "0 auto", padding: "8px 0 40px" }}>
         <GemelLeadingFundsTable />
@@ -112,8 +132,9 @@ export default function GemelAdvisor({
           <p style={{ margin: "10px 0 22px", fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>ייבא דוח מהר הכסף או הוסף קופה ידנית כדי לקבל השוואה מול גמל-נט, זיהוי דמי ניהול גבוהים והמלצות מותאמות.</p>
           <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
             <button onClick={onImport} style={btnPrimary}><Upload size={16} /> ייבוא מהר הכסף</button>
-            <button onClick={() => setShowAddForm(true)} style={btnGhost}><Plus size={16} /> הוסף קופה ידנית</button>
+            <button onClick={() => setShowAddForm(v => !v)} style={btnGhost}>{showAddForm ? <X size={16} /> : <Plus size={16} />}{showAddForm ? "ביטול" : "הוסף קופה ידנית"}</button>
           </div>
+          {showAddForm && <div style={{ marginTop: 20, textAlign: "right" }}>{addFundForm}</div>}
         </div>
       </main>
     );
@@ -324,20 +345,7 @@ export default function GemelAdvisor({
           <button onClick={() => setShowAddForm(v => !v)} style={{ ...btnGhost, padding: "7px 13px", fontSize: 13 }}>{showAddForm ? <X size={15} /> : <Plus size={15} />}{showAddForm ? "ביטול" : "הוסף קופה"}</button>
         </div>
 
-        {showAddForm && (
-          <div style={{ padding: "14px 14px 12px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)", border: "1px dashed var(--border-soft)", marginBottom: 12, animation: "gaRise .3s var(--ease)" }}>
-            <input value={form.fundName} onChange={e => setForm(s => ({ ...s, fundName: e.target.value }))} placeholder="שם הקופה (למשל: אלטשולר שחם השתלמות כללי)" style={addInput} />
-            <select value={form.fundType} onChange={e => setForm(s => ({ ...s, fundType: e.target.value as GemelFundType }))} style={{ ...addInput, cursor: "pointer" }}>
-              {Object.entries(GEMEL_FUND_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-            </select>
-            <input value={form.currentBalance || ""} onChange={e => setForm(s => ({ ...s, currentBalance: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 }))} inputMode="numeric" placeholder="יתרה נוכחית (₪)" style={addInput} />
-            <input value={form.managementFeeAccumulation || ""} onChange={e => setForm(s => ({ ...s, managementFeeAccumulation: Number(e.target.value.replace(/[^\d.]/g, "")) || 0 }))} inputMode="decimal" placeholder="דמי ניהול מצבירה (% לשנה, למשל 0.6)" style={addInput} />
-            {saveMsg && <div style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 8, color: saveMsg.type === "error" ? "var(--danger)" : "var(--butter-ink)" }}>{saveMsg.text}</div>}
-            <button onClick={onSaveFund} disabled={saving || !form.fundName?.trim()} style={{ ...btnPrimary, width: "100%", justifyContent: "center", opacity: saving || !form.fundName?.trim() ? 0.6 : 1 }}>
-              {saving ? <Loader2 size={15} style={{ animation: "spin .8s linear infinite" }} /> : <Check size={15} strokeWidth={2.6} />} הוסף קופה
-            </button>
-          </div>
-        )}
+        {showAddForm && <div style={{ marginBottom: 12 }}>{addFundForm}</div>}
 
         {funds.length === 0 && !showAddForm ? (
           <div style={{ textAlign: "center", padding: "34px 16px", color: "var(--text-faint)" }}>
@@ -420,6 +428,34 @@ function MiniStat({ label, value, highlight = false }: { label: string; value: s
 
 const sectionTitle: React.CSSProperties = { fontSize: 13, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".06em", margin: "0 2px 14px" };
 const cardBox: React.CSSProperties = { background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", padding: "22px 24px", boxShadow: "var(--shadow-soft)" };
-const btnPrimary: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 18px", borderRadius: "var(--r-pill)", border: "none", cursor: "pointer", fontFamily: "var(--font-body)", fontWeight: 800, fontSize: 14, color: "#fff", background: "var(--butter-ink)", boxShadow: "var(--shadow-soft)" };
-const btnGhost: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 18px", borderRadius: "var(--r-pill)", border: "1px solid var(--border-soft)", cursor: "pointer", fontFamily: "var(--font-body)", fontWeight: 800, fontSize: 14, color: "var(--ink)", background: "var(--card)" };
+const btnPrimary: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "12px 22px",
+  borderRadius: "var(--r-btn)",
+  border: "1px solid transparent",
+  cursor: "pointer",
+  fontFamily: "var(--font-body)",
+  fontWeight: 800,
+  fontSize: 14,
+  color: "#fff",
+  background: "var(--ink)",
+  boxShadow: "var(--shadow-ink)",
+};
+const btnGhost: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "12px 22px",
+  borderRadius: "var(--r-btn)",
+  border: "1px solid var(--border-soft)",
+  cursor: "pointer",
+  fontFamily: "var(--font-body)",
+  fontWeight: 800,
+  fontSize: 14,
+  color: "var(--ink)",
+  background: "var(--card)",
+  boxShadow: "var(--shadow-soft)",
+};
 const addInput: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "10px 12px", borderRadius: "var(--r-sm)", border: "1px solid var(--border-soft)", background: "var(--card)", fontFamily: "var(--font-body)", fontSize: 13.5, fontWeight: 600, color: "var(--ink)", outline: "none", marginBottom: 8 };

@@ -22,6 +22,7 @@ import DocumentDetailsPage from "./pages/DocumentDetailsPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OnboardingPage from "./pages/OnboardingPage";
 import WelcomePage from "./pages/WelcomePage";
+import WelcomeBackPage from "./pages/WelcomeBackPage";
 import WelcomePagePreview from "./pages/WelcomePagePreview";
 import PensionPage from "./pages/PensionPage";
 import GemelPage from "./pages/GemelPage";
@@ -96,7 +97,14 @@ export default function App() {
             </RequireAuth>
           }
         />
-        <Route path="/welcome-back" element={<Navigate to={APP_ROUTES.hub} replace />} />
+        <Route
+          path={APP_ROUTES.welcomeBack}
+          element={
+            <RequireAuth>
+              <WelcomeBackPage />
+            </RequireAuth>
+          }
+        />
         <Route
           path={APP_ROUTES.documents}
           element={

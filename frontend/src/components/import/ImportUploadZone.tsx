@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle } from "lucide-react";
 import type { ReactNode, RefObject } from "react";
-import GlassCard from "../ui/GlassCard";
+import "../agent/agent-onboarding.css";
 
 type UploadMsg = { type: "success" | "error"; text: string } | null;
 
@@ -13,8 +13,6 @@ type ImportUploadZoneProps = {
   setIsDragging: (v: boolean) => void;
   onUpload: (file: File) => void;
   accentColor: string;
-  gradientFrom: string;
-  gradientTo: string;
   progressSteps: string[];
   uploadProgressStep: number | null;
   progressFallback: string;
@@ -28,6 +26,15 @@ type ImportUploadZoneProps = {
   uploadingHint?: string;
 };
 
+const surfaceCard: React.CSSProperties = {
+  background: "var(--surface-card, var(--card))",
+  border: "1px solid var(--border-hair)",
+  borderRadius: "var(--r-card)",
+  boxShadow: "var(--shadow-soft)",
+  padding: "clamp(20px, 4vw, 32px) clamp(18px, 4vw, 36px)",
+  marginBottom: 20,
+};
+
 export function ImportUploadZone({
   fileInputRef,
   accept,
@@ -37,8 +44,6 @@ export function ImportUploadZone({
   setIsDragging,
   onUpload,
   accentColor,
-  gradientFrom,
-  gradientTo,
   progressSteps,
   uploadProgressStep,
   progressFallback,
@@ -52,12 +57,12 @@ export function ImportUploadZone({
   uploadingHint = "זה יכול לקחת כמה שניות",
 }: ImportUploadZoneProps) {
   return (
-    <GlassCard padding="lg" elevated style={{ marginBottom: 20 }}>
+    <div style={surfaceCard}>
       <input
         ref={fileInputRef}
         type="file"
         accept={accept}
-        onChange={e => {
+        onChange={(e) => {
           const f = e.target.files?.[0];
           if (f) onUpload(f);
           e.target.value = "";
@@ -65,35 +70,58 @@ export function ImportUploadZone({
         style={{ display: "none" }}
       />
       <div
+        className="agent-upload-dropzone"
         role="button"
-        tabIndex={0}
+        tabIndex={uploading ? -1 : 0}
+        aria-disabled={uploading}
+        aria-busy={uploading}
+        aria-label={`${idleTitle}. ${idleSub}`}
         onClick={() => !uploading && fileInputRef.current?.click()}
-        onKeyDown={e => { if (e.key === "Enter" && !uploading) fileInputRef.current?.click(); }}
-        onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+        onKeyDown={(e) => {
+          if (!uploading && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            fileInputRef.current?.click();
+          }
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
         onDragLeave={() => setIsDragging(false)}
-        onDrop={e => {
+        onDrop={(e) => {
           e.preventDefault();
           setIsDragging(false);
           const f = e.dataTransfer.files?.[0];
           if (f) onUpload(f);
         }}
         style={{
-          border: `2px dashed ${isDragging ? accentColor : uploading ? "rgba(5,150,105,0.4)" : "rgba(184,157,255,0.40)"}`,
-          borderRadius: 20,
+          border: `1.5px dashed ${isDragging ? accentColor : uploading ? "var(--mint)" : "var(--border-soft)"}`,
+          borderRadius: "var(--r-card)",
           padding: "52px 24px",
           textAlign: "center",
           cursor: uploading ? "wait" : "pointer",
-          background: isDragging ? `${accentColor}0D` : uploading ? "rgba(5,150,105,0.04)" : "rgba(250,247,255,0.5)",
-          transition: "all 0.2s",
+          background: isDragging
+            ? "var(--agent-soft, var(--lav-50))"
+            : uploading
+              ? "var(--mint-soft)"
+              : "var(--surface-sunken)",
+          transition: "all 0.2s var(--ease)",
         }}
       >
         {uploading ? (
-          <>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>⚙️</div>
+          <div role="status" aria-live="polite">
+            <div aria-hidden="true" style={{ fontSize: 36, marginBottom: 12 }}>⚙️</div>
             <div style={{ fontSize: 15, color: accentColor, fontWeight: 700 }}>
               {uploadProgressStep != null ? progressSteps[uploadProgressStep] : progressFallback}
             </div>
-            <div style={{ display: "flex", gap: progressDotSize === 8 ? 6 : 8, justifyContent: "center", marginTop: progressDotSize === 8 ? 12 : 14 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: progressDotSize === 8 ? 6 : 8,
+                justifyContent: "center",
+                marginTop: progressDotSize === 8 ? 12 : 14,
+              }}
+            >
               {progressSteps.map((_, i) => (
                 <div
                   key={i}
@@ -101,46 +129,73 @@ export function ImportUploadZone({
                     width: progressDotSize,
                     height: progressDotSize,
                     borderRadius: "50%",
-                    background: uploadProgressStep != null && i <= uploadProgressStep ? accentColor : `${accentColor}33`,
+                    background:
+                      uploadProgressStep != null && i <= uploadProgressStep
+                        ? accentColor
+                        : "var(--agent-ring, var(--lav-200))",
                   }}
                 />
               ))}
             </div>
             {uploadingHint ? (
-              <div style={{ fontSize: 13, color: "#A89CC8", marginTop: 6 }}>{uploadingHint}</div>
+              <div style={{ fontSize: 13, color: "var(--text-faint)", marginTop: 6, fontWeight: 500 }}>
+                {uploadingHint}
+              </div>
             ) : null}
-          </>
+          </div>
         ) : (
           <>
-            <div style={{ fontSize: 44, marginBottom: 14 }}>{idleEmoji}</div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: "#1F1F1F", marginBottom: 6 }}>{idleTitle}</div>
-            <div style={{ fontSize: 14, color: "#7C6FA0", marginBottom: 20 }}>{idleSub}</div>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 7,
-              padding: "10px 22px", borderRadius: 12,
-              background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})`,
-              color: "#fff", fontSize: 14, fontWeight: 700,
-            }}>
+            <div aria-hidden="true" style={{ fontSize: 44, marginBottom: 14 }}>{idleEmoji}</div>
+            <div style={{ fontSize: 17, fontWeight: 800, color: "var(--text-strong)", marginBottom: 6 }}>
+              {idleTitle}
+            </div>
+            <div style={{ fontSize: 14, color: "var(--text-muted)", marginBottom: 20, fontWeight: 500 }}>
+              {idleSub}
+            </div>
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "12px 22px",
+                borderRadius: "var(--r-btn)",
+                background: "var(--ink)",
+                color: "#fff",
+                fontSize: 14,
+                fontWeight: 800,
+                boxShadow: "var(--shadow-ink)",
+              }}
+            >
               {pickFileIcon}
               {pickFileLabel}
             </div>
-            <div style={{ fontSize: 12, color: "#A89CC8", marginTop: 12 }}>{fileHint}</div>
+            <div style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 12, fontWeight: 500 }}>{fileHint}</div>
           </>
         )}
       </div>
 
       {uploadMsg ? (
-        <div style={{
-          marginTop: 16, padding: "12px 16px", borderRadius: 12, fontWeight: 600, fontSize: 14,
-          background: uploadMsg.type === "error" ? "#FEF2F2" : "#ECFDF5",
-          color: uploadMsg.type === "error" ? "#DC2626" : "#059669",
-          border: `1px solid ${uploadMsg.type === "error" ? "rgba(220,38,38,0.2)" : "rgba(5,150,105,0.2)"}`,
-          display: "flex", alignItems: "center", gap: 8,
-        }}>
+        <div
+          role={uploadMsg.type === "error" ? "alert" : "status"}
+          aria-live="polite"
+          style={{
+            marginTop: 16,
+            padding: "12px 16px",
+            borderRadius: "var(--r-btn)",
+            fontWeight: 600,
+            fontSize: 14,
+            background: uploadMsg.type === "error" ? "var(--danger-soft, #FEF2F2)" : "var(--mint-soft)",
+            color: uploadMsg.type === "error" ? "var(--danger)" : "var(--mint-ink)",
+            border: `1px solid ${uploadMsg.type === "error" ? "rgba(220,38,38,0.2)" : "var(--mint)"}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
           {uploadMsg.type === "error" ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
           {uploadMsg.text}
         </div>
       ) : null}
-    </GlassCard>
+    </div>
   );
 }

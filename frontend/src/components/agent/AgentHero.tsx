@@ -8,66 +8,87 @@ interface AgentHeroProps {
   children?: ReactNode;
 }
 
-export default function AgentHero({ icon, title, subtitle, accentColor = "#9B7FE8", children }: AgentHeroProps) {
+export default function AgentHero({
+  icon,
+  title,
+  subtitle,
+  accentColor = "var(--agent, var(--lav-600))",
+  children,
+}: AgentHeroProps) {
   return (
-    <div style={{
-      position: "relative",
-      overflow: "hidden",
-      borderRadius: "var(--lg-r-xl, 32px)",
-      padding: "48px 48px 40px",
-      background: `linear-gradient(135deg, #FAF7FF 0%, ${accentColor}10 50%, ${accentColor}18 100%)`,
-      border: "1px solid rgba(184,157,255,0.25)",
-      boxShadow: "0 4px 32px rgba(155,127,232,0.10)",
-      marginBottom: 32,
-      direction: "rtl",
-    }}>
-      {/* Background decoration */}
-      <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none",
-        background: `radial-gradient(circle at 90% 50%, ${accentColor}14 0%, transparent 60%)`,
-      }} />
-      <div style={{
-        position: "absolute", top: -40, left: -40,
-        width: 180, height: 180,
-        borderRadius: "50%",
-        background: `${accentColor}08`,
-        pointerEvents: "none",
-      }} />
+    <header
+      style={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: "var(--r-card)",
+        padding: "clamp(24px, 4vw, 40px)",
+        background: "var(--card)",
+        border: "1px solid var(--border-hair)",
+        boxShadow: "var(--shadow-soft)",
+        marginBottom: 32,
+        direction: "rtl",
+        backgroundImage:
+          "radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--agent-soft, var(--lav-100)) 80%, transparent), transparent 42%), radial-gradient(color-mix(in srgb, var(--agent, var(--lav-600)) 5%, transparent) 1px, transparent 1px)",
+        backgroundSize: "auto, 18px 18px",
+      }}
+    >
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          background: `radial-gradient(circle at 90% 50%, color-mix(in srgb, ${accentColor} 10%, transparent) 0%, transparent 60%)`,
+        }}
+      />
 
       <div style={{ position: "relative", display: "flex", alignItems: "flex-start", gap: 20 }}>
-        <div style={{
-          width: 60, height: 60, borderRadius: 18, flexShrink: 0,
-          background: `linear-gradient(135deg, ${accentColor}22, ${accentColor}38)`,
-          border: `1px solid ${accentColor}30`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 26, boxShadow: `0 4px 16px ${accentColor}25`,
-        }}>
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 12,
+            flexShrink: 0,
+            background: "var(--agent-soft, var(--lav-100))",
+            border: "1px solid var(--agent-ring, var(--lav-200))",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 24,
+            color: accentColor,
+          }}
+        >
           {icon}
         </div>
-        <div style={{ flex: 1 }}>
-          <h1 style={{
-            fontFamily: "var(--lg-font-display, Georgia, serif)",
-            fontSize: "clamp(22px, 3.5vw, 32px)",
-            fontWeight: 700,
-            color: "#1F1F1F",
-            margin: "0 0 8px",
-            letterSpacing: "-0.03em",
-            lineHeight: 1.15,
-          }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "clamp(22px, 3.5vw, 32px)",
+              fontWeight: 900,
+              color: "var(--text-strong)",
+              margin: "0 0 8px",
+              letterSpacing: "-0.03em",
+              lineHeight: 1.15,
+            }}
+          >
             {title}
           </h1>
-          <p style={{
-            fontSize: 15,
-            color: "#7C6FA0",
-            margin: 0,
-            lineHeight: 1.6,
-            maxWidth: 560,
-          }}>
+          <p
+            style={{
+              fontSize: 15,
+              color: "var(--text-muted)",
+              margin: 0,
+              lineHeight: 1.6,
+              maxWidth: 560,
+              fontWeight: 500,
+            }}
+          >
             {subtitle}
           </p>
           {children && <div style={{ marginTop: 20 }}>{children}</div>}
         </div>
       </div>
-    </div>
+    </header>
   );
 }

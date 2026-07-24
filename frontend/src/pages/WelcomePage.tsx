@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { markWelcomeShown } from "../api/auth.api";
 import { APP_ROUTES } from "../types/navigation";
 import Loader from "../components/ui/Loader";
+import { clearWelcomeBackPending } from "../utils/welcomeBackSession";
 import "../components/welcome/welcome.css";
 
 type AnimalFact = {
@@ -199,6 +200,9 @@ export default function WelcomePage() {
   const handleContinue = useCallback(async () => {
     if (isContinuing) return;
     setIsContinuing(true);
+    // New-user welcome has its own greeting; suppress the returning-user
+    // welcome-back screen for this session so the user doesn't see both.
+    clearWelcomeBackPending();
     try {
       const res = await markWelcomeShown();
       await auth.refresh();

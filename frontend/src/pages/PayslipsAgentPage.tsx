@@ -9,7 +9,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Upload, FileText, Sparkles, Check, ArrowLeft, ChevronRight,
+  Upload, FileText, Sparkles, ArrowLeft, ChevronRight,
   History, Plus, Wallet, TrendingUp, Landmark, ShieldCheck,
   PiggyBank, GraduationCap, CalendarDays, HeartPulse, type LucideIcon,
 } from "lucide-react";
@@ -20,6 +20,8 @@ import DocumentsRibbonWave from "../components/documents/DocumentsRibbonWave";
 import PayslipsAgentTabs from "../components/payslips/PayslipsAgentTabs";
 import TaxAssistantPanel from "../components/payslips/TaxAssistantPanel";
 import Loader from "../components/ui/Loader";
+import AgentStepIndicator from "../components/agent/AgentStepIndicator";
+import { AgentGhostButton, AgentPrimaryButton } from "../components/agent/AgentButtons";
 import { listDocuments, type DocumentItem } from "../api/documents.api";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
 import { APP_ROUTES } from "../types/navigation";
@@ -195,30 +197,14 @@ export default function PayslipsAgentPage() {
    STEP INDICATOR — personal details done (in onboarding)
 ════════════════════════════════════════════════════════════════ */
 function StepIndicator({ step }: { step: WizardStep }) {
-  const steps: { label: string; state: "done" | "active" | "todo" }[] = [
-    { label: "פרטים אישיים", state: "done" },
-    { label: "העלאת תלושים", state: step === "upload" ? "active" : "done" },
-    { label: "תובנות AI", state: step === "results" ? "active" : "todo" },
-  ];
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 44 }}>
-      {steps.map((s, i) => (
-        <div key={s.label} style={{ display: "flex", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            <span style={{
-              width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 13, flex: "none",
-              background: s.state === "active" ? "var(--ink)" : s.state === "done" ? "var(--lav-100)" : "transparent",
-              color: s.state === "active" ? "#fff" : s.state === "done" ? "var(--lav-600)" : "var(--text-faint)",
-              border: s.state === "todo" ? "1.5px solid var(--border-soft)" : "none",
-            }}>
-              {s.state === "done" ? <Check size={15} strokeWidth={3} /> : i + 1}
-            </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: s.state === "active" ? "var(--ink)" : "var(--text-faint)" }}>{s.label}</span>
-          </div>
-          {i < steps.length - 1 && <div style={{ width: 40, height: 1.5, margin: "0 14px", background: s.state === "done" ? "var(--lav-300)" : "var(--hair)" }} />}
-        </div>
-      ))}
-    </div>
+    <AgentStepIndicator
+      steps={[
+        { label: "פרטים אישיים", state: "done" },
+        { label: "העלאת תלושים", state: step === "upload" ? "active" : "done" },
+        { label: "תובנות AI", state: step === "results" ? "active" : "todo" },
+      ]}
+    />
   );
 }
 
@@ -317,7 +303,18 @@ function UploadStep({ intake, onComplete, onBack }: {
           <input ref={fileInputRef} type="file" accept=".pdf" multiple style={{ display: "none" }}
             onChange={e => { if (e.target.files?.length) void handleFileUpload(e.target.files); e.target.value = ""; }} />
           <div
+            className="agent-upload-dropzone"
+            role="button"
+            tabIndex={uploading || slotsLeft <= 0 ? -1 : 0}
+            aria-disabled={uploading || slotsLeft <= 0}
+            aria-busy={uploading}
             onClick={() => !uploading && slotsLeft > 0 && fileInputRef.current?.click()}
+            onKeyDown={e => {
+              if (!uploading && slotsLeft > 0 && (e.key === "Enter" || e.key === " ")) {
+                e.preventDefault();
+                fileInputRef.current?.click();
+              }
+            }}
             onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) void handleFileUpload(e.dataTransfer.files); }}
@@ -344,11 +341,20 @@ function UploadStep({ intake, onComplete, onBack }: {
                       <div style={{ marginTop: 6, padding: "10px 12px", borderRadius: "var(--r-sm)", background: "var(--butter-soft)", border: "1px solid var(--butter)" }}>
                         <div style={{ fontSize: 12, color: "var(--butter-ink)", marginBottom: 6, fontWeight: 600 }}>הזן/י סיסמת PDF לפתיחה ועיבוד</div>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <input type="password" value={passwordInputs[entry.id] || ""} placeholder="סיסמת PDF" disabled={unlockingId === entry.id}
+                          <input
+                            type="password"
+                            aria-label={`סיסמת PDF עבור ${entry.name}`}
+                            value={passwordInputs[entry.id] || ""}
+                            placeholder="סיסמת PDF"
+                            disabled={unlockingId === entry.id}
                             onChange={e => setPasswordInputs(prev => ({ ...prev, [entry.id]: e.target.value }))}
-                            style={{ flex: 1, padding: "8px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--butter)", fontFamily: "inherit", fontSize: 13, background: "var(--card)" }} />
+                            onKeyDown={e => {
+                              if (e.key === "Enter" && passwordInputs[entry.id]?.trim()) void handleUnlock(entry);
+                            }}
+                            style={{ flex: 1, padding: "8px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--butter)", fontFamily: "inherit", fontSize: 13, background: "var(--card)" }}
+                          />
                           <button type="button" onClick={() => void handleUnlock(entry)} disabled={unlockingId === entry.id || !passwordInputs[entry.id]?.trim()}
-                            style={{ padding: "8px 14px", borderRadius: "var(--r-sm)", background: "var(--butter-ink)", color: "#fff", border: "none", cursor: unlockingId === entry.id ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12 }}>
+                            style={{ padding: "8px 14px", borderRadius: "var(--r-sm)", background: "var(--ink)", color: "#fff", border: "none", cursor: unlockingId === entry.id ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, boxShadow: "var(--shadow-ink)" }}>
                             {unlockingId === entry.id ? "פותח..." : "פתח"}
                           </button>
                         </div>
@@ -369,7 +375,7 @@ function UploadStep({ intake, onComplete, onBack }: {
       </div>
 
       {msg && (
-        <div style={{ marginTop: 16, padding: "12px 18px", borderRadius: "var(--r-btn)", fontWeight: 700, fontSize: 13.5, textAlign: "center",
+        <div role={msg.type === "error" ? "alert" : "status"} aria-live="polite" style={{ marginTop: 16, padding: "12px 18px", borderRadius: "var(--r-btn)", fontWeight: 700, fontSize: 13.5, textAlign: "center",
           background: msg.type === "error" ? "#FEF2F2" : msg.type === "success" ? "var(--mint-soft)" : "var(--accent-soft)",
           color: msg.type === "error" ? "var(--danger)" : msg.type === "success" ? "var(--mint-ink)" : "var(--lav-600)",
           border: "1px solid " + (msg.type === "error" ? "rgba(220,38,38,.2)" : msg.type === "success" ? "var(--mint)" : "var(--lav-200)") }}>
@@ -379,14 +385,20 @@ function UploadStep({ intake, onComplete, onBack }: {
 
       {/* footer actions */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 26, gap: 16, flexWrap: "wrap" }}>
-        <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, color: "var(--text-muted)" }}>
+        <button type="button" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, color: "var(--text-muted)" }}>
           <ChevronRight size={16} strokeWidth={2.4} /> חזרה
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          {!ready && !hasUploadAttempts && <button onClick={handleContinue} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, color: "var(--text-faint)" }}>דלג</button>}
-          <PrimaryBtn disabled={continuing || uploading || (hasUploadAttempts && !canShowResults)} onClick={handleContinue} iconRight={<ArrowLeft size={18} strokeWidth={2.2} />}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          {!ready && !hasUploadAttempts && (
+            <AgentGhostButton size="sm" onClick={handleContinue}>דלג</AgentGhostButton>
+          )}
+          <AgentPrimaryButton
+            disabled={continuing || uploading || (hasUploadAttempts && !canShowResults)}
+            onClick={handleContinue}
+          >
             {continuing ? "טוען..." : hasUploadAttempts && !canShowResults ? "יש לתקן את ההעלאות" : "המשך לניתוח"}
-          </PrimaryBtn>
+            {!continuing && !(hasUploadAttempts && !canShowResults) && <ArrowLeft size={18} strokeWidth={2.2} />}
+          </AgentPrimaryButton>
         </div>
       </div>
     </main>
@@ -497,7 +509,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
         </span>
         <span style={{ marginInlineStart: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
           <ToolBtn icon={<History size={15} />} onClick={() => navigate(APP_ROUTES.payslipHistory)}>היסטוריית תלושים</ToolBtn>
-          <PrimaryBtn size="sm" onClick={onAddMore} iconLeft={<Plus size={15} strokeWidth={2.4} />}>הוסף תלושים</PrimaryBtn>
+          <AgentPrimaryButton size="sm" onClick={onAddMore}><Plus size={15} strokeWidth={2.4} /> הוסף תלושים</AgentPrimaryButton>
         </span>
       </div>
 
@@ -509,7 +521,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
       ) : error ? (
         <div style={{ background: "var(--card)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)", padding: 40, textAlign: "center" }}>
           <div style={{ color: "var(--danger)", fontSize: 14, marginBottom: 14, fontWeight: 600 }}>{error}</div>
-          <PrimaryBtn onClick={() => void loadAnalysis()}>נסה שוב</PrimaryBtn>
+          <AgentPrimaryButton onClick={() => void loadAnalysis()}>נסה שוב</AgentPrimaryButton>
         </div>
       ) : hasData && summary ? (
         <>
@@ -606,7 +618,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
               </div>
             </div>
           )}
-          <PrimaryBtn onClick={onAddMore} iconLeft={<Upload size={15} strokeWidth={2} />}>הוסף תלושים</PrimaryBtn>
+          <AgentPrimaryButton onClick={onAddMore}><Upload size={15} strokeWidth={2} /> הוסף תלושים</AgentPrimaryButton>
         </div>
       )}
 
@@ -624,7 +636,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
         <span style={{ width: 54, height: 54, borderRadius: 15, background: "var(--ink)", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px", boxShadow: "var(--shadow-ink)" }}><Sparkles size={26} /></span>
         <h3 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שאל את הסוכן שאלות</h3>
         <p style={{ margin: "0 auto 22px", maxWidth: 420, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>"למה המשכורת ירדה?" · "כמה מס שילמתי?" · "האם מגיע לי החזר מס?"</p>
-        <PrimaryBtn size="lg" onClick={() => navigate(`${APP_ROUTES.hub}?chat=1`)} iconLeft={<Sparkles size={18} />}>פתח שיחה עם הסוכן</PrimaryBtn>
+        <AgentPrimaryButton onClick={() => navigate(`${APP_ROUTES.hub}?chat=1`)}><Sparkles size={18} /> פתח שיחה עם הסוכן</AgentPrimaryButton>
         <div style={{ marginTop: 16 }}>
           <button onClick={onEditProfile} style={{ background: "none", border: "none", color: "var(--text-faint)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>עדכן פרטים אישיים</button>
         </div>
@@ -683,23 +695,9 @@ function ResSection({ title, sub, children }: { title: string; sub?: string; chi
   );
 }
 
-function PrimaryBtn({ children, onClick, disabled, fullWidth, size = "md", iconLeft, iconRight }: {
-  children: React.ReactNode; onClick?: () => void; disabled?: boolean; fullWidth?: boolean;
-  size?: "sm" | "md" | "lg"; iconLeft?: React.ReactNode; iconRight?: React.ReactNode;
-}) {
-  const pad = size === "lg" ? "14px 28px" : size === "sm" ? "8px 16px" : "12px 22px";
-  const fs = size === "lg" ? 16 : size === "sm" ? 13.5 : 15;
-  return (
-    <button type="button" onClick={onClick} disabled={disabled}
-      style={{ width: fullWidth ? "100%" : undefined, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: pad, borderRadius: "var(--r-btn)", border: "none", cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: fs, color: "#fff", background: disabled ? "var(--lav-300)" : "var(--ink)", opacity: disabled ? 0.7 : 1, boxShadow: disabled ? "none" : "var(--shadow-ink)", transition: "opacity var(--dur-fast) var(--ease)" }}>
-      {iconLeft}{children}{iconRight}
-    </button>
-  );
-}
-
 function ToolBtn({ children, icon, onClick }: { children: React.ReactNode; icon: React.ReactNode; onClick: () => void }) {
   return (
-    <button onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 14px", borderRadius: "var(--r-sm)", border: "1px solid var(--border-soft)", background: "var(--surface-sunken)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: "var(--text-body)" }}>
+    <button type="button" onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 14px", borderRadius: "var(--r-sm)", border: "1px solid var(--border-soft)", background: "var(--surface-sunken)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: "var(--text-body)" }}>
       {icon}{children}
     </button>
   );

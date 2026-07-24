@@ -1,0 +1,317 @@
+/* ============================================================
+   WELCOME BACK PAGE — /welcome-back
+   Returning-member founder note. Shares the pastel shell and the
+   founder-letter hierarchy of [welcome.css], but stays to a single
+   screen: no marquee, no features grid, one CTA.
+   ============================================================ */
+
+.welcome-back-page {
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: clamp(24px, 5vw, 56px) clamp(16px, 4vw, 32px);
+  background:
+    radial-gradient(120% 80% at 12% 0%, var(--lav-50, #faf7ff) 0%, transparent 55%),
+    radial-gradient(90% 70% at 100% 8%, var(--peach-soft, #fce9df) 0%, transparent 50%),
+    var(--surface-page, #fbfbfc);
+  color: var(--text-body, #3a3947);
+  overflow-x: clip;
+}
+
+.welcome-back-page::before {
+  content: "";
+  position: absolute;
+  inset-block-start: -120px;
+  inset-inline-end: -100px;
+  width: 420px;
+  height: 420px;
+  background: radial-gradient(circle, var(--lav-200, #e4d7ff), transparent 68%);
+  opacity: 0.45;
+  filter: blur(8px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.welcome-back-page::after {
+  content: "";
+  position: absolute;
+  inset-block-end: -80px;
+  inset-inline-start: -120px;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, var(--mint-soft, #e6f6ec), transparent 70%);
+  opacity: 0.4;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.welcome-back-main {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: min(1080px, 94vw);
+  margin-inline: auto;
+}
+
+/* ---- Card ---- */
+.welcome-back-founder {
+  padding: clamp(28px, 4.5vw, 56px);
+  border-radius: var(--r-card, 14px);
+  background: var(--surface-card, #fff);
+  border: 1px solid var(--border-soft, rgba(22, 21, 28, 0.09));
+  box-shadow: var(--shadow-card, 0 26px 58px -28px rgba(28, 26, 38, 0.2));
+  animation: welcome-back-rise 640ms var(--ease, cubic-bezier(0.22, 0.61, 0.36, 1)) both;
+}
+
+@keyframes welcome-back-rise {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Portrait leads on mobile, sits on the inline-start edge on desktop. */
+.welcome-back-grid {
+  display: grid;
+  gap: clamp(28px, 4vw, 56px);
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "portrait"
+    "content";
+  align-items: center;
+}
+
+@media (min-width: 881px) {
+  .welcome-back-grid {
+    grid-template-columns: minmax(280px, 400px) minmax(0, 1fr);
+    grid-template-areas: "portrait content";
+  }
+}
+
+.welcome-back-content {
+  grid-area: content;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.welcome-back-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: var(--r-pill, 999px);
+  background: var(--accent-soft, #f4eeff);
+  color: var(--accent-strong, #5e45b0);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+
+.welcome-back-headline {
+  margin: 0;
+  font-family: var(--font-display, inherit);
+  font-weight: 900;
+  font-size: clamp(1.9rem, 4.4vw, 2.9rem);
+  line-height: 1.12;
+  letter-spacing: var(--tracking-tight, -0.02em);
+  color: var(--text-strong, #16151c);
+}
+
+.welcome-back-headline strong {
+  font-weight: inherit;
+  background: var(--grad-text, linear-gradient(96deg, #7c5fd6, #da6f44 68%, #b98b16));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.welcome-back-sub {
+  margin: 0;
+  font-size: clamp(1.1rem, 2.4vw, 1.3rem);
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--text-strong, #16151c);
+}
+
+.welcome-back-body {
+  margin: 0;
+  max-width: 52ch;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  color: var(--text-muted, #6b6a78);
+}
+
+/* ---- Pull-quote ---- */
+.welcome-back-quote {
+  margin: 4px 0 0;
+  padding: clamp(18px, 2.4vw, 24px) clamp(20px, 2.6vw, 28px);
+  border-radius: var(--r-card, 14px);
+  background: var(--lav-50, #faf7ff);
+  border: 1px solid var(--border-soft, rgba(22, 21, 28, 0.09));
+  border-inline-start: 4px solid var(--lav-300, #cdb6ff);
+  position: relative;
+}
+
+.welcome-back-quote::before {
+  content: "\201D";
+  position: absolute;
+  inset-block-start: -6px;
+  inset-inline-start: 14px;
+  font-family: var(--font-display, inherit);
+  font-size: 56px;
+  line-height: 1;
+  color: var(--lav-200, #e4d7ff);
+  pointer-events: none;
+}
+
+.welcome-back-quote p {
+  position: relative;
+  margin: 0;
+  font-size: clamp(1rem, 2vw, 1.15rem);
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--text-strong, #16151c);
+}
+
+/* ---- Signature ---- */
+.welcome-back-signature {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-block-start: 4px;
+  padding-block-start: 16px;
+  border-block-start: 1px solid var(--border-soft, rgba(22, 21, 28, 0.09));
+}
+
+.welcome-back-signature-name {
+  font-family: var(--font-display, inherit);
+  font-weight: 900;
+  font-size: 1.15rem;
+  color: var(--text-strong, #16151c);
+}
+
+.welcome-back-signature-role {
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b6a78);
+}
+
+/* ---- Portrait ---- */
+.welcome-back-portrait {
+  grid-area: portrait;
+  margin: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.welcome-back-portrait-frame {
+  width: 100%;
+  aspect-ratio: 10 / 11;
+  min-height: clamp(300px, 42vh, 460px);
+  border-radius: clamp(18px, 2vw, 24px);
+  overflow: hidden;
+  background: var(--lav-50, #faf7ff);
+  transform: rotate(1.5deg);
+  box-shadow:
+    0 0 0 5px var(--butter, #f6e4a8),
+    0 0 0 7px var(--surface-card, #fff),
+    0 24px 48px -16px rgba(22, 21, 28, 0.2);
+  transition: transform var(--dur-base, 0.25s) var(--ease, cubic-bezier(0.22, 0.61, 0.36, 1));
+}
+
+.welcome-back-portrait-frame:hover {
+  transform: rotate(0deg) translateY(-4px);
+}
+
+.welcome-back-portrait-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+
+/* ---- CTA ---- */
+.welcome-back-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-block-start: 8px;
+  padding: 13px 26px;
+  min-height: 48px;
+  border: none;
+  border-radius: var(--r-pill, 999px);
+  background: var(--lav-600, #7c5fd6);
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 14px 30px -12px rgba(124, 95, 214, 0.55);
+  transition:
+    transform var(--dur-base, 0.25s) var(--ease, cubic-bezier(0.22, 0.61, 0.36, 1)),
+    box-shadow var(--dur-base, 0.25s) var(--ease, cubic-bezier(0.22, 0.61, 0.36, 1)),
+    background-color var(--dur-base, 0.25s) var(--ease, cubic-bezier(0.22, 0.61, 0.36, 1));
+}
+
+.welcome-back-cta:hover:not(:disabled) {
+  transform: translateY(-2px);
+  background: var(--lav-700, #5e45b0);
+  box-shadow: 0 18px 36px -14px rgba(124, 95, 214, 0.6);
+}
+
+.welcome-back-cta:focus-visible {
+  outline: 2px solid var(--accent, #7c5fd6);
+  outline-offset: 3px;
+}
+
+.welcome-back-cta:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.welcome-back-cta-arrow {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 880px) {
+  .welcome-back-portrait {
+    max-width: min(400px, 88vw);
+    margin-inline: auto;
+  }
+
+  .welcome-back-portrait-frame {
+    transform: rotate(-1.5deg);
+    min-height: clamp(280px, 38vh, 400px);
+  }
+
+  .welcome-back-cta {
+    align-self: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-back-founder,
+  .welcome-back-portrait-frame,
+  .welcome-back-cta {
+    animation: none;
+    transition: none;
+  }
+
+  .welcome-back-portrait-frame:hover,
+  .welcome-back-cta:hover:not(:disabled) {
+    transform: none;
+  }
+}

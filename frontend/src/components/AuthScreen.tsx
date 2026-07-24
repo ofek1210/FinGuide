@@ -11,6 +11,7 @@ import ToastContainer from "./ui/ToastContainer";
 import Loader from "./ui/Loader";
 import { APP_ROUTES } from "../types/navigation";
 import { emitAuthChanged } from "../auth/authEvents";
+import { markWelcomeBackPending } from "../utils/welcomeBackSession";
 import "./landing/auth.css";
 
 interface AuthScreenProps {
@@ -249,10 +250,17 @@ export default function AuthScreen({
     (
       token: string,
       user?: { id: string; name: string; email: string },
+      options?: { isLogin?: boolean },
     ) => {
       localStorage.setItem("token", token);
       if (user) {
         localStorage.setItem("auth_user", JSON.stringify(user));
+      }
+      // Returning-user welcome runs once per login session. New-user
+      // /welcome flow ([WelcomePage]) consumes/clears this flag, so a
+      // freshly-registered user never sees both screens.
+      if (options?.isLogin) {
+        markWelcomeBackPending();
       }
       // Fires synchronously → AuthProvider's listener calls refresh() which queues
       // setStatus("checking"). By batching it with the navigate() below, RequireAuth
@@ -278,7 +286,10 @@ export default function AuthScreen({
           return;
         }
 
-        persistSession(token, response.data?.user);
+        // Google sign-in covers both login and signup; mark pending so
+        // returning users see welcome-back. New users hit /welcome first,
+        // which clears the flag before they reach the hub.
+        persistSession(token, response.data?.user, { isLogin: true });
       } catch {
         setError("אירעה שגיאה בהתחברות עם Google, נסו שוב בהמשך.");
       } finally {
@@ -424,7 +435,7 @@ export default function AuthScreen({
         return;
       }
 
-      persistSession(token, response.data?.user);
+      persistSession(token, response.data?.user, { isLogin: true });
     } catch {
       setError(
         isRegister
