@@ -45,10 +45,19 @@ export function RequireAuth({ children }: GuardProps) {
     return <Navigate to={APP_ROUTES.onboarding} replace />;
   }
 
-  // Returning users only — never for the new-user welcome / onboarding flows
-  // (those guards above run first and short-circuit before we get here).
+  // Returning users only. Both first-run gates above must already be satisfied:
+  // they allow /welcome and /onboarding but not /welcome-back, so redirecting a
+  // user who still owes either of them ping-pongs between the two routes until
+  // React gives up ("Maximum update depth exceeded"). A user who has not seen
+  // the welcome screen or finished onboarding is not a returning user anyway —
+  // the first-run flow wins, and WelcomePage clears the pending flag.
   const isWelcomeBackRoute = location.pathname === APP_ROUTES.welcomeBack;
-  if (isWelcomeBackPending() && !isWelcomeBackRoute) {
+  if (
+    welcomeShown === true &&
+    onboardingCompleted === true &&
+    isWelcomeBackPending() &&
+    !isWelcomeBackRoute
+  ) {
     return <Navigate to={APP_ROUTES.welcomeBack} replace />;
   }
 
