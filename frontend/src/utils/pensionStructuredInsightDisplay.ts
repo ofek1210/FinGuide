@@ -37,6 +37,24 @@ export const INSIGHT_CATEGORY_LABELS: Record<string, string> = {
   contribution_gap: "הפקדות",
   insurance_coverage: "כיסוי ביטוחי",
   survivor_coverage_fit: "התאמת כיסוי שארים",
+  fees: "דמי ניהול",
+  performance: "ביצועים",
+  risk: "סיכון",
+  coverage: "כיסוי",
+  deposits: "הפקדות",
+  liquidity: "נזילות",
+  account_structure: "מבנה חשבונות",
+  data_quality: "איכות נתונים",
+  high_asset_management_fee: "דמי ניהול מצבירה",
+  high_deposit_management_fee: "דמי ניהול מהפקדה",
+  balance_without_recent_deposits: "צבירה ללא הפקדות",
+  inactive_product_with_balance: "מוצר לא פעיל",
+  liquidity_status_unknown: "סטטוס נזילות",
+  study_fund_liquid: "נזילות השתלמות",
+  fragmented_accounts: "מספר חשבונות",
+  weak_market_match: "התאמת שוק",
+  risk_profile_mismatch: "התאמת סיכון",
+  long_term_underperformance: "ביצועים לטווח ארוך",
 };
 
 export function hasDisplayValue(value: unknown): boolean {
@@ -54,7 +72,11 @@ export function insightCategoryLabel(category: string): string {
 export function formatBenchmarkLines(benchmark?: PensionInsightBenchmarkDTO | null): string[] {
   if (!benchmark) return [];
   const lines: string[] = [];
-  if (hasDisplayValue(benchmark.group)) lines.push(`קבוצת השוואה: ${benchmark.group}`);
+
+  const groupLabel = benchmark.comparisonGroupLabel
+    ?? (benchmark.group && !/[:/]|unknown/i.test(benchmark.group) ? benchmark.group : null);
+  if (hasDisplayValue(groupLabel)) lines.push(`קבוצת השוואה: ${groupLabel}`);
+
   if (hasDisplayValue(benchmark.percentile)) lines.push(`אחוזון: ${benchmark.percentile}`);
   if (hasDisplayValue(benchmark.median)) {
     const med = benchmark.median!;

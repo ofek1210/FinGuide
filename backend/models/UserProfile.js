@@ -29,7 +29,16 @@ const STRING_ENUMS = {
   investmentType: ['stocks', 'bonds', 'real_estate', 'crypto', 'other'],
   riskTolerance: ['low', 'medium', 'high'],
   goalType: ['emergency_fund', 'home_purchase', 'retirement', 'education', 'travel', 'car', 'other'],
-  employmentType: ['employee', 'self_employed', 'freelancer', 'business_owner'],
+  employmentType: ['employee', 'self_employed', 'freelancer', 'business_owner', 'both'],
+  financialGoal: [
+    'improve_retirement',
+    'increase_savings',
+    'reduce_fees',
+    'optimize_insurance',
+    'improve_investments',
+    'understand_finances',
+  ],
+  investmentExperience: ['none', 'beginner', 'intermediate', 'advanced'],
 };
 
 const personalSchema = new mongoose.Schema(
@@ -58,6 +67,8 @@ const personalSchema = new mongoose.Schema(
     hasCompletedMilitaryService: { type: Boolean, default: null },
     spouseWorks: { type: Boolean, default: null },
     isSmoker: { type: Boolean, default: null },
+    hasChildren: { type: Boolean, default: null },
+    hasDependents: { type: Boolean, default: null },
   },
   { _id: false }
 );
@@ -106,6 +117,21 @@ const financialSchema = new mongoose.Schema(
       type: String,
       enum: [...STRING_ENUMS.riskTolerance, null],
       default: null,
+    },
+    investmentExperience: {
+      type: String,
+      enum: [...STRING_ENUMS.investmentExperience, null],
+      default: null,
+    },
+    financialGoals: {
+      type: [String],
+      default: [],
+      validate: {
+        validator(values) {
+          return values.every(v => STRING_ENUMS.financialGoal.includes(v));
+        },
+        message: 'Invalid financial goal',
+      },
     },
   },
   { _id: false }
@@ -174,6 +200,11 @@ const employmentSchema = new mongoose.Schema(
       enum: [...STRING_ENUMS.employmentType, null],
       default: null,
     },
+    employmentStatus: {
+      type: String,
+      enum: ['employee', 'self_employed', 'both', null],
+      default: null,
+    },
     salaryType: {
       type: String,
       enum: [...STRING_ENUMS.salaryType, null],
@@ -193,6 +224,30 @@ const employmentSchema = new mongoose.Schema(
     studyFundEmployerRate: { type: Number, default: null, min: 0, max: 20 },
   },
   { _id: false }
+);
+
+const agentOnboardingLayerSchema = new mongoose.Schema(
+  {
+    completedAt: { type: Date, default: null },
+    skippedAt: { type: Date, default: null },
+    answers: { type: mongoose.Schema.Types.Mixed, default: {} },
+  },
+  { _id: false },
+);
+
+const smartOnboardingSchema = new mongoose.Schema(
+  {
+    general: {
+      completedAt: { type: Date, default: null },
+      answers: { type: mongoose.Schema.Types.Mixed, default: {} },
+    },
+    agents: {
+      type: Map,
+      of: agentOnboardingLayerSchema,
+      default: () => new Map(),
+    },
+  },
+  { _id: false },
 );
 
 const userProfileSchema = new mongoose.Schema(
@@ -217,6 +272,7 @@ const userProfileSchema = new mongoose.Schema(
     retirement: { type: retirementSchema, default: () => ({}) },
     employment: { type: employmentSchema, default: () => ({}) },
     goals: { type: [goalSchema], default: [] },
+    smartOnboarding: { type: smartOnboardingSchema, default: () => ({ general: { answers: {} }, agents: new Map() }) },
     completedSteps: { type: [String], default: [] },
     completedAt: { type: Date, default: null },
   },

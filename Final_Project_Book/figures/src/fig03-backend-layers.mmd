@@ -1,17 +1,23 @@
 flowchart TB
-  subgraph layers [Backend Layered Architecture]
-    direction TB
-    Routes["Routes\nbackend/routes/"]
-    Controllers["Controllers\nbackend/controllers/"]
-    Services["Services\nbackend/services/"]
-    Utils["Utilities\nbackend/utils/"]
-    Models["Models\nbackend/models/"]
-  end
+  Request["HTTP request"]
+  Global["Global middleware\nrate limit → CORS → body parsers"]
+  Route["Route boundary\nprotect / validation / Multer → route"]
+  Controller["Controller\nHTTP translation; sometimes direct model access"]
+  Service["Services and domain engines\nOCR, findings, agents, imports, forecasts"]
+  Utility["Utilities / schemas\ncalculations, normalization, validation"]
+  Model["Mongoose models"]
+  Mongo[(MongoDB)]
+  Local["Local filesystem + OCR subprocesses"]
+  External["Claude/Ollama, Google, data.gov.il"]
+  Shape["Serializers / DTO shaping"]
+  Response["JSON, file download, or SSE response"]
 
-  HTTP["HTTP Request"] --> Routes
-  Routes --> Controllers
-  Controllers --> Services
-  Services --> Utils
-  Services --> Models
-  Models --> MongoDB[(MongoDB)]
-  Controllers --> HTTPResp["JSON Response"]
+  Request --> Global --> Route --> Controller
+  Controller --> Service
+  Controller --> Model
+  Service --> Utility
+  Service --> Model --> Mongo
+  Service --> Local
+  Service --> External
+  Controller --> Shape --> Response
+  Service --> Shape

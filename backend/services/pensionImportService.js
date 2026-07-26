@@ -4,6 +4,11 @@ const PensionFund = require('../models/PensionFund');
 const PensionImportSnapshot = require('../models/PensionImportSnapshot');
 const UserProfile = require('../models/UserProfile');
 const { buildPensionAnalysis } = require('./pensionAnalysisService');
+const {
+  extractImportSnapshotFields,
+  isThreeCardAnalysis,
+  sumThreeCardAnnualSavings,
+} = require('./financialAdvisory/threeCardAnalysisPayload');
 const { upsertImportedFunds } = require('./pensionFundMergeService');
 const { saveImportSnapshot } = require('./importSnapshotService');
 const { runDomainImport } = require('./domainImportService');
@@ -37,15 +42,13 @@ async function savePensionImportSnapshot(userId, source, sourceFile, analysis, f
     status: { $ne: 'closed' },
     isActive: { $ne: false },
   });
+  const snapshotFields = extractImportSnapshotFields(analysis);
   await saveImportSnapshot(PensionImportSnapshot, userId, {
     source,
     sourceFile,
     fileChecksumSha256: fileChecksumSha256 || null,
     fundCount,
-    totalPotentialSavings: analysis.benchmark?.summary?.totalPotentialSavings || 0,
-    healthScore: analysis.healthCheck?.score ?? null,
-    avgRankPercentile: analysis.benchmark?.summary?.avgRankPercentile ?? null,
-    fundsAboveMarketFee: analysis.benchmark?.summary?.fundsAboveMarketFee || 0,
+    ...snapshotFields,
   });
 }
 
@@ -79,9 +82,15 @@ async function importPensionFile(userId, parsedFunds, importSource, sourceFile, 
     syncProfileFn: syncProfileRetirement,
     saveSnapshotFn: (uid, postAnalysis) =>
       savePensionImportSnapshot(uid, importSource, sourceFile, postAnalysis, fileChecksumSha256),
-    extractSavingsDelta: (post, pre) =>
-      (post.benchmark?.summary?.totalPotentialSavings || 0)
-      - (pre.benchmark?.summary?.totalPotentialSavings || 0),
+    extractSavingsDelta: (post, pre) => {
+      const postSavings = isThreeCardAnalysis(post)
+        ? sumThreeCardAnnualSavings(post)
+        : (post.benchmark?.summary?.totalPotentialSavings || 0);
+      const preSavings = isThreeCardAnalysis(pre)
+        ? sumThreeCardAnnualSavings(pre)
+        : (pre.benchmark?.summary?.totalPotentialSavings || 0);
+      return postSavings - preSavings;
+    },
     buildReturn: ({ upsert, postAnalysis, savingsDelta }) => ({
       funds: upsert.funds,
       imported: upsert.imported,
@@ -89,7 +98,7 @@ async function importPensionFile(userId, parsedFunds, importSource, sourceFile, 
       created: upsert.created,
       analysis: postAnalysis,
       savingsDelta,
-      healthScore: postAnalysis.healthCheck?.score ?? null,
+      healthScore: extractImportSnapshotFields(postAnalysis).healthScore,
     }),
   });
 }

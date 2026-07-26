@@ -1,17 +1,12 @@
 /**
- * Unit tests for ai/agents/gemelAgent — the analysis pipeline is mocked
- * so the agent contract (status, data shaping, LLM gating) is tested in isolation.
+ * Unit tests for ai/agents/gemelAgent — analysis pipeline mocked.
  */
 
 jest.mock('../../services/gemelAnalysisService', () => ({
   buildGemelAnalysis: jest.fn(),
 }));
-jest.mock('../../services/claudeChatService', () => ({
-  askClaude: jest.fn(),
-}));
 
 const { buildGemelAnalysis } = require('../../services/gemelAnalysisService');
-const { askClaude } = require('../../services/claudeChatService');
 const { runGemelAgent } = require('../../ai/agents/gemelAgent');
 
 const RICH_ANALYSIS = {
@@ -57,12 +52,14 @@ const RICH_ANALYSIS = {
     { id: 'study_fund_no_deposit', title: 'כותרת', severity: 'warning', details: 'פרטים', meta: null },
   ],
   recommendations: [{ type: 'gemel_market_negotiate', title: 'א', reason: 'ב', urgency: 'medium' }],
+  structuredInsights: [],
+  primaryRecommendations: [],
+  llm: { used: false, provider: null, fallbackUsed: true },
   profile: null,
 };
 
 beforeEach(() => {
   jest.clearAllMocks();
-  delete process.env.ANTHROPIC_API_KEY;
 });
 
 describe('runGemelAgent', () => {
@@ -88,36 +85,44 @@ describe('runGemelAgent', () => {
     const result = await runGemelAgent('user-1', { skipLLM: true });
     expect(result.status).toBe('success');
     expect(result.data.marketAdvice.overallVerdict).toBe('NEGOTIATE');
-    expect(result.data.marketAdvice.funds[0]).toMatchObject({
-      productName: 'קרן א',
-      verdict: 'NEGOTIATE',
-      returnPercentile: 49,
-    });
     expect(result.data.payslipFindings).toHaveLength(1);
     expect(result.recommendations).toHaveLength(1);
     expect(typeof result.durationMs).toBe('number');
   });
 
-  it('skips the LLM when skipLLM is true even with an API key', async () => {
-    process.env.ANTHROPIC_API_KEY = 'test-key';
-    buildGemelAnalysis.mockResolvedValue(RICH_ANALYSIS);
+  it('uses shared LLM formatter output from buildGemelAnalysis', async () => {
+    buildGemelAnalysis.mockResolvedValue({
+      ...RICH_ANALYSIS,
+      llm: { used: true, provider: 'ollama', fallbackUsed: false, summary: 'נמצאו שני נושאים.' },
+      primaryRecommendations: [{
+        insightId: 'ins-1',
+        title: 'דמי ניהול',
+        explanation: 'גבוהים מהחציון',
+        whyItMatters: 'משפיע לאורך זמן',
+        nextStep: 'בדוק מול הגוף המנהל',
+      }],
+    });
 
-    const result = await runGemelAgent('user-1', { skipLLM: true });
-    expect(askClaude).not.toHaveBeenCalled();
-    expect(result.llmExplanation).toBeNull();
+    const result = await runGemelAgent('user-1', { skipLLM: false });
+    expect(result.llm.used).toBe(true);
+    expect(result.llmExplanation).toBe('נמצאו שני נושאים.');
+    expect(result.primaryRecommendations[0].insightId).toBe('ins-1');
   });
 
-  it('attaches the LLM explanation when available, and survives LLM failure', async () => {
-    process.env.ANTHROPIC_API_KEY = 'test-key';
-    buildGemelAnalysis.mockResolvedValue(RICH_ANALYSIS);
+  it('falls back when LLM not used', async () => {
+    buildGemelAnalysis.mockResolvedValue({
+      ...RICH_ANALYSIS,
+      primaryRecommendations: [{
+        insightId: 'ins-1',
+        title: 'דמי ניהול',
+        explanation: 'גבוהים',
+        whyItMatters: 'חשוב',
+        nextStep: 'בדוק',
+      }],
+    });
 
-    askClaude.mockResolvedValueOnce({ answer: 'הסבר' });
-    let result = await runGemelAgent('user-1');
-    expect(result.llmExplanation).toBe('הסבר');
-
-    askClaude.mockRejectedValueOnce(new Error('boom'));
-    result = await runGemelAgent('user-1');
-    expect(result.status).toBe('success');
-    expect(result.llmExplanation).toBeNull();
+    const result = await runGemelAgent('user-1', { skipLLM: true });
+    expect(result.llm.fallbackUsed).toBe(true);
+    expect(result.llmExplanation).toContain('גבוהים');
   });
 });

@@ -1,5 +1,5 @@
 {
-  "executablePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "executablePath": "/usr/bin/google-chrome",
   "args": [
     "--no-sandbox",
     "--disable-setuid-sandbox"

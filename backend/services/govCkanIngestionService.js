@@ -2,7 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { parseGovCsv } = require('../utils/govCsvParser');
+const { parseGovCsv, readGovCsvFile } = require('../utils/govCsvParser');
 
 const CKAN_SEARCH_SUFFIX = '/datastore_search';
 
@@ -60,7 +60,7 @@ async function fetchCkanResource(config) {
 function loadLocalCsv(config) {
   const csvPath = path.join(config.localDataDir, config.localCsvFile);
   if (!fs.existsSync(csvPath)) return null;
-  return parseGovCsv(fs.readFileSync(csvPath, 'utf8'));
+  return parseGovCsv(readGovCsvFile(csvPath));
 }
 
 function pickLatestPerFund(apiRecords, mapper) {
@@ -94,6 +94,13 @@ async function upsertFunds(Model, funds) {
     modified: result.modifiedCount || 0,
     total: funds.length,
   };
+}
+
+async function removeStaleFunds(Model, latestFunds) {
+  if (!latestFunds.length) return 0;
+  const activeIds = latestFunds.map((fund) => fund.ID);
+  const result = await Model.deleteMany({ ID: { $nin: activeIds } });
+  return result.deletedCount || 0;
 }
 
 /**
@@ -136,6 +143,7 @@ async function syncGovNetDataset({ config, Model, mapper, netKey }) {
 
   const latestFunds = pickLatestPerFund(apiRecords, mapper);
   const stats = await upsertFunds(Model, latestFunds);
+  const removed = await removeStaleFunds(Model, latestFunds);
 
   return {
     skipped: false,
@@ -144,6 +152,7 @@ async function syncGovNetDataset({ config, Model, mapper, netKey }) {
     fetchedRows: apiRecords.length,
     uniqueFunds: latestFunds.length,
     ...stats,
+    removed,
     syncedAt: new Date().toISOString(),
   };
 }

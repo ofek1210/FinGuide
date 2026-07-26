@@ -26,6 +26,9 @@ module.exports = {
     belowMedian: 25,
   },
 
+  /** Equity exposure above this (0–100) conflicts with LOW risk profile */
+  highEquityThreshold: Number(process.env.PENSION_HIGH_EQUITY_THRESHOLD) || 55,
+
   /** Standard disclaimer appended to personal pension insights */
   licensedAdvisorDisclaimer:
     'המידע אינו מהווה ייעוץ פנסיוני או המלצה לביצוע פעולה. יש להתייעץ עם בעל רישיון לפני שינוי מסלול, איחוד קרנות או שינוי כיסוי ביטוחי.',

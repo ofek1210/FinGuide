@@ -1,22 +1,7 @@
 flowchart TB
   Root["App.tsx Route Tree"]
 
-  Root --> Public["Public Routes\nRequireGuest"]
-  Root --> Open["Open Routes"]
-  Root --> Protected["Protected Routes\nRequireAuth"]
-
-  Public --> Home["/ Landing"]
-  Public --> Login["/login"]
-  Public --> Register["/register"]
-
-  Open --> Reset["/reset-password"]
-  Open --> Marketing["/team, /contact, /faq, /privacy, /terms, /careers"]
-
-  Protected --> Hub["/hub"]
-  Protected --> Welcome["/welcome, /welcome-back"]
-  Protected --> Docs["/documents, payslip history"]
-  Protected --> Finance["/planning, /pension, /insurance"]
-  Protected --> AI["/assistant, /insights, /ai-agents, /copilot"]
-  Protected --> Tools["/tax-assistant, /financial-health"]
-  Protected --> User["/settings, /onboarding, /notifications"]
-  Protected --> Integrations["/integrations/email"]
+  Root --> Public["Guest-only — RequireGuest\n/ · /login · /register"]
+  Root --> Open["Public/open\n/reset-password\n/team · /contact · /faq · /privacy · /terms\n/400 · /401 · /403 · /500 · unmatched → 404"]
+  Root --> Protected["Authenticated — RequireAuth\n/hub · /hub/report · /onboarding\n/documents, tax, scan, history, detail\n/pension · /insurance · /gemel · /assistant\n/settings · /notifications · /help · /integrations/email"]
+  Root --> Redirects["Compatibility redirects\n/dashboard · /findings · /planning\n/copilot · /insights · /financial-health · /careers/*\n/ai-agents → /assistant"]

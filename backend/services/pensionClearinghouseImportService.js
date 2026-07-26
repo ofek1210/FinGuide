@@ -2,6 +2,7 @@
 
 const PensionFund = require('../models/PensionFund');
 const PensionDeposit = require('../models/PensionDeposit');
+const PensionImportSnapshot = require('../models/PensionImportSnapshot');
 const { buildPensionAnalysis } = require('./pensionAnalysisService');
 const { upsertImportedFunds } = require('./pensionFundMergeService');
 const {
@@ -63,15 +64,29 @@ async function saveDepositsForFunds(userId, parsed, fundDocs, sourceFile) {
 
   if (!depositRows.length) return { saved: 0 };
 
-  await PensionDeposit.deleteMany({ user: userId, source: 'clearinghouse', sourceFile });
+  await PensionDeposit.deleteMany({ user: userId, source: 'clearinghouse' });
   await PensionDeposit.insertMany(depositRows);
   return { saved: depositRows.length };
 }
 
 /**
+ * Remove all data from a previous clearinghouse import so a new report fully replaces it.
+ */
+async function clearClearinghouseData(userId) {
+  await Promise.all([
+    PensionFund.deleteMany({ user: userId, source: 'clearinghouse' }),
+    PensionDeposit.deleteMany({ user: userId, source: 'clearinghouse' }),
+    PensionImportSnapshot.deleteMany({ user: userId, source: 'clearinghouse' }),
+  ]);
+}
+
+/**
  * Full import from official clearinghouse Excel (Option B).
+ * Always replaces the previous clearinghouse report — never accumulates stale rows.
  */
 async function importClearinghouseFile(userId, parsed, sourceFile) {
+  await clearClearinghouseData(userId);
+
   const payloads = (parsed.funds || []).map(f => fundPayloadFromClearinghouse(f, sourceFile));
   const result = await importPensionFile(userId, payloads, 'clearinghouse', sourceFile);
   const fundDocs = result.funds || [];
@@ -112,4 +127,5 @@ module.exports = {
   importClearinghouseFile,
   importManualFundsFromPreview,
   fundPayloadFromClearinghouse,
+  clearClearinghouseData,
 };

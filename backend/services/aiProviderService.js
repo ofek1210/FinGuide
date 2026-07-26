@@ -115,10 +115,14 @@ async function callOllama(messages, options = {}) {
       signal: AbortSignal.timeout(options.timeoutMs || 30000),
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      console.warn('[AI] Ollama HTTP error:', res.status);
+      return null;
+    }
     const data = await res.json();
     return cleanText(data.message?.content || '') || null;
-  } catch {
+  } catch (err) {
+    console.warn('[AI] Ollama error:', err.message);
     return null;
   }
 }

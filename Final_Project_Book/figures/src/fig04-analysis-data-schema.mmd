@@ -1,13 +1,7 @@
 flowchart TB
   Root["analysisData\nschema_version 1.9"]
 
-  Root --> Period["period\nmonth"]
-  Root --> Salary["salary\ngross_total, net_payable, components"]
-  Root --> Deductions["deductions.mandatory\nincome_tax, national_insurance, health_insurance"]
-  Root --> Contributions["contributions\npension, study_fund"]
-  Root --> Tax["tax\ncredit_points, personal_credit"]
-  Root --> Parties["parties\nemployer_name, employee_name, employee_id"]
-  Root --> Employment["employment\nstart_date, hmo"]
-  Root --> Summary["summary\nvalidation flags"]
-  Root --> Quality["quality\nextraction_path, confidence, warnings"]
-  Root --> Raw["raw\nocr metadata stripped in API"]
+  Root --> Payroll["Core payroll fields\nperiod: month\nsalary: gross_total, net_payable, components\ndeductions: mandatory, voluntary, voluntary_total"]
+  Root --> Benefits["Tax and benefit fields\ncontributions: pension, study_fund\ntax: taxable income, marginal rate, credit points\nnational_insurance: gross base\ninsurances: hmo"]
+  Root --> Identity["Identity and employment\nparties: employer_name, employee_name, employee_id\nemployment: start date, job_percent"]
+  Root --> Metadata["Delivery and quality\nsummary: API convenience fields\nquality: field scores, confidence, warnings, debug\nraw: OCR text/metadata; text stripped from API"]

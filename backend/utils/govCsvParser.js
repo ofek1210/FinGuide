@@ -1,5 +1,7 @@
 'use strict';
 
+const fs = require('fs');
+
 /**
  * Parse CKAN-export CSV (quoted fields) → array of objects keyed by header.
  */
@@ -41,4 +43,21 @@ function parseCsvLine(line) {
   return out;
 }
 
-module.exports = { parseGovCsv, parseCsvLine };
+/**
+ * Read a gov CSV file with Hebrew text. Local exports from data.gov.il are often Windows-1255.
+ */
+function readGovCsvFile(filePath) {
+  const buf = fs.readFileSync(filePath);
+  let text = buf.toString('utf8');
+  if (text.includes('\uFFFD') || !/[\u0590-\u05FF]/.test(text.slice(0, 8000))) {
+    try {
+      const iconv = require('iconv-lite');
+      text = iconv.decode(buf, 'win1255');
+    } catch {
+      // keep utf8 fallback
+    }
+  }
+  return text;
+}
+
+module.exports = { parseGovCsv, parseCsvLine, readGovCsvFile };

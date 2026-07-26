@@ -22,18 +22,33 @@ export type InsuranceProfileDTO = {
 
 export type InsuranceDuplicate = {
   type: string;
-  policies: { provider?: string }[];
-  estimatedMonthlyWaste: number;
+  typeLabelHe?: string;
+  policies: { provider?: string; policyNumber?: string; monthlyPremium?: number }[];
+  policyCount?: number;
+  status?: string;
+  confidence?: string;
+  estimatedMonthlyWaste: number | null;
+  premiumUnderReviewMonthly?: number | null;
+  verifiedSavingMonthly?: number | null;
+  reasonHe?: string;
 };
 
 export type InsuranceAnalysisDTO = {
   duplicates: InsuranceDuplicate[];
   duplicateCount: number;
   totalMonthlyWaste: number;
+  premiumUnderReviewMonthly?: number | null;
+  verifiedSavingMonthly?: number;
+  vehicleVerificationNeeded?: boolean;
   missingCoverage: string[];
   missingUrgency: string;
   flags: { code: string; urgency: string; label: string }[];
-  savings: { totalSavings: number; annualSavings: number };
+  savings: {
+    totalSavings: number;
+    annualSavings: number;
+    verified?: boolean;
+    premiumUnderReviewMonthly?: number | null;
+  };
   hasCriticalGap: boolean;
 };
 
@@ -44,11 +59,16 @@ export type InsuranceRecommendationDTO = {
   urgency: "high" | "medium" | "low";
   financialImpact: string | null;
   confidenceScore: number;
+  confidenceLabelHe?: string;
+  nextActionHe?: string;
 };
 
 export type InsuranceHealthCheck = {
-  score: number;
-  level: { label: string; code?: string };
+  score: number | null;
+  scoreDisabled?: boolean;
+  headlineHe?: string;
+  messageHe?: string;
+  level: { label: string; code?: string; level?: string };
   categories: { id: string; label: string; status: string; score: number; detail?: string }[];
 };
 
@@ -94,6 +114,32 @@ export type InsuranceMarketAdvice = {
   dataSource?: string;
 };
 
+export type InsuranceClearinghouseCoverageDTO = {
+  fundId: string;
+  fundName: string;
+  provider: string | null;
+  coverageType: string;
+  monthlyPremium: number | null;
+  coverageAmount: number | null;
+  source: "clearinghouse";
+};
+
+export type InsuranceDataSourceStatus = "missing" | "ready" | "empty";
+
+export type InsuranceDataSourcesDTO = {
+  clearinghouse: {
+    status: InsuranceDataSourceStatus;
+    labelHe: string;
+    coverageCount: number;
+    coverages: InsuranceClearinghouseCoverageDTO[];
+  };
+  harHabituach: {
+    status: InsuranceDataSourceStatus;
+    labelHe: string;
+    policyCount: number;
+  };
+};
+
 export type InsuranceAnalysisResponse = {
   success: boolean;
   data?: {
@@ -107,6 +153,7 @@ export type InsuranceAnalysisResponse = {
     summary?: InsuranceAnalysisSummary;
     hasImportedPolicies: boolean;
     marketAdvice?: InsuranceMarketAdvice;
+    dataSources?: InsuranceDataSourcesDTO;
   };
 };
 

@@ -139,10 +139,14 @@ function generatePayslipRecommendations(analysisResult, payslips) {
 
   // Anomaly warnings
   if (analysisResult.anomalies?.hasAnomalies) {
+    const anomalyText = (analysisResult.anomalies.anomalies || [])
+      .map(a => (typeof a === 'string' ? a : (a?.message || a?.description || a?.title || '')))
+      .filter(Boolean)
+      .join('; ');
     recs.push({
       type: 'salary_anomaly',
       title: 'חריגה בשכר זוהתה',
-      reason: (analysisResult.anomalies.anomalies || []).join('; '),
+      reason: anomalyText || 'זוהתה חריגה בנתוני השכר',
       urgency: 'medium',
       financialImpact: null,
       confidenceScore: 70,

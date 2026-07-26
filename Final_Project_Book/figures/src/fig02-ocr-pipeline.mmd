@@ -1,25 +1,28 @@
-flowchart TD
-  Upload["POST /api/documents/upload\nMulter PDF validation"]
-  Pending["Document status: pending"]
-  P1["Path 1: pdf_text\npdftotext then pdf-parse"]
-  P1Gate{"Text >= 200 chars\nand Hebrew OK?"}
-  P1Qual{"gross_total and\nnet_payable extracted?"}
-  P2["Path 2: numeric rescue\nbroken Hebrew encoding"]
-  P3["Path 3: image OCR\npdftoppm, sharp, Tesseract"]
-  Extract["extractPayslipFinancialEN\nanalysisData schema v1.9"]
+flowchart TB
+  Upload["1. Upload boundary\nMulter PDF/XLSX validation → UUID staging file\nSHA-256 duplicate check"]
+  Dispatch{"2. Document-type dispatcher"}
+  Insurance["Insurance Excel\nparse/import InsurancePolicy records\nremove staging file"]
+  Pension["Har HaKesef / pension report\nparse/import PensionFund records\nremove staging file"]
+  General["3. General Document path\ncreate pending → processing record"]
+  Structured["Structured branch\nremaining XLSX or PDF detected as Form 106\nparse directly → completed/failed"]
+  Mode{"4. Payslip extraction mode"}
+  Vision["vision\nrender 250 DPI → Claude vision\nmerge pages → sanity/summary"]
+  Legacy["legacy (default)\nembedded text ≥200 → heuristic parse\nbroken Hebrew → numeric rescue\nfailed gate → 300 DPI + Sharp + Tesseract PSM 6/4/3"]
+  Validate{"5. Critical schema + cross-field validation"}
   Done["completed"]
   Review["needs_review"]
-  Password["needs_password"]
-  Failed["failed"]
+  Errors["encrypted → needs_password\nunrecoverable error → failed"]
 
-  Upload --> Pending --> P1 --> P1Gate
-  P1Gate -->|yes| P1Qual
-  P1Gate -->|no| P3
-  P1Qual -->|yes| Extract
-  P1Qual -->|partial| P2
-  P2 --> Extract
-  P3 --> Extract
-  Extract --> Done
-  Extract --> Review
-  Upload --> Password
-  Extract --> Failed
+  Upload --> Dispatch
+  Dispatch -->|recognized insurance| Insurance
+  Dispatch -->|recognized pension| Pension
+  Dispatch -->|other| General
+  General -->|remaining XLSX / Form 106| Structured
+  General -->|payslip PDF| Mode
+  General --> Errors
+  Mode --> Vision
+  Mode --> Legacy
+  Vision --> Validate
+  Legacy --> Validate
+  Validate -->|pass| Done
+  Validate -->|fail| Review

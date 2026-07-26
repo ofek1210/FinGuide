@@ -1,9 +1,12 @@
 const Anthropic = require('@anthropic-ai/sdk');
-const { askLLM: askOllama } = require('./aiService');
+const { askLLM: askOllama, streamLLM: streamOllama } = require('./aiService');
 const llmBudget = require('./llmBudget');
+const { appendUserFinancialContext } = require('./chatUserContextPrompt');
 
 const CHAT_PROVIDER = (process.env.CHAT_PROVIDER || 'claude').toLowerCase();
 const CHAT_MODEL = process.env.CHAT_MODEL || 'claude-haiku-4-5';
+const LLM_UNAVAILABLE_MESSAGE =
+  'העוזר לא זמין כרגע. נסו שוב בעוד כמה דקות, או שאלו שאלה ספציפית כמו "כמה נטו?" או "כמה פנסיה?".';
 
 let anthropicClient = null;
 
@@ -53,7 +56,7 @@ function buildEnhancedSystemPrompt(userContext, profile, insights, recommendatio
     '  יתרונות: ניתוחים פרטיים, תרופות יקרות, ייעוץ מהיר. חסרונות: עלות חודשית, אי-כיסוי מצבים קודמים.',
     'ביטוח חיים: ₪40-₪350/חודש. מומלץ לבעלי משפחה/משכנתא. כיסוי: מלוא סכום הלוואה/הכנסה × 100-120.',
     '  חברות מובילות: מנורה, הפניקס, כלל, הראל, מגדל.',
-    'ביטוח אובדן כושר עבודה (אכ"ע): ₪60-₪450/חודש. מכסה 75% מהכנסה במקרה של מחלה/תאונה.',
+    'ביטוח אובדן כושר עבודה (אכ"ע): ₪60-₪450/חודש. מכסה 75% מההכנסה במקרה של מחלה/תאונה.',
     '  חשוב מאוד לשכירים — הביטוח הלאומי מכסה רק חלק קטן.',
     'ביטוח דירה: מבנה + תכולה. ₪35-₪200/חודש. חובה בד"כ לבעלי משכנתא.',
     'ביטוח רכב חובה: חובה חוקית, כ-₪80-200/שנה דרך קרנות. מקיף: ₪150-₪900/חודש.',
@@ -86,14 +89,7 @@ function buildEnhancedSystemPrompt(userContext, profile, insights, recommendatio
     if (a.ownsCar) lines.push('בבעלות רכב');
   }
 
-  if (userContext?.grossSalary != null) {
-    lines.push('', '--- תלוש שכר אחרון ---');
-    lines.push(`ברוטו: ${userContext.grossSalary} ₪`);
-    if (userContext.netSalary != null) lines.push(`נטו: ${userContext.netSalary} ₪`);
-    if (userContext.pensionEmployee != null) lines.push(`פנסיה עובד: ${userContext.pensionEmployee} ₪`);
-    if (userContext.tax != null) lines.push(`מס הכנסה: ${userContext.tax} ₪`);
-    if (userContext.nationalInsurance != null) lines.push(`ביטוח לאומי: ${userContext.nationalInsurance} ₪`);
-  }
+  appendUserFinancialContext(lines, userContext, { headingStyle: 'section' });
 
   if (insights?.length) {
     lines.push('', '--- תובנות פעילות ---');
@@ -117,10 +113,10 @@ function buildEnhancedSystemPrompt(userContext, profile, insights, recommendatio
   return lines.join('\n');
 }
 
-async function askClaude(userMessage, systemPrompt, history = []) {
+async function askClaude(userMessage, systemPrompt, history = [], userId = null) {
   const client = getAnthropicClient();
   if (!client) return null;
-  if (!llmBudget.canSpend()) return null;
+  if (!(await llmBudget.canSpend(userId))) return null;
 
   const historyMessages = (history || [])
     .filter(m => m.role === 'user' || m.role === 'assistant')
@@ -136,7 +132,7 @@ async function askClaude(userMessage, systemPrompt, history = []) {
       messages: [...historyMessages, { role: 'user', content: userMessage }],
     });
 
-    llmBudget.record(response.usage);
+    await llmBudget.record(userId, response.usage);
 
     const text = response.content
       ?.filter(block => block.type === 'text')
@@ -154,30 +150,121 @@ async function askClaude(userMessage, systemPrompt, history = []) {
   }
 }
 
-async function chat(userMessage, { userContext, profile, insights, recommendations, history, pageContext }) {
+async function emitOllamaFallback(userMessage, userContext, history, pageContext, onToken, onDone, degradedReason, extras = {}) {
+  const systemPrompt = extras.systemPrompt
+    || buildEnhancedSystemPrompt(
+      userContext,
+      extras.profile,
+      extras.insights,
+      extras.recommendations,
+      pageContext,
+    );
+  const signal = extras.signal;
+
+  const ollamaAnswer = await streamOllama(
+    userMessage,
+    userContext,
+    history,
+    { pageContext, maxTokens: 500, timeoutMs: 45000, systemPrompt, signal },
+    onToken,
+  );
+  if (!ollamaAnswer) {
+    // Fallback to non-streaming once if stream path failed
+    let bulk = await askOllama(userMessage, userContext, history, {
+      pageContext,
+      systemPrompt,
+      signal,
+    });
+    if (bulk) {
+      try {
+        const { polishHebrewAnswer } = require('./aiService');
+        bulk = await polishHebrewAnswer(bulk);
+      } catch {
+        /* keep bulk */
+      }
+    }
+    if (!bulk) {
+      const err = new Error(LLM_UNAVAILABLE_MESSAGE);
+      err.code = 'LLM_UNAVAILABLE';
+      throw err;
+    }
+    onToken(bulk);
+    await onDone(bulk, null, {
+      source: 'ollama',
+      model: process.env.OLLAMA_MODEL || 'llama3.1:8b',
+      degradedReason: degradedReason || 'claude_unavailable',
+    });
+    return;
+  }
+  await onDone(ollamaAnswer, null, {
+    source: 'ollama',
+    model: process.env.OLLAMA_MODEL || 'llama3.1:8b',
+    degradedReason: degradedReason || 'claude_unavailable',
+  });
+}
+
+async function chat(userMessage, { userContext, profile, insights, recommendations, history, pageContext, userId }) {
   const systemPrompt = buildEnhancedSystemPrompt(userContext, profile, insights, recommendations, pageContext);
   const provider = CHAT_PROVIDER === 'ollama' ? 'ollama' : 'claude';
 
   if (provider === 'claude') {
-    const result = await askClaude(userMessage, systemPrompt, history);
+    const result = await askClaude(userMessage, systemPrompt, history, userId);
     if (result?.answer) {
       return { answer: result.answer, source: 'claude', model: result.model, tokensUsed: result.tokensUsed };
     }
   }
 
-  const ollamaAnswer = await askOllama(userMessage, userContext, history, { pageContext });
-  return { answer: ollamaAnswer, source: 'ollama', model: process.env.OLLAMA_MODEL || 'llama3.1:8b', tokensUsed: null };
+  let ollamaAnswer = await askOllama(userMessage, userContext, history, { pageContext, systemPrompt });
+  if (ollamaAnswer) {
+    try {
+      const { polishHebrewAnswer } = require('./aiService');
+      ollamaAnswer = await polishHebrewAnswer(ollamaAnswer);
+    } catch {
+      /* keep */
+    }
+  }
+  if (!ollamaAnswer) {
+    return {
+      answer: null,
+      source: 'unavailable',
+      model: null,
+      tokensUsed: null,
+      unavailable: true,
+    };
+  }
+  let degradedReason = provider === 'ollama' ? 'provider_ollama' : 'claude_unavailable';
+  if (!(await llmBudget.canSpend(userId)) && provider === 'claude') {
+    degradedReason = 'budget_exhausted';
+  }
+  return {
+    answer: ollamaAnswer,
+    source: 'ollama',
+    model: process.env.OLLAMA_MODEL || 'llama3.1:8b',
+    tokensUsed: null,
+    degradedReason,
+  };
 }
 
 /**
  * Streaming variant — calls onToken for each text chunk, onDone(fullText, tokensUsed) when finished.
- * Falls back to non-streaming chat if Claude streaming is unavailable.
+ * Falls back to non-streaming Ollama if Claude streaming is unavailable or fails early.
+ * Throws Error with code LLM_UNAVAILABLE when no provider can answer.
  */
-async function streamChat(userMessage, { userContext, profile, insights, recommendations, history, pageContext }, onToken, onDone) {
+async function streamChat(userMessage, { userContext, profile, insights, recommendations, history, pageContext, signal, userId }, onToken, onDone) {
   const systemPrompt = buildEnhancedSystemPrompt(userContext, profile, insights, recommendations, pageContext);
   const client = getAnthropicClient();
+  let degradedReason = null;
+  const budgetOk = await llmBudget.canSpend(userId);
 
-  if (client && CHAT_PROVIDER !== 'ollama' && llmBudget.canSpend()) {
+  if (CHAT_PROVIDER === 'ollama') {
+    degradedReason = 'provider_ollama';
+  } else if (!client) {
+    degradedReason = 'missing_anthropic_key';
+  } else if (!budgetOk) {
+    degradedReason = 'budget_exhausted';
+  }
+
+  if (client && CHAT_PROVIDER !== 'ollama' && budgetOk) {
     const historyMessages = (history || [])
       .filter(m => m.role === 'user' || m.role === 'assistant')
       .slice(-10)
@@ -187,35 +274,74 @@ async function streamChat(userMessage, { userContext, profile, insights, recomme
     let inputTokens = 0;
     let outputTokens = 0;
 
-    const stream = client.messages.stream({
-      model: CHAT_MODEL,
-      max_tokens: llmBudget.cap(1500),
-      temperature: 0.3,
-      system: systemPrompt,
-      messages: [...historyMessages, { role: 'user', content: userMessage }],
-    });
-
-    for await (const event of stream) {
-      if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
-        onToken(event.delta.text);
-        fullText += event.delta.text;
-      } else if (event.type === 'message_delta' && event.usage) {
-        outputTokens = event.usage.output_tokens || 0;
-      } else if (event.type === 'message_start' && event.message?.usage) {
-        inputTokens = event.message.usage.input_tokens || 0;
+    try {
+      if (signal?.aborted) {
+        const err = new Error('aborted');
+        err.code = 'ABORTED';
+        throw err;
       }
-    }
 
-    llmBudget.record({ input_tokens: inputTokens, output_tokens: outputTokens });
-    await onDone(fullText, inputTokens + outputTokens, { source: 'claude', model: CHAT_MODEL });
-    return;
+      const stream = client.messages.stream({
+        model: CHAT_MODEL,
+        max_tokens: llmBudget.cap(1500),
+        temperature: 0.3,
+        system: systemPrompt,
+        messages: [...historyMessages, { role: 'user', content: userMessage }],
+      });
+
+      if (signal) {
+        signal.addEventListener('abort', () => {
+          try { stream.controller?.abort?.(); } catch { /* ignore */ }
+        }, { once: true });
+      }
+
+      for await (const event of stream) {
+        if (signal?.aborted) {
+          const err = new Error('aborted');
+          err.code = 'ABORTED';
+          throw err;
+        }
+        if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+          onToken(event.delta.text);
+          fullText += event.delta.text;
+        } else if (event.type === 'message_delta' && event.usage) {
+          outputTokens = event.usage.output_tokens || 0;
+        } else if (event.type === 'message_start' && event.message?.usage) {
+          inputTokens = event.message.usage.input_tokens || 0;
+        }
+      }
+
+      if (fullText.trim()) {
+        await llmBudget.record(userId, { input_tokens: inputTokens, output_tokens: outputTokens });
+        await onDone(fullText, inputTokens + outputTokens, { source: 'claude', model: CHAT_MODEL });
+        return;
+      }
+      degradedReason = 'claude_empty';
+    } catch (err) {
+      if (err?.code === 'ABORTED' || signal?.aborted) throw err;
+      if (fullText.trim()) {
+        throw err;
+      }
+      degradedReason = 'claude_error';
+    }
   }
 
-  // Fallback: non-streaming (collect full answer, emit as single token)
-  const ollamaAnswer = await askOllama(userMessage, userContext, history, { pageContext });
-  const text = ollamaAnswer || 'אין תשובה זמינה.';
-  onToken(text);
-  await onDone(text, null, { source: 'ollama', model: process.env.OLLAMA_MODEL || 'llama3.1:8b' });
+  await emitOllamaFallback(
+    userMessage,
+    userContext,
+    history,
+    pageContext,
+    onToken,
+    onDone,
+    degradedReason || 'claude_unavailable',
+    { systemPrompt, profile, insights, recommendations, signal },
+  );
 }
 
-module.exports = { chat, streamChat, buildEnhancedSystemPrompt, askClaude };
+module.exports = {
+  chat,
+  streamChat,
+  buildEnhancedSystemPrompt,
+  askClaude,
+  LLM_UNAVAILABLE_MESSAGE,
+};

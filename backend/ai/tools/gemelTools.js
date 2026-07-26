@@ -11,6 +11,33 @@ const { weightedAvgMgmtFee } = require('../../utils/pensionShared');
 /** PensionFund.fundType values that belong to the gemel domain */
 const GEMEL_FUND_TYPES = ['study_fund', 'provident_fund'];
 
+function hasGemelHoldingData(fund) {
+  const balance = Number(fund?.currentBalance) || 0;
+  const deposits = (Number(fund?.monthlyEmployeeDeposit) || 0)
+    + (Number(fund?.monthlyEmployerDeposit) || 0)
+    + (Number(fund?.monthlyDeposit) || 0);
+  return balance > 0 || deposits > 0;
+}
+
+/**
+ * Har HaKesef imports may mark gemel holdings as closed/inactive even when
+ * balances exist — include any gemel-type row with analyzable data.
+ */
+function isAnalyzableGemelHolding(fund) {
+  if (!fund || !GEMEL_FUND_TYPES.includes(fund.fundType)) return false;
+  if (fund.status !== 'closed' && fund.isActive !== false) return true;
+  return hasGemelHoldingData(fund);
+}
+
+async function findGemelHoldings(userId) {
+  if (!userId) return [];
+  const funds = await PensionFund.find({
+    user: userId,
+    fundType: { $in: GEMEL_FUND_TYPES },
+  }).lean();
+  return funds.filter(isAnalyzableGemelHolding);
+}
+
 /** Typical study-fund contribution rates (percent of salary) */
 const STUDY_FUND_EMPLOYEE_RATE = 2.5;
 const STUDY_FUND_EMPLOYER_RATE = 7.5;
@@ -56,12 +83,7 @@ async function getGemelSummary(userId) {
     })
       .sort({ uploadedAt: -1 })
       .lean(),
-    PensionFund.find({
-      user: userId,
-      fundType: { $in: GEMEL_FUND_TYPES },
-      status: { $ne: 'closed' },
-      isActive: { $ne: false },
-    }).lean(),
+    findGemelHoldings(userId),
   ]);
 
   const s = latestPayslip?.analysisData?.summary || {};
@@ -77,7 +99,7 @@ async function getGemelSummary(userId) {
   const payslipContribution = (studyFundEmployee || 0) + (studyFundEmployer || 0);
   const declaredStudyFund = ret.hasStudyFund ?? null;
 
-  const activeFunds = funds.filter(f => f.status !== 'closed');
+  const activeFunds = funds;
   const studyFunds = activeFunds.filter(f => f.fundType === 'study_fund');
   const providentFunds = activeFunds.filter(f => f.fundType === 'provident_fund');
   const hasImportedFunds = activeFunds.length > 0;
@@ -319,6 +341,9 @@ function generateGemelRecommendations(summary, { marketAdvice } = {}) {
 module.exports = {
   getGemelSummary,
   generateGemelRecommendations,
+  findGemelHoldings,
+  isAnalyzableGemelHolding,
+  hasGemelHoldingData,
   GEMEL_FUND_TYPES,
   STUDY_FUND_EMPLOYEE_RATE,
   STUDY_FUND_EMPLOYER_RATE,

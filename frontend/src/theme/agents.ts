@@ -96,7 +96,7 @@ export const AGENTS: AgentDef[] = [
     sub: "תחזית פרישה וצבירה",
     Icon: TrendingUp,
     route: APP_ROUTES.pension,
-    routes: [APP_ROUTES.pension, APP_ROUTES.financialHealth],
+    routes: [APP_ROUTES.pension],
     tone: {
       accent: "var(--mint-ink)",
       strong: "#247A4C",

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useRef, useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { BrainCircuit, ChevronDown, Sparkles } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
 import { getAvatarDisplayUrl } from "../api/profile.api";
 import NotificationBell from "./notifications/NotificationBell";
@@ -152,6 +152,59 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
               </div>
             </div>
 
+            {/* master agent — the Hub itself */}
+            {(() => {
+              const isHub = location.pathname === APP_ROUTES.hub;
+              return (
+                <button
+                  type="button"
+                  onClick={() => { setAssistantOpen(false); navigate(APP_ROUTES.hub); }}
+                  style={{
+                    width: "100%",
+                    display: "flex", alignItems: "center", gap: 13,
+                    padding: "11px 14px",
+                    borderRadius: 14,
+                    background: isHub ? "var(--lav-100)" : "transparent",
+                    border: `1px solid ${isHub ? "var(--lav-200)" : "transparent"}`,
+                    cursor: "pointer", textAlign: "right",
+                    fontFamily: "inherit", transition: "background var(--dur-fast) var(--ease)",
+                    marginBottom: 3,
+                  }}
+                  onMouseEnter={e => {
+                    if (!isHub) (e.currentTarget as HTMLElement).style.background = "var(--lav-100)";
+                  }}
+                  onMouseLeave={e => {
+                    if (!isHub) (e.currentTarget as HTMLElement).style.background = "transparent";
+                  }}
+                >
+                  <div style={{
+                    width: 42, height: 42, borderRadius: 12, flexShrink: 0,
+                    background: "var(--grad-brand)",
+                    display: "grid", placeItems: "center",
+                    boxShadow: "0 4px 12px rgba(124,95,214,.3)",
+                  }}>
+                    <BrainCircuit size={20} strokeWidth={1.75} color="#fff" />
+                  </div>
+                  <div style={{ flex: 1, textAlign: "right" }}>
+                    <div style={{ fontWeight: 800, fontSize: 13.5, color: isHub ? "var(--lav-700)" : "var(--text-strong)", letterSpacing: "-0.01em" }}>
+                      הסוכן הראשי
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 2 }}>
+                      תמונה מלאה · ניתוח כולל
+                    </div>
+                  </div>
+                  {isHub && (
+                    <div style={{
+                      width: 7, height: 7, borderRadius: "50%",
+                      background: "var(--lav-600)", flexShrink: 0,
+                    }} />
+                  )}
+                </button>
+              );
+            })()}
+
+            <div style={{ height: 1, background: "var(--border-hair)", margin: "5px 8px 8px" }} />
+
             {AGENTS.map(a => {
               const isActive = a.routes.some(r => location.pathname === r || location.pathname.startsWith(r + "/"));
               const Icon = a.Icon;
@@ -250,6 +303,17 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{user?.email ?? ""}</div>
               </div>
               <div style={{ padding: "6px" }}>
+                {user?.role === "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => { setUserMenuOpen(false); navigate(APP_ROUTES.admin); }}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 10, background: "none", border: "none", cursor: "pointer", textAlign: "right", fontFamily: "inherit", fontSize: 13.5, color: "var(--lav-600)", fontWeight: 600, transition: "background var(--dur-fast) var(--ease)" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent-soft)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
+                  >
+                    מרכז בקרה
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={goToSettings}

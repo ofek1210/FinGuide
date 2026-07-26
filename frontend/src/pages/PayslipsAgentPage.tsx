@@ -9,9 +9,10 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Upload, FileText, Sparkles, ArrowLeft, ChevronRight,
+  Upload, FileText, Sparkles, Check, ArrowLeft, ChevronRight,
   History, Plus, Wallet, TrendingUp, Landmark, ShieldCheck,
-  PiggyBank, GraduationCap, CalendarDays, HeartPulse, type LucideIcon,
+  PiggyBank, GraduationCap, CalendarDays, HeartPulse, Trash2, Pencil, Loader2,
+  type LucideIcon,
 } from "lucide-react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
@@ -20,9 +21,10 @@ import DocumentsRibbonWave from "../components/documents/DocumentsRibbonWave";
 import PayslipsAgentTabs from "../components/payslips/PayslipsAgentTabs";
 import TaxAssistantPanel from "../components/payslips/TaxAssistantPanel";
 import Loader from "../components/ui/Loader";
-import AgentStepIndicator from "../components/agent/AgentStepIndicator";
-import { AgentGhostButton, AgentPrimaryButton } from "../components/agent/AgentButtons";
-import { listDocuments, type DocumentItem } from "../api/documents.api";
+import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
+import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
+import { listDocuments, removeDocument, type DocumentItem } from "../api/documents.api";
+import MissingFieldsModal from "../components/payslip-history/MissingFieldsModal";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
 import { APP_ROUTES } from "../types/navigation";
 import { getUserProfile, type UserProfileResponseData } from "../api/userProfile.api";
@@ -41,6 +43,7 @@ import {
 } from "../utils/payslipAnalysisSummary";
 import { documentToPayslipDetail } from "../utils/documentToPayslip";
 import { formatCurrencyPositiveOrDash } from "../utils/formatters";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
 /* ── Types & helpers ─────────────────────────────────────────── */
 interface IntakeData {
@@ -93,13 +96,14 @@ const TONES: Record<Tone, [string, string]> = {
   neutral: ["var(--surface-sunken)", "var(--text-faint)"],
 };
 
-type WizardStep = "upload" | "results";
+type WizardStep = "questions" | "upload" | "results";
 
 /* ════════════════════════════════════════════════════════════════
    MAIN PAGE
 ════════════════════════════════════════════════════════════════ */
 export default function PayslipsAgentPage() {
   const navigate = useNavigate();
+  const agentOnboarding = useAgentOnboarding("payslip");
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const forceUpload = searchParams.get("upload") === "1" || searchParams.get("step") === "upload";
@@ -109,6 +113,7 @@ export default function PayslipsAgentPage() {
   const [intake, setIntake] = useState<IntakeData>(EMPTY_INTAKE);
   const [step, setStep] = useState<WizardStep>("upload");
   const [bootstrapping, setBootstrapping] = useState(!forceUpload && !isSubView);
+  const [hasExistingPayslips, setHasExistingPayslips] = useState(false);
   const [resultsRefreshKey, setResultsRefreshKey] = useState(0);
   const [resultsSeedDocs, setResultsSeedDocs] = useState<DocumentItem[] | null>(null);
 
@@ -132,11 +137,7 @@ export default function PayslipsAgentPage() {
     let cancelled = false;
     void fetchLastPayslipAnalysis(1)
       .then(data => {
-        if (cancelled) return;
-        if (data.count > 0) {
-          setStep("results");
-          setResultsRefreshKey(k => k + 1);
-        }
+        if (!cancelled) setHasExistingPayslips(data.count > 0);
       })
       .finally(() => {
         if (!cancelled) setBootstrapping(false);
@@ -145,7 +146,19 @@ export default function PayslipsAgentPage() {
     return () => { cancelled = true; };
   }, [forceUpload, isSubView]);
 
-  if (bootstrapping) {
+  useEffect(() => {
+    if (bootstrapping || agentOnboarding.loading || forceUpload || isSubView) return;
+    if (agentOnboarding.needsQuestions) {
+      setStep("questions");
+    } else if (hasExistingPayslips) {
+      setStep("results");
+      setResultsRefreshKey(k => k + 1);
+    } else {
+      setStep("upload");
+    }
+  }, [bootstrapping, agentOnboarding.loading, agentOnboarding.needsQuestions, hasExistingPayslips, forceUpload, isSubView]);
+
+  if (bootstrapping || (!forceUpload && !isSubView && agentOnboarding.loading)) {
     return (
       <div data-agent="payslips" style={{ minHeight: "100vh", background: "var(--surface-page)", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
         <PrivateTopbar />
@@ -167,6 +180,29 @@ export default function PayslipsAgentPage() {
 
         {isTaxView ? (
           <TaxAssistantPanel />
+        ) : step === "questions" ? (
+          <>
+            <div style={{ maxWidth: 640, margin: "0 auto", padding: "44px 24px 0" }}>
+              <StepIndicator step="questions" />
+            </div>
+            <AgentOnboardingStep
+              agentId="payslip"
+              compactTop
+              agentLabel="תלושי שכר"
+              estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+              questions={agentOnboarding.state?.missingQuestions ?? []}
+              phases={["questions", "document", "analysis"]}
+              activePhase="questions"
+              headline="לפני שמעלים תלושים — כמה שאלות קצרות"
+              subhead="כדי שהסוכן ינתח נכון את השכר, ההפרשות והמס — נשלים קודם את מה שחסר. אחר כך תעלה תלושים ותקבל ניתוח מלא."
+              onSkip={async () => { await agentOnboarding.skip(); setStep(hasExistingPayslips ? "results" : "upload"); }}
+              onSubmit={async answers => {
+                const ok = await agentOnboarding.submit(answers);
+                if (ok) setStep(hasExistingPayslips ? "results" : "upload");
+                return ok;
+              }}
+            />
+          </>
         ) : step === "upload" ? (
           <UploadStep
             intake={intake}
@@ -197,14 +233,31 @@ export default function PayslipsAgentPage() {
    STEP INDICATOR — personal details done (in onboarding)
 ════════════════════════════════════════════════════════════════ */
 function StepIndicator({ step }: { step: WizardStep }) {
+  const steps: { label: string; state: "done" | "active" | "todo" }[] = [
+    { label: "פרטים אישיים", state: "done" },
+    { label: "שאלון קצר", state: step === "questions" ? "active" : step === "upload" || step === "results" ? "done" : "todo" },
+    { label: "העלאת תלושים", state: step === "upload" ? "active" : step === "results" ? "done" : "todo" },
+    { label: "תובנות AI", state: step === "results" ? "active" : "todo" },
+  ];
   return (
-    <AgentStepIndicator
-      steps={[
-        { label: "פרטים אישיים", state: "done" },
-        { label: "העלאת תלושים", state: step === "upload" ? "active" : "done" },
-        { label: "תובנות AI", state: step === "results" ? "active" : "todo" },
-      ]}
-    />
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 44 }}>
+      {steps.map((s, i) => (
+        <div key={s.label} style={{ display: "flex", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <span style={{
+              width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 13, flex: "none",
+              background: s.state === "active" ? "var(--ink)" : s.state === "done" ? "var(--lav-100)" : "transparent",
+              color: s.state === "active" ? "#fff" : s.state === "done" ? "var(--lav-600)" : "var(--text-faint)",
+              border: s.state === "todo" ? "1.5px solid var(--border-soft)" : "none",
+            }}>
+              {s.state === "done" ? <Check size={15} strokeWidth={3} /> : i + 1}
+            </span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: s.state === "active" ? "var(--ink)" : "var(--text-faint)" }}>{s.label}</span>
+          </div>
+          {i < steps.length - 1 && <div style={{ width: 40, height: 1.5, margin: "0 14px", background: s.state === "done" ? "var(--lav-300)" : "var(--hair)" }} />}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -222,6 +275,8 @@ function UploadStep({ intake, onComplete, onBack }: {
   const [uploadedEntries, setUploadedEntries] = useState<UploadedEntry[]>([]);
   const [passwordInputs, setPasswordInputs] = useState<Record<string, string>>({});
   const [unlockingId, setUnlockingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editDocId, setEditDocId] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -252,6 +307,25 @@ function UploadStep({ intake, onComplete, onBack }: {
     } else {
       setMsg({ type: "error", text: res.message || `שגיאה בפתיחת ${entry.name}` });
     }
+  };
+
+  const handleDeleteEntry = async (entry: UploadedEntry) => {
+    const label = entryDisplayLabel(entry);
+    if (!window.confirm(`למחוק את ${label}? לא ניתן לשחזר את הקובץ.`)) return;
+    setDeletingId(entry.id);
+    setMsg(null);
+    const docId = entry.doc._id || entry.doc.id;
+    if (docId) {
+      const res = await removeDocument(docId);
+      if (!res.success) {
+        setDeletingId(null);
+        setMsg({ type: "error", text: res.message ?? "שגיאה במחיקת התלוש" });
+        return;
+      }
+    }
+    setUploadedEntries(prev => prev.filter(e => e.id !== entry.id));
+    setDeletingId(null);
+    setMsg({ type: "success", text: `${label} נמחק` });
   };
 
   const handleFileUpload = async (files: FileList) => {
@@ -303,18 +377,7 @@ function UploadStep({ intake, onComplete, onBack }: {
           <input ref={fileInputRef} type="file" accept=".pdf" multiple style={{ display: "none" }}
             onChange={e => { if (e.target.files?.length) void handleFileUpload(e.target.files); e.target.value = ""; }} />
           <div
-            className="agent-upload-dropzone"
-            role="button"
-            tabIndex={uploading || slotsLeft <= 0 ? -1 : 0}
-            aria-disabled={uploading || slotsLeft <= 0}
-            aria-busy={uploading}
             onClick={() => !uploading && slotsLeft > 0 && fileInputRef.current?.click()}
-            onKeyDown={e => {
-              if (!uploading && slotsLeft > 0 && (e.key === "Enter" || e.key === " ")) {
-                e.preventDefault();
-                fileInputRef.current?.click();
-              }
-            }}
             onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={e => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files.length) void handleFileUpload(e.dataTransfer.files); }}
@@ -336,25 +399,24 @@ function UploadStep({ intake, onComplete, onBack }: {
                       <span style={{ width: 30, height: 30, borderRadius: 8, flex: "none", background: bg, color: fg, display: "grid", placeItems: "center" }}><FileText size={16} /></span>
                       <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-strong)" }}>{entryDisplayLabel(entry)}</span>
                       <span style={{ fontSize: 11, fontWeight: 800, color: fg }}>{ok ? "מוכן" : needsPassword ? "סיסמה" : "שגיאה"}</span>
+                      {ok && (
+                        <button type="button" title="עריכה" onClick={() => setEditDocId(entry.doc._id || entry.doc.id || entry.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "grid", placeItems: "center", padding: 4 }}>
+                          <Pencil size={15} />
+                        </button>
+                      )}
+                      <button type="button" title="מחיקה" disabled={deletingId === entry.id} onClick={() => void handleDeleteEntry(entry)} style={{ background: "none", border: "none", cursor: deletingId === entry.id ? "wait" : "pointer", color: "var(--danger)", display: "grid", placeItems: "center", padding: 4 }}>
+                        {deletingId === entry.id ? <Loader2 size={15} style={{ animation: "fgspin 1s linear infinite" }} /> : <Trash2 size={15} />}
+                      </button>
                     </div>
                     {needsPassword && (
                       <div style={{ marginTop: 6, padding: "10px 12px", borderRadius: "var(--r-sm)", background: "var(--butter-soft)", border: "1px solid var(--butter)" }}>
                         <div style={{ fontSize: 12, color: "var(--butter-ink)", marginBottom: 6, fontWeight: 600 }}>הזן/י סיסמת PDF לפתיחה ועיבוד</div>
                         <div style={{ display: "flex", gap: 6 }}>
-                          <input
-                            type="password"
-                            aria-label={`סיסמת PDF עבור ${entry.name}`}
-                            value={passwordInputs[entry.id] || ""}
-                            placeholder="סיסמת PDF"
-                            disabled={unlockingId === entry.id}
+                          <input type="password" value={passwordInputs[entry.id] || ""} placeholder="סיסמת PDF" disabled={unlockingId === entry.id}
                             onChange={e => setPasswordInputs(prev => ({ ...prev, [entry.id]: e.target.value }))}
-                            onKeyDown={e => {
-                              if (e.key === "Enter" && passwordInputs[entry.id]?.trim()) void handleUnlock(entry);
-                            }}
-                            style={{ flex: 1, padding: "8px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--butter)", fontFamily: "inherit", fontSize: 13, background: "var(--card)" }}
-                          />
+                            style={{ flex: 1, padding: "8px 10px", borderRadius: "var(--r-sm)", border: "1px solid var(--butter)", fontFamily: "inherit", fontSize: 13, background: "var(--card)" }} />
                           <button type="button" onClick={() => void handleUnlock(entry)} disabled={unlockingId === entry.id || !passwordInputs[entry.id]?.trim()}
-                            style={{ padding: "8px 14px", borderRadius: "var(--r-sm)", background: "var(--ink)", color: "#fff", border: "none", cursor: unlockingId === entry.id ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12, boxShadow: "var(--shadow-ink)" }}>
+                            style={{ padding: "8px 14px", borderRadius: "var(--r-sm)", background: "var(--butter-ink)", color: "#fff", border: "none", cursor: unlockingId === entry.id ? "wait" : "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 12 }}>
                             {unlockingId === entry.id ? "פותח..." : "פתח"}
                           </button>
                         </div>
@@ -374,8 +436,30 @@ function UploadStep({ intake, onComplete, onBack }: {
         </div>
       </div>
 
+      {editDocId && (
+        <MissingFieldsModal
+          docId={editDocId}
+          onClose={() => setEditDocId(null)}
+          onSaved={() => {
+            setEditDocId(null);
+            setUploadedEntries(prev => prev.map(e => {
+              if ((e.doc._id || e.doc.id) !== editDocId) return e;
+              return e;
+            }));
+            void listDocuments().then(res => {
+              if (!res.success || !res.data) return;
+              setUploadedEntries(prev => prev.map(e => {
+                const id = e.doc._id || e.doc.id;
+                const updated = res.data!.find(d => (d._id || d.id) === id);
+                return updated ? { ...e, doc: updated } : e;
+              }));
+            });
+          }}
+        />
+      )}
+
       {msg && (
-        <div role={msg.type === "error" ? "alert" : "status"} aria-live="polite" style={{ marginTop: 16, padding: "12px 18px", borderRadius: "var(--r-btn)", fontWeight: 700, fontSize: 13.5, textAlign: "center",
+        <div style={{ marginTop: 16, padding: "12px 18px", borderRadius: "var(--r-btn)", fontWeight: 700, fontSize: 13.5, textAlign: "center",
           background: msg.type === "error" ? "#FEF2F2" : msg.type === "success" ? "var(--mint-soft)" : "var(--accent-soft)",
           color: msg.type === "error" ? "var(--danger)" : msg.type === "success" ? "var(--mint-ink)" : "var(--lav-600)",
           border: "1px solid " + (msg.type === "error" ? "rgba(220,38,38,.2)" : msg.type === "success" ? "var(--mint)" : "var(--lav-200)") }}>
@@ -385,20 +469,14 @@ function UploadStep({ intake, onComplete, onBack }: {
 
       {/* footer actions */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 26, gap: 16, flexWrap: "wrap" }}>
-        <button type="button" onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, color: "var(--text-muted)" }}>
+        <button onClick={onBack} style={{ display: "inline-flex", alignItems: "center", gap: 7, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, color: "var(--text-muted)" }}>
           <ChevronRight size={16} strokeWidth={2.4} /> חזרה
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          {!ready && !hasUploadAttempts && (
-            <AgentGhostButton size="sm" onClick={handleContinue}>דלג</AgentGhostButton>
-          )}
-          <AgentPrimaryButton
-            disabled={continuing || uploading || (hasUploadAttempts && !canShowResults)}
-            onClick={handleContinue}
-          >
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {!ready && !hasUploadAttempts && <button onClick={handleContinue} style={{ background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 14.5, color: "var(--text-faint)" }}>דלג</button>}
+          <PrimaryBtn disabled={continuing || uploading || (hasUploadAttempts && !canShowResults)} onClick={handleContinue} iconRight={<ArrowLeft size={18} strokeWidth={2.2} />}>
             {continuing ? "טוען..." : hasUploadAttempts && !canShowResults ? "יש לתקן את ההעלאות" : "המשך לניתוח"}
-            {!continuing && !(hasUploadAttempts && !canShowResults) && <ArrowLeft size={18} strokeWidth={2.2} />}
-          </AgentPrimaryButton>
+          </PrimaryBtn>
         </div>
       </div>
     </main>
@@ -426,6 +504,29 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
   const [passwordDoc, setPasswordDoc] = useState<DocumentItem | null>(null);
   const [passwordInput, setPasswordInput] = useState("");
   const [unlocking, setUnlocking] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editDocId, setEditDocId] = useState<string | null>(null);
+
+  const payslipLabel = summary
+    ? `סוכן תלושים · ${summary.count} תלושים`
+    : "סוכן תלושים";
+  const payslipDetail = summary
+    ? [
+        `מספר תלושים: ${summary.count}`,
+        summary.avgGross != null
+          ? `ברוטו ממוצע: ₪${Math.round(summary.avgGross).toLocaleString("he-IL")}`
+          : null,
+        summary.avgNet != null
+          ? `נטו ממוצע: ₪${Math.round(summary.avgNet).toLocaleString("he-IL")}`
+          : null,
+        summary.avgPensionTotal != null
+          ? `פנסיה ממוצעת: ₪${Math.round(summary.avgPensionTotal).toLocaleString("he-IL")}`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
+  useRegisterPageContext(payslipLabel, payslipDetail);
 
   useEffect(() => {
     if (document.getElementById("res-anim")) return;
@@ -469,6 +570,18 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
     else setUploadMsg(res.message || res.data?.processingError || "שגיאה בהעלאה — נסה שוב");
   };
 
+  const handleDeletePayslip = async (payslipId: string, label: string) => {
+    if (!window.confirm(`למחוק את ${label}? לא ניתן לשחזר את הקובץ.`)) return;
+    setDeletingId(payslipId);
+    const res = await removeDocument(payslipId);
+    setDeletingId(null);
+    if (!res.success) {
+      setUploadMsg(res.message ?? "שגיאה במחיקת התלוש");
+      return;
+    }
+    await loadAnalysis();
+  };
+
   const handleResultsUnlock = async () => {
     if (!passwordDoc || !passwordInput.trim()) return;
     setUnlocking(true);
@@ -509,7 +622,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
         </span>
         <span style={{ marginInlineStart: "auto", display: "flex", gap: 8, flexWrap: "wrap" }}>
           <ToolBtn icon={<History size={15} />} onClick={() => navigate(APP_ROUTES.payslipHistory)}>היסטוריית תלושים</ToolBtn>
-          <AgentPrimaryButton size="sm" onClick={onAddMore}><Plus size={15} strokeWidth={2.4} /> הוסף תלושים</AgentPrimaryButton>
+          <PrimaryBtn size="sm" onClick={onAddMore} iconLeft={<Plus size={15} strokeWidth={2.4} />}>הוסף תלושים</PrimaryBtn>
         </span>
       </div>
 
@@ -521,7 +634,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
       ) : error ? (
         <div style={{ background: "var(--card)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)", padding: 40, textAlign: "center" }}>
           <div style={{ color: "var(--danger)", fontSize: 14, marginBottom: 14, fontWeight: 600 }}>{error}</div>
-          <AgentPrimaryButton onClick={() => void loadAnalysis()}>נסה שוב</AgentPrimaryButton>
+          <PrimaryBtn onClick={() => void loadAnalysis()}>נסה שוב</PrimaryBtn>
         </div>
       ) : hasData && summary ? (
         <>
@@ -574,18 +687,26 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
           <ResSection title={`${summary.count} תלושים`}>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {rows.map(p => (
-                <button key={p.id} onClick={() => navigate(`${APP_ROUTES.payslipHistory}/${p.id}`)}
-                  style={{ width: "100%", textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
-                  <span style={{ width: 40, height: 40, borderRadius: 11, flex: "none", background: "var(--lav-100)", color: "var(--lav-600)", display: "grid", placeItems: "center" }}><FileText size={20} strokeWidth={1.85} /></span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text-strong)" }}>{p.displayLabel}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>ברוטו {fmt(p.grossSalary)} · {p.employerName || "מעסיק"}{p.extractionStatus === "needs_review" ? " · דורש סקירה" : ""}</div>
-                  </div>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontWeight: 900, fontSize: 16, color: "var(--mint-ink)", fontVariantNumeric: "tabular-nums" }}>{fmt(p.netSalary)}</div>
-                    <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>נטו</div>
-                  </div>
-                </button>
+                <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <button onClick={() => navigate(`${APP_ROUTES.payslipHistory}/${p.id}`)}
+                    style={{ flex: 1, textAlign: "start", fontFamily: "inherit", cursor: "pointer", display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
+                    <span style={{ width: 40, height: 40, borderRadius: 11, flex: "none", background: "var(--lav-100)", color: "var(--lav-600)", display: "grid", placeItems: "center" }}><FileText size={20} strokeWidth={1.85} /></span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: 15, color: "var(--text-strong)" }}>{p.displayLabel}</div>
+                      <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>ברוטו {fmt(p.grossSalary)} · {p.employerName || "מעסיק"}{p.extractionStatus === "needs_review" ? " · דורש סקירה" : ""}</div>
+                    </div>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontWeight: 900, fontSize: 16, color: "var(--mint-ink)", fontVariantNumeric: "tabular-nums" }}>{fmt(p.netSalary)}</div>
+                      <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>נטו</div>
+                    </div>
+                  </button>
+                  <button type="button" title="עריכה" onClick={() => setEditDocId(p.id)} style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", border: "1px solid var(--border-soft)", background: "var(--card)", cursor: "pointer", display: "grid", placeItems: "center", color: "var(--text-muted)" }}>
+                    <Pencil size={16} />
+                  </button>
+                  <button type="button" title="מחיקה" disabled={deletingId === p.id} onClick={() => void handleDeletePayslip(p.id, p.displayLabel)} style={{ width: 40, height: 40, borderRadius: "var(--r-sm)", border: "1px solid rgba(214,69,69,.3)", background: "var(--card)", cursor: deletingId === p.id ? "wait" : "pointer", display: "grid", placeItems: "center", color: "var(--danger)" }}>
+                    {deletingId === p.id ? <Loader2 size={16} style={{ animation: "fgspin 1s linear infinite" }} /> : <Trash2 size={16} />}
+                  </button>
+                </div>
               ))}
             </div>
           </ResSection>
@@ -618,28 +739,29 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
               </div>
             </div>
           )}
-          <AgentPrimaryButton onClick={onAddMore}><Upload size={15} strokeWidth={2} /> הוסף תלושים</AgentPrimaryButton>
+          <PrimaryBtn onClick={onAddMore} iconLeft={<Upload size={15} strokeWidth={2} />}>הוסף תלושים</PrimaryBtn>
         </div>
       )}
 
       {/* AI insights */}
       {(hasData || summary?.moneyFlow) && (
-        <ResSection title="תובנות AI" sub="מחקר מעמיק: מאיפה נעלם ההפרש בין ברוטו לנטו?">
+        <ResSection title="תובנות AI" sub="כותרות מרכזיות — לפירוט מלא פנה לסוכן התלושים">
           <div style={{ background: "var(--card)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)", padding: 24 }}>
             <InsightsPanel agent="payslip" trigger={refreshKey + (summary?.count ?? 0)} />
           </div>
         </ResSection>
       )}
 
-      {/* ask agent */}
-      <div style={{ textAlign: "center", background: "radial-gradient(120% 100% at 50% 0%,var(--lav-100),var(--surface-card))", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "38px 28px", boxShadow: "var(--shadow-soft)" }}>
-        <span style={{ width: 54, height: 54, borderRadius: 15, background: "var(--ink)", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px", boxShadow: "var(--shadow-ink)" }}><Sparkles size={26} /></span>
-        <h3 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שאל את הסוכן שאלות</h3>
-        <p style={{ margin: "0 auto 22px", maxWidth: 420, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>"למה המשכורת ירדה?" · "כמה מס שילמתי?" · "האם מגיע לי החזר מס?"</p>
-        <AgentPrimaryButton onClick={() => navigate(`${APP_ROUTES.hub}?chat=1`)}><Sparkles size={18} /> פתח שיחה עם הסוכן</AgentPrimaryButton>
-        <div style={{ marginTop: 16 }}>
-          <button onClick={onEditProfile} style={{ background: "none", border: "none", color: "var(--text-faint)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>עדכן פרטים אישיים</button>
-        </div>
+      {editDocId && (
+        <MissingFieldsModal
+          docId={editDocId}
+          onClose={() => setEditDocId(null)}
+          onSaved={() => { setEditDocId(null); void loadAnalysis(); }}
+        />
+      )}
+
+      <div style={{ textAlign: "center" }}>
+        <button onClick={onEditProfile} style={{ background: "none", border: "none", color: "var(--text-faint)", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>עדכן פרטים אישיים</button>
       </div>
     </main>
   );
@@ -695,9 +817,23 @@ function ResSection({ title, sub, children }: { title: string; sub?: string; chi
   );
 }
 
+function PrimaryBtn({ children, onClick, disabled, fullWidth, size = "md", iconLeft, iconRight }: {
+  children: React.ReactNode; onClick?: () => void; disabled?: boolean; fullWidth?: boolean;
+  size?: "sm" | "md" | "lg"; iconLeft?: React.ReactNode; iconRight?: React.ReactNode;
+}) {
+  const pad = size === "lg" ? "14px 28px" : size === "sm" ? "8px 16px" : "12px 22px";
+  const fs = size === "lg" ? 16 : size === "sm" ? 13.5 : 15;
+  return (
+    <button type="button" onClick={onClick} disabled={disabled}
+      style={{ width: fullWidth ? "100%" : undefined, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: pad, borderRadius: "var(--r-btn)", border: "none", cursor: disabled ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: fs, color: "#fff", background: disabled ? "var(--lav-300)" : "var(--ink)", opacity: disabled ? 0.7 : 1, boxShadow: disabled ? "none" : "var(--shadow-ink)", transition: "opacity var(--dur-fast) var(--ease)" }}>
+      {iconLeft}{children}{iconRight}
+    </button>
+  );
+}
+
 function ToolBtn({ children, icon, onClick }: { children: React.ReactNode; icon: React.ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 14px", borderRadius: "var(--r-sm)", border: "1px solid var(--border-soft)", background: "var(--surface-sunken)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: "var(--text-body)" }}>
+    <button onClick={onClick} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "8px 14px", borderRadius: "var(--r-sm)", border: "1px solid var(--border-soft)", background: "var(--surface-sunken)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 13, color: "var(--text-body)" }}>
       {icon}{children}
     </button>
   );

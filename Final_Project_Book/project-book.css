@@ -34,20 +34,50 @@ body {
 }
 
 /* Title page */
+.cover-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35cm;
+  margin-top: 2.2cm;
+  margin-bottom: 0.65cm;
+  color: #5a56f6;
+  font-size: 22pt;
+  font-weight: bold;
+  letter-spacing: -0.02em;
+}
+
+.cover-logo img {
+  width: 1.35cm;
+  height: 1.35cm;
+  border-radius: 0.3cm;
+}
+
 h1.book-title {
   font-size: 18pt;
   font-weight: bold;
   text-align: center;
   line-height: 1.35;
-  margin-top: 5.5cm;
-  margin-bottom: 2cm;
-  page-break-after: always;
+  margin-top: 0;
+  margin-bottom: 0.45cm;
+  page-break-before: auto;
+  page-break-after: avoid;
+}
+
+.cover-tagline {
+  max-width: 13cm;
+  margin: 0 auto 1cm;
+  color: #4d4a68;
+  font-size: 12.5pt;
+  line-height: 1.45;
+  text-align: center;
+  letter-spacing: 0.01em;
 }
 
 .title-page-meta {
   text-align: center;
   font-size: 12pt;
-  line-height: 1.8;
+  line-height: 1.65;
   page-break-after: always;
 }
 
@@ -172,8 +202,58 @@ ul.toc-list ul {
 }
 
 ul.toc-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.18cm;
   margin-bottom: 0.4em;
   line-height: 1.4;
+}
+
+.toc-label {
+  flex: 0 1 auto;
+}
+
+.toc-dots {
+  flex: 1 1 auto;
+  min-width: 0.8cm;
+  border-bottom: 1px dotted #777;
+  transform: translateY(-0.08cm);
+}
+
+.toc-page {
+  flex: 0 0 0.7cm;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.front-list {
+  margin: 0.8em 0 1.5em;
+  font-size: 11pt;
+}
+
+.front-list-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.18cm;
+  margin: 0.28em 0;
+  line-height: 1.35;
+}
+
+.front-list-row > span:first-child {
+  max-width: 88%;
+}
+
+.front-list-dots {
+  flex: 1 1 auto;
+  min-width: 0.8cm;
+  border-bottom: 1px dotted #666;
+  transform: translateY(-0.08cm);
+}
+
+.front-list-page {
+  flex: 0 0 0.7cm;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 table {
@@ -260,6 +340,12 @@ figure.book-figure img {
   max-width: 100%;
   height: auto;
   border: 1px solid #ccc;
+}
+
+/* The OCR decision tree is intentionally detailed and portrait-oriented. */
+figure#figure-2 img {
+  width: auto;
+  max-height: 19cm;
 }
 
 figure.book-figure figcaption {

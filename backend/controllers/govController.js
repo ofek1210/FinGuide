@@ -15,7 +15,17 @@ async function getGovStatus(req, res) {
 }
 
 async function postGovSync(req, res) {
-  const result = await runGovMarketMonthlySync();
+  const includeCohort = req.query.cohort !== 'false';
+  const includeTrackMonthly = req.query.tracks !== 'false';
+  const result = await runGovMarketMonthlySync({ includeCohort, includeTrackMonthly });
+  return res.json({ success: true, data: result });
+}
+
+async function postGovSyncAll(req, res) {
+  const result = await runGovMarketMonthlySync({
+    includeCohort: true,
+    includeTrackMonthly: true,
+  });
   return res.json({ success: true, data: result });
 }
 
@@ -112,9 +122,27 @@ async function getPensiaCohortAnnual(req, res) {
   return res.json({ success: true, data: rows });
 }
 
+async function postGemelCohortAnnual(req, res) {
+  if (!req.file?.buffer) {
+    return res.status(400).json({ success: false, message: 'חסר קובץ Excel' });
+  }
+  const { importGemelNetCohortAnnualExcel } = require('../services/gemelNetCohortAnnualImportService');
+  const data = await importGemelNetCohortAnnualExcel(req.file.buffer, {
+    sourceFile: req.file.originalname,
+  });
+  return res.json({ success: true, data });
+}
+
+async function getGemelCohortAnnual(req, res) {
+  const { getGemelCohortAnnualSummary } = require('../services/gemelNetCohortAnnualImportService');
+  const rows = await getGemelCohortAnnualSummary();
+  return res.json({ success: true, data: rows });
+}
+
 module.exports = {
   getGovStatus,
   postGovSync,
+  postGovSyncAll,
   postNetSync,
   getNetStatus,
   getFunds,
@@ -125,4 +153,6 @@ module.exports = {
   getPayslipBenchmarks,
   postPensiaCohortAnnual,
   getPensiaCohortAnnual,
+  postGemelCohortAnnual,
+  getGemelCohortAnnual,
 };

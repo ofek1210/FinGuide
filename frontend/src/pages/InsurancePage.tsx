@@ -2,19 +2,21 @@
  * InsurancePage — guided Har HaBituach import flow
  */
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Shield, AlertCircle, CheckCircle, Trash2, Loader2,
   FileText, Lock, TrendingUp, ShieldCheck, AlertTriangle, BarChart3,
   Sparkles, RefreshCw, TrendingDown, Lightbulb,
   type LucideIcon,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
 import InsuranceRibbonWave from "../components/insurance/InsuranceRibbonWave";
 import InsuranceImportGuide from "../components/insurance/InsuranceImportGuide";
 import InsuranceUpload from "../components/insurance/InsuranceUpload";
 import InsuranceOnboardingWizard from "../components/insurance/InsuranceOnboardingWizard";
+import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
+import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import AIInsightsLoadingState from "../components/ai/AIInsightsLoadingState";
 import {
   getInsuranceAnalysis,
@@ -33,28 +35,28 @@ import {
 import { getInsuranceOnboardingSession } from "../api/insuranceOnboarding.api";
 import { formatCurrencyOrDash } from "../utils/formatters";
 import { POLICY_TYPE_LABELS, UPLOAD_PROGRESS_STEPS } from "../utils/insuranceDisplay";
-import { INSURANCE_IMPORT_CONFIG } from "../config/govReportImportConfig";
-import { APP_ROUTES } from "../types/navigation";
+import { INSURANCE_SITE_URL } from "../config/govReportImportConfig";
 import { useGovReportDomainPage } from "../hooks/useGovReportDomainPage";
 import { computeImportHistoryDelta } from "../utils/domainImportHistory";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
-const HAR_HABITUACH_URL = INSURANCE_IMPORT_CONFIG.siteUrl;
+const HAR_HABITUACH_URL = INSURANCE_SITE_URL;
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const fmt = formatCurrencyOrDash;
 
-function insuranceShell(children: React.ReactNode) {
-  return (
-    <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
-      <PrivateTopbar />
-      {children}
-      <AppFooter variant="private" />
-    </div>
-  );
-}
-
 export default function InsurancePage() {
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const agentOnboarding = useAgentOnboarding("insurance");
 
+  function insuranceShell(children: React.ReactNode) {
+    return (
+      <div data-agent="insurance" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(218,111,68,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
+        <PrivateTopbar />
+        {children}
+        <AppFooter variant="private" />
+      </div>
+    );
+  }
   const [data, setData] = useState<InsuranceAnalysisResponse["data"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -119,21 +121,28 @@ export default function InsurancePage() {
     void loadImportHistory();
   }, [load, loadImportHistory]);
 
-  // On first load: skip to results when insurance onboarding is complete,
-  // even if Har HaBituach contained 0 active policies.
   useEffect(() => {
-    if (step !== "landing" || loading) return;
-    if (!data) return;
+    if (searchParams.get("flow") === "import" && step === "landing") {
+      setStep("guide");
+    }
+  }, [searchParams, step, setStep]);
 
-    const policyCount = data?.policies?.length ?? 0;
+  const hasInsuranceDocument = (data?.policies?.length ?? 0) > 0;
+  const needsSmartOnboarding = hasInsuranceDocument && agentOnboarding.needsQuestions;
+
+  // When policies exist, route into onboarding or results — not the empty landing upload prompt.
+  useEffect(() => {
+    if (loading || !data) return;
+
+    const policyCount = data.policies?.length ?? 0;
     if (policyCount === 0) return;
+    if (step !== "landing" && step !== "onboarding") return;
 
     void getInsuranceOnboardingSession().then(res => {
-      if (res.ok && res.data?.success && res.data.data?.completed) {
-        setStep("results");
-      }
+      const completed = res.ok && res.data?.success && res.data.data?.completed;
+      setStep(completed ? "results" : "onboarding");
     });
-  }, [data, step, loading, setStep]);
+  }, [data, loading, step, setStep]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("למחוק פוליסה זו?")) return;
@@ -166,6 +175,30 @@ export default function InsurancePage() {
   const policies = data?.policies ?? [];
   const recs = data?.recommendations ?? [];
   const totalPremium = policies.reduce((s, p) => s + (p.monthlyPremium ?? 0), 0);
+
+  const insuranceLabel =
+    healthCheck?.score != null
+      ? `ביטוח · ציון ${Math.round(healthCheck.score)}`
+      : step === "results"
+        ? "ביטוח · ניתוח"
+        : "ביטוח";
+  const insuranceDetail = [
+    `שלב במסך: ${step}`,
+    healthCheck?.score != null
+      ? `ציון בריאות ביטוח: ${Math.round(healthCheck.score)}/100`
+      : null,
+    policies.length ? `פוליסות: ${policies.length}` : null,
+    totalPremium > 0
+      ? `פרמיה חודשית: ₪${Math.round(totalPremium).toLocaleString("he-IL")}`
+      : null,
+    analysis && "duplicateCount" in analysis && Number(analysis.duplicateCount) > 0
+      ? `כפילויות: ${analysis.duplicateCount}`
+      : null,
+    recs[0]?.title ? `המלצה מובילה: ${recs[0].title}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  useRegisterPageContext(insuranceLabel, insuranceDetail || null);
 
   // Opening / empty state — the redesigned insurance agent landing.
   if (step === "landing") {
@@ -213,6 +246,32 @@ export default function InsurancePage() {
     );
   }
 
+  if (step === "results" && needsSmartOnboarding) {
+    if (agentOnboarding.loading) {
+      return insuranceShell(
+        <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--peach-ink)" }}>בודקים מה חסר לפני הניתוח...</div>,
+      );
+    }
+    return insuranceShell(
+      <AgentOnboardingStep
+        agentId="insurance"
+        agentLabel="ביטוח"
+        estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+        questions={agentOnboarding.state?.missingQuestions ?? []}
+        phases={["document", "questions", "analysis"]}
+        activePhase="questions"
+        headline="עוד רגע — נשלים את תמונת הביטוח"
+        subhead="דוח הר הביטוח והשאלון כבר אצלנו. עוד כמה שאלות והסוכן יציג ניתוח, כפילויות והמלצות מלאים."
+        onSkip={agentOnboarding.dismiss}
+        onSubmit={async answers => {
+          const ok = await agentOnboarding.submit(answers);
+          if (ok) await load();
+          return ok;
+        }}
+      />,
+    );
+  }
+
   // Results — insurance analysis (design-system, peach accent).
   return insuranceShell(
     <ResultsStep
@@ -230,7 +289,6 @@ export default function InsurancePage() {
       deletingId={deletingId}
       onDelete={handleDelete}
       onReimport={() => setStep("guide")}
-      navigate={navigate}
     />,
   );
 }
@@ -451,7 +509,7 @@ function InsuranceLandingScreen({ loading, onImport }: { loading: boolean; onImp
 function ResultsStep({
   loading, analysisError, onRetry,
   analysis, healthCheck, marketAdvice, importHistory, lastSavingsDelta,
-  policies, recs, totalPremium, deletingId, onDelete, onReimport, navigate,
+  policies, recs, totalPremium, deletingId, onDelete, onReimport,
 }: {
   loading: boolean;
   analysisError: string | null;
@@ -467,7 +525,6 @@ function ResultsStep({
   deletingId: string | null;
   onDelete: (id: string) => void;
   onReimport: () => void;
-  navigate: ReturnType<typeof useNavigate>;
 }) {
   const historyDelta = computeImportHistoryDelta(importHistory, "annualSavings", lastSavingsDelta);
 
@@ -514,30 +571,40 @@ function ResultsStep({
   }
 
   const annualSavings = analysis?.savings?.annualSavings ?? 0;
-  const monthlyWaste = analysis?.totalMonthlyWaste ?? 0;
+  const premiumUnderReview = analysis?.premiumUnderReviewMonthly ?? analysis?.savings?.premiumUnderReviewMonthly ?? 0;
   const missing = analysis?.missingCoverage ?? [];
   const duplicates = analysis?.duplicates ?? [];
-  const score = healthCheck?.score;
+  const scoreDisabled = healthCheck?.scoreDisabled === true;
+  const score = scoreDisabled ? null : healthCheck?.score;
   const isReportWithoutPolicies = policies.length === 0 && hasAnalysisOutput;
-  const heroMetric = isReportWithoutPolicies
-    ? (score != null ? `${score}/100` : String(missing.length))
-    : fmt(annualSavings);
-  const heroMetricLabel = isReportWithoutPolicies
-    ? (score != null ? "ציון התאמת כיסוי" : "כיסויים חסרים")
-    : "פוטנציאל חיסכון שנתי";
-  const heroDescription = isReportWithoutPolicies
-    ? "הדוח נקלט, אבל לא נמצאו בו פוליסות פעילות. הניתוח מבוסס על תשובות השאלון ומדגיש כיסויים שכדאי לבדוק."
-    : "על בסיס זיהוי כפילויות ואופטימיזציית פרמיות בפוליסות שלך.";
+  const heroMetric = scoreDisabled
+    ? "—"
+    : isReportWithoutPolicies
+      ? (score != null ? `${score}/100` : String(missing.length))
+      : premiumUnderReview > 0
+        ? fmt(premiumUnderReview)
+        : fmt(annualSavings);
+  const heroMetricLabel = scoreDisabled
+    ? "מצב התיק הביטוחי"
+    : isReportWithoutPolicies
+      ? (score != null ? "ציון התאמת כיסוי" : "כיסויים חסרים")
+      : premiumUnderReview > 0
+        ? "פרמיה חודשית לבדיקה"
+        : "פוטנציאל חיסכון שנתי";
+  const heroDescription = scoreDisabled
+    ? (healthCheck?.messageHe ?? "נדרשת השלמת מידע כדי לבדוק כפילויות, מחירים ופערי כיסוי.")
+    : isReportWithoutPolicies
+      ? "הדוח נקלט, אבל לא נמצאו בו פוליסות פעילות. הניתוח מבוסס על תשובות השאלון ומדגיש כיסויים שכדאי לבדוק."
+      : "על בסיס כיסויים שדורשים בדיקה והשוואת פרמיות — ללא חיסכון מאומת.";
 
   const stats: { icon: LucideIcon; label: string; value: string; bg: string; fg: string }[] = [
     ...(score != null ? [{ icon: ShieldCheck, label: "ציון כיסוי", value: String(score), bg: "var(--peach-soft)", fg: "var(--peach-ink)" }] : []),
-    { icon: AlertTriangle, label: "כיסויים לבדיקה", value: String(missing.length), bg: "var(--butter-soft)", fg: "var(--butter-ink)" },
+    { icon: AlertTriangle, label: "כיסויים לבדיקה", value: String((analysis?.duplicateCount ?? 0) + missing.length), bg: "var(--butter-soft)", fg: "var(--butter-ink)" },
     { icon: Lightbulb, label: "המלצות", value: String(recs.length), bg: "var(--mint-soft)", fg: "var(--mint-ink)" },
     { icon: FileText, label: "פוליסות פעילות בדוח", value: String(policies.length), bg: "var(--lav-100)", fg: "var(--lav-600)" },
     ...(!isReportWithoutPolicies ? [
       { icon: Shield, label: "הוצאה חודשית", value: fmt(totalPremium), bg: "var(--peach-soft)", fg: "var(--peach-ink)" },
-      { icon: TrendingDown, label: "בזבוז מכפילויות", value: fmt(monthlyWaste), bg: monthlyWaste > 0 ? "rgba(214,69,69,.08)" : "var(--surface-sunken)", fg: monthlyWaste > 0 ? "var(--danger)" : "var(--text-faint)" },
-      { icon: TrendingUp, label: "חיסכון שנתי", value: fmt(annualSavings), bg: "var(--mint-soft)", fg: "var(--mint-ink)" },
+      ...(premiumUnderReview > 0 ? [{ icon: TrendingDown, label: "פרמיה לבדיקה", value: fmt(premiumUnderReview), bg: "var(--butter-soft)", fg: "var(--butter-ink)" }] : []),
     ] : []),
   ].slice(0, isReportWithoutPolicies ? 4 : 6);
 
@@ -687,8 +754,13 @@ function ResultsStep({
       )}
 
       {/* health check */}
-      {healthCheck && healthCheck.categories?.length > 0 && (
-        <Section title="בדיקת בריאות ביטוח" sub={`ציון כולל ${healthCheck.score}/100${healthCheck.level?.label ? ` · ${healthCheck.level.label}` : ""}`}>
+      {healthCheck && (healthCheck.scoreDisabled || (healthCheck.categories?.length ?? 0) > 0) && (
+        <Section title={healthCheck.headlineHe ?? "בדיקת בריאות ביטוח"} sub={healthCheck.scoreDisabled ? healthCheck.messageHe : `ציון כולל ${healthCheck.score}/100${healthCheck.level?.label ? ` · ${healthCheck.level.label}` : ""}`}>
+          {healthCheck.scoreDisabled ? (
+            <div style={{ padding: "14px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>
+              {healthCheck.messageHe}
+            </div>
+          ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {healthCheck.categories.map(c => {
               const [bg, fg] = statusTone(c.status);
@@ -705,22 +777,25 @@ function ResultsStep({
               );
             })}
           </div>
+          )}
         </Section>
       )}
 
-      {/* duplicates */}
+      {/* overlaps for review */}
       {duplicates.length > 0 && (
-        <Section title="כיסויים כפולים שזוהו" sub="פוליסות שייתכן ומיותרות — שווה לבדוק">
+        <Section title="כיסויים הדורשים בדיקה" sub="קיימת חפיפה אפשרית — לא אושר חיסכון">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14 }}>
             {duplicates.map((dup: InsuranceDuplicate, i: number) => (
-              <div key={i} style={{ position: "relative", overflow: "hidden", padding: "16px 18px", background: "var(--card)", border: "1px solid rgba(214,69,69,.22)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
-                <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 3, background: "var(--danger)" }} />
+              <div key={i} style={{ position: "relative", overflow: "hidden", padding: "16px 18px", background: "var(--card)", border: "1px solid var(--butter)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
+                <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 3, background: "var(--butter-ink)" }} />
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span style={{ fontWeight: 800, fontSize: 15, color: "var(--danger)" }}>{POLICY_TYPE_LABELS[dup.type] ?? dup.type}</span>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: "var(--danger)", background: "rgba(214,69,69,.08)", borderRadius: 999, padding: "2px 9px" }}>{dup.policies.length} כפולים</span>
+                  <span style={{ fontWeight: 800, fontSize: 15, color: "var(--butter-ink)" }}>{dup.typeLabelHe ?? POLICY_TYPE_LABELS[dup.type] ?? dup.type}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "var(--butter-ink)", background: "var(--butter-soft)", borderRadius: 999, padding: "2px 9px" }}>{dup.policyCount ?? dup.policies.length} פוליסות</span>
                 </div>
-                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 8 }}>{dup.policies.map(p => p.provider).filter(Boolean).join(" · ") || "—"}</div>
-                <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--danger)" }}>בזבוז: {fmt(dup.estimatedMonthlyWaste)} / חודש</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 8 }}>{dup.reasonHe ?? (dup.policies.map(p => p.provider).filter(Boolean).join(" · ") || "—")}</div>
+                {(dup.premiumUnderReviewMonthly ?? 0) > 0 && (
+                  <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--butter-ink)" }}>פרמיה חודשית לבדיקה: {fmt(dup.premiumUnderReviewMonthly ?? 0)}</div>
+                )}
               </div>
             ))}
           </div>
@@ -791,16 +866,7 @@ function ResultsStep({
         </Section>
       )}
 
-      {/* ask agent */}
-      <div style={{ textAlign: "center", background: "radial-gradient(120% 100% at 50% 0%,var(--peach-soft),var(--surface-card))", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "38px 28px", boxShadow: "var(--shadow-soft)", marginTop: 8 }}>
-        <span style={{ width: 54, height: 54, borderRadius: 15, background: "var(--peach-ink)", color: "#fff", display: "grid", placeItems: "center", margin: "0 auto 16px" }}><Sparkles size={26} /></span>
-        <h3 style={{ margin: "0 0 8px", fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>שאל את סוכן הביטוח</h3>
-        <p style={{ margin: "0 auto 22px", maxWidth: 440, fontSize: 15, color: "var(--text-muted)", lineHeight: 1.6 }}>"האם אני צריך ביטוח חיים?" · "כמה אני משלם יותר מהממוצע?" · "מה הסיכון הכי גדול שלי?"</p>
-        <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-          <button onClick={() => navigate(`${APP_ROUTES.hub}?chat=1`)} style={inkBtn}><Sparkles size={17} /> פתח שיחה עם הסוכן</button>
-        </div>
-        <p style={{ margin: "20px 0 0", fontSize: 12, color: "var(--text-faint)" }}>הניתוח מבוסס על נתוני הדוח שיובא ואינו מהווה ייעוץ ביטוחי מקצועי.</p>
-      </div>
+      <p style={{ margin: "8px 0 0", textAlign: "center", fontSize: 12, color: "var(--text-faint)" }}>הניתוח מבוסס על נתוני הדוח שיובא ואינו מהווה ייעוץ ביטוחי מקצועי.</p>
     </>,
   );
 }

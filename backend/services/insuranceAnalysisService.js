@@ -5,6 +5,7 @@
 
 
 const InsurancePolicy = require('../models/InsurancePolicy');
+const PensionFund = require('../models/PensionFund');
 const {
   getInsuranceProfile,
   analyzeInsuranceCoverage,
@@ -14,9 +15,46 @@ const { runInsuranceHealthCheck } = require('./insuranceHealthCheckService');
 const { buildMarketAdvice } = require('./insuranceMarketAdvisorService');
 const { buildBituahMarketAdvice } = require('./bituahNetAdvisorService');
 
+function buildInsuranceDataSources(pensionFunds, dbPolicies) {
+  const coverages = [];
+  for (const fund of pensionFunds) {
+    for (const cov of fund.insuranceCoverages || []) {
+      coverages.push({
+        fundId: fund._id.toString(),
+        fundName: fund.fundName,
+        provider: fund.provider ?? null,
+        coverageType: cov.coverageType || cov.type || 'כיסוי',
+        monthlyPremium: cov.monthlyPremium ?? cov.monthlyCost ?? null,
+        coverageAmount: cov.coverageAmount ?? cov.sumInsured ?? null,
+        source: 'clearinghouse',
+      });
+    }
+  }
+
+  const hasClearinghouseImport = pensionFunds.some(
+    f => f.source === 'clearinghouse' || (f.insuranceCoverages?.length ?? 0) > 0,
+  );
+
+  return {
+    clearinghouse: {
+      status: coverages.length > 0 ? 'ready' : hasClearinghouseImport ? 'empty' : 'missing',
+      labelHe: 'דוח המסלקה הפנסיונית',
+      coverageCount: coverages.length,
+      coverages,
+    },
+    harHabituach: {
+      status: dbPolicies.length > 0 ? 'ready' : 'missing',
+      labelHe: 'דוח הר הביטוח',
+      policyCount: dbPolicies.length,
+    },
+  };
+}
+
 async function buildInsuranceAnalysis(userId) {
   const profileDTO = await getInsuranceProfile(userId);
-  const dbPolicies = await InsurancePolicy.find({ user: userId, status: { $ne: 'cancelled' } }).lean();
+  const dbPolicies = await InsurancePolicy.find({ user: userId, status: { $ne: 'cancelled' } })
+    .select('+rawData')
+    .lean();
 
   if (dbPolicies.length > 0) {
     profileDTO.policies = dbPolicies.map(p => ({
@@ -29,15 +67,18 @@ async function buildInsuranceAnalysis(userId) {
       startDate: p.startDate,
       endDate: p.endDate,
       status: p.status,
+      rawData: p.rawData,
+      notes: p.notes,
     }));
   }
 
-  const analysis = analyzeInsuranceCoverage(profileDTO);
+  const pensionFunds = await PensionFund.find({ user: userId }).lean();
+  const analysis = analyzeInsuranceCoverage(profileDTO, { pensionFunds });
   const policiesForDisplay = analysis.aggregatedPolicies || profileDTO.policies;
-  const healthCheck = runInsuranceHealthCheck(profileDTO, { ...analysis, policies: policiesForDisplay });
-  const recommendations = generateInsuranceRecommendations(analysis);
 
-  const marketAdvice = await buildMarketAdvice(policiesForDisplay, profileDTO);
+  const marketAdvice = await buildMarketAdvice(policiesForDisplay, profileDTO, { analysis });
+  const recommendations = generateInsuranceRecommendations(analysis, marketAdvice);
+  const healthCheck = runInsuranceHealthCheck(profileDTO, { ...analysis, policies: policiesForDisplay });
   const bituahAdvice = await buildBituahMarketAdvice(policiesForDisplay, profileDTO);
 
   const bituahRecs = (bituahAdvice.funds || [])
@@ -71,6 +112,7 @@ async function buildInsuranceAnalysis(userId) {
     marketAdvice,
     bituahAdvice,
     hasImportedPolicies: dbPolicies.length > 0,
+    dataSources: buildInsuranceDataSources(pensionFunds, dbPolicies),
   };
 }
 

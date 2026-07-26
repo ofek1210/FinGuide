@@ -15,4 +15,10 @@ module.exports = {
   cronEnabled: process.env.GOV_MARKET_CRON_ENABLED !== 'false',
   cronSchedule: process.env.GOV_MARKET_CRON_SCHEDULE || '0 2 18 * *',
   cronTimezone: process.env.GOV_MARKET_CRON_TZ || 'Asia/Jerusalem',
+
+  /** Auto-pick newest CSV resource from data.gov.il when env ID is set but stale */
+  autoDiscoverResources: process.env.GOV_AUTO_DISCOVER_RESOURCES !== 'false',
+
+  /** Bulk CSV download from e.data.gov.il (faster than paginated API) */
+  useCsvDownload: process.env.GOV_USE_CSV_DOWNLOAD !== 'false',
 };

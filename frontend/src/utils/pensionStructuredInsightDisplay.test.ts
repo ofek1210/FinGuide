@@ -22,18 +22,20 @@ describe("pensionStructuredInsightDisplay", () => {
     expect(insightCategoryLabel("unknown_cat")).toBe("unknown_cat");
   });
 
-  it("formatBenchmarkLines skips null fields", () => {
+  it("formatBenchmarkLines uses comparisonGroupLabel and hides internal keys", () => {
     const lines = formatBenchmarkLines({
-      group: "pension:medium",
+      group: "other:unknown:קרנות חדשות",
+      comparisonGroupLabel: "קרנות פנסיה חדשות במסלולים דומים",
       percentile: 35,
       median: 6.2,
       average: null,
     });
     expect(lines).toEqual([
-      "קבוצת השוואה: pension:medium",
+      "קבוצת השוואה: קרנות פנסיה חדשות במסלולים דומים",
       "אחוזון: 35",
       "חציון: 6.2",
     ]);
+    expect(lines.some(l => l.includes("other:unknown"))).toBe(false);
   });
 
   it("formatEstimatedImpactLines formats currency values", () => {

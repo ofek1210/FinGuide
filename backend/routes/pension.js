@@ -21,9 +21,11 @@ const {
   deletePensionFund,
   getFundAdvice,
   getLeadingFunds,
+  getLeadingFinqFunds,
   getMarketFundById,
   getPensionRecommendations,
   deleteAllPensionData,
+  deleteClearinghouseData,
   analyzePensionOnly,
 } = require('../controllers/pensionController');
 const { getPensionInsights } = require('../services/pensionRiskAdvisor');
@@ -91,6 +93,10 @@ router.patch('/funds/:id', (req, res, next) => {
   Promise.resolve(updatePensionFund(req, res)).catch(next);
 });
 
+router.delete('/clearinghouse', (req, res, next) => {
+  Promise.resolve(deleteClearinghouseData(req, res)).catch(next);
+});
+
 router.delete('/funds', (req, res, next) => {
   Promise.resolve(deleteAllPensionData(req, res)).catch(next);
 });
@@ -138,6 +144,10 @@ router.post(
     Promise.resolve(getPensionRecommendations(req, res)).catch(next);
   },
 );
+
+router.get('/leading-funds/finq', (req, res, next) => {
+  Promise.resolve(getLeadingFinqFunds(req, res)).catch(next);
+});
 
 router.get('/leading-funds', (req, res, next) => {
   Promise.resolve(getLeadingFunds(req, res)).catch(next);

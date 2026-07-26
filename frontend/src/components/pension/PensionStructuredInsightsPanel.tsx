@@ -80,7 +80,7 @@ export default function PensionStructuredInsightsPanel({
   return (
     <section style={{ marginBottom: 18 }} aria-label="תובנות מובנות">
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap", margin: "0 2px 14px" }}>
-        <h2 style={{ ...sectionTitleStyle, margin: 0 }}>תובנות מובנות ({sorted.length})</h2>
+        <h2 style={{ ...sectionTitleStyle, margin: 0 }}>תובנות מרכזיות ({sorted.length})</h2>
         {meta?.dataCompleteness?.marketMatchRate != null && (
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-faint)" }}>
             התאמה לשוק: {Math.round(meta.dataCompleteness.marketMatchRate * 100)}%

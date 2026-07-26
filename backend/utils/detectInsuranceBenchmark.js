@@ -20,13 +20,16 @@ const INSURANCE_CONFIG = {
   extraFindings: analysis => {
     const coverage = analysis.analysis;
     if (!coverage?.duplicateCount) return [];
+    const premiumReview = coverage.premiumUnderReviewMonthly;
     return [{
-      id: 'insurance_duplicates',
-      title: 'כפילויות ביטוח שזוהו',
-      severity: 'warning',
-      details: `זוהו ${coverage.duplicateCount} כפילויות — בזבוז חודשי משוער ₪${Math.round(coverage.totalMonthlyWaste || 0).toLocaleString('he-IL')}.`,
+      id: 'insurance_overlaps_review',
+      title: 'כיסויים הדורשים בדיקה',
+      severity: 'info',
+      details: premiumReview
+        ? `נמצאו ${coverage.duplicateCount} כיסויים לבדיקה — פרמיה חודשית לבדיקה: ₪${Math.round(premiumReview).toLocaleString('he-IL')}.`
+        : `נמצאו ${coverage.duplicateCount} כיסויים הדורשים בדיקה — לא אושר חיסכון.`,
       meta: {
-        findingKind: 'insurance_duplicate',
+        findingKind: 'insurance_overlap_review',
         duplicateCount: coverage.duplicateCount,
       },
     }];

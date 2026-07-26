@@ -84,14 +84,25 @@ router.post('/onboarding/complete', (req, res, next) => {
   Promise.resolve(postInsuranceOnboardingComplete(req, res)).catch(next);
 });
 
-// DELETE /api/insurance/data — delete ALL insurance policies for the user
+// DELETE /api/insurance/data — delete Har HaBituach imported policies only
 router.delete('/data', async (req, res, next) => {
   try {
     const InsurancePolicy = require('../models/InsurancePolicy');
+    const result = await InsurancePolicy.deleteMany({ user: req.user._id, source: 'har_bituach' });
+    return res.json({
+      success: true,
+      message: 'דוח הר הביטוח נמחק',
+      data: { deletedCount: result.deletedCount },
+    });
+  } catch (err) { next(err); }
+});
+
+// DELETE /api/insurance/onboarding — reset insurance agent onboarding only
+router.delete('/onboarding', async (req, res, next) => {
+  try {
     const { resetOnboarding } = require('../services/insuranceOnboardingService');
-    await InsurancePolicy.deleteMany({ user: req.user._id });
     await resetOnboarding(req.user._id);
-    return res.json({ success: true, message: 'כל נתוני הביטוח נמחקו' });
+    return res.json({ success: true, message: 'נתוני האונבורדינג של הביטוח נמחקו' });
   } catch (err) { next(err); }
 });
 

@@ -12,9 +12,9 @@ import {
   getPayslipAIInsights,
   getInsuranceProfileInsights,
   getPensionRiskAdvice,
-  sendSummaryEmail,
-  getWhatsAppShareUrl,
 } from "../../api/aiInsights.api";
+import { summarizeInsightText } from "../../utils/insightDisplay";
+import AgentInsightCta from "./AgentInsightCta";
 
 type AgentType = "payslip" | "insurance" | "pension";
 
@@ -31,11 +31,6 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
     PayslipInsightsData | InsuranceInsightsData | PensionInsightsData | null
   >(null);
   const [error, setError] = useState<string | null>(null);
-
-  // Email summary state
-  const [emailConsent, setEmailConsent] = useState(false);
-  const [emailLoading, setEmailLoading] = useState(false);
-  const [emailMsg, setEmailMsg] = useState<string | null>(null);
 
   useEffect(() => {
     void fetchInsights();
@@ -58,26 +53,6 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
       setError("שגיאה לא צפויה");
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleSendEmail() {
-    if (!emailConsent) return;
-    setEmailLoading(true);
-    setEmailMsg(null);
-    const res = await sendSummaryEmail(true);
-    setEmailLoading(false);
-    if (res.ok) {
-      setEmailMsg(`✓ מייל נשלח בהצלחה ל-${res.data.data.sentTo}`);
-    } else {
-      setEmailMsg(`שגיאה: ${res.error.message}`);
-    }
-  }
-
-  async function handleWhatsApp() {
-    const res = await getWhatsAppShareUrl();
-    if (res.ok) {
-      window.open(res.data.data.url, "_blank", "noopener,noreferrer");
     }
   }
 
@@ -245,10 +220,10 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
         </div>
       )}
       {insights.map((ins) => (
-        <InsightCard key={ins.id} insight={ins} />
+        <InsightCard key={ins.id} insight={ins} agent={agent} />
       ))}
 
-      {/* Narrative */}
+      {/* Narrative — condensed teaser + agent CTA */}
       {narrative && (
         <div
           style={{
@@ -258,140 +233,26 @@ export function InsightsPanel({ agent, trigger = 0 }: Props) {
             borderRadius: 10,
             fontSize: 14,
             color: "#4a5568",
-            lineHeight: 1.7,
-            whiteSpace: "pre-line",
+            lineHeight: 1.6,
             borderRight: "3px solid #9b8cff",
           }}
         >
           <div
             style={{
-              fontWeight: 700,
+              fontWeight: 800,
               marginBottom: 8,
               color: "#7c3aed",
-              fontSize: 13,
+              fontSize: 14,
             }}
           >
-            ניתוח אישי
+            סיכום קצר
           </div>
-          {narrative}
+          <p style={{ margin: 0 }}>
+            {summarizeInsightText(narrative.replace(/\n+/g, " "), 180)}
+          </p>
+          <AgentInsightCta agent={agent} />
         </div>
       )}
-
-      {/* Share section */}
-      <div
-        style={{
-          marginTop: 20,
-          padding: "16px",
-          background: "#faf5ff",
-          borderRadius: 10,
-          border: "1px solid #e9d8fd",
-        }}
-      >
-        <div
-          style={{ fontWeight: 700, fontSize: 14, color: "#1a202c", marginBottom: 12 }}
-        >
-          שלח את הסיכום שלך
-        </div>
-
-        {/* Email consent */}
-        <label
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "flex-start",
-            cursor: "pointer",
-            marginBottom: 12,
-            fontSize: 13,
-            color: "#4a5568",
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={emailConsent}
-            onChange={(e) => setEmailConsent(e.target.checked)}
-            style={{ marginTop: 2, accentColor: "#7c3aed" }}
-          />
-          <span>
-            אני מאשר/ת לשלוח לי את סיכום הניתוח למייל הרשום שלי
-          </span>
-        </label>
-
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button
-            onClick={handleSendEmail}
-            disabled={!emailConsent || emailLoading}
-            style={{
-              background:
-                emailConsent && !emailLoading ? "#7c3aed" : "#c4b5fd",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              padding: "10px 18px",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: emailConsent && !emailLoading ? "pointer" : "not-allowed",
-              transition: "background 0.2s",
-            }}
-          >
-            {emailLoading ? "שולח..." : "שלח סיכום למייל"}
-          </button>
-
-          <button
-            onClick={handleWhatsApp}
-            style={{
-              background: "#25d366",
-              color: "#fff",
-              border: "none",
-              borderRadius: 8,
-              padding: "10px 18px",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            שתף ב-WhatsApp
-          </button>
-        </div>
-
-        {emailMsg && (
-          <div
-            style={{
-              marginTop: 10,
-              fontSize: 13,
-              color: emailMsg.startsWith("✓") ? "#2d7d46" : "#e53e3e",
-              fontWeight: 600,
-            }}
-          >
-            {emailMsg}
-          </div>
-        )}
-
-        {/* Accountant CTA */}
-        <div
-          style={{
-            marginTop: 14,
-            paddingTop: 14,
-            borderTop: "1px solid #e9d8fd",
-            fontSize: 13,
-            color: "#4a5568",
-          }}
-        >
-          <span style={{ fontWeight: 600 }}>לביצוע ההמלצות: </span>
-          <a
-            href="https://calendly.com/daniel-levi-cpa/consultation"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              color: "#7c3aed",
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
-          >
-            קבע פגישה עם רו&quot;ח דניאל לוי ←
-          </a>
-          <span style={{ marginRight: 8, color: "#a0aec0" }}>| 050-1234567</span>
-        </div>
-      </div>
     </div>
   );
 }

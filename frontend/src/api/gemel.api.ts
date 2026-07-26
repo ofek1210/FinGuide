@@ -1,4 +1,47 @@
-import { apiJson } from "./client";
+import { apiJson, apiBlob } from "./client";
+import type {
+  AccountAnalysis,
+  AdvisoryDataQuality,
+  AdvisoryLlmMeta,
+  AdvisoryMarketData,
+  AdvisoryMissingDataItem,
+  PrimaryRecommendation,
+  RecommendationCard,
+  ThreeCardAdvisoryData,
+  ThreeCardMeta,
+} from "./financialAdvisory.types";
+
+export type {
+  AccountAnalysis,
+  AdvisoryDataQuality,
+  AdvisoryLlmMeta,
+  AdvisoryMarketData,
+  AdvisoryMissingDataItem,
+  PrimaryRecommendation,
+  RecommendationCard,
+  ThreeCardAdvisoryData,
+  ThreeCardMeta,
+};
+
+export type RecommendationCardDTO = RecommendationCard;
+export type FormattedRecommendationDTO = PrimaryRecommendation;
+
+export type FinancialStructuredInsightDTO = {
+  id: string;
+  code: string;
+  productType: "PENSION" | "GEMEL" | "HISHTALMUT";
+  category: string;
+  severity: "critical" | "high" | "medium" | "low" | "info";
+  title: string;
+  reason: string;
+  suggestedAction: string;
+  evidence?: Record<string, unknown>;
+  financialImpact?: { amount?: number | null; currency?: string; period?: string | null };
+  confidence: number;
+  productId?: string | null;
+  sources?: string[];
+  disclaimers?: string[];
+};
 
 /* ============================================================
    Gemel API — קופות גמל וקרנות השתלמות (/api/gemel/*)
@@ -121,14 +164,16 @@ export type GemelRecommendationDTO = {
   urgency: "high" | "medium" | "low";
   financialImpact: string | null;
   confidenceScore: number;
+  insightId?: string;
 };
+
+export type AdvisoryMarketDataDTO = AdvisoryMarketData;
 
 export type GemelAnalysisData = {
   summary: GemelSummaryDTO;
-  marketAdvice: GemelMarketAdviceDTO;
-  payslipFindings: GemelFindingDTO[];
-  recommendations: GemelRecommendationDTO[];
-};
+  productType?: "GEMEL" | "HISHTALMUT";
+  payslipFindings?: GemelFindingDTO[];
+} & Partial<ThreeCardAdvisoryData>;
 
 export type GemelLeadingFundDTO = {
   id: string;
@@ -200,4 +245,88 @@ export const getGemelLeadingFunds = (params?: { limit?: number; classification?:
   return apiJson<{ success: boolean; data?: GemelLeadingFundDTO[] }>(`/api/gemel/leading-funds${suffix}`, {
     auth: true,
   });
+};
+
+export type GemelAlternativeRankedDTO = {
+  rank: number;
+  fundCode: string;
+  fundName: string;
+  companyName: string;
+  trackName: string | null;
+  riskLevel: string;
+  suitabilityScore: number;
+  feeScore: number;
+  performanceScore: number;
+  reasons: string[];
+  tradeoffs: string[];
+};
+
+export type GemelAccountReportDTO = {
+  accountId: string;
+  productType: string;
+  fundName: string;
+  companyName: string | null;
+  trackName: string | null;
+  balance: number;
+  accountStatus: string;
+  fees: {
+    balancePct: number | null;
+    balanceClassification: string;
+    estimatedAnnualCost: number | null;
+    possibleSavings: number | null;
+  };
+  returns: { classification: string; percentile: number | null };
+  risk: { level: string; suitability: string };
+  match: { method: string; confidence: number; fundCode: string | null; warnings: string[] };
+  dataQuality: string;
+  whatToReview: string[];
+  alternatives: GemelAlternativeRankedDTO[];
+  plainLanguage: Record<string, string>;
+};
+
+export type GemelAdvisorReportDTO = {
+  status: "success" | "partial" | "no_data" | "failed";
+  generatedAt: string;
+  humanSummary: string;
+  summary: { accountCount: number; totalBalance: number; matchedAccounts: number };
+  accounts: GemelAccountReportDTO[];
+  recommendations: Array<{ title: string; explanation: string; severity: string; possibleSavings: number | null }>;
+  dataQuality: { matchedAccounts: number; unmatchedAccounts: number; totalAccounts: number; warnings: string[] };
+  disclaimer: string;
+};
+
+export const getGemelReport = (skipLLM = false) =>
+  apiJson<{ success: boolean; data?: { runId: string; report: GemelAdvisorReportDTO } }>(
+    `/api/gemel/report${skipLLM ? "?skipLLM=true" : ""}`,
+    { auth: true },
+  );
+
+export const analyzeGemel = (skipLLM = false) =>
+  apiJson<{ success: boolean; data?: { runId: string; report: GemelAdvisorReportDTO } }>(
+    `/api/gemel/analyze${skipLLM ? "?skipLLM=true" : ""}`,
+    { method: "POST", auth: true, body: {} },
+  );
+
+export const uploadGemelExcel = async (file: File) => {
+  const form = new FormData();
+  form.append("file", file);
+  return apiJson<{ success: boolean; data?: { imported: number; warnings: string[] } }>("/api/gemel/upload", {
+    method: "POST",
+    auth: true,
+    body: form,
+  });
+};
+
+export const downloadGemelReportPdf = async (runId: string) => {
+  const result = await apiBlob(`/api/gemel/report/pdf?runId=${encodeURIComponent(runId)}`, {
+    auth: true,
+    fallbackErrorMessage: "לא הצלחנו להוריד את הדוח.",
+  });
+  if (!result.ok) {
+    return { success: false as const, message: result.error.message };
+  }
+  const disposition = result.response.headers.get("Content-Disposition") || "";
+  const match = disposition.match(/filename="([^"]+)"/);
+  const filename = match?.[1] || `FinGuide-Gemel-Report-${new Date().toISOString().slice(0, 10)}.pdf`;
+  return { success: true as const, blob: result.blob, filename };
 };

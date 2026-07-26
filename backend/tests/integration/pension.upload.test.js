@@ -60,8 +60,11 @@ describe('Pension Har HaKesef upload integration', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body.data.summary.hasData).toBe(true);
-    expect(res.body.data.healthCheck).toBeTruthy();
-    expect(res.body.data.benchmark).toBeTruthy();
+    expect(res.body.data.recommendationEngine).toBe('three_card_v5');
+    expect(res.body.data.recommendationCards).toHaveLength(3);
+    expect(res.body.data.benchmark).toBeUndefined();
+    expect(res.body.data.healthCheck).toBeUndefined();
+    expect(Array.isArray(res.body.data.accountAnalyses)).toBe(true);
   });
 
   it('re-import replaces stale har_hakesef funds', async () => {

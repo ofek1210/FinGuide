@@ -1,12 +1,11 @@
 /**
  * Gemel Agent — קופות גמל וקרנות השתלמות
  *
- * Pipeline: buildGemelAnalysis → LLM explanation (mirrors pensionAgent.js)
+ * Pipeline: buildGemelAnalysis → shared LLM insight formatter (deterministic fallback)
  */
 
 const { buildGemelAnalysis } = require('../../services/gemelAnalysisService');
-const { buildGemelSystemPrompt } = require('../prompts/gemelPrompt');
-const { askClaude } = require('../../services/claudeChatService');
+const { buildGemelAdvisorReport } = require('../../services/gemelAdvisor/gemelAdvisorService');
 
 /**
  * @param {string} userId
@@ -17,62 +16,29 @@ const { askClaude } = require('../../services/claudeChatService');
 async function runGemelAgent(userId, { skipLLM = false } = {}) {
   const startedAt = Date.now();
 
-  const analysis = await buildGemelAnalysis(userId);
-  const { summary, marketAdvice, payslipFindings, recommendations } = analysis;
+  const analysis = await buildGemelAnalysis(userId, { skipLLM });
+  const advisorReport = await buildGemelAdvisorReport(userId, { skipLLM }).catch(() => null);
+  const { summary, marketAdvice, payslipFindings, recommendations, llm, primaryRecommendations } = analysis;
 
-  if (!summary.hasData) {
+  if (!summary.hasData && !advisorReport?.accounts?.length) {
     return {
       agentId: 'gemel',
       status: 'no_data',
       message: 'לא נמצאו נתוני גמל או השתלמות. העלה תלוש שכר או דוח הר הכסף.',
       data: null,
       recommendations: [],
+      structuredInsights: [],
+      primaryRecommendations: [],
       llmExplanation: null,
+      llm: { used: false, provider: null, fallbackUsed: true },
       durationMs: Date.now() - startedAt,
     };
   }
 
-  let llmExplanation = null;
-  if (!skipLLM && process.env.ANTHROPIC_API_KEY) {
-    try {
-      const systemPrompt = buildGemelSystemPrompt({
-        summary: {
-          grossSalary: summary.grossSalary,
-          studyFundEmployee: summary.studyFundEmployee,
-          studyFundEmployer: summary.studyFundEmployer,
-          totalMonthlyContribution: summary.totalMonthlyContribution,
-          totalBalance: summary.totalBalance,
-          fundCount: summary.fundCount,
-          hasStudyFund: summary.hasStudyFund,
-          hasProvidentFund: summary.hasProvidentFund,
-          currentMgmtFee: summary.currentMgmtFee,
-        },
-        marketAdvice: marketAdvice?.hasData
-          ? {
-            overallVerdict: marketAdvice.overallVerdict,
-            funds: marketAdvice.funds?.map(f => ({
-              productName: f.productName,
-              verdict: f.verdict,
-              userFee: f.userFee,
-              marketFee: f.marketFee,
-              returnPercentile: f.returnPercentile,
-              annualSavingsEstimate: f.annualSavingsEstimate,
-            })),
-          }
-          : null,
-        findingsCount: payslipFindings.length,
-        recommendationCount: recommendations.length,
-      });
-      const result = await askClaude(
-        'ספק ניתוח קצר של הגמל וההשתלמות: השוואה מול גמל-נט, פסק דין (LEAVE/NEGOTIATE/SWITCH), והשפעה כספית — 4-5 משפטים בעברית.',
-        systemPrompt,
-        [],
-      );
-      llmExplanation = result?.answer || null;
-    } catch {
-      // Non-fatal
-    }
-  }
+  const llmExplanation = llm?.summary
+    || (primaryRecommendations?.length
+      ? primaryRecommendations.map(r => r.explanation).join(' ')
+      : null);
 
   return {
     agentId: 'gemel',
@@ -121,9 +87,24 @@ async function runGemelAgent(userId, { skipLLM = false } = {}) {
         details: f.details,
         meta: f.meta ?? null,
       })),
+      marketData: analysis.marketData ?? null,
+      dataQuality: analysis.dataQuality ?? null,
+      advisorReport: advisorReport ? {
+        status: advisorReport.status,
+        summary: advisorReport.summary,
+        accounts: advisorReport.accounts,
+        recommendations: advisorReport.recommendations,
+        orchestrator: advisorReport.orchestrator,
+      } : null,
     },
     recommendations,
+    structuredInsights: analysis.structuredInsights ?? [],
+    primaryRecommendations: primaryRecommendations ?? [],
+    secondaryInsights: analysis.secondaryInsights ?? [],
+    additionalInsights: analysis.additionalInsights ?? [],
     llmExplanation,
+    llm: llm ?? { used: false, provider: null, fallbackUsed: true },
+    analysisId: analysis.analysisId ?? null,
     durationMs: Date.now() - startedAt,
   };
 }

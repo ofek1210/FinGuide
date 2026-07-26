@@ -8,7 +8,11 @@ const mongoose = require('mongoose');
  */
 const pensiaNetCohortAnnualSchema = new mongoose.Schema(
   {
-    source: { type: String, default: 'pensyanet_excel' },
+    source: {
+      type: String,
+      default: 'pensyanet_excel',
+      enum: ['pensyanet_excel', 'data_gov_computed', 'cma_download'],
+    },
     sourceFile: { type: String, default: null },
     reportLabel: { type: String, default: null },
     reportAsOf: { type: String, default: null },

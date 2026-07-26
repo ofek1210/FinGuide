@@ -1,8 +1,10 @@
 'use strict';
 
-const { buildPensionInsight } = require('../utils/pensionInsightBuilder');
-const { median, average, percentileRank } = require('../utils/pensionStats');
 const config = require('../config/pensionAnalysisConfig');
+const { normalizeExposurePercent } = require('../utils/normalizePercentage');
+const { formatComparisonGroupLabel } = require('../utils/comparisonGroupLabel');
+const { median, percentileRank, average } = require('../utils/pensionStats');
+const { buildPensionInsight } = require('../utils/pensionInsightBuilder');
 
 function feePercent(fee) {
   if (fee == null) return null;
@@ -100,6 +102,7 @@ function analyzeFundRanking(fund, ctx) {
       marketDataUsed.push('pensia_net.MONTHLY_YIELD_COMPOUNDED_12M');
     }
 
+    const comparisonGroupLabel = formatComparisonGroupLabel(peerGroup.groupKey, match?.classification);
     insights.push(buildPensionInsight({
       category: 'fund_ranking',
       severity: (compounded12MPercentile != null && compounded12MPercentile < 30)
@@ -107,11 +110,12 @@ function analyzeFundRanking(fund, ctx) {
         ? 'medium'
         : 'info',
       title: `דירוג המסלול מול מסלולים דומים — ${fund.fundName}`,
-      finding: `המסלול שלך נמצא ${parts.join(', ')} ביחס לקבוצת השוואה (${peerGroup.groupKey}, ${peers.length} מסלולים).`,
+      finding: `המסלול שלך נמצא ${parts.join(', ')} ביחס ל${comparisonGroupLabel} (${peers.length} מסלולים).`,
       personalDataUsed: ['fund.fundType', 'fund.investmentTrack', 'fund.managementFeeAccumulation', 'fund.historicalReturn5Y'],
       marketDataUsed,
       benchmark: {
         group: peerGroup.groupKey,
+        comparisonGroupLabel: formatComparisonGroupLabel(peerGroup.groupKey, match?.classification),
         average: average(peerReturn5Y),
         median: median(peerReturn5Y),
         percentile: return5YPercentile,
@@ -201,6 +205,7 @@ function analyzePerformanceConsistency(fund, ctx) {
       marketDataUsed,
       benchmark: {
         group: peerGroup.groupKey,
+        comparisonGroupLabel: formatComparisonGroupLabel(peerGroup.groupKey, match?.classification),
         percentile: peerBenchmark?.percentile12M ?? mc?.aboveMedianRate ?? null,
         median: peerBenchmark?.median12M ?? 50,
         compounded12M: compounded?.return12M?.compoundedReturnPct ?? null,
@@ -266,7 +271,7 @@ function analyzePerformanceConsistency(fund, ctx) {
     finding,
     personalDataUsed: ['fund.historicalReturn5Y', 'fund.ytdReturn'],
     marketDataUsed: ['pensia_net.peer_group_returns'],
-    benchmark: { group: peerGroup.groupKey, median: med5Y, average: average(peers.map(p => p.return5Y)) },
+    benchmark: { group: peerGroup.groupKey, comparisonGroupLabel: formatComparisonGroupLabel(peerGroup.groupKey, match?.classification), median: med5Y, average: average(peers.map(p => p.return5Y)) },
     recommendedAction: 'מומלץ לבדוק עם בעל רישיון האם מגמת הביצועים תואמת את ציפיותיך לטווח ארוך.',
     confidence: 0.55,
     limitations,

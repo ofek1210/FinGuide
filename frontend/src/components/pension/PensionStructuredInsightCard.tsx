@@ -1,32 +1,27 @@
 import { ShieldAlert } from "lucide-react";
 import type { PensionStructuredInsightDTO } from "../../api/pension.api";
+import AgentInsightCta from "../ai/AgentInsightCta";
 import {
-  formatBenchmarkLines,
   formatEstimatedImpactLines,
   hasDisplayValue,
   INSIGHT_SEVERITY,
   INSIGHT_TONE,
   insightCategoryLabel,
 } from "../../utils/pensionStructuredInsightDisplay";
+import { insightTeaser } from "../../utils/insightDisplay";
 
 type Props = {
   insight: PensionStructuredInsightDTO;
 };
 
-function DetailBlock({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginTop: 10 }}>
-      <div style={{ fontSize: 11, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".04em", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55 }}>{children}</div>
-    </div>
-  );
-}
-
 export default function PensionStructuredInsightCard({ insight }: Props) {
   const sev = INSIGHT_SEVERITY[insight.severity] ?? INSIGHT_SEVERITY.info;
   const [bg, fg] = INSIGHT_TONE[sev.tone];
-  const benchmarkLines = formatBenchmarkLines(insight.benchmark);
   const impactLines = formatEstimatedImpactLines(insight.estimatedImpact);
+  const primaryImpact = impactLines[0] ?? null;
+  const findingTeaser = hasDisplayValue(insight.finding)
+    ? insightTeaser(insight.finding!)
+    : "";
 
   return (
     <article
@@ -60,48 +55,14 @@ export default function PensionStructuredInsightCard({ insight }: Props) {
           {insight.title}
         </h3>
 
-        {hasDisplayValue(insight.finding) && (
-          <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>{insight.finding}</p>
+        {findingTeaser && (
+          <p style={{ margin: 0, fontSize: 13.5, color: "var(--text-muted)", lineHeight: 1.5 }}>{findingTeaser}</p>
         )}
 
-        {benchmarkLines.length > 0 && (
-          <DetailBlock label="Benchmark">
-            <ul style={{ margin: 0, paddingInlineStart: 18 }}>
-              {benchmarkLines.map(line => <li key={line}>{line}</li>)}
-            </ul>
-          </DetailBlock>
-        )}
-
-        {impactLines.length > 0 && (
-          <DetailBlock label="השפעה כספית משוערת">
-            <ul style={{ margin: 0, paddingInlineStart: 18 }}>
-              {impactLines.map(line => (
-                <li key={line} style={{ fontWeight: 800, color: "var(--mint-ink)" }}>{line}</li>
-              ))}
-            </ul>
-          </DetailBlock>
-        )}
-
-        {hasDisplayValue(insight.recommendedAction) && (
-          <DetailBlock label="פעולה מומלצת">
-            {insight.recommendedAction}
-          </DetailBlock>
-        )}
-
-        {hasDisplayValue(insight.assumptions) && (
-          <DetailBlock label="הנחות">
-            <ul style={{ margin: 0, paddingInlineStart: 18 }}>
-              {insight.assumptions!.map(item => <li key={item}>{item}</li>)}
-            </ul>
-          </DetailBlock>
-        )}
-
-        {hasDisplayValue(insight.limitations) && (
-          <DetailBlock label="מגבלות">
-            <ul style={{ margin: 0, paddingInlineStart: 18 }}>
-              {insight.limitations!.map(item => <li key={item}>{item}</li>)}
-            </ul>
-          </DetailBlock>
+        {primaryImpact && (
+          <div style={{ marginTop: 10, fontSize: 13, fontWeight: 800, color: "var(--mint-ink)" }}>
+            {primaryImpact}
+          </div>
         )}
 
         {insight.requiresLicensedAdvisor && (
@@ -110,26 +71,22 @@ export default function PensionStructuredInsightCard({ insight }: Props) {
               display: "flex",
               alignItems: "flex-start",
               gap: 8,
-              marginTop: 12,
-              padding: "10px 12px",
+              marginTop: 10,
+              padding: "8px 10px",
               borderRadius: "var(--r-sm)",
               background: "var(--butter-soft)",
               color: "var(--butter-ink)",
-              fontSize: 12.5,
+              fontSize: 12,
               fontWeight: 700,
-              lineHeight: 1.5,
+              lineHeight: 1.45,
             }}
           >
-            <ShieldAlert size={16} style={{ flex: "none", marginTop: 1 }} />
-            <span>נדרשת התייעצות עם בעל רישיון פנסיוני לפני קבלת החלטה.</span>
+            <ShieldAlert size={15} style={{ flex: "none", marginTop: 1 }} />
+            <span>נדרשת התייעצות עם בעל רישיון פנסיוני.</span>
           </div>
         )}
 
-        {hasDisplayValue(insight.disclaimer) && (
-          <p style={{ margin: "12px 0 0", fontSize: 11.5, color: "var(--text-faint)", lineHeight: 1.5 }}>
-            {insight.disclaimer}
-          </p>
-        )}
+        <AgentInsightCta agent="pension" />
       </div>
     </article>
   );

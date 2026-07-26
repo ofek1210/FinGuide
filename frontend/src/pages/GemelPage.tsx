@@ -2,16 +2,15 @@
  * GemelPage — provident & study funds agent (קופות גמל וקרנות השתלמות).
  *
  * Loads /api/gemel/analysis + /api/gemel/funds and renders the flagship
- * GemelAdvisor. Har HaKesef imports run through the pension import flow
- * (the same report contains gemel funds), so "ייבוא דוח" deep-links there.
+ * GemelAdvisor (three_card_v5 only). Har HaKesef imports run through the
+ * pension import flow; "ייבוא דוח" deep-links there.
  */
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { PiggyBank, Plus } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import PrivateTopbar from "../components/PrivateTopbar";
 import AppFooter from "../components/AppFooter";
-import AgentLandingHero from "../components/agent/AgentLandingHero";
 import GemelAdvisor from "../components/gemel/GemelAdvisor";
+import AgentMissingDocumentPanel from "../components/hub/AgentMissingDocumentPanel";
 import {
   getGemelAnalysis,
   getGemelFunds,
@@ -21,7 +20,11 @@ import {
   type GemelFundDTO,
   type UploadGemelFundBody,
 } from "../api/gemel.api";
+import { isThreeCardAdvisory } from "../api/financialAdvisory.types";
+import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
+import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import { APP_ROUTES } from "../types/navigation";
+import { useRegisterPageContext } from "../assistant/AiChatProvider";
 
 const EMPTY_FORM: UploadGemelFundBody = {
   fundName: "", fundType: "study_fund", provider: "",
@@ -31,10 +34,14 @@ const EMPTY_FORM: UploadGemelFundBody = {
 
 export default function GemelPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const agentOnboarding = useAgentOnboarding("gemel");
 
   const [data, setData] = useState<GemelAnalysisData | null>(null);
   const [funds, setFunds] = useState<GemelFundDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [form, setForm] = useState<UploadGemelFundBody>(EMPTY_FORM);
@@ -43,9 +50,19 @@ export default function GemelPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadAll = useCallback(async () => {
-    const [analysisRes, fundsRes] = await Promise.all([getGemelAnalysis(), getGemelFunds()]);
+    setAnalysisLoading(true);
+    setAnalysisError(null);
+    const [analysisRes, fundsRes] = await Promise.all([
+      getGemelAnalysis(),
+      getGemelFunds(),
+    ]);
+    setAnalysisLoading(false);
     if (analysisRes.ok && analysisRes.data?.success && analysisRes.data.data) {
       setData(analysisRes.data.data);
+    } else if (!analysisRes.ok) {
+      setAnalysisError(analysisRes.error?.message ?? "שגיאה בטעינת הניתוח");
+    } else {
+      setAnalysisError("לא התקבלו נתוני ניתוח מהשרת");
     }
     if (fundsRes.ok && fundsRes.data?.data) setFunds(fundsRes.data.data.funds);
   }, []);
@@ -56,6 +73,39 @@ export default function GemelPage() {
       setLoading(false);
     })();
   }, [loadAll]);
+
+  const hasPayslipGemelData = Boolean(
+    data?.summary?.hasStudyFund
+    || data?.summary?.hasProvidentFund
+    || (data?.summary?.fundCount ?? 0) > 0
+    || (data?.summary?.totalMonthlyContribution ?? 0) > 0,
+  );
+  const hasGemelDocument = funds.length > 0 || hasPayslipGemelData || Boolean(data?.summary?.hasData);
+  const needsAgentQuestions = hasGemelDocument && agentOnboarding.needsQuestions;
+
+  useEffect(() => {
+    if (searchParams.get("flow") === "import") {
+      navigate(`${APP_ROUTES.hub}?document=clearinghouse`, { replace: true });
+    }
+  }, [searchParams, navigate]);
+
+  const gemelLabel = isThreeCardAdvisory(data)
+    ? "גמל והשתלמות · ניתוח שלוש-כרטיסים"
+    : data?.summary
+      ? `גמל והשתלמות · ${data.summary.fundCount ?? funds.length} קופות`
+      : "גמל והשתלמות";
+
+  const gemelDetail = [
+    data?.summary?.fundCount != null ? `מספר קופות: ${data.summary.fundCount}` : null,
+    data?.summary?.totalBalance != null
+      ? `צבירה כוללת: ₪${Math.round(Number(data.summary.totalBalance)).toLocaleString("he-IL")}`
+      : null,
+    funds.length ? `קרנות ברשימה: ${funds.length}` : null,
+    isThreeCardAdvisory(data) ? `כרטיסים: ${data.recommendationCards.length}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  useRegisterPageContext(gemelLabel, gemelDetail || null);
 
   const handleSaveFund = async () => {
     if (!form.fundName?.trim()) return;
@@ -79,72 +129,50 @@ export default function GemelPage() {
     void loadAll();
   };
 
-  const hasGemelContent = funds.length > 0 || !!data?.summary?.hasData;
-  const showLanding = !loading && !hasGemelContent && !showAddForm;
-
   return (
     <div data-agent="gemel" style={{ minHeight: "100vh", background: "var(--surface-page)", backgroundImage: "radial-gradient(rgba(185,139,22,.06) 1px,transparent 1px)", backgroundSize: "22px 22px", color: "var(--text-body)", fontFamily: "var(--font-body)", direction: "rtl" }}>
       <PrivateTopbar />
       {loading ? (
-        <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--butter-ink)", fontSize: 14, fontWeight: 600 }}>
+        <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--butter-ink)", fontSize: 14 }}>
+          <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
           טוען נתוני גמל והשתלמות...
         </div>
-      ) : showLanding ? (
-        <AgentLandingHero
+      ) : !hasGemelDocument ? (
+        <AgentMissingDocumentPanel
+          title="חסר דוח מסלקה לגמל והשתלמות"
+          body="קופות גמל וקרנות השתלמות נקלטות מדוח המסלקה הפנסיונית במרכז המסמכים. לאחר הייבוא, חזרו לכאן להשלמת האונבורדינג."
+          documentId="clearinghouse"
+        />
+      ) : agentOnboarding.loading ? (
+        <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--butter-ink)", fontSize: 14 }}>
+          בודקים מה חסר לפני הניתוח...
+        </div>
+      ) : needsAgentQuestions ? (
+        <AgentOnboardingStep
           agentId="gemel"
-          title={<>קופות הגמל וההשתלמות שלך,<br />במבט אחד.</>}
-          subtitle={
-            <>
-              ייבוא מ<b style={{ color: "var(--ink)", fontWeight: 800 }}>הר הכסף</b> (דרך סוכן הפנסיה) או הוספה ידנית — והסוכן משווה לדמי ניהול בגמל-נט ומזהה הזדמנויות חיסכון.
-            </>
-          }
-          primaryLabel="ייבוא מהר הכסף"
-          primaryIcon={<PiggyBank size={18} strokeWidth={2} />}
-          onPrimary={() => navigate(APP_ROUTES.pension)}
-          secondaryLabel="הוספה ידנית"
-          secondaryIcon={<Plus size={18} strokeWidth={2} />}
-          onSecondary={() => setShowAddForm(true)}
-          trustNote="אותו דוח הר הכסף מכיל גם קופות גמל וקרנות השתלמות · ~2 דקות"
-          visual={
-            <div>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-                <span style={{ fontSize: 13.5, fontWeight: 800, color: "var(--ink)" }}>השוואה לגמל-נט</span>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".04em" }}>דוגמה</span>
-              </div>
-              <div style={{ display: "grid", gap: 12 }}>
-                {[
-                  { label: "דמי ניהול מצבירה", value: "0.18%", tone: "טוב מהשוק" },
-                  { label: "חיסכון שנתי משוער", value: "₪1,840", tone: "פוטנציאל" },
-                  { label: "קרנות פעילות", value: "2", tone: "מזוהה" },
-                ].map((row) => (
-                  <div
-                    key={row.label}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "12px 14px",
-                      borderRadius: "var(--r-btn)",
-                      background: "var(--butter-soft)",
-                      border: "1px solid var(--butter)",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-muted)" }}>{row.label}</div>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--butter-ink)", marginTop: 2 }}>{row.tone}</div>
-                    </div>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: "var(--butter-ink)" }}>{row.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          }
+          agentLabel="גמל והשתלמות"
+          estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
+          questions={agentOnboarding.state?.missingQuestions ?? []}
+          phases={["document", "questions", "analysis"]}
+          activePhase="questions"
+          headline="כמעט שם — נשלים את תמונת הגמל"
+          subhead="נתוני המסלקה כבר אצלנו. עוד כמה שאלות והסוכן יציג ניתוח והמלצות מלאים לקופות גמל והשתלמות."
+          onSkip={agentOnboarding.dismiss}
+          onSubmit={async answers => {
+            const ok = await agentOnboarding.submit(answers);
+            if (ok) void loadAll();
+            return ok;
+          }}
         />
       ) : (
         <div style={{ maxWidth: 1120, margin: "0 auto", padding: "20px 24px 0" }}>
           <GemelAdvisor
             data={data}
             funds={funds}
+            analysisLoading={analysisLoading}
+            analysisError={analysisError}
+            onRetryAnalysis={() => void loadAll()}
+            hasPayslipGemelData={hasPayslipGemelData}
             showAddForm={showAddForm}
             setShowAddForm={setShowAddForm}
             form={form}
@@ -154,8 +182,6 @@ export default function GemelPage() {
             deletingId={deletingId}
             onSaveFund={handleSaveFund}
             onDeleteFund={handleDeleteFund}
-            onImport={() => navigate(APP_ROUTES.pension)}
-            onOpenChat={() => navigate(`${APP_ROUTES.hub}?chat=1`)}
           />
         </div>
       )}

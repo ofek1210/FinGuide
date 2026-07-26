@@ -1,8 +1,8 @@
+'use strict';
+
 /**
  * Unified pension analysis builder — reused by API, agent, risk-advice, email.
  */
-
-
 
 const UserProfile = require('../models/UserProfile');
 const {
@@ -13,11 +13,23 @@ const {
 const { benchmarkPortfolio } = require('./pensionBenchmarkService');
 const { runPensionHealthCheck } = require('./pensionHealthCheckService');
 const { buildFundAdvice } = require('./pensionFundAdvisorService');
+const PensionFund = require('../models/PensionFund');
 const { generateClearinghouseInsightRecommendations } = require('./pensionClearinghouseInsights');
 const {
   runPensionRecommendationEngine,
-  insightsToLegacyRecommendations,
 } = require('./pensionRecommendationEngine');
+const { runFinancialAdvisoryAgent } = require('./financialAdvisory/runFinancialAdvisoryAgent');
+const { fromPensionStructuredInsight } = require('../utils/financialInsightBuilder');
+const { clearinghouseRecsToUnifiedInsights, filterClearinghouseRecsByDomain } = require('../utils/clearinghouseInsightBridge');
+const {
+  sanitizePensionDisplayInsight,
+  sanitizeBenchmarkForClient,
+  sanitizeEvidenceForClient,
+} = require('../utils/sanitizeClientInsights');
+const {
+  isThreeCardAnalysis,
+  buildThreeCardClientPayload,
+} = require('./financialAdvisory/threeCardAnalysisPayload');
 
 const EMPTY_BENCHMARK = {
   funds: [],
@@ -34,15 +46,81 @@ const EMPTY_BENCHMARK = {
 
 /**
  * @param {string|import('mongoose').Types.ObjectId} userId
+ * @param {object} [options]
  * @returns {Promise<object>}
  */
-async function buildPensionAnalysis(userId) {
+async function buildPensionAnalysis(userId, options = {}) {
   const [summary, profile] = await Promise.all([
     getPensionSummary(userId),
     UserProfile.findOne({ user: userId }).lean(),
   ]);
 
   const projection = projectRetirementIncome(summary);
+
+  const allClearinghouseRecs = await generateClearinghouseInsightRecommendations(userId);
+  const clearinghouseRecs = filterClearinghouseRecsByDomain(allClearinghouseRecs, 'pension');
+
+  let structuredInsights = [];
+  let insightMeta = null;
+  let advisoryEnvelope = null;
+
+  try {
+    const allFundsForAnalysis = await PensionFund.find({
+      user: userId,
+      status: { $ne: 'closed' },
+    }).lean();
+
+    const engineResult = await runPensionRecommendationEngine(userId, {
+      summary,
+      funds: allFundsForAnalysis,
+    });
+    structuredInsights = engineResult.insights;
+    insightMeta = engineResult.meta;
+
+    const engineUnified = structuredInsights.map(i => fromPensionStructuredInsight(i, 'PENSION'));
+    const clearinghouseUnified = clearinghouseRecsToUnifiedInsights(
+      clearinghouseRecs,
+      allFundsForAnalysis,
+      { domain: 'pension' },
+    );
+    const mergedUnified = [...clearinghouseUnified, ...engineUnified];
+
+    advisoryEnvelope = await runFinancialAdvisoryAgent({
+      userId,
+      productType: 'PENSION',
+      skipLLM: options.skipLLM,
+      options: { funds: allFundsForAnalysis },
+      precomputed: {
+        unifiedInsights: mergedUnified,
+        engineMeta: engineResult.meta,
+        funds: allFundsForAnalysis,
+        matchResults: (engineResult.meta.marketMatches || []).map(m => ({
+          matchConfidence: (m.matchConfidence ?? 0) * 100,
+        })),
+        rawStructured: structuredInsights,
+      },
+      legacyFields: {
+        insightMeta,
+      },
+      summaryOverride: {
+        totalProducts: allFundsForAnalysis.length,
+        hasData: summary.hasData,
+      },
+    });
+  } catch (err) {
+    console.error('[buildPensionAnalysis] structured insights failed:', err.message);
+  }
+
+  if (isThreeCardAnalysis(advisoryEnvelope)) {
+    return buildThreeCardClientPayload({
+      advisoryEnvelope,
+      summary,
+      projection,
+      profile,
+      productType: 'PENSION',
+    });
+  }
+
   const benchmark = summary.funds?.length
     ? benchmarkPortfolio(summary.funds, {
       currentAge: summary.currentAge,
@@ -57,12 +135,13 @@ async function buildPensionAnalysis(userId) {
     benchmark,
   });
 
-  const clearinghouseRecs = await generateClearinghouseInsightRecommendations(userId);
   const clearinghouseTypes = new Set(clearinghouseRecs.map(r => r.type));
   const recommendations = [
     ...clearinghouseRecs,
     ...baseRecommendations.filter(r => !clearinghouseTypes.has(r.type)),
-  ].sort((a, b) => (b.impactAmount || 0) - (a.impactAmount || 0));
+  ]
+    .filter(r => r.type !== 'no_study_fund')
+    .sort((a, b) => (b.impactAmount || 0) - (a.impactAmount || 0));
 
   const fundAdvice = await buildFundAdvice(summary.funds || [], {
     ...profile,
@@ -70,49 +149,70 @@ async function buildPensionAnalysis(userId) {
     retirementAge: summary.retirementAge,
   });
 
-  let structuredInsights = [];
-  let insightMeta = null;
-  try {
-    const engineResult = await runPensionRecommendationEngine(userId, {
-      summary,
-      funds: summary.funds,
-    });
-    structuredInsights = engineResult.insights;
-    insightMeta = engineResult.meta;
+  const displayPrimary = (advisoryEnvelope?.primaryRecommendations ?? []).map(rec => {
+    const src = advisoryEnvelope?.centralRecommendations?.find(c => c.id === rec.insightId);
+    return {
+      ...rec,
+      financialImpact: src?.financialImpact ?? rec.financialImpact ?? null,
+      evidence: src?.evidence ?? rec.evidence ?? null,
+    };
+  });
 
-    const structuredLegacy = insightsToLegacyRecommendations(structuredInsights);
-    const existingTypes = new Set(recommendations.map(r => r.type));
-    for (const leg of structuredLegacy) {
-      if (!existingTypes.has(leg.type)) {
-        recommendations.push({
-          type: leg.type,
-          title: leg.title,
-          reason: leg.reason,
-          urgency: leg.urgency,
-          financialImpact: leg.financialImpact,
-          impactAmount: leg.impactAmount,
-          confidenceScore: leg.confidenceScore,
-        });
-      }
-    }
-    recommendations.sort((a, b) => (b.impactAmount || 0) - (a.impactAmount || 0));
-  } catch (err) {
-    console.error('[buildPensionAnalysis] structured insights failed:', err.message);
-  }
+  const hasUnifiedRecs = displayPrimary.length > 0;
 
-  // Gemel/study funds are owned by the gemel agent (gemelAnalysisService) —
-  // getPensionSummary excludes them, so no gemel market pass runs here anymore.
   return {
     summary,
     projection: projection.available ? projection : null,
     benchmark,
     healthCheck,
-    recommendations,
-    structuredInsights,
+    recommendations: hasUnifiedRecs ? [] : recommendations,
+    structuredInsights: hasUnifiedRecs ? undefined : structuredInsights,
     insightMeta,
     fundAdvice,
     profile,
+    productType: 'PENSION',
+    ...(advisoryEnvelope ? {
+      primaryRecommendations: displayPrimary,
+      centralRecommendations: (advisoryEnvelope.centralRecommendations || []).map(c => ({
+        ...c,
+        evidence: sanitizeEvidenceForClient(c.evidence),
+      })),
+      positiveFindings: (advisoryEnvelope.positiveFindings || []).map(i => sanitizePensionDisplayInsight(unifiedToPensionDisplay(i))).filter(Boolean),
+      additionalInsights: (advisoryEnvelope.additionalInsights || []).map(i => sanitizePensionDisplayInsight(unifiedToPensionDisplay(i))).filter(Boolean),
+      secondaryInsights: advisoryEnvelope.secondaryInsights,
+      marketData: advisoryEnvelope.marketData,
+      dataQuality: advisoryEnvelope.dataQuality,
+      missingData: advisoryEnvelope.missingData,
+      llm: advisoryEnvelope.llm,
+      analysisId: advisoryEnvelope.analysisId,
+      disclaimer: advisoryEnvelope.disclaimer,
+      productDisclaimer: advisoryEnvelope.productDisclaimer,
+      prioritizationStats: advisoryEnvelope.summary?.prioritizationStats,
+      llmSummary: advisoryEnvelope.llm?.summary,
+      recommendationEngine: advisoryEnvelope.recommendationEngine ?? undefined,
+    } : {}),
   };
 }
 
-module.exports = { buildPensionAnalysis, EMPTY_BENCHMARK };
+function unifiedToPensionDisplay(ins) {
+  if (!ins) return null;
+  if (ins._legacy) return ins._legacy;
+  return {
+    id: ins.id,
+    category: ins.code || ins.category,
+    severity: ins.severity,
+    title: ins.title,
+    finding: ins.reason,
+    recommendedAction: ins.suggestedAction,
+    confidence: ins.confidence,
+    benchmark: sanitizeBenchmarkForClient(ins.evidence?.benchmark),
+    estimatedImpact: ins.financialImpact ? {
+      annual: ins.financialImpact.period === 'annual' ? ins.financialImpact.amount : null,
+      retirement: ins.financialImpact.period === 'retirement' ? ins.financialImpact.amount : null,
+      currency: ins.financialImpact.currency || 'ILS',
+    } : undefined,
+    fundId: ins.productId ?? undefined,
+  };
+}
+
+module.exports = { buildPensionAnalysis, EMPTY_BENCHMARK, unifiedToPensionDisplay };
