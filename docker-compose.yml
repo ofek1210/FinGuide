@@ -29,8 +29,10 @@ services:
     ports:
       - "5001:5000"
     volumes:
-      - ./backend/uploads:/usr/src/app/uploads
-      - ./backend/.work:/usr/src/app/.work
+      # האפליקציה רצה מ-/usr/src/app/backend (ראה Dockerfile) — המיפוי חייב
+      # להצביע לשם, אחרת קבצים שהועלו נכתבים לשכבת הקונטיינר ונמחקים בכל build
+      - ./backend/uploads:/usr/src/app/backend/uploads
+      - ./backend/.work:/usr/src/app/backend/.work
 
 volumes:
   mongo_data:

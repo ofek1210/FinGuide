@@ -31,6 +31,7 @@ import { getUserProfile, type UserProfileResponseData } from "../api/userProfile
 import {
   MAX_PAYSLIPS,
   uploadFailureMessage,
+  uploadRoutedMessage,
   isAnalyzableUpload,
   uploadPayslipFile,
   unlockPayslipDocument,
@@ -340,6 +341,8 @@ function UploadStep({ intake, onComplete, onBack }: {
     for (const file of fileList) {
       if (!file.name.toLowerCase().endsWith(".pdf")) { errors.push(`${file.name}: רק קובצי PDF נתמכים`); continue; }
       const res = await uploadPayslipFile(file);
+      const routedMsg = uploadRoutedMessage(res, file.name);
+      if (routedMsg) { errors.push(routedMsg); continue; }
       if (!res.success || !res.data) { errors.push(`${file.name}: ${res.message || "שגיאה בהעלאה"}`); continue; }
       const doc = res.data;
       newEntries.push({ id: doc._id || doc.id || `${file.name}-${Date.now()}`, name: file.name, doc });
@@ -565,6 +568,8 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
     setUploading(true); setPasswordDoc(null);
     const res = await uploadPayslipFile(file);
     setUploading(false);
+    const routedMsg = uploadRoutedMessage(res, file.name);
+    if (routedMsg) { setUploadMsg(routedMsg); return; }
     if (res.success && res.data && isAnalyzableUpload(res.data)) { setUploadMsg("התלוש הועלה ועובד בהצלחה!"); await loadAnalysis(); }
     else if (res.success && res.data?.status === "needs_password") { setPasswordDoc(res.data); setUploadMsg("נדרשת סיסמה לפתיחת הקובץ"); }
     else setUploadMsg(res.message || res.data?.processingError || "שגיאה בהעלאה — נסה שוב");
