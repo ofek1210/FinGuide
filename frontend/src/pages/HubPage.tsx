@@ -12,10 +12,9 @@ import { useMasterAgent } from "../components/hub/useMasterAgent";
 import { useHubData } from "../components/hub/useHubData";
 import MasterBand, { type LastReportMeta } from "../components/hub/MasterBand";
 import AgentSummaryCard from "../components/hub/AgentSummaryCard";
-import CommandBar from "../components/hub/CommandBar";
 import AgentSyncOverlay from "../components/hub/AgentSyncOverlay";
 import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
-import { useRegisterPageContext } from "../assistant/AiChatProvider";
+import { useAiChat, useRegisterPageContext } from "../assistant/AiChatProvider";
 import { getLatestExecutiveReport } from "../api/executiveReport.api";
 import HubReadinessPanel from "../components/hub/HubReadinessPanel";
 import HubDocumentCenter from "../components/hub/HubDocumentCenter";
@@ -33,6 +32,7 @@ export default function HubPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { openPanel } = useAiChat();
 
   // An explicit full run should produce a fresh report; the report page reads
   // this flag — without it, it shows the last saved analysis instantly.
@@ -67,15 +67,12 @@ export default function HubPage() {
   const focusDocument = parseHubDocumentParam(new URLSearchParams(location.search).get("document"));
 
   // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
-  // scroll to the master-agent chat and focus its input.
+  // open the floating assistant — the Hub no longer hosts its own chat bar.
   useEffect(() => {
     if (new URLSearchParams(location.search).get("chat") !== "1") return;
-    const t = setTimeout(() => {
-      document.getElementById("agent-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      (document.getElementById("agent-chat-input") as HTMLInputElement | null)?.focus({ preventScroll: true });
-    }, 350);
+    const t = setTimeout(() => openPanel(), 350);
     return () => clearTimeout(t);
-  }, [location.search]);
+  }, [location.search, openPanel]);
 
   const hubContextLabel = data.loading
     ? "לוח בקרה (Hub)"
@@ -214,8 +211,6 @@ export default function HubPage() {
           onUploadComplete={data.reload}
         />
 
-        {/* COMMAND BAR — talk to the master agent */}
-        <CommandBar busy={master.busy} onRunFocused={master.runFocused} />
       </main>
 
       <AppFooter variant="private" />
