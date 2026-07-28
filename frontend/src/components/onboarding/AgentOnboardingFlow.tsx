@@ -25,6 +25,7 @@ export default function AgentOnboardingFlow({
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const current = questions[step];
   const progress = questions.length ? ((step + 1) / questions.length) * 100 : 100;
@@ -51,11 +52,15 @@ export default function AgentOnboardingFlow({
       return;
     }
     setSaving(true);
+    setSubmitError(null);
     const ok = await onSubmit(answers);
     setSaving(false);
     if (ok) {
       setStep(0);
       setAnswers({});
+    } else {
+      // בלי זה המשתמש נתקע מול כפתור שלא מגיב — חובה משוב גלוי
+      setSubmitError("שמירת התשובות נכשלה. נסו שוב, ואם זה חוזר — רעננו את הדף.");
     }
   };
 
@@ -118,6 +123,20 @@ export default function AgentOnboardingFlow({
             {saving ? "שומר..." : step < questions.length - 1 ? <>המשך <ChevronRight size={18} style={{ transform: "scaleX(-1)" }} /></> : <>סיום והמשך לניתוח <Check size={18} /></>}
           </button>
         </div>
+
+        {submitError && (
+          <p
+            role="alert"
+            style={{
+              margin: "12px 0 0", padding: "10px 14px",
+              background: "var(--peach-soft)", color: "var(--peach-ink)",
+              border: "1px solid var(--peach)", borderRadius: "var(--r-md)",
+              fontSize: 13.5, fontWeight: 600, lineHeight: 1.5,
+            }}
+          >
+            {submitError}
+          </p>
+        )}
       </section>
 
       <p style={{ marginTop: 18, fontSize: 12.5, color: "var(--text-faint)", textAlign: "center", lineHeight: 1.6 }}>
