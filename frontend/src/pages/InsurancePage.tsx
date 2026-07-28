@@ -616,16 +616,26 @@ function ResultsStep({
 
   const RC = 2 * Math.PI * 42;
   const pricingDisclaimer = marketAdvice?.disclaimer
-    ?? "המחירים הם הערכות המבוססות על מדגם נתונים מקומי ואינם הצעות מחיר רשמיות מחברות הביטוח.";
+    ?? "הטווח המוצג הוא הערכה מדגמית ולא ממוצע שוק אמיתי — אין מאגר ציבורי של פרמיות ביטוח לצרכן. השתמשו בו להתמצאות בלבד, לא כתחליף להצעת מחיר.";
   const pricingSource = marketAdvice?.pricingSource;
   const comparisonMatrix = marketAdvice?.comparisonMatrix ?? [];
 
+  // הטווח אינו ממוצע שוק נמדד — הניסוח נמנע מלטעון שהוא כזה
   const premStatusHe: Record<string, string> = {
-    below_market: "מתחת לשוק",
-    fair: "בטווח הוגן",
-    above_market: "מעל הממוצע",
-    high: "גבוה משמעותית",
-    unknown: "לא ידוע",
+    below_market: "מתחת לטווח",
+    fair: "בתוך הטווח",
+    above_market: "מעל הטווח",
+    high: "גבוה מהטווח",
+    unknown: "אין מספיק נתונים",
+  };
+
+  // צבע לפי משמעות — קודם כל הסטטוסים נצבעו באותו כתום ללא קשר למצב
+  const premStatusTone: Record<string, [string, string]> = {
+    below_market: ["var(--mint-soft)", "var(--mint-ink)"],
+    fair: ["var(--mint-soft)", "var(--mint-ink)"],
+    above_market: ["var(--butter-soft)", "var(--butter-ink)"],
+    high: ["var(--peach-soft)", "var(--peach-ink)"],
+    unknown: ["var(--surface-sunken)", "var(--text-muted)"],
   };
 
   return wrap(
@@ -637,8 +647,10 @@ function ResultsStep({
           <div style={{ fontWeight: 800, marginBottom: 4 }}>{pricingDisclaimer}</div>
           {pricingSource && (
             <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
-              מקור: {pricingSource.sourceName} · {pricingSource.sourceDate}
-              {pricingSource.dataCollectionMethod ? ` · ${pricingSource.dataCollectionMethod}` : ""}
+              <div>מקור: {pricingSource.sourceName} · עודכן {pricingSource.sourceDate}</div>
+              {pricingSource.dataCollectionMethod && (
+                <div style={{ marginTop: 2 }}>{pricingSource.dataCollectionMethod}</div>
+              )}
             </div>
           )}
         </div>
@@ -728,7 +740,7 @@ function ResultsStep({
 
       {/* market comparison */}
       {comparisonMatrix.length > 0 && (
-        <Section title="השוואת פרמיה לטווח הוגן" sub="מול מדגם מחירים מקומי — לא הצעות מחיר רשמיות">
+        <Section title="הפרמיה שלך מול טווח הערכה" sub="הטווח הוא הערכה מדגמית של FinGuide — לא ממוצע שוק נמדד ולא הצעות מחיר">
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {comparisonMatrix.map(row => (
               <div key={row.policyId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
@@ -741,12 +753,17 @@ function ResultsStep({
                   <div style={{ fontWeight: 900, fontSize: 15 }}>{fmt(row.userCost)}</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>ממוצע שוק</div>
-                  <div style={{ fontWeight: 900, fontSize: 15 }}>{fmt(row.marketAvg)}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>אמצע הטווח</div>
+                  <div style={{ fontWeight: 900, fontSize: 15, color: "var(--text-muted)" }}>~{fmt(row.marketAvg)}</div>
                 </div>
-                <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--peach-ink)", background: "var(--peach-soft)", borderRadius: 999, padding: "4px 10px", flex: "none" }}>
-                  {premStatusHe[row.premiumVsMarket] ?? row.premiumVsMarket}
-                </span>
+                {(() => {
+                  const [bg, fg] = premStatusTone[row.premiumVsMarket] ?? premStatusTone.unknown;
+                  return (
+                    <span style={{ fontSize: 11.5, fontWeight: 800, color: fg, background: bg, borderRadius: 999, padding: "4px 10px", flex: "none" }}>
+                      {premStatusHe[row.premiumVsMarket] ?? row.premiumVsMarket}
+                    </span>
+                  );
+                })()}
               </div>
             ))}
           </div>
