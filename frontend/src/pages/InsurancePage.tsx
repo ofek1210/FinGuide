@@ -615,9 +615,8 @@ function ResultsStep({
   };
 
   const RC = 2 * Math.PI * 42;
-  const pricingDisclaimer = marketAdvice?.disclaimer
-    ?? "הטווח המוצג הוא הערכה מדגמית ולא ממוצע שוק אמיתי — אין מאגר ציבורי של פרמיות ביטוח לצרכן. השתמשו בו להתמצאות בלבד, לא כתחליף להצעת מחיר.";
-  const pricingSource = marketAdvice?.pricingSource;
+  // הגילוי הנאות על מקור הטווח מוצג בכותרת המשנה של סעיף ההשוואה,
+  // בנקודה שבה המספר עצמו מופיע — ולא כבאנר נפרד בראש הדף
   const comparisonMatrix = marketAdvice?.comparisonMatrix ?? [];
 
   // הטווח אינו ממוצע שוק נמדד — הניסוח נמנע מלטעון שהוא כזה
@@ -640,22 +639,6 @@ function ResultsStep({
 
   return wrap(
     <>
-      {/* pricing source disclaimer */}
-      <div role="note" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", marginBottom: 20, borderRadius: "var(--r-md)", background: "var(--butter-soft)", border: "1px solid var(--butter)" }}>
-        <AlertCircle size={17} color="var(--butter-ink)" style={{ flex: "none", marginTop: 2 }} />
-        <div style={{ fontSize: 13, lineHeight: 1.55, color: "var(--butter-ink)" }}>
-          <div style={{ fontWeight: 800, marginBottom: 4 }}>{pricingDisclaimer}</div>
-          {pricingSource && (
-            <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
-              <div>מקור: {pricingSource.sourceName} · עודכן {pricingSource.sourceDate}</div>
-              {pricingSource.dataCollectionMethod && (
-                <div style={{ marginTop: 2 }}>{pricingSource.dataCollectionMethod}</div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
