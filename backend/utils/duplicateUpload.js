@@ -36,7 +36,14 @@ function buildDuplicateMessage(existing) {
   return 'המסמך הזה כבר קיים במערכת';
 }
 
-async function findExistingUploadByChecksum(userId, checksumSha256) {
+/**
+ * @param {object} [options]
+ * @param {boolean} [options.documentsOnly] בדיקה מול מסמכים בלבד, בלי
+ *   snapshots של ייבוא פנסיה/ביטוח. נדרש כשהמשתמש מצהיר שהקובץ הוא תלוש:
+ *   snapshot ישן (למשל מקובץ שנוּתב בטעות) אינו ניתן למחיקה מהממשק והיה
+ *   חוסם את ההעלאה לצמיתות.
+ */
+async function findExistingUploadByChecksum(userId, checksumSha256, options = {}) {
   if (!userId || !checksumSha256) return null;
 
   const doc = await Document.findOne({ user: userId, checksumSha256 })
@@ -51,6 +58,8 @@ async function findExistingUploadByChecksum(userId, checksumSha256) {
       periodLabel: period ? formatPeriodLabelHe(period.year, period.month) : null,
     };
   }
+
+  if (options.documentsOnly) return null;
 
   const insurance = await InsuranceImportSnapshot.findOne({
     user: userId,
@@ -102,8 +111,8 @@ async function findExistingPayslipByPeriod(userId, periodYear, periodMonth, excl
   return Document.findOne(query).select('_id originalName metadata').lean();
 }
 
-async function assertUploadNotDuplicate(userId, checksumSha256) {
-  const existing = await findExistingUploadByChecksum(userId, checksumSha256);
+async function assertUploadNotDuplicate(userId, checksumSha256, options = {}) {
+  const existing = await findExistingUploadByChecksum(userId, checksumSha256, options);
   if (!existing) return;
   throw new DuplicateUploadError(buildDuplicateMessage(existing), existing);
 }

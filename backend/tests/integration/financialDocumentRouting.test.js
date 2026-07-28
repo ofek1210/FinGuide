@@ -20,6 +20,8 @@ jest.mock('../../services/pensionImportService', () => ({
 const { createDomainTestHarness } = require('../helpers/domainTestHarness');
 const { processFinancialDocument } = require('../../services/financialDocumentService');
 const { importPensionFile } = require('../../services/pensionImportService');
+const PensionImportSnapshot = require('../../models/PensionImportSnapshot');
+const { findExistingUploadByChecksum } = require('../../utils/duplicateUpload');
 
 describe('processFinancialDocument routing vs declared category', () => {
   const harness = createDomainTestHarness('financial-doc-routing');
@@ -73,6 +75,45 @@ describe('processFinancialDocument routing vs declared category', () => {
     expect(result.routedTo).toBeUndefined();
     expect(importPensionFile).not.toHaveBeenCalled();
     // נוצר מסמך תלוש אמיתי (העיבוד עצמו נכשל על PDF ריק — וזה בסדר)
+    expect(result._id).toBeDefined();
+    expect(result.metadata?.category).toBe('payslip');
+  });
+
+  it('a stale pension import snapshot does not block re-uploading a payslip', async () => {
+    // רגרסיה מפרודקשן: תלושים שנוּתבו בטעות לייבוא פנסיה השאירו snapshots
+    // עם ה-checksum שלהם. אין דרך למחוק אותם מהממשק, ולכן ההעלאה החזירה
+    // 409 "כבר קיים במערכת" לנצח — גם אחרי מחיקת כל התלושים.
+    importPensionFile.mockClear();
+    const { userId } = await harness.register();
+    const checksum = 'a'.repeat(64);
+
+    await PensionImportSnapshot.create({
+      user: userId,
+      source: 'quarterly_report',
+      sourceFile: 'מאי.pdf',
+      fileChecksumSha256: checksum,
+    });
+
+    // ללא הצהרת קטגוריה — ה-snapshot עדיין נחשב כפילות
+    await expect(findExistingUploadByChecksum(userId, checksum)).resolves.toMatchObject({
+      kind: 'pension',
+    });
+
+    // כשהמשתמש מצהיר שזה תלוש — ה-snapshot אינו חוסם
+    await expect(
+      findExistingUploadByChecksum(userId, checksum, { documentsOnly: true }),
+    ).resolves.toBeNull();
+
+    const filePath = await writeTempPdf('may-again.pdf');
+    const result = await processFinancialDocument({
+      userId,
+      filePath,
+      originalName: 'מאי.pdf',
+      source: 'manual',
+      metadata: { category: 'payslip' },
+      checksumSha256: checksum,
+    });
+
     expect(result._id).toBeDefined();
     expect(result.metadata?.category).toBe('payslip');
   });
