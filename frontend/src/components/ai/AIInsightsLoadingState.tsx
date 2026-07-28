@@ -136,7 +136,7 @@ export default function AIInsightsLoadingState({
       {/* scanning module band */}
       <div style={{ position: "relative", overflow: "hidden", borderRadius: "var(--r-sm)", border: "1px solid var(--border-hair)", background: "var(--card)", padding: 10 }}>
         <div className="ai-scan" aria-hidden="true" style={{ position: "absolute", top: 0, bottom: 0, width: "38%", background: "linear-gradient(90deg,transparent,var(--agent-soft),transparent)", filter: "blur(6px)", animation: `aiScanRTL ${SCAN_MS}ms ease-in-out infinite`, pointerEvents: "none" }} />
-        <div style={{ position: "relative", display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 7 }}>
+        <div style={{ position: "relative", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(70px, 1fr))", gap: 7 }}>
           {modules.map((m, i) => {
             const done = i < phase || progress >= 100;
             const active = i === phase && progress < 100;

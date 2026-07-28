@@ -214,8 +214,8 @@ export default function PayslipHistoryPage() {
           </div>
         )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1fr", gap: 16, marginBottom: 30 }}>
-          <div style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", padding: "22px 24px", boxShadow: "var(--shadow-soft)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px 14px", alignContent: "center" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 16, marginBottom: 30 }}>
+          <div style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", padding: "22px 24px", boxShadow: "var(--shadow-soft)", display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: "20px 14px", alignContent: "center" }}>
             {summaryStats.map(s => (
               <div key={s.l}>
                 <div style={{ fontSize: 24, fontWeight: 900, letterSpacing: "-.03em", lineHeight: 1, color: s.c, fontVariantNumeric: "tabular-nums" }}>{s.v}</div>
@@ -279,9 +279,9 @@ export default function PayslipHistoryPage() {
                   const highlighted = p.periodMonth && highlightedPeriods?.has(p.periodMonth);
                   return (
                     <div key={p.id} className={highlighted ? "payslip-row-highlight" : undefined}
-                      style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", background: "var(--card)", border: `1px solid ${highlighted ? "var(--lav-300)" : "var(--border-hair)"}`, borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
+                      style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "10px 14px", padding: "14px 16px", background: "var(--card)", border: `1px solid ${highlighted ? "var(--lav-300)" : "var(--border-hair)"}`, borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
                       <span style={{ width: 42, height: 42, borderRadius: 11, flex: "none", background: "var(--lav-100)", color: "var(--lav-600)", display: "grid", placeItems: "center" }}><FileText size={20} strokeWidth={1.85} /></span>
-                      <div style={{ minWidth: 0, width: 140 }}>
+                      <div style={{ minWidth: 0, flex: "1 1 110px" }}>
                         <div style={{ fontWeight: 800, fontSize: 14.5, color: "var(--text-strong)" }}>{p.periodLabel}</div>
                         <div style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.isLatest ? "התלוש האחרון" : "תלוש שכר"}</div>
                       </div>

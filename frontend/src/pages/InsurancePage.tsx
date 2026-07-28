@@ -482,7 +482,7 @@ function InsuranceLandingScreen({ loading, onImport }: { loading: boolean; onImp
             {/* WHAT THE AGENT CHECKS */}
             <div style={{ marginTop: 64 }}>
               <h2 style={{ fontSize: 13, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".06em", margin: "0 0 20px" }}>מה הסוכן בודק עבורך</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
                 {checks.map((f) => {
                   const Icon = f.icon;
                   return (

@@ -179,7 +179,7 @@ export default function HubPage() {
         />
 
         {/* FOUR AGENT CARDS — status readout + gateway into each domain */}
-        <div id="agent-cards" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14, marginBottom: 20, scrollMarginTop: 90 }}>
+        <div id="agent-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: 14, marginBottom: 20, scrollMarginTop: 90 }}>
           {AGENTS.map((a, i) => {
             const key = AGENT_KEY[a.id];
             return (

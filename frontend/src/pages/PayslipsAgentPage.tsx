@@ -23,6 +23,7 @@ import TaxAssistantPanel from "../components/payslips/TaxAssistantPanel";
 import Loader from "../components/ui/Loader";
 import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
 import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { listDocuments, removeDocument, type DocumentItem } from "../api/documents.api";
 import MissingFieldsModal from "../components/payslip-history/MissingFieldsModal";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
@@ -240,11 +241,13 @@ function StepIndicator({ step }: { step: WizardStep }) {
     { label: "העלאת תלושים", state: step === "upload" ? "active" : step === "results" ? "done" : "todo" },
     { label: "תובנות AI", state: step === "results" ? "active" : "todo" },
   ];
+  // במובייל הרוחב לא מספיק לכל התוויות — מציגים עיגולים + תווית השלב הפעיל בלבד
+  const compact = useMediaQuery("(max-width: 640px)");
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 44 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: compact ? 32 : 44 }}>
       {steps.map((s, i) => (
         <div key={s.label} style={{ display: "flex", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: compact ? 6 : 9 }}>
             <span style={{
               width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 13, flex: "none",
               background: s.state === "active" ? "var(--ink)" : s.state === "done" ? "var(--lav-100)" : "transparent",
@@ -253,9 +256,11 @@ function StepIndicator({ step }: { step: WizardStep }) {
             }}>
               {s.state === "done" ? <Check size={15} strokeWidth={3} /> : i + 1}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: s.state === "active" ? "var(--ink)" : "var(--text-faint)" }}>{s.label}</span>
+            {(!compact || s.state === "active") && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: s.state === "active" ? "var(--ink)" : "var(--text-faint)" }}>{s.label}</span>
+            )}
           </div>
-          {i < steps.length - 1 && <div style={{ width: 40, height: 1.5, margin: "0 14px", background: s.state === "done" ? "var(--lav-300)" : "var(--hair)" }} />}
+          {i < steps.length - 1 && <div style={{ width: compact ? 14 : 40, height: 1.5, margin: compact ? "0 6px" : "0 14px", background: s.state === "done" ? "var(--lav-300)" : "var(--hair)" }} />}
         </div>
       ))}
     </div>
@@ -670,7 +675,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
 
           {/* salary picture */}
           <ResSection title="תמונת השכר שלך" sub={`ממוצע על פני ${summary.count} תלושים · ברוטו ${fmt(summary.avgGross)} → נטו ${fmt(summary.avgNet)}`}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
               {statTiles.map(s => {
                 const [bg, fg] = TONES[s.tone];
                 const Icon = s.icon;
