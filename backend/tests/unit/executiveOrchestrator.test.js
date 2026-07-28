@@ -85,7 +85,7 @@ describe('executive global priority engine — extended', () => {
       conflicts: engine.conflicts,
     });
 
-    expect(report.meta.reportVersion).toBe('2.1.0');
+    expect(report.meta.reportVersion).toBe('2.2.0');
     expect(report.sections.executiveSummary).toBeTruthy();
     expect(report.sections.agentReport.agentSections).toHaveLength(4);
     expect(report.sections.agentReport.agentSections.find(s => s.agentId === 'pension').dataStatus).toBe('available');

@@ -169,6 +169,7 @@ function buildAgentPackage(agentId, {
     humanExplanation,
     structured: structuredOutput,
     recommendations,
+    primaryRecommendations: primaryRecs,
     findings: allFindings,
     strengths,
     opportunities,

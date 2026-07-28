@@ -96,14 +96,18 @@ describe('smart onboarding engine', () => {
 
   it('returns only missing agent questions (partial onboarding)', async () => {
     const profile = await UserProfile.findOrCreateForUser(userId);
-    profile.assets = { hasMortgage: true };
-    profile.personal = { hasDependents: false };
+    profile.retirement = { plannedRetirementAge: 67 };
     await profile.save();
 
-    const state = await getState(userId, 'insurance');
-    expect(state.missingQuestions.find(q => q.id === 'insurance.hasMortgage')).toBeUndefined();
-    expect(state.missingQuestions.find(q => q.id === 'insurance.hasDependents')).toBeUndefined();
+    const state = await getState(userId, 'pension');
+    expect(state.missingQuestions.find(q => q.id === 'pension.retirementAge')).toBeUndefined();
     expect(state.missingQuestions.length).toBeGreaterThan(0);
+  });
+
+  it('asks nothing for insurance — its questionnaire lives in the insurance wizard', async () => {
+    const state = await getState(userId, 'insurance');
+    expect(state.missingQuestions).toHaveLength(0);
+    expect(state.complete).toBe(true);
   });
 
   it('marks agent onboarding complete for returning user', async () => {

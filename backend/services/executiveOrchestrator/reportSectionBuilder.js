@@ -5,9 +5,14 @@ const { buildAgentFirstReport } = require('./agentReportSections');
 
 function buildExecutiveSummary(agentReport) {
   const parts = [agentReport.intro];
-  const withRecs = agentReport.agentSections.filter(s => s.recommendationStatus === 'hasRecommendations');
-  if (withRecs.length) {
-    parts.push(`נמצאו המלצות ב${withRecs.map(s => s.title).join(', ')}.`);
+  const actionable = (agentReport.actionPlan || []).filter(a => a.priority === 'high' || a.priority === 'medium');
+  if (actionable.length) {
+    parts.push(`תוכנית הפעולה כוללת ${actionable.length} צעדים בעדיפות גבוהה או בינונית.`);
+  } else {
+    const withRecs = agentReport.agentSections.filter(s => s.recommendationStatus === 'hasRecommendations');
+    if (withRecs.length) {
+      parts.push(`נמצאו המלצות ב${withRecs.map(s => s.title).join(', ')}.`);
+    }
   }
   if (agentReport.missingData.length) {
     parts.push(`${agentReport.missingData.length} תחומים דורשים השלמת מסמכים.`);
@@ -27,31 +32,22 @@ function buildExecutiveReport({
   const agentReport = buildAgentFirstReport(packages, { scoredItems: priorityEngine?.scoredItems });
   const executiveSummary = llmSummary || buildExecutiveSummary(agentReport);
 
-  const preservedRecommendations = SPECIALIST_AGENTS.flatMap(agentId =>
-    (packages[agentId]?.recommendations || [])
-      .filter(r => r.itemKind !== 'missing_data')
-      .map(r => ({
-        agentId,
-        recommendationId: r.id,
-        title: r.title,
-        description: r.explanation,
-        reason: r.whyItMatters || null,
-        expectedBenefit: r.expectedBenefit || null,
-        source: r.sourceReport || null,
-        confidence: r.confidence ?? null,
-      })),
-  );
+  // Slim preserved list for API/debug — prefer bestDecision mirrors over full agent dumps.
+  const preservedRecommendations = agentReport.agentSections
+    .flatMap(s => s.recommendations || [])
+    .filter(Boolean);
 
   return {
     meta: {
       userId: String(userId),
       generatedAt: generatedAt || new Date().toISOString(),
-      reportVersion: '2.1.0',
+      reportVersion: '2.2.0',
       agentCount: agentReport.agentSections.filter(s => s.dataStatus === 'available').length,
       stats: {
         ...priorityEngine.stats,
         agentsReported: SPECIALIST_AGENTS.length,
         preservedRecommendationCount: preservedRecommendations.length,
+        actionPlanCount: agentReport.actionPlan?.length ?? 0,
       },
     },
     sections: {

@@ -50,18 +50,21 @@ async function getInsuranceProfile(userId) {
       ?? onboardingAnswers.vehiclesOwned
       ?? null,
     vehicles: onboardingAnswers.vehicles ?? null,
+    needsLifeInsurance: onboardingAnswers['insuranceOnboarding.life.needsLifeInsurance']
+      ?? onboardingAnswers['life.needsLifeInsurance']
+      ?? null,
     policies: [],
   };
 }
 
 function analyzeInsuranceCoverage(insuranceProfile, options = {}) {
-  const { policies = [], profile, personal, assets, vehiclesOwned } = insuranceProfile;
+  const { policies = [], profile, personal, assets, vehiclesOwned, needsLifeInsurance } = insuranceProfile;
 
   const aggResult = analyzeAggregatedInsurance(policies, { vehiclesOwned });
   const { aggregatedPolicies } = aggResult;
 
   const gapResult = analyzeCoverageGaps(
-    { profile, personal, assets, insurance: profile },
+    { profile, personal, assets, insurance: profile, needsLifeInsurance },
     aggregatedPolicies,
     { pensionFunds: options.pensionFunds || [] },
   );

@@ -11,29 +11,58 @@ describe('insuranceOnboardingQuestions', () => {
     insuranceOnboarding: { answers: {}, skippedIds: [] },
   };
 
-  it('does not ask home ownership when apartment policy exists in report', () => {
-    const ctx = { hasApartment: true, hasCar: false, hasLife: false, hasHealth: false, hasDisability: false };
-    const bank = buildQuestionBank(ctx);
-    const questions = filterQuestions(bank, emptyProfile, emptyProfile.insuranceOnboarding, ctx);
-    expect(questions.some(q => q.id === 'home.owns_home')).toBe(false);
-    expect(questions.some(q => q.id === 'home.primary_residence')).toBe(true);
+  it('asks only smoking, activity, conditions and life-insurance need', () => {
+    const questions = filterQuestions(buildQuestionBank(), emptyProfile, emptyProfile.insuranceOnboarding);
+
+    expect(questions.map(q => q.id)).toEqual([
+      'health.smoker',
+      'health.activity',
+      'health.conditions',
+      'life.needs_life_insurance',
+    ]);
   });
 
-  it('asks vehicle ownership when no car policy in report', () => {
-    const ctx = { hasApartment: false, hasCar: false, hasLife: true, hasHealth: true, hasDisability: false };
-    const bank = buildQuestionBank(ctx);
-    const questions = filterQuestions(bank, emptyProfile, emptyProfile.insuranceOnboarding, ctx);
-    expect(questions.some(q => q.id === 'vehicle.owns')).toBe(true);
-    expect(questions.some(q => q.id === 'life.explain')).toBe(false);
+  it('asks how many vehicles are owned only when the report shows car policies', () => {
+    const withCar = filterQuestions(
+      buildQuestionBank({ hasCar: true }),
+      emptyProfile,
+      emptyProfile.insuranceOnboarding,
+    );
+    const vehicleQuestion = withCar.find(q => q.id === 'vehicle.vehicles_owned');
+
+    expect(vehicleQuestion).toBeDefined();
+    expect(vehicleQuestion.type).toBe('number');
+    expect(vehicleQuestion.profilePath).toBe('insuranceOnboarding.vehicle.vehiclesOwned');
+    expect(buildQuestionBank({ hasCar: false }).some(q => q.id === 'vehicle.vehicles_owned')).toBe(false);
+  });
+
+  it('does not ask about vehicles again once the count was answered', () => {
+    const onboarding = { answers: { 'insuranceOnboarding.vehicle.vehiclesOwned': 2 }, skippedIds: [] };
+    const questions = filterQuestions(buildQuestionBank({ hasCar: true }), emptyProfile, onboarding);
+
+    expect(questions.some(q => q.id === 'vehicle.vehicles_owned')).toBe(false);
+  });
+
+  it('explains what life insurance is on the life-need question', () => {
+    const lifeQuestion = buildQuestionBank().find(q => q.id === 'life.needs_life_insurance');
+
+    expect(lifeQuestion.text).toBe('האם אתה זקוק לביטוח חיים?');
+    expect(lifeQuestion.why).toContain('תלוי בו כלכלית');
+    expect(lifeQuestion.why).toContain('משכנתא');
+  });
+
+  it('does not ask about smoking when the profile already knows it', () => {
+    const profile = { ...emptyProfile, personal: { isSmoker: false } };
+    const questions = filterQuestions(buildQuestionBank(), profile, profile.insuranceOnboarding);
+
+    expect(questions.some(q => q.id === 'health.smoker')).toBe(false);
   });
 
   it('does not ask a skipped question again', () => {
-    const ctx = { hasApartment: false, hasCar: false, hasLife: false, hasHealth: false, hasDisability: false };
-    const bank = buildQuestionBank(ctx);
-    const onboarding = { answers: {}, skippedIds: ['home.owns_home'] };
-    const questions = filterQuestions(bank, emptyProfile, onboarding, ctx);
+    const onboarding = { answers: {}, skippedIds: ['health.conditions'] };
+    const questions = filterQuestions(buildQuestionBank(), emptyProfile, onboarding);
 
-    expect(questions.some(q => q.id === 'home.owns_home')).toBe(false);
+    expect(questions.some(q => q.id === 'health.conditions')).toBe(false);
   });
 
   it('buildReportProfile aggregates active policies', () => {
@@ -58,8 +87,8 @@ describe('insuranceOnboardingService resetOnboarding', () => {
     const markModified = jest.fn();
     UserProfile.findOrCreateForUser = jest.fn().mockResolvedValue({
       insuranceOnboarding: {
-        answers: { 'home.owns_home': true, _answeredIds: ['home.owns_home'] },
-        skippedIds: ['vehicle.owns'],
+        answers: { 'personal.isSmoker': true, _answeredIds: ['health.smoker'] },
+        skippedIds: ['health.conditions'],
         completedAt: new Date('2024-01-01'),
         lastReportAt: new Date('2024-01-01'),
       },
