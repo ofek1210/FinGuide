@@ -65,8 +65,10 @@ export function formatPercent(value: number | null | undefined, digits = 2): str
   if (!hasDisplayValue(value)) return null;
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
-  const pct = n <= 1 && n >= 0 ? n * 100 : n;
-  return `${pct.toFixed(digits)}%`;
+  // הערכים כאן תמיד ביחידות אחוז (0.9 = 0.9%) — ראה feeAnalysisCore.js
+  // בצד השרת. אסור לנחש לפי גודל: דמי ניהול מצבירה הם בדיוק בטווח 0–1
+  // והניחוש הישן הציג אותם מוכפלים פי 100 ("90.00%" במקום "0.90%").
+  return `${n.toFixed(digits)}%`;
 }
 
 export function formatRankLine(metrics: MarketCardMetrics | undefined): string | null {

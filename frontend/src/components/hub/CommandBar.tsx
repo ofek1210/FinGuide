@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { BrainCircuit, ChevronDown, Plus, Send, Sparkles, Zap } from "lucide-react";
 import { askAgent } from "../../api/agents.api";
+import { useAuth } from "../../auth/AuthProvider";
 import { CLASSIFICATION_LABEL, CLASSIFICATION_TO_FOCUS, FOCUS_LABEL, QUICK_PROMPTS } from "./agentDisplay";
 import type { BackendAgentKey } from "./masterAgentMerge";
 
@@ -20,8 +21,13 @@ type ChatMsg = {
   isError?: boolean;
 };
 
-/** localStorage key for the persisted command-chat transcript. */
-const CHAT_STORAGE_KEY = "fg_hub_agent_chat";
+/**
+ * localStorage key for the persisted command-chat transcript.
+ * חייב להיות ממופתח לפי משתמש — מפתח משותף דלף שיחות (כולל נתוני שכר)
+ * בין חשבונות על אותו דפדפן. clearSession מוחק את כל המפתחות בקידומת הזו.
+ */
+const CHAT_STORAGE_PREFIX = "fg_hub_agent_chat";
+const chatStorageKey = (userId: string) => `${CHAT_STORAGE_PREFIX}:${userId}`;
 
 /**
  * Answers arrive as raw text with markdown leftovers ("**bold**").
@@ -36,9 +42,12 @@ function renderAnswer(text: string): ReactNode[] {
   );
 }
 
-function loadChat(): ChatMsg[] {
+function loadChat(userId: string | undefined): ChatMsg[] {
+  if (!userId) return [];
   try {
-    const raw = localStorage.getItem(CHAT_STORAGE_KEY);
+    // מיגרציה: מחיקת המפתח הישן הלא-ממופתח (עלול להכיל שיחה של משתמש אחר)
+    localStorage.removeItem(CHAT_STORAGE_PREFIX);
+    const raw = localStorage.getItem(chatStorageKey(userId));
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -52,23 +61,27 @@ type CommandBarProps = {
 };
 
 export default function CommandBar({ busy, onRunFocused }: CommandBarProps) {
-  const [messages, setMessages] = useState<ChatMsg[]>(loadChat);
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [messages, setMessages] = useState<ChatMsg[]>(() => loadChat(userId));
   const [input, setInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  // Persist the transcript (keep the last 50 messages).
+  // Persist the transcript per user (keep the last 50 messages).
   useEffect(() => {
+    if (!userId) return;
     try {
-      localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-50)));
+      localStorage.setItem(chatStorageKey(userId), JSON.stringify(messages.slice(-50)));
     } catch { /* storage full / unavailable — non-fatal */ }
-  }, [messages]);
+  }, [messages, userId]);
 
   const handleNewChat = useCallback(() => {
     setMessages([]);
     setHistoryOpen(false);
-    try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch { /* non-fatal */ }
-  }, []);
+    if (!userId) return;
+    try { localStorage.removeItem(chatStorageKey(userId)); } catch { /* non-fatal */ }
+  }, [userId]);
 
   /** Send a message to the agent router; classified answers become tasks. */
   const handleSend = useCallback(async (text?: string) => {
