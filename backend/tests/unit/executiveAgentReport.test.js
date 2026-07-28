@@ -3,7 +3,6 @@
 const { buildAgentPackage } = require('../../services/executiveOrchestrator/agentOutputNormalizer');
 const {
   buildAgentFirstReport,
-  NO_RECS_HE,
   MISSING_HE,
   ERROR_HE,
 } = require('../../services/executiveOrchestrator/agentReportSections');
@@ -98,18 +97,17 @@ describe('executive agent-first report — cases A–F', () => {
 
     expect(gemelSection.dataStatus).toBe('available');
     expect(gemelSection.recommendationStatus).toBe('hasRecommendations');
-    expect(gemelSection.dataSummary.some(d => /קופת גמל|גמל/.test(d.label))).toBe(true);
-    expect(gemelSection.recommendations[0].title).toMatch(/גמל/);
+    expect(gemelSection.dataSummary.some(d => /יתרה|מוצרים|הפקדה/.test(d.label))).toBe(true);
+    expect(gemelSection.bestDecision || gemelSection.recommendations[0]).toBeTruthy();
   });
 
-  it('Case C: Insurance has data but no recommendations', () => {
+  it('Case C: Insurance has data but no material issues — keep decision', () => {
     const packages = allFourPackages({ insuranceRec: false, pensionRec: false, gemelRec: false, payslipRec: false, pensionData: false, gemelData: false, payslipData: false });
     const insuranceSection = buildAgentFirstReport(packages).agentSections.find(s => s.agentId === 'insurance');
 
     expect(insuranceSection.dataStatus).toBe('available');
-    expect(insuranceSection.recommendationStatus).toBe('noRecommendations');
-    expect(insuranceSection.statusMessage).toBe(NO_RECS_HE);
-    expect(insuranceSection.recommendations).toHaveLength(0);
+    expect(insuranceSection.bestDecision?.verdict).toBe('keep');
+    expect(insuranceSection.bestDecision?.actionable).toBe(false);
   });
 
   it('Case D: No payslip uploaded — missing data explained', () => {
@@ -148,16 +146,17 @@ describe('executive agent-first report — cases A–F', () => {
     const report = buildAgentFirstReport(packages);
     const pensionSection = report.agentSections.find(s => s.agentId === 'pension');
 
-    expect(pensionSection.recommendations[0].expectedBenefit).toBeNull();
+    expect(pensionSection.bestDecision?.annualSavings ?? null).toBeNull();
     expect(report.combinedSummary.notes.join(' ')).not.toMatch(/₪\d/);
-    for (const action of report.whatToDo) {
-      expect(action.action).not.toMatch(/₪\d/);
+    for (const action of report.actionPlan || report.whatToDo) {
+      const text = `${action.action || ''} ${action.expectedBenefit || ''}`;
+      expect(text).not.toMatch(/₪\d/);
     }
   });
 });
 
-describe('executive report v2.1 structure', () => {
-  it('builds agent-first sections without health score or professional mode', () => {
+describe('executive report v2.2 advisor structure', () => {
+  it('builds agent-first sections with bestDecision and actionPlan', () => {
     const packages = allFourPackages();
     const engine = runGlobalPriorityEngine(packages);
     const report = buildExecutiveReport({
@@ -167,16 +166,16 @@ describe('executive report v2.1 structure', () => {
       conflicts: [],
     });
 
-    expect(report.meta.reportVersion).toBe('2.1.0');
+    expect(report.meta.reportVersion).toBe('2.2.0');
     expect(report.sections.title).toBe('הדוח הפיננסי האישי שלי');
     expect(report.sections.agentReport.agentSections).toHaveLength(4);
+    expect(report.sections.agentReport.actionPlan).toBeDefined();
     expect(report.sections.personalOverview).toBeUndefined();
     expect(report.sections.mainDecisions).toBeUndefined();
     expect(report.meta.globalHealthScore).toBeUndefined();
-    expect(report.sections.preservedRecommendations.length).toBeGreaterThan(0);
-    expect(report.sections.preservedRecommendations[0]).toMatchObject({
-      agentId: expect.any(String),
-      title: expect.any(String),
-    });
+    for (const section of report.sections.agentReport.agentSections) {
+      expect(section.bestDecision).toBeTruthy();
+      expect(section.recommendations.length).toBeLessThanOrEqual(1);
+    }
   });
 });

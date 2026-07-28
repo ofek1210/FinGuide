@@ -2,7 +2,6 @@
 
 const Document = require('../../models/Document');
 const PensionFund = require('../../models/PensionFund');
-const InsurancePolicy = require('../../models/InsurancePolicy');
 const { getNested, readStoredAnswer } = require('./answerStore');
 const { GENERAL_QUESTIONS, AGENT_QUESTIONS } = require('../../config/smartOnboardingConfig');
 
@@ -90,25 +89,6 @@ async function resolveFromDocuments(userId, questionId) {
 async function resolveFromExternalData(userId, profile, questionDef) {
   const qid = questionDef.id;
 
-  if (qid === 'insurance.hasMortgage') {
-    if (profile.assets?.hasMortgage != null) {
-      return { value: profile.assets.hasMortgage, source: 'onboarding', confidence: 0.95 };
-    }
-  }
-
-  if (qid === 'insurance.hasDependents') {
-    if (profile.personal?.hasDependents != null) {
-      return { value: profile.personal.hasDependents, source: 'onboarding', confidence: 0.95 };
-    }
-    const children = profile.personal?.childrenCount;
-    if (children != null && children > 0) {
-      return { value: true, source: 'inferred', confidence: 0.7 };
-    }
-    if (['married', 'partnered'].includes(profile.personal?.maritalStatus)) {
-      return { value: true, source: 'inferred', confidence: 0.55 };
-    }
-  }
-
   if (qid === 'pension.retirementAge') {
     const age = profile.retirement?.plannedRetirementAge;
     if (age != null) return { value: age, source: 'onboarding', confidence: 0.95 };
@@ -127,13 +107,6 @@ async function resolveFromExternalData(userId, profile, questionDef) {
     if (funds.length && qid === 'gemel.moneyPurpose') {
       const hasStudy = funds.some(f => f.fundType === 'study_fund');
       if (hasStudy) return { value: 'general_savings', source: 'imported', confidence: 0.6 };
-    }
-  }
-
-  if (qid.startsWith('insurance.')) {
-    const policies = await InsurancePolicy.find({ user: userId, status: 'active' }).limit(1).lean();
-    if (policies.length && qid === 'insurance.priority') {
-      return { value: 'everything', source: 'imported', confidence: 0.5 };
     }
   }
 

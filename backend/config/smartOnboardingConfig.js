@@ -138,36 +138,9 @@ const AGENT_QUESTIONS = {
       ],
     },
   ],
-  insurance: [
-    {
-      id: 'insurance.priority',
-      type: 'single',
-      title: 'מה הכי חשוב לך?',
-      options: [
-        { value: 'lower_costs', label: 'להוריד עלויות ביטוח' },
-        { value: 'missing_coverage', label: 'לבדוק כיסוי חסר' },
-        { value: 'duplicate_insurance', label: 'לזהות כפילויות' },
-        { value: 'everything', label: 'הכל' },
-      ],
-    },
-    {
-      id: 'insurance.hasDependents',
-      type: 'yesno',
-      title: 'האם יש מישהו שתלוי בך כלכלית?',
-      profilePath: 'personal.hasDependents',
-    },
-    {
-      id: 'insurance.hasMortgage',
-      type: 'yesno',
-      title: 'האם יש לך משכנתא?',
-      profilePath: 'assets.hasMortgage',
-    },
-    {
-      id: 'insurance.wantCoverageRecommendations',
-      type: 'yesno',
-      title: 'אם נזהה כיסוי חסר — האם תרצה שנציג פוליסות לבדיקה?',
-    },
-  ],
+  // Insurance asks nothing here — its risk questionnaire lives in
+  // services/insuranceOnboardingQuestions.js so the user isn't asked twice.
+  insurance: [],
   pension: [
     {
       id: 'pension.retirementAge',

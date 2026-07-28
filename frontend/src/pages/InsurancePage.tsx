@@ -15,8 +15,6 @@ import InsuranceRibbonWave from "../components/insurance/InsuranceRibbonWave";
 import InsuranceImportGuide from "../components/insurance/InsuranceImportGuide";
 import InsuranceUpload from "../components/insurance/InsuranceUpload";
 import InsuranceOnboardingWizard from "../components/insurance/InsuranceOnboardingWizard";
-import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
-import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import AIInsightsLoadingState from "../components/ai/AIInsightsLoadingState";
 import {
   getInsuranceAnalysis,
@@ -46,7 +44,6 @@ const fmt = formatCurrencyOrDash;
 
 export default function InsurancePage() {
   const [searchParams] = useSearchParams();
-  const agentOnboarding = useAgentOnboarding("insurance");
 
   function insuranceShell(children: React.ReactNode) {
     return (
@@ -126,9 +123,6 @@ export default function InsurancePage() {
       setStep("guide");
     }
   }, [searchParams, step, setStep]);
-
-  const hasInsuranceDocument = (data?.policies?.length ?? 0) > 0;
-  const needsSmartOnboarding = hasInsuranceDocument && agentOnboarding.needsQuestions;
 
   // When policies exist, route into onboarding or results — not the empty landing upload prompt.
   useEffect(() => {
@@ -242,32 +236,6 @@ export default function InsurancePage() {
       <InsuranceOnboardingWizard
         onBack={() => setStep("upload")}
         onComplete={showResults}
-      />,
-    );
-  }
-
-  if (step === "results" && needsSmartOnboarding) {
-    if (agentOnboarding.loading) {
-      return insuranceShell(
-        <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--peach-ink)" }}>בודקים מה חסר לפני הניתוח...</div>,
-      );
-    }
-    return insuranceShell(
-      <AgentOnboardingStep
-        agentId="insurance"
-        agentLabel="ביטוח"
-        estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
-        questions={agentOnboarding.state?.missingQuestions ?? []}
-        phases={["document", "questions", "analysis"]}
-        activePhase="questions"
-        headline="עוד רגע — נשלים את תמונת הביטוח"
-        subhead="דוח הר הביטוח והשאלון כבר אצלנו. עוד כמה שאלות והסוכן יציג ניתוח, כפילויות והמלצות מלאים."
-        onSkip={agentOnboarding.dismiss}
-        onSubmit={async answers => {
-          const ok = await agentOnboarding.submit(answers);
-          if (ok) await load();
-          return ok;
-        }}
       />,
     );
   }
