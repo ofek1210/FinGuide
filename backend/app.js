@@ -37,14 +37,35 @@ const createApp = () => {
   // ה-rate limiter רואה את כל המשתמשים כ-127.0.0.1 וחוסם את כולם יחד
   app.set('trust proxy', 1);
 
-  // Rate limiting – גבוה בפיתוח כדי למנוע "יותר מדי בקשות"
+  // Rate limiting — תקרה גלובלית נדיבה שמגנה מפני שימוש לרעה בלי לחסום
+  // שימוש רגיל: טעינת עמוד אחת שולחת 10-15 קריאות API, ושאלון אונבורדינג
+  // שולח בקשה לכל תשובה. התקרה הקודמת (100 ל-15 דק') נגמרה תוך דקות
+  // ספורות של גלישה נורמלית והחזירה "יותר מדי בקשות" למשתמשים אמיתיים.
   const isDev = process.env.NODE_ENV !== 'production';
   const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 דקות
-    max: isDev ? 2000 : 100, // פיתוח: 2000, פרוד: 100
+    limit: isDev ? 5000 : 1200,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    // בדיקת בריאות משמשת ניטור — אין סיבה שתצרוך מהמכסה
+    skip: req => req.path === '/api/health',
     message: {
       success: false,
       message: 'יותר מדי בקשות, נסה שוב מאוחר יותר',
+    },
+  });
+
+  // נקודות אימות שומרות תקרה מחמירה מול ניחוש סיסמאות. רק ניסיונות
+  // כושלים נספרים, כך שמשתמש לגיטימי לא ננעל בגלל התחברויות מוצלחות.
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: isDev ? 200 : 30,
+    skipSuccessfulRequests: true,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: {
+      success: false,
+      message: 'יותר מדי ניסיונות התחברות. נסו שוב בעוד כמה דקות.',
     },
   });
 
@@ -92,6 +113,10 @@ const createApp = () => {
   }
 
   // API Routes
+  // תקרה מחמירה רק על נקודות שמקבלות פרטי אימות (לא על /me שנקרא בכל טעינה)
+  ['login', 'register', 'google', 'forgot-password', 'reset-password'].forEach(
+    route => app.use(`/api/auth/${route}`, authLimiter)
+  );
   app.use('/api/auth', authRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/documents', documentRoutes);
