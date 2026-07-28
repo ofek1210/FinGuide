@@ -1,21 +1,20 @@
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * מעקב אחרי media query — לרספונסיביות ברכיבים עם inline styles.
+ * מעקב אחרי media query — לרספונסיביות ברכיבים שמסוגננים ב-inline styles.
  * שימוש: const isMobile = useMediaQuery("(max-width: 640px)");
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState<boolean>(
-    () => typeof window !== "undefined" && window.matchMedia(query).matches,
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      const mql = window.matchMedia(query);
+      mql.addEventListener("change", onStoreChange);
+      return () => mql.removeEventListener("change", onStoreChange);
+    },
+    [query],
   );
 
-  useEffect(() => {
-    const mql = window.matchMedia(query);
-    const handler = (e: MediaQueryListEvent) => setMatches(e.matches);
-    setMatches(mql.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, [query]);
+  const getSnapshot = useCallback(() => window.matchMedia(query).matches, [query]);
 
-  return matches;
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
 }

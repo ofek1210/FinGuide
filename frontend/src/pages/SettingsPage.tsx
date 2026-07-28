@@ -18,6 +18,7 @@ import { updateProfile, getAvatarDisplayUrl, resolveAvatarUrl, uploadAvatar } fr
 import { changePassword } from "../api/auth.api";
 import { apiJson } from "../api/client";
 import PrivateTopbar from "../components/PrivateTopbar";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import AppFooter from "../components/AppFooter";
 import Loader from "../components/ui/Loader";
 import { useAuth } from "../auth/AuthProvider";
@@ -44,6 +45,8 @@ const dangerBtn: React.CSSProperties = { display: "inline-flex", alignItems: "ce
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { user, status, refresh } = useAuth();
+  // מתחת ל-820px אין מקום לסרגל צד לצד התוכן — הוא נערם מעליו
+  const narrow = useMediaQuery("(max-width: 820px)");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -242,8 +245,8 @@ export default function SettingsPage() {
       </div>
 
       {/* sticky rail + sections */}
-      <div style={{ display: "grid", gridTemplateColumns: "208px 1fr", gap: 26, alignItems: "start" }}>
-        <nav style={{ position: "sticky", top: 24, display: "flex", flexDirection: "column", gap: 4 }}>
+      <div style={{ display: "grid", gridTemplateColumns: narrow ? "minmax(0, 1fr)" : "208px minmax(0, 1fr)", gap: narrow ? 16 : 26, alignItems: "start" }}>
+        <nav style={{ position: narrow ? "static" : "sticky", top: 24, display: "flex", flexDirection: narrow ? "row" : "column", flexWrap: narrow ? "wrap" : "nowrap", gap: 4 }}>
           {SECTIONS.map(s => {
             const on = active === s.id;
             const Icon = s.icon;

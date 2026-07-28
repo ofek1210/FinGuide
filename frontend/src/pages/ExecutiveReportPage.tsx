@@ -27,6 +27,7 @@ import {
   type PreservedRecommendation,
 } from "../api/executiveReport.api";
 import { APP_ROUTES } from "../types/navigation";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 
 /* ============================================================
    ExecutiveReportPage — "הדוח הפיננסי האישי שלי". A long,
@@ -243,6 +244,8 @@ function AgentSection({
 export default function ExecutiveReportPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  // מתחת ל-900px אין מקום לעמודת TOC דביקה לצד התוכן — היא נערמת מעליו
+  const narrow = useMediaQuery("(max-width: 900px)");
   const [report, setReport] = useState<ExecutiveReport | null>(null);
   const [runId, setRunId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -445,9 +448,9 @@ export default function ExecutiveReportPage() {
         ) : null}
 
         {sections && agentReport ? (
-          <div style={{ display: "grid", gridTemplateColumns: "220px 1fr", gap: 26, alignItems: "start" }}>
-            {/* ===== sticky TOC ===== */}
-            <nav aria-label="תוכן הדוח" style={{ position: "sticky", top: 88, ...card, padding: "16px 12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: narrow ? "minmax(0, 1fr)" : "220px minmax(0, 1fr)", gap: narrow ? 18 : 26, alignItems: "start" }}>
+            {/* ===== sticky TOC (נערם ולא דביק במסכים צרים) ===== */}
+            <nav aria-label="תוכן הדוח" style={{ position: narrow ? "static" : "sticky", top: 88, ...card, padding: "16px 12px" }}>
               <div style={{ fontSize: 11, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".08em", padding: "0 8px 10px" }}>מה יש בדוח</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 {tocItems.map(t => {

@@ -8,6 +8,7 @@ import { AGENTS } from "../../theme/agents";
 import { APP_ROUTES } from "../../types/navigation";
 import { AGENT_KEY, type BackendAgentKey } from "./masterAgentMerge";
 import { RadialGauge } from "./hubViz";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import type { AgentReadinessItem, AgentReadinessPhase } from "../../utils/agentReadiness";
 import type { Phase } from "./useMasterAgent";
 
@@ -108,6 +109,9 @@ export default function MasterBand({
   onRunFull, lastReport, savedScore,
 }: MasterBandProps) {
   const navigate = useNavigate();
+  // ברשת הסוכנים התוויות הן nowrap ברוחב עד ~127px על קנבס שמצטמצם ל-330px
+  // במובייל, כך שהן נדרסות זו על זו. הכרטיסים שמתחת ממילא נושאים את השמות.
+  const narrow = useMediaQuery("(max-width: 700px)");
 
   // inject the command-band keyframes once
   useEffect(() => {
@@ -305,7 +309,9 @@ export default function MasterBand({
                   <Icon size={20} strokeWidth={1.9} />
                   <span style={{ position: "absolute", bottom: -1, insetInlineEnd: -1, width: 11, height: 11, borderRadius: "50%", background: STATUS_MAP[st].c, border: "2px solid #141319" }} />
                 </span>
-                <span style={{ display: "inline-block", marginTop: 6, padding: "3px 10px", borderRadius: 999, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.14)", fontSize: 11, fontWeight: 800, color: "#fff", whiteSpace: "nowrap" }}>{a.hubTitle.replace("סוכן ", "")}</span>
+                {!narrow && (
+                  <span style={{ display: "inline-block", marginTop: 6, padding: "3px 10px", borderRadius: 999, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.14)", fontSize: 11, fontWeight: 800, color: "#fff", whiteSpace: "nowrap" }}>{a.hubTitle.replace("סוכן ", "")}</span>
+                )}
               </button>
             );
           })}
