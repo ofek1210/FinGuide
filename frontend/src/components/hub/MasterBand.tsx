@@ -72,7 +72,7 @@ function meshStatusOf(phase: AgentReadinessPhase | undefined): MeshStatus {
 }
 const STATUS_MAP: Record<MeshStatus, { label: string; c: string; glow: string }> = {
   ready: { label: "פעיל", c: "var(--mint-ink)", glow: "rgba(47,156,98,.2)" },
-  onboarding: { label: "נדרש אונבורדינג", c: "var(--butter-ink)", glow: "rgba(185,139,22,.18)" },
+  onboarding: { label: "נדרשת העלאה", c: "var(--butter-ink)", glow: "rgba(185,139,22,.18)" },
   waiting: { label: "ממתין למסמך", c: "var(--peach-ink)", glow: "rgba(218,111,68,.18)" },
 };
 
@@ -163,15 +163,17 @@ export default function MasterBand({
 
   // ---- live activity terminal, built from the real per-agent metrics ----
   const logs = [
-    { t: "OK", c: "#7BD2A0", m: `סוכן תלושים · ${agentMetric.payslips}` },
-    { t: "!!", c: "#F0A47E", m: `סוכן ביטוחים · ${agentMetric.insurance}` },
+    { t: "OK", c: "#7BD2A0", m: `סוכן השכר · ${agentMetric.payslips}` },
+    { t: "!!", c: "#F0A47E", m: `סוכן ביטוחים ופוליסות · ${agentMetric.insurance}` },
     { t: "..", c: "#CDB6FF", m: `סוכן פנסיוני · ${agentMetric.pension}` },
-    { t: "OK", c: "#7BD2A0", m: `סוכן גמל · ${agentMetric.gemel}` },
+    { t: "OK", c: "#7BD2A0", m: `סוכן גמל והשתלמות · ${agentMetric.gemel}` },
     {
       t: "OK", c: "#7BD2A0",
       m: opportunities > 0
         ? `הסוכן הראשי · ${opportunities} הזדמנויות פעילות · ניתוח עודכן`
-        : "הסוכן הראשי · אין הזדמנויות חדשות · הכל תקין",
+        : completedDocs > 0
+          ? "הסוכן הראשי · אין הזדמנויות חדשות · הכל תקין"
+          : "הסוכן הראשי · ממתין להעלאת מסמכים",
     },
   ];
   const [logIdx, setLogIdx] = useState(0);
@@ -218,12 +220,12 @@ export default function MasterBand({
           {empty ? (
             <>
               <div style={{ fontSize: "clamp(24px,2.6vw,34px)", fontWeight: 900, letterSpacing: "-.03em", lineHeight: 1.15, maxWidth: 400 }}>
-                העלו תלוש שכר ראשון — והסוכנים יתחילו לחפש הזדמנויות לחיסכון.
+                העלו תלושי שכר — והסוכנים יתחילו לחפש הזדמנויות לחיסכון.
               </div>
               <button onClick={() => navigate(APP_ROUTES.documentsUpload)} style={{ ...whiteCta, marginTop: 22, cursor: "pointer" }}
                 onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-2px)")}
                 onMouseLeave={e => (e.currentTarget.style.transform = "none")}>
-                <Upload size={16} strokeWidth={2.4} /> העלאת תלוש ראשון
+                <Upload size={16} strokeWidth={2.4} /> העלו תלושי שכר
               </button>
             </>
           ) : (

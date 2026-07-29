@@ -9,8 +9,8 @@ import { AGENT_TONE } from "./hubVizCore";
 /* ============================================================
    AgentSummaryCard — one canonical showcase card per agent, in
    the "scanning agent" design language: white card, number badge
-   01-04 + "סוכן AI" tag, a live status dot / focused-run action,
-   an icon tile with a sparkline, title/sub, and a mono metric.
+   01-04 + agent name tag, a live status dot / focused-run action,
+   an icon tile with a sparkline, title/sub, and a status metric.
    The whole card opens the domain page; the top-right pill runs a
    focused analysis (or reflects run status). A scanning sheen
    sweeps across on hover.
@@ -45,7 +45,7 @@ function readinessStatus(phase: AgentReadinessPhase | undefined): { label: strin
     return { label: "פעיל", c: "var(--mint-ink)", glow: "rgba(47,156,98,.2)" };
   }
   if (phase === "document_ready_onboarding_incomplete") {
-    return { label: "נדרש אונבורדינג", c: "var(--butter-ink)", glow: "rgba(185,139,22,.18)" };
+    return { label: "נדרשת העלאה", c: "var(--butter-ink)", glow: "rgba(185,139,22,.18)" };
   }
   if (phase === "document_processing") {
     return { label: "מעבד מסמך", c: "var(--butter-ink)", glow: "rgba(185,139,22,.18)" };
@@ -97,11 +97,11 @@ export default function AgentSummaryCard({
       {/* scanning sheen on hover */}
       <span className="hub-scan" style={{ position: "absolute", top: 0, bottom: 0, width: "38%", background: `linear-gradient(100deg,transparent,${c1},transparent)`, transform: "translateX(120%)", pointerEvents: "none" }} />
 
-      {/* header: number badge + סוכן AI · status / focused-run pill */}
+      {/* header: number badge + agent name · status / focused-run pill */}
       <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <span style={{ width: 25, height: 25, borderRadius: 8, background: c2, color: "#fff", display: "grid", placeItems: "center", fontWeight: 900, fontSize: 11, letterSpacing: "-.02em" }}>0{index + 1}</span>
-          <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: ".1em", color: c2 }}>סוכן AI</span>
+          <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: ".02em", color: c2 }}>{a.hubTitle}</span>
         </span>
 
         {running ? (
@@ -142,13 +142,53 @@ export default function AgentSummaryCard({
         {spark.length >= 2 && <Sparkline points={spark} tone={tone} w={70} h={26} />}
       </div>
 
-      {/* title / sub / mono metric */}
+      {/* title / sub / status metric */}
       <div style={{ position: "relative" }}>
-        <div style={{ fontWeight: 900, fontSize: 15.5, letterSpacing: "-.015em", color: "var(--text-strong)" }}>{a.hubTitle}</div>
-        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{readinessDetail ?? a.sub}</div>
-        <div style={{ marginTop: 10, fontFamily: "'SF Mono',ui-monospace,'Cascadia Mono',Consolas,monospace", fontSize: 11.5, fontWeight: 700, color: c2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {verdict ? `פסק דין: ${verdict}` : metricLine}
-        </div>
+        <div style={{ fontWeight: 900, fontSize: 15.5, letterSpacing: "-.015em", color: "var(--text-strong)" }}>{a.sub}</div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{readinessDetail ?? a.label}</div>
+        {(() => {
+          const display = verdict ? `פסק דין: ${verdict}` : metricLine;
+          const waiting = !verdict && /^(טרם|אין)/.test(String(metricLine));
+          if (waiting) {
+            return (
+              <div style={{
+                marginTop: 12,
+                display: "inline-flex",
+                alignItems: "center",
+                maxWidth: "100%",
+                padding: "7px 12px",
+                borderRadius: 999,
+                background: c1,
+                color: c2,
+                fontFamily: "var(--font-body), Heebo, sans-serif",
+                fontSize: 12.5,
+                fontWeight: 700,
+                letterSpacing: "-.01em",
+                lineHeight: 1.25,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}>
+                {display}
+              </div>
+            );
+          }
+          return (
+            <div style={{
+              marginTop: 10,
+              fontFamily: "var(--font-body), Heebo, sans-serif",
+              fontSize: 13,
+              fontWeight: 700,
+              letterSpacing: "-.01em",
+              color: c2,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}>
+              {display}
+            </div>
+          );
+        })()}
       </div>
     </button>
   );

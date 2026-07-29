@@ -23,7 +23,7 @@ function onboarding(partial: Partial<SmartOnboardingStateDTO>): SmartOnboardingS
 
 describe("agentReadiness", () => {
   it("labels onboarding-required phase", () => {
-    expect(phaseLabel("document_ready_onboarding_incomplete")).toBe("נדרש אונבורדינג");
+    expect(phaseLabel("document_ready_onboarding_incomplete")).toBe("נדרשת העלאה");
   });
 
   it("detects missing onboarding questions", () => {

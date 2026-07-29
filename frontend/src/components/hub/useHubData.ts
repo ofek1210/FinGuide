@@ -10,7 +10,7 @@ import { getInsuranceAnalysis } from "../../api/insuranceAI.api";
 import { getFinancialHealthScore } from "../../api/financialHealth.api";
 import type { FullAnalysisGlobalScore } from "../../api/fullAnalysis.api";
 import { enrichPayslipFromDoc } from "../../utils/payslipEnrichment";
-import { domainOf } from "./agentDisplay";
+import { domainOf, isHubOpportunityFinding } from "./agentDisplay";
 import {
   buildDocumentInventory,
   computeAgentReadiness,
@@ -190,15 +190,18 @@ export function useHubData(): HubData {
     ? (pension.primaryRecommendations ?? [])
     : [];
 
-  // ranked findings — warnings first, top 3
+  // ranked findings — actionable only, warnings first, top 3
   const rankedFindings = useMemo(() => {
     const order = { warning: 0, info: 1 } as const;
-    return [...findings].sort((a, b) => order[a.severity] - order[b.severity]).slice(0, 3);
+    return [...findings]
+      .filter(isHubOpportunityFinding)
+      .sort((a, b) => order[a.severity] - order[b.severity])
+      .slice(0, 3);
   }, [findings]);
 
   const domainCounts = useMemo(() => {
     const c: Record<AgentId, number> = { payslips: 0, insurance: 0, pension: 0, gemel: 0 };
-    findings.forEach(f => { c[domainOf(f)]++; });
+    findings.filter(isHubOpportunityFinding).forEach(f => { c[domainOf(f)]++; });
     return c;
   }, [findings]);
 
@@ -206,17 +209,37 @@ export function useHubData(): HubData {
   const potentialSavings = isThreeCardAdvisory(pension)
     ? sumAnnualSavings(pension) * 10
     : (pension?.projection?.mgmtFeeSavings?.savingsByRetirement ?? 0);
-  const opportunities = findings.length + pensionRecs.length;
+
+  const hasDomainData = completedDocs > 0
+    || importedPolicies > 0
+    || effectivePensionFunds > 0
+    || gemelFundCount > 0
+    || hasGemelAnalysis
+    || hasPayslipGemelSignal;
+
+  // Don't invent "opportunities" for empty accounts (e.g. no_documents meta finding),
+  // and don't double-count pension cards that already appear in findings.
+  const opportunityFindings = useMemo(
+    () => findings.filter(isHubOpportunityFinding),
+    [findings],
+  );
+  const hasPensionCardFindings = opportunityFindings.some(f => String(f.id).startsWith("pension_card_"));
+  const opportunities = !hasDomainData
+    ? 0
+    : opportunityFindings.length + (hasPensionCardFindings ? 0 : pensionRecs.length);
 
   const heroRows = useMemo(() => {
+    if (!hasDomainData) return [];
     const rows: [string, string][] = [];
     if (domainCounts.payslips) rows.push(["ממצאים בתלושי שכר", `${domainCounts.payslips}`]);
     if (domainCounts.insurance) rows.push(["ממצאי ביטוח", `${domainCounts.insurance}`]);
     if (domainCounts.pension) rows.push(["ממצאי פנסיה", `${domainCounts.pension}`]);
     if (domainCounts.gemel) rows.push(["ממצאי גמל והשתלמות", `${domainCounts.gemel}`]);
-    if (pensionRecs.length) rows.push(["המלצות פנסיה", `${pensionRecs.length}`]);
+    if (!hasPensionCardFindings && pensionRecs.length) {
+      rows.push(["המלצות פנסיה", `${pensionRecs.length}`]);
+    }
     return rows.slice(0, 3);
-  }, [domainCounts, pensionRecs.length]);
+  }, [domainCounts, pensionRecs.length, hasDomainData, hasPensionCardFindings]);
 
   // real per-agent trend series; a card simply shows no chart when there is no history yet
   const payslipTrend = useMemo(() => netTrend(documents), [documents]);
@@ -269,7 +292,7 @@ export function useHubData(): HubData {
         hasDocument: payslipHasDoc,
         isProcessing: processingDocs > 0,
         hasAnalysis: payslipHasDoc && completedDocs > 0,
-        documentHint: "העלו תלוש שכר מה-Hub",
+        documentHint: "העלו תלושי שכר",
       }),
       computeAgentReadiness({
         agentId: "pension",
