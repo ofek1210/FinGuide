@@ -107,6 +107,26 @@ export function agentVerdict(id: AgentId, result: AgentResult | undefined): stri
 
 const PENSION_KINDS = new Set(["pension_health_low", "fee_above_market", "risk_wrong_for_age", "track_underperforming"]);
 
+/** Meta / setup findings — not "improvement opportunities" for Hub counts. */
+const HUB_SETUP_FINDING_IDS = new Set([
+  "no_documents",
+  "missing_basic_metadata",
+  "future_document_date",
+  "possible_duplicates",
+  "documents_pending",
+  "stale_documents",
+]);
+
+/**
+ * Findings that represent real savings / action opportunities for the Hub band.
+ * Excludes empty-account prompts and document-hygiene meta findings.
+ */
+export function isHubOpportunityFinding(f: FindingItem): boolean {
+  if (!f?.id) return false;
+  if (HUB_SETUP_FINDING_IDS.has(f.id)) return false;
+  return true;
+}
+
 export function domainOf(f: FindingItem): AgentId {
   const kind = String(f.meta?.findingKind || "");
   if (kind.startsWith("insurance_")) return "insurance";

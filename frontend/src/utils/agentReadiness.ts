@@ -41,7 +41,7 @@ export const THEME_TO_SMART: Record<AgentId, SmartAgentId> = {
 const PHASE_LABEL: Record<AgentReadinessPhase, string> = {
   document_missing: "חסר מסמך",
   document_processing: "מעבד מסמך",
-  document_ready_onboarding_incomplete: "נדרש אונבורדינג",
+  document_ready_onboarding_incomplete: "נדרשת העלאה",
   document_ready_onboarding_complete: "מוכן לניתוח",
   analysis_ready: "מוכן",
 };

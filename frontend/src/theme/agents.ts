@@ -54,7 +54,7 @@ export const AGENTS: AgentDef[] = [
   {
     id: "payslips",
     label: "תלושים ומסמכים",
-    hubTitle: "סוכן תלושי שכר",
+    hubTitle: "סוכן השכר",
     sub: "ניתוח שכר ומס",
     Icon: FileText,
     route: APP_ROUTES.documents,

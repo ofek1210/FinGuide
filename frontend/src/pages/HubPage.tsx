@@ -114,7 +114,7 @@ export default function HubPage() {
         ? `ריכזנו עבורך ${data.opportunities} הזדמנויות לשיפור.`
         : data.completedDocs > 0
           ? "לא נמצאו הזדמנויות חדשות — הכל נראה תקין."
-          : "העלו תלוש ראשון כדי שנתחיל לזהות הזדמנויות.";
+          : "העלו תלושי שכר כדי שנתחיל לזהות הזדמנויות.";
 
   return (
     <div style={{ minHeight: "100vh", background: "var(--surface-page)", direction: "rtl", fontFamily: "var(--font-body)" }}>

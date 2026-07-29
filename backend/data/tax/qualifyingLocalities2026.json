@@ -1,0 +1,2432 @@
+[
+  {
+    "name": "אבו סנאן",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "אבו קורינאת",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אבו תלול",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אביבים",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "אביגיל",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "אבירים",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אבן מנחם",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אבן שמואל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אבני איתן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אבנת",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אבשלום",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "אדורה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אדוריים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אדמית",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "אודם",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אוהד",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "אום בטין",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אופקים",
+    "creditPercent": 18,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "אור הגנוז",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אור הנר",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "אורטל",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אורים",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "אחוזם",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אחיהוד",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "איבים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "איילת השחר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אילון",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אילות",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "איתן",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אל -רום",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אל סייד",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אלומות",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אלוני הבשן",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "אלי-עד",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אליאב",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אליפז",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אליפלט",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אלמגור",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אלקוש",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אמירים",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "אמנון",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אמציה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אניעם",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אספר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אפיק",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אפיקים",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ארגמן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ארז",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "אשבול",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אשבל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אשדות יעקב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "אשחר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אשכולות",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אשל הנשיא",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אשלים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אשקלון",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "אשרת",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "באר אורה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "באר מילכה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "בארי",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "בוסתן הגליל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "בוקעאתא",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "בטחה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "ביר הדאג",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "בירייה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "בית ג'ן",
+    "creditPercent": 14,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "בית הגדי",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "בית הלל",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "בית העמק",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "בית הערבה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "בית זרע",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "בית חוגלה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "בית יוסף",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "בית קמה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "בית שאן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "בן עמי",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "בני דקלים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "בני יהודה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "בני נצרים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "בענה",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "בצת",
+    "creditPercent": 12,
+    "annualIncomeCap": 186600
+  },
+  {
+    "name": "בר יוחאי",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ברור חיל",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "ברוש",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "ברעם",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "בתרון",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ג'דיידה-מכר",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "ג'ולס",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "ג'ש",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "גבולות",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "גבים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "גבעולים",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "גבעות בר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "גבעת יואב",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "גברעם",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "גדות",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "גונן",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "גורן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "גורנות הגליל",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "גילון",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "גילת",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "גינוסר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "גיתה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "געתון",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "גרופית",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "גשור",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "גשר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "גשר הזיו",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "דביר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "דגניה א",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "דגניה ב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "דוב\"ב",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "דורות",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "דייר אל-אסד",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "דייר חנא",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "דימונה",
+    "creditPercent": 18,
+    "annualIncomeCap": 245400
+  },
+  {
+    "name": "דישון",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "דלתון",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "דפנה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "דקל",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "דריג'את",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "האון",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "הגושרים",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "הילה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "הר עמשא",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "הררית",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "זיקים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "זמרת",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "זרועה",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "חגי",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "חד-נס",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "חולית",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "חולתה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "חוסן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "חוסנייה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "חוקוק",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "חורה",
+    "creditPercent": 18,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "חורפיש",
+    "creditPercent": 14,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "חזון",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "חלוץ",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "חלץ",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "חמדיה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "חמדת",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "חניתה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "חספין",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "חצבה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "חצור הגלילית",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "חצרים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "חרשים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "טבריה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "טובא-זנגרייה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "טירת צבי",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "טל-אל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "טללים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "טמרה",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "טנא",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "טפחות",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "יאנוח-ג'ת",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "יבול",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "יד מרדכי",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "יהל",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "יובל",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "יובלים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "יונדב",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "יונתן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "יושיביה",
+    "creditPercent": 14,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "יחיעם",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "יטבתה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "יכיני",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "יסוד המעלה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "יסעור",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "יעד",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "יערה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "יפית",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "יפתח",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "יראון",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "ירדנה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ירוחם",
+    "creditPercent": 18,
+    "annualIncomeCap": 245400
+  },
+  {
+    "name": "ירכא",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ישע",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "יתד",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "כאבול",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "כברי",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "כדיתה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כורזים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כחל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כחלה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כיסופים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "כישור",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כליל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כלנית",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "כמאנה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כמהין",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כמון",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כנף",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כנרת",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כסיפה",
+    "creditPercent": 18,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "כסרא-סמיע",
+    "creditPercent": 14,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "כפר בלום",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כפר גלעדי",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כפר הנשיא",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כפר חושן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כפר חנניה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "כפר חרוב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כפר יאסיף",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כפר מימון",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "כפר מסריק",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כפר סאלד",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כפר עזה",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "כפר ראש הנקרה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "כפר רופין",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כפר שמאי",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "כרכום",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כרם בן זמרה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "כרם שלום",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "כרמי קטיף",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כרמיאל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כרמייה",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "כרמים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "כרמל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "לבון",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "לבנים",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "להב",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "להבות הבשן",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "לוחמי הגיטאות",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "לוטם",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "לוטן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "לימן",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "לפידות",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "לקיה",
+    "creditPercent": 18,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "מבוא חמה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מבועים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מבטחים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "מבקיעים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "מג'ד אל-כרום",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "מג'דל שמס",
+    "creditPercent": 20,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "מגאר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מגדל",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "מגן",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "מדרשת בן גוריון",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מולדה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מורן",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מזרעה",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "מחולה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מחנה טלי",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מחנה יוכבד",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "מחנה יפה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מחנה יתיר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מחניים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מטולה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "מיצר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מירון",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מכחול",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מכמנים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מלילות",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "מלכייה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "מנוף",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מנות",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מנחמיה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מנרה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "מסדה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מסלול",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "מסעדה",
+    "creditPercent": 14,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "מעגלים",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "מעגן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מעוז חיים",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מעון",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מעונה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מעיין ברוך",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "מעיליא",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "מעלה גמלא",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מעלות-תרשיחא",
+    "creditPercent": 14,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "מפלסים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "מצדות יהודה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "מצובה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "מצפה רמון",
+    "creditPercent": 18,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "מצפה שלם",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מרגליות",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "מרום גולן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "מרחב עם",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "משאבי שדה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "משגב עם",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "משואה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "משכיות",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "משמר הירדן",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "משמר הנגב",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "מתת",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "נאות גולן",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "נאות הכיכר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נאות מרדכי",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נאות סמדר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נבטים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "נגוהות",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "נהרייה",
+    "creditPercent": 12,
+    "annualIncomeCap": 226560
+  },
+  {
+    "name": "נוב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נווה",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "נווה אור",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נווה אטי\"ב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נווה איתן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נווה זוהר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "נווה זיו",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נווה חריף",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נועם",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "נוף הגליל",
+    "creditPercent": 12,
+    "annualIncomeCap": 226560
+  },
+  {
+    "name": "נחל עוז",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "נחף",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נטועה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "נטור",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נטע",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "ניצנה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ניצני סיני",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ניר יצחק",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "ניר משה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "ניר עוז",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "ניר עם",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "ניר עקיבא",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "נירים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "נמרוד",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נס עמים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "נעמ\"ה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "נתיב העשרה",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "נתיב השיירה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "נתיבות",
+    "creditPercent": 16,
+    "annualIncomeCap": 226560
+  },
+  {
+    "name": "סאג'ור",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "סאסא",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "סוסיה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "סופה",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "סח'נין",
+    "creditPercent": 12,
+    "annualIncomeCap": 186000
+  },
+  {
+    "name": "סלמה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "סמר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "סנסנה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "סעד",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "סער",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "ספיר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ע'ג'ר",
+    "creditPercent": 20,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "עבדון",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עברון",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "עזוז",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עידן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עין אל-אסד",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עין גב",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "עין גדי",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "עין הבשור",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "עין המפרץ",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "עין הנצי\"ב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עין השלושה",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "עין זיוון",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עין חצבה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עין יהב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עין יעקב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עין קנייא",
+    "creditPercent": 14,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "עין תמר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עיר אובות",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "עכו",
+    "creditPercent": 12,
+    "annualIncomeCap": 226560
+  },
+  {
+    "name": "עלומים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "עלמה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עמוקה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "עמיעד",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "עמיעוז",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "עמיר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עמקה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "עצמון שגב",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "עראבה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "עראמשה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "ערב אל נעים",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ערד",
+    "creditPercent": 18,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "ערערה-בנגב",
+    "creditPercent": 18,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "עשהאל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "עתניאל",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "פארן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "פדויים",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "פורייה  -כפר עבודה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "פורייה  -נווה עובד",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "פורייה עילית",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "פטיש",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "פלך",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "פני חבר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "פסוטה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "פעמי תש\"ז",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "פצאל",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "פקיעין",
+    "creditPercent": 14,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "פקיעין חדשה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "פרוד",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "פרי גן",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "צאלים",
+    "creditPercent": 14,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "צביה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "צבעון",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "צוחר",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "צופר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "צוקים",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "צוריאל",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "צורית",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "צפת",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "קדם ערבה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "קדמת צבי",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "קדרים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "קורנית",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "קטורה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "קלחים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "קליה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "קלע",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "קצר א-סר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "קצרין",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "קריית ארבע",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "קריית שמונה",
+    "creditPercent": 20,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "קשת",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ראמה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "ראס אל-עין",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ראש פינה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "רביבים",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "רביד",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "רגבה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "רהט",
+    "creditPercent": 16,
+    "annualIncomeCap": 226560
+  },
+  {
+    "name": "רוח מדבר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "רוחמה",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "רועי",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "רותם",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "רחוב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "ריחאנייה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "רמות",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "רמות נפתלי",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "רמת טראמפ",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "רמת מגשימים",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "רנן",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "רעים",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "רקפת",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "רתמים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שאר ישוב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שבי דרום",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שבי ציון",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שגב-שלום",
+    "creditPercent": 18,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "שדה אליהו",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שדה אליעזר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שדה בוקר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שדה דוד",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שדה נחום",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שדה נחמיה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שדה ניצן",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "שדה צבי",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שדי אברהם",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "שדי תרומות",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שדמות מחולה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שדרות",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "שובה",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "שובל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שומרה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "שומרייה",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שוקדה",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "שורשים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שזור",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "שחרות",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "שיבולים",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "שיזף",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שיטים",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "שייח' דנון",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שכניה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שלווה",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שלווה במדבר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שלומי",
+    "creditPercent": 20,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "שלומית",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "שמיר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שמעה",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "שמרת",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שני",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שניר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שעב",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שעל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שער הגולן",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "שפר",
+    "creditPercent": 10,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "שקף",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "שרשרת",
+    "creditPercent": 14,
+    "annualIncomeCap": 180000
+  },
+  {
+    "name": "שתולה",
+    "creditPercent": 14,
+    "annualIncomeCap": 219960
+  },
+  {
+    "name": "תאשור",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "תדהר",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "תובל",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "תושייה",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "תל קציר",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "תל שבע",
+    "creditPercent": 18,
+    "annualIncomeCap": 259920
+  },
+  {
+    "name": "תל תאומים",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "תלם",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "תלמי אליהו",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "תלמי ביל\"ו",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "תלמי יוסף",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  },
+  {
+    "name": "תלמים",
+    "creditPercent": 7,
+    "annualIncomeCap": 146640
+  },
+  {
+    "name": "תפרח",
+    "creditPercent": 12,
+    "annualIncomeCap": 213240
+  },
+  {
+    "name": "תקומה",
+    "creditPercent": 20,
+    "annualIncomeCap": 267840
+  }
+]

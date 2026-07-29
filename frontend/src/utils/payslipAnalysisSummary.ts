@@ -41,6 +41,7 @@ export type PayslipAnalysisSummary = {
 };
 
 function isPlausiblePeriodLabel(label: string): boolean {
+  if (!label || label.includes("לא זוהתה")) return false;
   const match = label.match(/\d{4}/);
   if (!match) return false;
   const year = Number(match[0]);
@@ -48,18 +49,11 @@ function isPlausiblePeriodLabel(label: string): boolean {
   return year >= MIN_PLAUSIBLE_YEAR && year <= now + 1;
 }
 
-function formatUploadLabel(uploadedAt?: string): string {
-  if (!uploadedAt) return "תלוש שהועלה";
-  try {
-    return `הועלה ${new Date(uploadedAt).toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" })}`;
-  } catch {
-    return "תלוש שהועלה";
-  }
-}
-
-function displayLabelFor(doc: DocumentItem, detail: PayslipDetail): string {
+function displayLabelFor(_doc: DocumentItem, detail: PayslipDetail): string {
   if (isPlausiblePeriodLabel(detail.periodLabel)) return detail.periodLabel;
-  return formatUploadLabel(doc.uploadedAt || doc.createdAt);
+  // Never substitute upload date for the salary period — that caused
+  // June/April payslips uploaded in July to show as "הועלה 29 ביולי…".
+  return "תקופה לא זוהתה";
 }
 
 function periodKeyFromDoc(doc: DocumentItem): string | null {

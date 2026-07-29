@@ -125,17 +125,17 @@ export function sortPayslipDocuments(docs: DocumentItem[]): DocumentItem[] {
 // Period parsing and formatting
 // ---------------------------------------------------------------------------
 
-const FALLBACK_PERIOD_LABEL = "תלוש משכורת";
+const FALLBACK_PERIOD_LABEL = "תקופה לא זוהתה";
 const PERIOD_LOCALE = "he-IL";
 
 type ParsedPeriod = { year: number; month: number; canonical: string };
 
-/** Parse period.month in YYYY-MM or MM/YYYY. */
+/** Parse period.month in YYYY-MM, MM/YYYY, M.YYYY, YYYY/MM. */
 export function parseCanonicalPeriod(month?: string): ParsedPeriod | null {
   if (!month || typeof month !== "string") return null;
   const trimmed = month.trim();
 
-  const ymd = trimmed.match(/^(\d{4})-(\d{1,2})$/);
+  const ymd = trimmed.match(/^(\d{4})[-/.](\d{1,2})$/);
   if (ymd) {
     const year = Number(ymd[1]);
     const m = Number(ymd[2]);
@@ -143,7 +143,7 @@ export function parseCanonicalPeriod(month?: string): ParsedPeriod | null {
     return { year, month: m, canonical: `${year}-${String(m).padStart(2, "0")}` };
   }
 
-  const mY = trimmed.match(/^(\d{1,2})\/(\d{4})$/);
+  const mY = trimmed.match(/^(\d{1,2})[-/.](\d{4})$/);
   if (mY) {
     const m = Number(mY[1]);
     const year = Number(mY[2]);
