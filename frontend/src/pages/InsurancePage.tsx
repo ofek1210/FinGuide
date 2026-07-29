@@ -4,9 +4,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  Shield, AlertCircle, Trash2, Loader2,
+  Shield, AlertCircle, Trash2, Loader2, CheckCircle,
   FileText, Lock, ShieldCheck, AlertTriangle, BarChart3,
-  RefreshCw,
+  RefreshCw, Sparkles, Lightbulb,
   type LucideIcon,
 } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
@@ -475,7 +475,9 @@ function ResultsStep({
     st.id = "res-anim";
     st.textContent =
       "@keyframes resShine{to{background-position:220% center}}" +
-      "@keyframes resFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}";
+      "@keyframes resFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}" +
+      "@keyframes resRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}" +
+      "@media (prefers-reduced-motion:reduce){.res-rise{animation:none!important}}";
     document.head.appendChild(st);
   }, []);
 
@@ -564,72 +566,104 @@ function ResultsStep({
     return { bg: "var(--lav-100)", fg: "var(--lav-600)", border: "var(--lav-200)" };
   };
 
+  const liftCard = {
+    onMouseEnter: (e: React.MouseEvent<HTMLDivElement>) => {
+      e.currentTarget.style.transform = "translateY(-3px)";
+      e.currentTarget.style.borderColor = "rgba(218,111,68,.35)";
+    },
+    onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => {
+      e.currentTarget.style.transform = "none";
+      e.currentTarget.style.borderColor = "var(--border-hair)";
+    },
+  };
+
+  const quickCards: { k: string; label: string; tone: string; ok: boolean; Icon: LucideIcon }[] = quick
+    ? [
+      { k: "בריאות התיק", label: `${quick.portfolioHealth.score}/100 · ${quick.portfolioHealth.scoreLabelHe}`, tone: decision?.statusTone || "yellow", ok: decision?.status === "healthy", Icon: ShieldCheck },
+      { k: "כפילויות", label: quick.hasDuplicates.labelHe, tone: quick.hasDuplicates.tone, ok: !quick.hasDuplicates.value, Icon: AlertTriangle },
+      { k: "כיסוי חסר", label: quick.missingImportant.labelHe, tone: quick.missingImportant.tone, ok: !quick.missingImportant.value, Icon: FileText },
+      { k: "כיסוי מיותר?", label: quick.possiblyUnnecessary.labelHe, tone: quick.possiblyUnnecessary.tone, ok: !quick.possiblyUnnecessary.value, Icon: Lightbulb },
+      { k: "איכות חברה", label: quick.companyQuality.labelHe, tone: quick.companyQuality.tone, ok: quick.companyQuality.value, Icon: BarChart3 },
+    ]
+    : [];
+
   return wrap(
     <>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: "clamp(24px,3vw,34px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>
-            בדיקת בריאות תיק הביטוח
-          </h1>
-          <p style={{ margin: "6px 0 0", fontSize: 15, color: "var(--text-muted)" }}>
-            {(overview?.activeCount ?? policies.length)} פוליסות
-            {overview?.companies?.length ? ` · ${overview.companies.length} חברות` : ""}
-            {totalPremium > 0 ? ` · ${fmt(totalPremium)} / חודש` : ""}
-          </p>
+      <div className="res-rise" style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22, animation: "resRise .55s var(--ease) both" }}>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+          <span style={{ width: 46, height: 46, borderRadius: 13, flex: "none", background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center" }}><Shield size={22} /></span>
+          <div>
+            <h1 style={{ margin: 0, fontSize: "clamp(24px,3vw,34px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>
+              בדיקת בריאות תיק הביטוח
+            </h1>
+            <p style={{ margin: "6px 0 0", fontSize: 15, color: "var(--text-muted)", fontWeight: 500 }}>
+              {(overview?.activeCount ?? policies.length)} פוליסות
+              {overview?.companies?.length ? ` · ${overview.companies.length} חברות` : ""}
+              {totalPremium > 0 ? ` · ${fmt(totalPremium)} / חודש` : ""}
+            </p>
+          </div>
         </div>
-        <button onClick={onReimport} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: "var(--r-pill)", border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13.5, boxShadow: "var(--shadow-soft)" }}>
+        <button onClick={onReimport} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: "var(--r-pill)", border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13.5, boxShadow: "var(--shadow-soft)", transition: "transform .25s var(--ease)" }}
+          onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; }}
+          onMouseLeave={e => { e.currentTarget.style.transform = "none"; }}
+        >
           <RefreshCw size={15} /> ייבוא מחדש
         </button>
       </div>
 
-      <div style={{ borderRadius: "var(--radius)", padding: "28px 26px", marginBottom: 28, background: "linear-gradient(120deg,var(--peach-soft),var(--lav-100) 55%,var(--mint-soft))", border: "1px solid var(--border-soft)", boxShadow: "var(--shadow-card)" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
-          <div style={{ minWidth: 240 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: statusColors.bg, color: statusColors.fg, border: `1px solid ${statusColors.border}`, borderRadius: 999, padding: "6px 14px", fontSize: 13, fontWeight: 800, marginBottom: 12 }}>
+      <div style={{ position: "relative", overflow: "hidden", borderRadius: "var(--radius)", padding: "32px 30px", marginBottom: 34, background: "linear-gradient(120deg,var(--peach-soft),var(--lav-100) 55%,var(--mint-soft))", border: "1px solid var(--border-soft)", boxShadow: "var(--shadow-card)", animation: "resRise .6s var(--ease) .05s both" }}>
+        <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,.5) 1px,transparent 1px)", backgroundSize: "20px 20px", opacity: 0.5, pointerEvents: "none" }} />
+        <span style={{ position: "absolute", insetInlineStart: 24, top: 22, color: "var(--peach-ink)", animation: "resFloat 4s ease-in-out infinite" }}><Sparkles size={20} /></span>
+        <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 26, flexWrap: "wrap" }}>
+          <div style={{ minWidth: 260 }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.72)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "6px 14px", marginBottom: 14, fontSize: 12.5, fontWeight: 800, color: "var(--peach-ink)" }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--mint-ink)", boxShadow: "0 0 0 4px rgba(47,156,98,.18)" }} />הניתוח הושלם
+            </div>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: statusColors.bg, color: statusColors.fg, border: `1px solid ${statusColors.border}`, borderRadius: 999, padding: "5px 12px", fontSize: 12.5, fontWeight: 800, marginBottom: 12 }}>
               {decision?.statusLabelHe || healthCheck?.level?.label || "בדיקה"}
             </span>
-            <div style={{ fontSize: 14, color: "var(--ink-soft)", fontWeight: 600, marginBottom: 4 }}>ציון בריאות התיק</div>
-            <div style={{ fontSize: "clamp(42px,6vw,60px)", fontWeight: 900, letterSpacing: "-.04em", lineHeight: 0.95, color: "var(--ink)" }}>
-              {score != null ? `${score}` : "—"}
-              {score != null ? <span style={{ fontSize: 22, color: "var(--text-muted)", fontWeight: 700 }}>/100</span> : null}
+            <div style={{ fontSize: 14.5, color: "var(--ink-soft)", fontWeight: 600, marginBottom: 6 }}>ציון בריאות התיק</div>
+            <div style={{ fontSize: "clamp(42px,6vw,64px)", fontWeight: 900, letterSpacing: "-.045em", lineHeight: 0.95, backgroundImage: "linear-gradient(96deg,var(--peach-ink),var(--lav-600) 55%,var(--mint-ink))", backgroundSize: "220% auto", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", animation: "resShine 4.5s linear infinite" }}>
+              {score != null ? score : "—"}
+              {score != null ? <span style={{ fontSize: 22, fontWeight: 800, opacity: 0.7 }}>/100</span> : null}
             </div>
-            <div style={{ marginTop: 8, fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}>
+            <div style={{ marginTop: 10, fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}>
               {decision?.healthLabelHe || ""}
             </div>
-            <p style={{ margin: "8px 0 0", fontSize: 14, color: "var(--text-muted)", maxWidth: 420, lineHeight: 1.55 }}>
+            <p style={{ margin: "8px 0 0", fontSize: 14.5, color: "var(--text-muted)", fontWeight: 500, maxWidth: 420, lineHeight: 1.55 }}>
               {decision?.statusSummaryHe || healthCheck?.messageHe || "סקירה דטרמיניסטית לפי פוליסות, פרופיל ומדד שירות."}
             </p>
             {(decision?.healthExplanation || []).slice(0, 3).map((line) => (
-              <div key={line} style={{ marginTop: 6, fontSize: 13, color: "var(--text-body)", fontWeight: 600 }}>• {line}</div>
+              <div key={line} style={{ marginTop: 7, display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13.5, color: "var(--text-body)", fontWeight: 600 }}>
+                <CheckCircle size={15} color="var(--mint-ink)" style={{ flex: "none", marginTop: 2 }} />
+                <span>{line}</span>
+              </div>
             ))}
           </div>
           {score != null && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "rgba(255,255,255,.7)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "18px 22px" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "rgba(255,255,255,.62)", backdropFilter: "blur(8px)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "20px 26px" }}>
               <div style={{ position: "relative", width: 96, height: 96 }}>
                 <svg width="96" height="96" viewBox="0 0 96 96" style={{ transform: "rotate(-90deg)" }}>
                   <circle cx="48" cy="48" r="42" fill="none" stroke="var(--hair)" strokeWidth="8" />
-                  <circle cx="48" cy="48" r="42" fill="none" stroke="var(--peach-ink)" strokeWidth="8" strokeLinecap="round" strokeDasharray={RC} strokeDashoffset={RC * (1 - Math.min(score, 100) / 100)} />
+                  <circle cx="48" cy="48" r="42" fill="none" stroke="var(--peach-ink)" strokeWidth="8" strokeLinecap="round" strokeDasharray={RC} strokeDashoffset={RC * (1 - Math.min(score, 100) / 100)} style={{ transition: "stroke-dashoffset 1s var(--ease)" }} />
                 </svg>
-                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontSize: 26, fontWeight: 900 }}>{score}</div>
+                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontSize: 28, fontWeight: 900, letterSpacing: "-.04em", color: "var(--ink)" }}>{score}</div>
               </div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--peach-ink)" }}>ציון כיסוי</div>
             </div>
           )}
         </div>
       </div>
 
-      {quick && (
+      {quickCards.length > 0 && (
         <Section title="תשובות מהירות" sub="מה חשוב לדעת עכשיו">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
-            {([
-              { k: "בריאות התיק", label: `${quick.portfolioHealth.score}/100 · ${quick.portfolioHealth.scoreLabelHe}`, tone: decision?.statusTone || "yellow", ok: decision?.status === "healthy" },
-              { k: "כפילויות", label: quick.hasDuplicates.labelHe, tone: quick.hasDuplicates.tone, ok: !quick.hasDuplicates.value },
-              { k: "כיסוי חסר", label: quick.missingImportant.labelHe, tone: quick.missingImportant.tone, ok: !quick.missingImportant.value },
-              { k: "כיסוי מיותר?", label: quick.possiblyUnnecessary.labelHe, tone: quick.possiblyUnnecessary.tone, ok: !quick.possiblyUnnecessary.value },
-              { k: "איכות חברה", label: quick.companyQuality.labelHe, tone: quick.companyQuality.tone, ok: quick.companyQuality.value },
-            ]).map((card) => {
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>
+            {quickCards.map((card, i) => {
               const tone = toneBadge(card.tone);
+              const Icon = card.Icon;
               return (
-                <div key={card.k} style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", padding: "14px 16px", boxShadow: "var(--shadow-soft)" }}>
+                <div key={card.k} {...liftCard} style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", padding: "18px 16px", boxShadow: "var(--shadow-soft)", transition: "border-color .25s var(--ease), transform .25s var(--ease)", animation: `resRise .5s var(--ease) ${0.08 + i * 0.04}s both` }}>
+                  <span style={{ width: 36, height: 36, borderRadius: 10, background: tone.bg, color: tone.fg, display: "grid", placeItems: "center", marginBottom: 12 }}><Icon size={18} strokeWidth={1.85} /></span>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{ fontSize: 12.5, fontWeight: 800, color: "var(--text-muted)" }}>{card.k}</span>
                     <span style={{ fontSize: 11, fontWeight: 800, color: tone.fg, background: tone.bg, borderRadius: 999, padding: "3px 9px" }}>
@@ -646,17 +680,20 @@ function ResultsStep({
 
       {actions.length > 0 && (
         <Section title="תוכנית פעולה" sub="עד 5 פעולות מעשיות — ללא השוואת מחירים">
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {actions.map((a) => {
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {actions.map((a, i) => {
               const pt = priorityTone(a.priority);
               return (
-                <div key={a.id} style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", padding: "16px 18px", boxShadow: "var(--shadow-soft)", borderInlineStart: `3px solid ${pt.fg}` }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
-                    <span style={{ fontWeight: 900, fontSize: 15, color: "var(--text-strong)" }}>{a.titleHe}</span>
+                <div key={a.id} {...liftCard} style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", padding: "18px 20px", boxShadow: "var(--shadow-soft)", borderInlineStart: `3px solid ${pt.fg}`, transition: "border-color .25s var(--ease), transform .25s var(--ease)", animation: `resRise .5s var(--ease) ${0.1 + i * 0.04}s both` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap", marginBottom: 8 }}>
+                    <span style={{ width: 30, height: 30, borderRadius: 8, flex: "none", background: pt.bg, color: pt.fg, display: "grid", placeItems: "center" }}><Lightbulb size={16} /></span>
+                    <span style={{ fontWeight: 900, fontSize: 15.5, color: "var(--text-strong)" }}>{a.titleHe}</span>
                     <span style={{ fontSize: 11, fontWeight: 800, color: pt.fg, background: pt.bg, borderRadius: 999, padding: "3px 9px" }}>עדיפות {a.priorityLabelHe}</span>
                   </div>
-                  <div style={{ fontSize: 13.5, color: "var(--text-body)", lineHeight: 1.55, marginBottom: 6 }}>{a.reasonHe}</div>
-                  <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--mint-ink)" }}>תועלת: {a.expectedBenefitHe}</div>
+                  <div style={{ fontSize: 14, color: "var(--text-body)", lineHeight: 1.6, marginBottom: 8, paddingInlineStart: 39 }}>{a.reasonHe}</div>
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginInlineStart: 39, fontSize: 12.5, fontWeight: 800, color: "var(--mint-ink)", background: "var(--mint-soft)", border: "1px solid var(--mint)", borderRadius: 999, padding: "5px 12px" }}>
+                    תועלת: {a.expectedBenefitHe}
+                  </div>
                 </div>
               );
             })}
@@ -666,7 +703,7 @@ function ResultsStep({
 
       {profileInsights.length > 0 && (
         <Section title="התאמה לפרופיל" sub="מה נחוץ ומה לא — לפי האונבורדינג">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
             {profileInsights.slice(0, 8).map((p) => {
               const tone = p.status === "not_recommended" || p.status === "possibly_unnecessary"
                 ? statusToneMap.yellow
@@ -674,9 +711,9 @@ function ResultsStep({
                   ? statusToneMap.red
                   : statusToneMap.green;
               return (
-                <div key={`${p.type}-${p.status}-${p.titleHe}`} style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", padding: "14px 16px" }}>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: tone.fg, background: tone.bg, borderRadius: 999, padding: "3px 9px" }}>{p.titleHe}</span>
-                  <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "var(--text-body)", lineHeight: 1.5 }}>{p.messageHe}</p>
+                <div key={`${p.type}-${p.status}-${p.titleHe}`} {...liftCard} style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", padding: "16px 18px", boxShadow: "var(--shadow-soft)", transition: "border-color .25s var(--ease), transform .25s var(--ease)" }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: tone.fg, background: tone.bg, borderRadius: 999, padding: "4px 10px" }}>{p.titleHe}</span>
+                  <p style={{ margin: "12px 0 0", fontSize: 13.5, color: "var(--text-body)", lineHeight: 1.55 }}>{p.messageHe}</p>
                 </div>
               );
             })}
@@ -686,11 +723,15 @@ function ResultsStep({
 
       {duplicates.length > 0 && (
         <Section title="כפילויות וחפיפות" sub="כיסויים שכדאי לאמת">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
             {duplicates.map((dup: InsuranceDuplicate, i: number) => (
-              <div key={i} style={{ padding: "14px 16px", background: "var(--card)", border: "1px solid var(--butter)", borderRadius: "var(--r-md)" }}>
-                <div style={{ fontWeight: 800, color: "var(--butter-ink)" }}>{dup.typeLabelHe ?? POLICY_TYPE_LABELS[dup.type] ?? dup.type}</div>
-                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>{dup.reasonHe ?? `${dup.policyCount ?? dup.policies.length} פוליסות`}</div>
+              <div key={i} {...liftCard} style={{ position: "relative", overflow: "hidden", padding: "16px 18px", background: "var(--card)", border: "1px solid var(--butter)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)", transition: "border-color .25s var(--ease), transform .25s var(--ease)" }}>
+                <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 3, background: "var(--butter-ink)" }} />
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontWeight: 800, color: "var(--butter-ink)" }}>{dup.typeLabelHe ?? POLICY_TYPE_LABELS[dup.type] ?? dup.type}</span>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "var(--butter-ink)", background: "var(--butter-soft)", borderRadius: 999, padding: "2px 9px" }}>{dup.policyCount ?? dup.policies.length} פוליסות</span>
+                </div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{dup.reasonHe ?? "לבדיקה מול המבטח"}</div>
               </div>
             ))}
           </div>
@@ -699,28 +740,33 @@ function ResultsStep({
 
       {insurers.length > 0 && (
         <Section title="איכות חברות הביטוח" sub="מדד שירות · תשלום תביעות · שביעות לקוחות">
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {insurers.map((row) => (
-              <div key={row.policyId} style={{ display: "grid", gridTemplateColumns: "1.4fr repeat(3, minmax(70px,1fr)) auto", gap: 10, alignItems: "center", padding: "12px 14px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)" }}>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 14 }}>{row.type}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{row.provider ?? "—"}</div>
+              <div key={row.policyId} {...liftCard} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 14, flexWrap: "wrap", padding: "14px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)", transition: "border-color .25s var(--ease), transform .25s var(--ease)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 160 }}>
+                  <span style={{ width: 36, height: 36, borderRadius: 10, background: "var(--lav-50)", color: "var(--peach-ink)", display: "grid", placeItems: "center" }}><BarChart3 size={17} /></span>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 14 }}>{row.type}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{row.provider ?? "—"}</div>
+                  </div>
                 </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontWeight: 700 }}>מדד שירות</div>
-                  <div style={{ fontWeight: 900 }}>{row.serviceScore ?? "—"}</div>
+                <div style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontWeight: 700 }}>מדד שירות</div>
+                    <div style={{ fontWeight: 900, fontSize: 15 }}>{row.serviceScore ?? "—"}</div>
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontWeight: 700 }}>תביעות</div>
+                    <div style={{ fontWeight: 900, fontSize: 15 }}>{row.claimPaymentRate != null ? `${row.claimPaymentRate}%` : "—"}</div>
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontWeight: 700 }}>שביעות</div>
+                    <div style={{ fontWeight: 900, fontSize: 15 }}>{row.satisfactionScore ?? "—"}</div>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)", background: "var(--surface-sunken)", borderRadius: 999, padding: "4px 10px" }}>
+                    תלונות: {row.complaintIndicatorsLabelHe || "לא זמין"}
+                  </span>
                 </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontWeight: 700 }}>תביעות</div>
-                  <div style={{ fontWeight: 900 }}>{row.claimPaymentRate != null ? `${row.claimPaymentRate}%` : "—"}</div>
-                </div>
-                <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontWeight: 700 }}>שביעות</div>
-                  <div style={{ fontWeight: 900 }}>{row.satisfactionScore ?? "—"}</div>
-                </div>
-                <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)", background: "var(--surface-sunken)", borderRadius: 999, padding: "4px 8px" }}>
-                  תלונות: {row.complaintIndicatorsLabelHe || "לא זמין"}
-                </span>
               </div>
             ))}
           </div>
@@ -729,12 +775,12 @@ function ResultsStep({
 
       {completeness.length > 0 && (
         <Section title="שלמות מידע בכיסויים" sub="רמת ביטחון לפי הנתונים שזוהו בדוח">
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {completeness.map((c) => (
-              <div key={c.policyId} style={{ padding: "12px 14px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                  <div style={{ fontWeight: 800 }}>{c.coverageTypeLabelHe}{c.provider ? ` · ${c.provider}` : ""}</div>
-                  <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--text-muted)" }}>
+              <div key={c.policyId} {...liftCard} style={{ padding: "14px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)", transition: "border-color .25s var(--ease), transform .25s var(--ease)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ fontWeight: 800, fontSize: 14.5 }}>{c.coverageTypeLabelHe}{c.provider ? ` · ${c.provider}` : ""}</div>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--peach-ink)", background: "var(--peach-soft)", borderRadius: 999, padding: "4px 10px" }}>
                     ביטחון: {"coverageConfidenceLabelHe" in c && c.coverageConfidenceLabelHe
                       ? c.coverageConfidenceLabelHe
                       : (c.manualReviewRecommended ? "נמוכה" : "בינונית")}
@@ -742,15 +788,15 @@ function ResultsStep({
                   </span>
                 </div>
                 {"checks" in c && Array.isArray(c.checks) ? (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
                     {c.checks.slice(0, 6).map((ch) => (
-                      <span key={ch.id} style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: 999, background: ch.status === "ok" ? "var(--mint-soft)" : "var(--butter-soft)", color: ch.status === "ok" ? "var(--mint-ink)" : "var(--butter-ink)" }}>
+                      <span key={ch.id} style={{ fontSize: 11.5, fontWeight: 700, padding: "4px 9px", borderRadius: 999, background: ch.status === "ok" ? "var(--mint-soft)" : "var(--butter-soft)", color: ch.status === "ok" ? "var(--mint-ink)" : "var(--butter-ink)" }}>
                         {ch.status === "ok" ? "✓" : "⚠"} {ch.labelHe}
                       </span>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 8 }}>
                     {(c.missingInformation || []).length ? `חסר: ${c.missingInformation.join(", ")}` : "מידע בסיסי זוהה"}
                   </div>
                 )}
@@ -761,27 +807,30 @@ function ResultsStep({
       )}
 
       {policies.length > 0 && (
-        <Section title="הפוליסות שלך" sub={`${policies.length} פוליסות`}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <Section title="הפוליסות שלך" sub={`${policies.length} פוליסות · ${fmt(totalPremium)} / חודש`}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {policies.map((p) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)" }}>
+              <div key={p.id} {...liftCard} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)", transition: "border-color .25s var(--ease), transform .25s var(--ease)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                  <span style={{ width: 36, height: 36, borderRadius: 10, flex: "none", background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center" }}><Shield size={16} /></span>
+                  <span style={{ width: 38, height: 38, borderRadius: 11, flex: "none", background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center" }}><Shield size={17} /></span>
                   <div>
-                    <div style={{ fontWeight: 800, fontSize: 14 }}>{POLICY_TYPE_LABELS[p.type] ?? p.type}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{p.provider ?? "—"} · {p.status}</div>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-strong)" }}>{POLICY_TYPE_LABELS[p.type] ?? p.type}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{p.provider ?? "—"}{p.policyNumber ? ` · ${p.policyNumber}` : ""} · {p.status}</div>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{fmt(p.monthlyPremium ?? 0)}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ textAlign: "left" }}>
+                    <div style={{ fontWeight: 900, fontSize: 15.5, fontVariantNumeric: "tabular-nums" }}>{fmt(p.monthlyPremium ?? 0)}</div>
+                    <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>לחודש</div>
+                  </div>
                   <button
                     type="button"
                     disabled={deletingId === p.id}
                     onClick={() => onDelete(p.id)}
-                    style={{ border: "none", background: "transparent", color: "var(--text-faint)", cursor: "pointer", padding: 4 }}
+                    style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--text-faint)", cursor: "pointer", display: "grid", placeItems: "center" }}
                     aria-label="מחק פוליסה"
                   >
-                    {deletingId === p.id ? <Loader2 size={16} style={{ animation: "spin .8s linear infinite" }} /> : <Trash2 size={16} />}
+                    {deletingId === p.id ? <Loader2 size={14} style={{ animation: "spin .8s linear infinite" }} /> : <Trash2 size={14} />}
                   </button>
                 </div>
               </div>
@@ -801,7 +850,7 @@ const inkBtn: React.CSSProperties = { display: "inline-flex", alignItems: "cente
 
 function Section({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
   return (
-    <section style={{ marginBottom: 34 }}>
+    <section style={{ marginBottom: 38 }}>
       <h2 style={{ margin: "0 0 4px", fontSize: "clamp(20px,2.4vw,26px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>{title}</h2>
       {sub && <p style={{ margin: "0 0 18px", fontSize: 14, color: "var(--text-muted)", fontWeight: 500 }}>{sub}</p>}
       {children}
