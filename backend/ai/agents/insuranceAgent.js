@@ -20,7 +20,8 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
   const startedAt = Date.now();
 
   const analysis = await buildInsuranceAnalysis(userId);
-  const { profile, personal, assets, policies, analysis: coverage, healthCheck, recommendations, marketAdvice } = analysis;
+  const { profile, personal, assets, policies, analysis: coverage, healthCheck, recommendations, marketAdvice, decision } = analysis;
+
 
   const hasData = analysis.hasImportedPolicies || analysis.summary?.hasData;
   if (!hasData && !profile) {
@@ -52,7 +53,7 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
         marketAdvice,
       });
       const result = await askClaude(
-        'ספק ניתוח ביטוח: מטריצת עלות/שירות/מדד תביעות, כפילויות, ופסק דין STAY/REVIEW/SWITCH — 4-5 משפטים בעברית.',
+        'ספק בדיקת בריאות לתיק הביטוח: כפילויות, פערי כיסוי לפי פרופיל, ומדד שירות — ללא השוואת פרמיות. 4-5 משפטים בעברית.',
         systemPrompt,
         [],
       );
@@ -76,16 +77,32 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
       savings: coverage?.savings,
       hasCriticalGap: coverage?.hasCriticalGap ?? false,
       healthCheck: healthCheck ? { score: healthCheck.score, level: healthCheck.level } : null,
+      decision: decision
+        ? {
+          status: decision.status,
+          statusLabelHe: decision.statusLabelHe,
+          healthScore: decision.healthScore,
+          healthLabelHe: decision.healthLabelHe,
+          healthExplanation: decision.healthExplanation,
+          executiveActions: decision.executiveActions,
+          quickAnswers: decision.quickAnswers,
+        }
+        : null,
       marketAdvice: marketAdvice?.hasData
         ? {
           overallVerdict: marketAdvice.overallVerdict,
           overallVerdictLabelHe: marketAdvice.overallVerdictLabelHe,
           comparisonMatrix: marketAdvice.comparisonMatrix,
+          coverageSummaries: marketAdvice.coverageSummaries,
+          portfolioOverview: marketAdvice.portfolioOverview,
+          companyQuality: marketAdvice.companyQuality,
           duplicateCount: marketAdvice.duplicateCount,
           dataSource: marketAdvice.dataSource,
-          pricingSource: marketAdvice.pricingSource,
+          pricingSource: null,
         }
         : null,
+      needAssessments: coverage?.needAssessments ?? [],
+      gapFindings: coverage?.gapFindings ?? [],
       bituahAdvice: analysis.bituahAdvice?.hasData
         ? {
           overallVerdict: analysis.bituahAdvice.overallVerdict,

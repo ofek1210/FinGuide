@@ -77,9 +77,8 @@ describe('insuranceRecommender', () => {
 });
 
 describe('insurancePricingTables', () => {
-  it('scales prices by age', () => {
-    const young = getPriceRange('life', { age: 25, grossMonthly: 15000 });
-    const older = getPriceRange('life', { age: 55, grossMonthly: 15000 });
-    expect(older.average).toBeGreaterThan(young.average);
+  it('does not expose premium market ranges', () => {
+    expect(getPriceRange('life', { age: 25, grossMonthly: 15000 })).toBeNull();
+    expect(getPriceRange('life', { age: 55, grossMonthly: 15000 })).toBeNull();
   });
 });

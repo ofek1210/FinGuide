@@ -11,9 +11,12 @@ const {
   analyzeInsuranceCoverage,
   generateInsuranceRecommendations,
 } = require('../ai/tools/insuranceTools');
-const { runInsuranceHealthCheck } = require('./insuranceHealthCheckService');
 const { buildMarketAdvice } = require('./insuranceMarketAdvisorService');
 const { buildBituahMarketAdvice } = require('./bituahNetAdvisorService');
+const {
+  buildInsuranceDecision,
+  decisionToHealthCheck,
+} = require('./insurance/insuranceDecisionEngine');
 
 function buildInsuranceDataSources(pensionFunds, dbPolicies) {
   const coverages = [];
@@ -77,22 +80,31 @@ async function buildInsuranceAnalysis(userId) {
   const policiesForDisplay = analysis.aggregatedPolicies || profileDTO.policies;
 
   const marketAdvice = await buildMarketAdvice(policiesForDisplay, profileDTO, { analysis });
-  const recommendations = generateInsuranceRecommendations(analysis, marketAdvice);
-  const healthCheck = runInsuranceHealthCheck(profileDTO, { ...analysis, policies: policiesForDisplay });
-  const bituahAdvice = await buildBituahMarketAdvice(policiesForDisplay, profileDTO);
+  const decision = buildInsuranceDecision(
+    profileDTO,
+    analysis,
+    marketAdvice,
+    { policies: policiesForDisplay },
+  );
+  const healthCheck = decisionToHealthCheck(decision, analysis);
 
-  const bituahRecs = (bituahAdvice.funds || [])
-    .filter(f => f.verdict !== 'LEAVE')
-    .map(f => ({
-      type: 'bituah_track',
-      title: `מסלול השקעה — ${f.verdictLabelHe}`,
-      reason: f.summaryHe,
-      urgency: f.verdict === 'SWITCH' ? 'high' : 'medium',
-      financialImpact: f.annualSavingsEstimate
-        ? `~₪${f.annualSavingsEstimate.toLocaleString('he-IL')}/שנה`
-        : null,
-      confidenceScore: 0.76,
-    }));
+  // Prefer executive actions as advisor-style recommendations (max 5).
+  const actionRecs = decision.executiveActions.map(a => ({
+    type: a.id,
+    title: a.titleHe,
+    reason: a.reasonHe,
+    urgency: a.priority,
+    financialImpact: null,
+    confidenceScore: a.priority === 'high' ? 0.85 : a.priority === 'medium' ? 0.7 : 0.55,
+    nextActionHe: a.expectedBenefitHe,
+    evidence: a.evidence,
+    expectedBenefitHe: a.expectedBenefitHe,
+  }));
+
+  const fallbackRecs = generateInsuranceRecommendations(analysis, marketAdvice);
+  const recommendations = actionRecs.length ? actionRecs : fallbackRecs.slice(0, 5);
+
+  const bituahAdvice = await buildBituahMarketAdvice(policiesForDisplay, profileDTO);
 
   return {
     summary: {
@@ -101,15 +113,25 @@ async function buildInsuranceAnalysis(userId) {
       rawRowCount: profileDTO.policies.length,
       totalMonthlyPremium: policiesForDisplay.reduce((s, p) => s + (p.monthlyPremium || 0), 0),
       aggregation: analysis.aggregationSummary,
+      decisionStatus: decision.status,
+      healthScore: decision.healthScore,
     },
     profile: profileDTO.profile,
     personal: profileDTO.personal,
     assets: profileDTO.assets,
     policies: policiesForDisplay,
     analysis,
+    decision,
     healthCheck,
-    recommendations: [...bituahRecs, ...recommendations],
-    marketAdvice,
+    recommendations,
+    marketAdvice: {
+      ...marketAdvice,
+      coverageSummaries: decision.coverageCompleteness,
+      companyQuality: {
+        ...marketAdvice.companyQuality,
+        insurers: decision.companyQuality.insurers,
+      },
+    },
     bituahAdvice,
     hasImportedPolicies: dbPolicies.length > 0,
     dataSources: buildInsuranceDataSources(pensionFunds, dbPolicies),

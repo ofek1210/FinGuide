@@ -4,11 +4,6 @@ const InsurancePolicy = require('../models/InsurancePolicy');
 const UserProfile = require('../models/UserProfile');
 const { buildInsuranceAnalysis } = require('../services/insuranceImportService');
 const { buildQuestionBank, filterQuestions } = require('./insuranceOnboardingQuestions');
-const {
-  compareUserPolicies,
-  getSourceMetadata,
-  getPricingDisclaimer,
-} = require('./insurancePricingDatasetService');
 
 const AGENT_LABELS = {
   general: 'ביטוח כללי',
@@ -194,30 +189,7 @@ function buildOnboardingAnalysis(baseAnalysis, profile) {
   const a = baseAnalysis?.analysis || {};
   const premium = baseAnalysis?.summary?.totalMonthlyPremium ?? 0;
   const policies = baseAnalysis?.policies ?? [];
-  const profileDTO = {
-    personal: baseAnalysis?.personal,
-    financial: profile.financial,
-    employment: profile.employment,
-  };
-  const pricingComparisons = compareUserPolicies(policies, profileDTO);
-  const premiumAssessment = aggregatePremiumAssessment(
-    pricingComparisons,
-    premium,
-    profile.financial?.salaryRange,
-  );
-
-  const fairTotalAvg = pricingComparisons.reduce(
-    (s, c) => s + (c.fairRange?.average || 0),
-    0,
-  );
-  const fairTotalMin = pricingComparisons.reduce(
-    (s, c) => s + (c.fairRange?.min || 0),
-    0,
-  );
-  const fairTotalMax = pricingComparisons.reduce(
-    (s, c) => s + (c.fairRange?.max || 0),
-    0,
-  );
+  const marketAdvice = baseAnalysis?.marketAdvice || {};
 
   return {
     summary: {
@@ -225,19 +197,15 @@ function buildOnboardingAnalysis(baseAnalysis, profile) {
       missingPolicies: a.missingCoverage ?? [],
       duplicatePolicies: a.duplicates ?? [],
       outdatedFlags: (a.flags ?? []).filter(f => f.code?.includes('expired') || f.code?.includes('stale')),
+      needAssessments: a.needAssessments ?? [],
     },
     financial: {
       totalMonthlyPremium: premium,
-      premiumAssessment,
-      fairPriceRange: {
-        min: fairTotalMin,
-        average: fairTotalAvg,
-        max: fairTotalMax,
-        currency: 'ILS',
-      },
-      monthlyDeltaVsFairAvg: premium && fairTotalAvg ? Math.round(premium - fairTotalAvg) : null,
-      pricingComparisons,
-      potentialMonthlySavings: a.savings?.totalSavings ?? 0,
+      premiumAssessment: 'unknown',
+      fairPriceRange: null,
+      monthlyDeltaVsFairAvg: null,
+      pricingComparisons: [],
+      potentialMonthlySavings: 0,
       unnecessaryCoverages: (a.flags ?? []).filter(f => f.code === 'over_insured'),
     },
     risk: {
@@ -245,40 +213,16 @@ function buildOnboardingAnalysis(baseAnalysis, profile) {
       overinsured: (a.flags ?? []).filter(f => f.urgency === 'low'),
       hasCriticalGap: a.hasCriticalGap ?? false,
     },
+    portfolio: marketAdvice.portfolioOverview || null,
+    companyQuality: marketAdvice.companyQuality || null,
+    coverageSummaries: marketAdvice.coverageSummaries || [],
     recommendations: baseAnalysis?.recommendations ?? [],
     healthCheck: baseAnalysis?.healthCheck ?? null,
-    pricingSource: getSourceMetadata(),
-    disclaimer: getPricingDisclaimer().he,
-    disclaimerEn: getPricingDisclaimer().en,
+    pricingSource: null,
+    disclaimer: marketAdvice.disclaimer
+      || 'הניתוח מבוסס על פוליסות, פרופיל ומדד שירות — ללא השוואת פרמיות. אינו ייעוץ ביטוחי.',
+    disclaimerEn: marketAdvice.disclaimerEn || null,
   };
-}
-
-function aggregatePremiumAssessment(comparisons, totalPremium, salaryRange) {
-  if (!comparisons.length) return assessPremiumBySalaryRatio(totalPremium, salaryRange);
-  const rank = { unknown: 0, low: 1, normal: 2, high: 3, very_high: 4 };
-  const worst = comparisons.reduce(
-    (max, c) => (rank[c.assessment] > rank[max] ? c.assessment : max),
-    'unknown',
-  );
-  return worst === 'unknown' ? assessPremiumBySalaryRatio(totalPremium, salaryRange) : worst;
-}
-
-function assessPremiumBySalaryRatio(monthlyPremium, salaryRange) {
-  const mid = {
-    under_5k: 4000,
-    '5k_10k': 7500,
-    '10k_15k': 12500,
-    '15k_20k': 17500,
-    '20k_30k': 25000,
-    '30k_50k': 40000,
-    above_50k: 60000,
-  };
-  const salary = salaryRange ? mid[salaryRange] : null;
-  if (!salary || !monthlyPremium) return 'unknown';
-  const ratio = monthlyPremium / salary;
-  if (ratio < 0.05) return 'low';
-  if (ratio < 0.12) return 'normal';
-  return 'high';
 }
 
 /** Call after Har HaBituach import — resets onboarding if new report. */

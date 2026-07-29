@@ -1,7 +1,6 @@
 const UserProfile = require('../models/UserProfile');
 const Recommendation = require('../models/Recommendation');
 const Insight = require('../models/Insight');
-const { getPriceRange } = require('./insurancePricingTables');
 
 function getProfileContext(profile) {
   const p = profile?.personal || {};
@@ -12,28 +11,34 @@ function getProfileContext(profile) {
   return { personal: p, assets: a, insurance: i, employment: e, retirement: r };
 }
 
-function buildDraft(kind, importance, title, reasoning, priceRange, coverageEstimate) {
+function buildDraft(kind, importance, title, reasoning, coverageEstimate) {
   return {
     kind,
     importance,
     title,
     reasoning,
-    priceRange,
+    priceRange: null,
     coverageEstimate: coverageEstimate ?? null,
   };
 }
 
 async function evaluateRules(profile, { hasLowPensionInsight } = {}) {
   const { personal, assets, insurance, employment } = getProfileContext(profile);
-  const {age} = personal;
+  const { age } = personal;
   const children = personal.childrenCount || 0;
   const gross = employment.expectedMonthlyGross;
-  const ctx = { age, grossMonthly: gross, childrenCount: children };
   const drafts = [];
 
   const needsLife =
-    (children > 0 || assets.hasMortgage === true) && insurance.hasLifeInsurance === false;
-  if (needsLife) {
+    (children > 0 || assets.hasMortgage === true || personal.hasDependents === true
+      || ['married', 'partnered'].includes(personal.maritalStatus))
+    && insurance.hasLifeInsurance === false;
+  const explicitlyNoLife = personal.maritalStatus === 'single'
+    && children === 0
+    && personal.hasDependents !== true
+    && assets.hasMortgage !== true;
+
+  if (needsLife && !explicitlyNoLife) {
     drafts.push(
       buildDraft(
         'life',
@@ -41,9 +46,10 @@ async function evaluateRules(profile, { hasLowPensionInsight } = {}) {
         'ביטוח חיים',
         [
           children > 0 ? 'יש לך ילדים — ביטוח חיים מגן על המשפחה במקרה חרום.' : '',
+          personal.hasDependents ? 'יש תלויים כלכלית — כיסוי חיים מגן עליהם.' : '',
+          ['married', 'partnered'].includes(personal.maritalStatus) ? 'מצב משפחתי מצביע על שותף/ה שעלול/ה להיפגע כלכלית.' : '',
           assets.hasMortgage ? 'יש משכנתא — ביטוח חיים יכול לכסות את יתרת ההלוואה.' : '',
         ].filter(Boolean),
-        getPriceRange('life', ctx),
         gross ? gross * 120 : null,
       ),
     );
@@ -56,7 +62,6 @@ async function evaluateRules(profile, { hasLowPensionInsight } = {}) {
         'high',
         'ביטוח בריאות משלים',
         ['לא דווח על ביטוח בריאות פרטי.', 'בגילך מומלץ לשקול כיסוי משלים לטיפולים וניתוחים.'],
-        getPriceRange('health', ctx),
         null,
       ),
     );
@@ -74,7 +79,6 @@ async function evaluateRules(profile, { hasLowPensionInsight } = {}) {
         'high',
         'ביטוח אובדן כושר עבודה',
         ['זו העבודה העיקרית שלך.', 'אובדן כושר מגן על הכנסה במקרה של פגיעה או מחלה ממושכת.'],
-        getPriceRange('disability', ctx),
         gross ? gross * 0.75 : null,
       ),
     );
@@ -87,7 +91,6 @@ async function evaluateRules(profile, { hasLowPensionInsight } = {}) {
         'critical',
         'ביטוח דירה / תכולה',
         ['בבעלותך דירה ללא ביטוח מדווח.', 'ביטוח מבנה ותכולה מגן מפני נזקי אש, מים וגניבה.'],
-        getPriceRange('apartment', ctx),
         null,
       ),
     );
@@ -100,7 +103,6 @@ async function evaluateRules(profile, { hasLowPensionInsight } = {}) {
         'critical',
         'ביטוח רכב חובה + מקיף',
         ['בבעלותך רכב ללא ביטוח מדווח.', 'ביטוח חובה הוא חובה בחוק; מקיף מגן על נזק לרכב.'],
-        getPriceRange('car', ctx),
         null,
       ),
     );
@@ -113,7 +115,6 @@ async function evaluateRules(profile, { hasLowPensionInsight } = {}) {
         'medium',
         'הגדלת הפרשה לפנסיה',
         ['הפרשת הפנסיה בתלוש נמוכה מהמומלץ (6%).', 'שקול לדבר עם המעסיק על הגדלת ההפרשה.'],
-        { min: 0, average: gross ? Math.round(gross * 0.01) : 200, max: gross ? Math.round(gross * 0.03) : 800, currency: 'ILS' },
         null,
       ),
     );

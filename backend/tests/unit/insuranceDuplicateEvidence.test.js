@@ -109,6 +109,27 @@ describe('insurance duplicate evidence (regression report)', () => {
     const withoutNeed = analyzeCoverageGaps({ needsLifeInsurance: false }, [{ type: 'car' }]);
     expect(withoutNeed.missingTypes).not.toContain('life');
   });
+
+  it('does not auto-recommend life insurance for single with no dependents', () => {
+    const result = analyzeCoverageGaps({
+      personal: { maritalStatus: 'single', childrenCount: 0, hasDependents: false },
+      assets: { hasMortgage: false },
+      insurance: { hasLifeInsurance: false },
+    }, [{ type: 'health' }]);
+
+    expect(result.missingTypes).not.toContain('life');
+    expect(result.needAssessments.some(a => a.type === 'life' && a.status === 'not_recommended')).toBe(true);
+  });
+
+  it('recommends life insurance when married without coverage', () => {
+    const result = analyzeCoverageGaps({
+      personal: { maritalStatus: 'married', childrenCount: 0 },
+      insurance: { hasLifeInsurance: false },
+    }, [{ type: 'health' }]);
+
+    expect(result.missingTypes).toContain('life');
+    expect(result.gapFindings.some(g => g.type === 'life' && g.whyItMatters)).toBe(true);
+  });
 });
 
 describe('insuranceCoverageTaxonomy', () => {
@@ -126,15 +147,12 @@ describe('insuranceCoverageTaxonomy', () => {
   });
 });
 
-describe('insuranceMarketAdvisorService premium gating', () => {
-  const { hasComparablePremiumFactors } = require('../../services/insuranceMarketAdvisorService');
-
-  it('does not treat broad category average as strong conclusion without factors', () => {
-    const comparable = hasComparablePremiumFactors(
-      { type: 'car', monthlyPremium: 500, rawData: { subBranch: 'ביטוח חובה' } },
-      { personal: { age: 35 } },
-    );
-    expect(comparable).toBe(false);
+describe('insuranceMarketAdvisorService — no premium gating', () => {
+  it('exports decideVerdict without premium comparison helpers', () => {
+    const advisor = require('../../services/insuranceMarketAdvisorService');
+    expect(advisor.hasComparablePremiumFactors).toBeUndefined();
+    expect(advisor.decideVerdict({ serviceIndex: 55, serviceTier: 'poor', isDuplicate: false })).toBe('SWITCH');
+    expect(advisor.decideVerdict({ serviceIndex: 90, serviceTier: 'excellent', isDuplicate: false })).toBe('STAY');
   });
 });
 

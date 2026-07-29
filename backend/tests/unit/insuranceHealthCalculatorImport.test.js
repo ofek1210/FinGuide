@@ -57,14 +57,13 @@ describe('insuranceHealthCalculatorImport', () => {
     expect(senior.monthlyMax).toBeGreaterThan(153);
   });
 
-  it('getFairPriceRange uses health calculator data for female enhanced', () => {
+  it('getFairPriceRange is disabled (no premium market estimate)', () => {
     const range = getFairPriceRange('health', {
       age: 21,
       gender: 'female',
       coverageTier: 'enhanced',
     });
-    expect(range.average).toBe(22);
-    expect(range.min).toBeLessThanOrEqual(22);
+    expect(range).toBeNull();
   });
 
   it('ageBand maps ages correctly', () => {
