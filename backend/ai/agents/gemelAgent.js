@@ -18,7 +18,17 @@ async function runGemelAgent(userId, { skipLLM = false } = {}) {
 
   const analysis = await buildGemelAnalysis(userId, { skipLLM });
   const advisorReport = await buildGemelAdvisorReport(userId, { skipLLM }).catch(() => null);
-  const { summary, marketAdvice, payslipFindings, recommendations, llm, primaryRecommendations } = analysis;
+  // buildGemelAnalysis מחזיר שני מבנים שונים: מסלול "שלושת הכרטיסים" לא
+  // כולל payslipFindings/marketAdvice/recommendations — חובה ברירות מחדל,
+  // אחרת הדוח המנהלי קורס על .map ומציג "שגיאה בטעינה" לסוכן הגמל
+  const {
+    summary,
+    marketAdvice = null,
+    payslipFindings = [],
+    recommendations = [],
+    llm,
+    primaryRecommendations,
+  } = analysis;
 
   if (!summary.hasData && !advisorReport?.accounts?.length) {
     return {

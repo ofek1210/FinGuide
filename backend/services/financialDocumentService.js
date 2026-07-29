@@ -201,13 +201,24 @@ const processFinancialDocument = async ({
 }) => {
   const stats = await fs.promises.stat(filePath);
   const checksumSha256 = providedChecksum || (await computeFileChecksum(filePath));
-  await assertUploadNotDuplicate(userId, checksumSha256);
+
+  // המשתמש הצהיר במפורש שזה תלוש — מכבדים את הבחירה ולא מנסים ניתוב
+  // לביטוח/פנסיה. תלושים ישראליים מכילים שמות קרנות וסכומי הפקדות,
+  // ופרסר הר-הכסף עלול "לזהות" בהם דוח פנסיה ולבלוע את ההעלאה.
+  const declaredPayslip = metadata?.category === 'payslip';
+
+  // כשמדובר בתלוש, בדיקת הכפילות מסתכלת רק על המסמכים — לא על snapshots
+  // של ייבוא פנסיה/ביטוח. אחרת קובץ שנקלט בעבר בטעות כדוח פנסיה חוסם
+  // את ההעלאה לנצח, גם אחרי שהמשתמש מחק את כל התלושים שלו.
+  await assertUploadNotDuplicate(userId, checksumSha256, {
+    documentsOnly: declaredPayslip,
+  });
 
   const ext = path.extname(originalName || filePath).toLowerCase();
   const isXlsx = ext === '.xlsx' || ext === '.xls';
   const buffer = await fs.promises.readFile(filePath);
 
-  if (isXlsx && isHarHaBituachBuffer(buffer)) {
+  if (!declaredPayslip && isXlsx && isHarHaBituachBuffer(buffer)) {
     const { parseInsuranceExcel } = require('./insuranceExcelParser');
     const { importInsuranceExcel } = require('./insuranceImportService');
     const parsed = parseInsuranceExcel(buffer, originalName);
@@ -222,7 +233,7 @@ const processFinancialDocument = async ({
     }
   }
 
-  if (isXlsx || ext === '.pdf') {
+  if (!declaredPayslip && (isXlsx || ext === '.pdf')) {
     try {
       const { parseHarHaKesef } = require('./harHaKesefService');
       const parsed = await parseHarHaKesef(buffer, { ext, originalName });

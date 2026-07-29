@@ -17,9 +17,10 @@ import {
   downloadExecutiveReportPdf,
   generateExecutiveReport,
   getLatestExecutiveReport,
+  type ActionPlanItem,
   type AgentReportSection,
+  type BestDecision,
   type ExecutiveReport,
-  type PreservedRecommendation,
 } from "../api/executiveReport.api";
 import { APP_ROUTES } from "../types/navigation";
 
@@ -78,41 +79,122 @@ function statusBadge(section: AgentReportSection) {
   if (section.dataStatus === "missing") {
     return { label: "נתונים חסרים", color: "var(--text-muted)", bg: "var(--surface-sunken)" };
   }
-  if (section.recommendationStatus === "hasRecommendations") {
-    return { label: "יש המלצות", color: "var(--mint-ink)", bg: "var(--mint-soft)" };
+  const verdict = section.bestDecision?.verdict;
+  if (verdict === "keep") {
+    return { label: "להשאיר כפי שזה", color: "var(--mint-ink)", bg: "var(--mint-soft)" };
   }
-  return { label: "נבדק — ללא המלצות מהותיות", color: "var(--lav-600)", bg: "var(--lav-50)" };
+  if (verdict === "consider_replace") {
+    return { label: "לשקול שינוי", color: "var(--peach-ink)", bg: "rgba(218,111,68,.1)" };
+  }
+  if (verdict === "insufficient_confidence") {
+    return { label: "אין מספיק ביטחון", color: "var(--lav-600)", bg: "var(--lav-50)" };
+  }
+  if (verdict === "recommend" || section.recommendationStatus === "hasRecommendations") {
+    return { label: "החלטה מומלצת", color: "var(--mint-ink)", bg: "var(--mint-soft)" };
+  }
+  return { label: "נבדק — ללא פעולה מהותית", color: "var(--lav-600)", bg: "var(--lav-50)" };
 }
 
-function RecommendationView({ rec }: { rec: PreservedRecommendation }) {
+function fmtCmp(v: number | string | null | undefined) {
+  if (v == null || v === "") return "—";
+  return String(v);
+}
+
+function BestDecisionView({ decision }: { decision: BestDecision }) {
+  const isInsurance = decision.kind === "insurance" || decision.agentId === "insurance";
+  const product = decision.recommendedProduct;
+
   return (
     <article
       style={{
-        border: "1px solid var(--border-hair)",
+        border: "2px solid var(--ink)",
         borderRadius: "var(--r-md)",
-        padding: "16px 18px",
+        padding: "18px 20px",
         background: "var(--surface-sunken)",
+        marginBottom: 12,
       }}
     >
-      <h4 style={{ margin: "0 0 8px", fontSize: 16, fontWeight: 900, color: "var(--text-strong)" }}>{rec.title}</h4>
-      {rec.description ? (
-        <p style={{ margin: "0 0 8px", fontSize: 14, lineHeight: 1.6, color: "var(--text-muted)" }}>{rec.description}</p>
-      ) : null}
-      {rec.reason ? (
-        <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-muted)" }}>
-          <strong>למה זה חשוב:</strong> {rec.reason}
+      <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: ".06em", color: "var(--lav-600)", marginBottom: 6 }}>
+        ההחלטה
+      </div>
+      <h4 style={{ margin: "0 0 12px", fontSize: 18, fontWeight: 900, color: "var(--text-strong)" }}>
+        {isInsurance && decision.verdict === "keep"
+          ? "✓ להשאיר את הפוליסות הנוכחיות"
+          : isInsurance && decision.verdict === "consider_replace"
+            ? "⚠ לשקול בדיקה מחדש / החלפה"
+            : decision.verdictLabelHe}
+      </h4>
+
+      {product?.name ? (
+        <p style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}>
+          {decision.kind === "gemel" ? "חלופה מומלצת: " : "מוצר/מסלול מומלץ: "}
+          {product.name}
+          {product.provider ? ` · ${product.provider}` : ""}
         </p>
       ) : null}
-      {rec.expectedBenefit ? (
-        <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--mint-ink)", fontWeight: 700 }}>
-          צעד מומלץ: {rec.expectedBenefit}
+
+      {decision.whySelected ? (
+        <p style={{ margin: "0 0 8px", fontSize: 14, lineHeight: 1.65, color: "var(--text-muted)" }}>
+          <strong style={{ color: "var(--text-strong)" }}>למה נבחר: </strong>
+          {decision.whySelected}
         </p>
       ) : null}
-      {rec.source ? (
-        <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>מקור: {rec.source}</p>
+
+      {decision.expectedBenefit ? (
+        <p style={{ margin: "0 0 8px", fontSize: 14, color: "var(--mint-ink)", fontWeight: 700 }}>
+          תועלת צפויה: {decision.expectedBenefit}
+        </p>
+      ) : null}
+
+      {decision.comparison ? (
+        <div style={{ margin: "12px 0", display: "grid", gap: 8 }}>
+          <div style={{ fontWeight: 800, fontSize: 13 }}>השוואה</div>
+          {[
+            { label: decision.comparison.fees.labelHe || "דמי ניהול", ...decision.comparison.fees },
+            { label: decision.comparison.performance.labelHe || "תשואה", ...decision.comparison.performance },
+            { label: decision.comparison.risk.labelHe || "סיכון", ...decision.comparison.risk },
+          ].map(row => (
+            <div
+              key={row.label}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 8,
+                fontSize: 13,
+                padding: "8px 10px",
+                background: "var(--card)",
+                borderRadius: "var(--r-md)",
+              }}
+            >
+              <span style={{ fontWeight: 800 }}>{row.label}</span>
+              <span style={{ color: "var(--text-muted)" }}>נוכחי: {fmtCmp(row.current)}</span>
+              <span style={{ color: "var(--mint-ink)", fontWeight: 700 }}>חלופה: {fmtCmp(row.alternative)}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {decision.bullets && decision.bullets.length > 0 ? (
+        <ul style={{ margin: "10px 0 0", paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14, lineHeight: 1.65 }}>
+          {decision.bullets.map(b => (
+            <li key={b}>{b}</li>
+          ))}
+        </ul>
+      ) : null}
+
+      {decision.nextAction ? (
+        <p style={{ margin: "14px 0 0", fontSize: 14, fontWeight: 800, color: "var(--text-strong)" }}>
+          הצעד הבא: {decision.nextAction}
+        </p>
       ) : null}
     </article>
   );
+}
+
+function priorityBadge(priority: ActionPlanItem["priority"]) {
+  if (priority === "high") return { label: "גבוהה", bg: "rgba(218,111,68,.12)", color: "var(--peach-ink)" };
+  if (priority === "medium") return { label: "בינונית", bg: "var(--lav-50)", color: "var(--lav-600)" };
+  return { label: "נמוכה", bg: "var(--surface-sunken)", color: "var(--text-muted)" };
 }
 
 function AgentSectionView({ section, index }: { section: AgentReportSection; index: number }) {
@@ -138,7 +220,7 @@ function AgentSectionView({ section, index }: { section: AgentReportSection; ind
         {badge.label}
       </div>
 
-      {section.statusMessage ? (
+      {section.statusMessage && !section.bestDecision ? (
         <p style={{ margin: "0 0 16px", fontSize: 15, lineHeight: 1.7, color: "var(--text-strong)", fontWeight: 600 }}>
           {section.statusMessage}
         </p>
@@ -155,8 +237,7 @@ function AgentSectionView({ section, index }: { section: AgentReportSection; ind
 
       {section.dataSummary.length > 0 ? (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>סיכום נתונים</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 8 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 8 }}>
             {section.dataSummary.map(item => (
               <div key={`${item.label}-${item.value}`} style={{ padding: 12, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
                 <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{item.label}</div>
@@ -167,44 +248,16 @@ function AgentSectionView({ section, index }: { section: AgentReportSection; ind
         </div>
       ) : null}
 
-      {section.findings.length > 0 ? (
+      {section.bestDecision ? <BestDecisionView decision={section.bestDecision} /> : null}
+
+      {!section.bestDecision && section.findings.length > 0 ? (
         <div style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>ממצאי הסוכן</div>
           <ul style={{ margin: 0, paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14, lineHeight: 1.6 }}>
             {section.findings.map(f => (
               <li key={f.title}>
                 <strong style={{ color: "var(--text-strong)" }}>{f.title}</strong>
                 {f.explanation ? ` — ${f.explanation}` : ""}
               </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-
-      {section.recommendations.length > 0 ? (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 800, marginBottom: 10 }}>המלצות</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {section.recommendations.map(rec => (
-              <RecommendationView key={`${rec.recommendationId || rec.title}`} rec={rec} />
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {section.plainLanguageExplanation ? (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>הסבר בשפה פשוטה</div>
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: "var(--text-muted)" }}>{section.plainLanguageExplanation}</p>
-        </div>
-      ) : null}
-
-      {section.nextActions.length > 0 ? (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>צעדים מעשיים</div>
-          <ul style={{ margin: 0, paddingInlineStart: 18, color: "var(--text-muted)", fontSize: 14 }}>
-            {section.nextActions.map(action => (
-              <li key={action}>{action}</li>
             ))}
           </ul>
         </div>
@@ -289,6 +342,17 @@ export default function ExecutiveReportPage() {
 
   const feeProducts = agentReport?.combinedSummary.managementFees?.products ?? [];
   const hasCombined = (agentReport?.combinedSummary.notes.length ?? 0) > 0 || feeProducts.length > 0;
+  const actionPlan = agentReport?.actionPlan?.length
+    ? agentReport.actionPlan
+    : (agentReport?.whatToDo || []).map(item => ({
+        priority: (item.priority as ActionPlanItem["priority"]) || "medium",
+        priorityLabelHe: item.priority === "high" ? "גבוהה" : item.priority === "low" ? "נמוכה" : "בינונית",
+        action: item.action,
+        expectedBenefit: null,
+        estimatedAnnualSavings: item.estimatedAnnualSavings ?? null,
+        reason: item.reason || item.title,
+        agentId: item.agentId,
+      }));
 
   const tocItems = agentReport
     ? [
@@ -299,7 +363,7 @@ export default function ExecutiveReportPage() {
         })),
         ...(hasCombined ? [{ id: "report-combined", label: "סיכום משולב" }] : []),
         ...(sections?.conflicts?.length ? [{ id: "report-conflicts", label: "הערות והתלבטויות" }] : []),
-        ...(agentReport.whatToDo.length ? [{ id: "report-actions", label: "מה כדאי לעשות" }] : []),
+        ...(actionPlan.length ? [{ id: "report-actions", label: "תוכנית פעולה" }] : []),
         ...(agentReport.missingData.length ? [{ id: "report-missing", label: "מידע שחסר" }] : []),
       ]
     : [];
@@ -559,15 +623,50 @@ export default function ExecutiveReportPage() {
               </SectionCard>
             ) : null}
 
-            {agentReport.whatToDo.length > 0 ? (
-              <SectionCard id="report-actions" icon={<Target size={18} />} title="מה כדאי לעשות">
+            {actionPlan.length > 0 ? (
+              <SectionCard id="report-actions" icon={<Target size={18} />} title="תוכנית פעולה">
                 <ul style={{ margin: 0, paddingInlineStart: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 12 }}>
-                  {agentReport.whatToDo.map(item => (
-                    <li key={`${item.agentId}-${item.title}-${item.action}`} style={{ padding: "12px 14px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)" }}>
-                      <div style={{ fontWeight: 800, color: "var(--text-strong)" }}>{item.title}</div>
-                      <div style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>{item.action}</div>
-                    </li>
-                  ))}
+                  {actionPlan.map(item => {
+                    const badge = priorityBadge(item.priority);
+                    return (
+                      <li
+                        key={`${item.agentId}-${item.action}`}
+                        style={{ padding: "14px 16px", borderRadius: "var(--r-md)", background: "var(--surface-sunken)" }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              padding: "3px 10px",
+                              borderRadius: 999,
+                              fontSize: 11,
+                              fontWeight: 800,
+                              background: badge.bg,
+                              color: badge.color,
+                            }}
+                          >
+                            עדיפות {badge.label}
+                          </span>
+                          {item.estimatedAnnualSavings != null ? (
+                            <span style={{ fontSize: 12, fontWeight: 800, color: "var(--mint-ink)" }}>
+                              חיסכון שנתי מוערך: ₪{Math.round(item.estimatedAnnualSavings).toLocaleString("he-IL")}
+                            </span>
+                          ) : null}
+                        </div>
+                        <div style={{ fontWeight: 800, color: "var(--text-strong)", fontSize: 15 }}>{item.action}</div>
+                        {item.expectedBenefit && item.expectedBenefit !== item.action ? (
+                          <div style={{ fontSize: 13, color: "var(--mint-ink)", marginTop: 4, fontWeight: 700 }}>
+                            תועלת: {item.expectedBenefit}
+                          </div>
+                        ) : null}
+                        {item.reason ? (
+                          <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4, lineHeight: 1.5 }}>
+                            {item.reason}
+                          </div>
+                        ) : null}
+                      </li>
+                    );
+                  })}
                 </ul>
               </SectionCard>
             ) : null}

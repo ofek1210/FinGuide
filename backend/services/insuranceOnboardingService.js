@@ -106,16 +106,8 @@ async function getSession(userId) {
     };
   }
 
-  const ctx = {
-    hasApartment: report.hasApartment,
-    hasCar: report.hasCar,
-    hasLife: report.hasLife,
-    hasHealth: report.hasHealth,
-    hasDisability: report.hasDisability,
-  };
-
-  const bank = buildQuestionBank(ctx);
-  const questions = filterQuestions(bank, profile, onboarding, ctx);
+  const bank = buildQuestionBank({ hasCar: report.hasCar });
+  const questions = filterQuestions(bank, profile, onboarding);
   const answered = (onboarding.answers?._answeredIds || []).length + (onboarding.skippedIds || []).length;
   const completed = Boolean(onboarding.completedAt);
 
@@ -138,14 +130,7 @@ async function submitAnswer(userId, { questionId, value, skipped = false }) {
   const { profile, report } = await loadContext(userId);
   profile.insuranceOnboarding = profile.insuranceOnboarding || { answers: {}, skippedIds: [] };
 
-  const ctx = {
-    hasApartment: report.hasApartment,
-    hasCar: report.hasCar,
-    hasLife: report.hasLife,
-    hasHealth: report.hasHealth,
-    hasDisability: report.hasDisability,
-  };
-  const bank = buildQuestionBank(ctx);
+  const bank = buildQuestionBank({ hasCar: report.hasCar });
   const question = bank.find(q => q.id === questionId);
   if (!question) {
     const err = new Error('שאלה לא נמצאה');

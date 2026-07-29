@@ -5,8 +5,7 @@ import type { BackendAgentKey } from "./masterAgentMerge";
 
 /* ============================================================
    Display helpers for the Hub / master agent — pure lookups and
-   formatters shared by MasterBand, AgentSummaryCard, NextActions
-   and CommandBar.
+   formatters shared by MasterBand, AgentSummaryCard and NextActions.
    ============================================================ */
 
 export const nis = (n: number) => "₪" + Math.round(n).toLocaleString("en-US");
@@ -17,26 +16,6 @@ function asNumber(v: unknown): number | null {
 function asString(v: unknown): string | null {
   return typeof v === "string" && v.trim() ? v : null;
 }
-
-/** Chat router classifications (services/agents/orchestrator.js) → focused run key. */
-export const CLASSIFICATION_TO_FOCUS: Record<string, BackendAgentKey> = {
-  payslip_analysis: "payslip",
-  financial_analysis: "payslip",
-  insurance_benefits: "insurance",
-  pension_advisor: "pension",
-  gemel_advisor: "gemel",
-  financial_planning: "pension",
-};
-
-export const CLASSIFICATION_LABEL: Record<string, string> = {
-  payslip_analysis: "סוכן תלושים",
-  financial_analysis: "סוכן ניתוח פיננסי",
-  insurance_benefits: "סוכן ביטוחים",
-  pension_advisor: "סוכן פנסיה",
-  gemel_advisor: "סוכן קופות גמל",
-  financial_planning: "סוכן תכנון פיננסי",
-  general: "הסוכן הראשי",
-};
 
 export const FOCUS_LABEL: Record<BackendAgentKey, string> = {
   payslip: "תלושים",
@@ -58,13 +37,6 @@ export const PRIORITY_STYLE: Record<string, { bg: string; color: string; label: 
   medium: { bg: "var(--lav-100)", color: "var(--lav-700)", label: "חשוב" },
   low: { bg: "var(--mint-soft)", color: "var(--mint-ink)", label: "כדאי" },
 };
-
-export const QUICK_PROMPTS = [
-  "מה מצב התלושים שלי?",
-  "יש לי כפל ביטוחי?",
-  "כמה אצבור לפנסיה?",
-  "מה מצב קרן ההשתלמות שלי?",
-];
 
 /** Pull the headline stats an agent surfaces on its card. */
 export function agentStats(id: AgentId, result: AgentResult | undefined): Array<{ k: string; v: string }> {

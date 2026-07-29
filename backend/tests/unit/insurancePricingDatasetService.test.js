@@ -103,8 +103,16 @@ describe('insurancePricingDatasetService', () => {
 
   it('getPricingDisclaimer includes Hebrew and English text', () => {
     const d = getPricingDisclaimer();
-    expect(d.he).toMatch(/הערכות/);
+    expect(d.he).toMatch(/הערכה|הערכות/);
     expect(d.en).toMatch(/not official quotes/i);
     expect(d.source.sourceName).toBeTruthy();
+  });
+
+  // אין מאגר ציבורי של פרמיות ביטוח לצרכן, ולכן אסור שהמוצר יציג את
+  // הטווח המדגמי כ"ממוצע שוק" — הטסט נועל את הניסוח הכן
+  it('never presents the sampled range as a measured market average', () => {
+    const d = getPricingDisclaimer();
+    expect(d.he).toMatch(/לא ממוצע שוק/);
+    expect(d.source.dataCollectionMethod).toMatch(/לא.*ממוצע שוק/);
   });
 });

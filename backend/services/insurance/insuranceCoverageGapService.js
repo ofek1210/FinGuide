@@ -19,7 +19,9 @@ function analyzeCoverageGaps(profileDTO, aggregatedPolicies, options = {}) {
   const personal = profileDTO?.personal || {};
   const pensionFunds = options.pensionFunds || [];
 
-  if (personal.maritalStatus === 'married' && ins.hasLifeInsurance === false && !coveredTypes.has('life')) {
+  const declaredLifeNeed = profileDTO?.needsLifeInsurance === true;
+  const marriedWithoutLife = personal.maritalStatus === 'married' && ins.hasLifeInsurance === false;
+  if (!coveredTypes.has('life') && (declaredLifeNeed || marriedWithoutLife)) {
     missing.push('life');
   }
 

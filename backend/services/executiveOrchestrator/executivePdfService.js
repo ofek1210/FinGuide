@@ -49,20 +49,54 @@ async function generateExecutiveReportPdf(report) {
         bullet(doc, `${item.label}: ${item.value}`);
       }
     }
-    if (section.plainLanguageExplanation) {
-      bodyText(doc, section.plainLanguageExplanation);
-    }
-    for (const f of (section.findings || [])) {
-      bullet(doc, `${f.title}${f.explanation ? ` — ${f.explanation}` : ''}`);
-    }
-    for (const rec of (section.recommendations || [])) {
+
+    const decision = section.bestDecision;
+    if (decision) {
       doc.font('Hebrew-Bold').fontSize(11);
-      drawRtlText(doc, rec.title);
+      drawRtlText(doc, decision.verdictLabelHe || 'החלטה');
       doc.font('Hebrew').fontSize(10);
-      if (rec.description) drawRtlText(doc, rec.description, { lineGap: 2 });
-      if (rec.expectedBenefit) drawRtlText(doc, `צעד מומלץ: ${rec.expectedBenefit}`, { lineGap: 2 });
+
+      if (decision.recommendedProduct?.name) {
+        const provider = decision.recommendedProduct.provider
+          ? ` (${decision.recommendedProduct.provider})`
+          : '';
+        bullet(doc, `מוצר מומלץ: ${decision.recommendedProduct.name}${provider}`);
+      }
+      if (decision.whySelected) bullet(doc, `למה: ${decision.whySelected}`);
+      if (decision.expectedBenefit) bullet(doc, `תועלת: ${decision.expectedBenefit}`);
+      if (decision.nextAction) bullet(doc, `הצעד הבא: ${decision.nextAction}`);
+
+      if (decision.comparison) {
+        const { fees, performance, risk } = decision.comparison;
+        if (fees) {
+          bullet(doc, `דמי ניהול: נוכחי ${fmtVal(fees.current)} → חלופה ${fmtVal(fees.alternative)}`);
+        }
+        if (performance) {
+          bullet(doc, `תשואה: נוכחי ${fmtVal(performance.current)} → חלופה ${fmtVal(performance.alternative)}`);
+        }
+        if (risk) {
+          bullet(doc, `סיכון: נוכחי ${fmtVal(risk.current)} → חלופה ${fmtVal(risk.alternative)}`);
+        }
+      }
+
+      if (decision.bullets?.length) {
+        for (const b of decision.bullets) bullet(doc, b);
+      }
       doc.moveDown(0.4);
+    } else {
+      for (const f of (section.findings || [])) {
+        bullet(doc, `${f.title}${f.explanation ? ` — ${f.explanation}` : ''}`);
+      }
+      for (const rec of (section.recommendations || [])) {
+        doc.font('Hebrew-Bold').fontSize(11);
+        drawRtlText(doc, rec.title);
+        doc.font('Hebrew').fontSize(10);
+        if (rec.description) drawRtlText(doc, rec.description, { lineGap: 2 });
+        if (rec.expectedBenefit) drawRtlText(doc, `צעד מומלץ: ${rec.expectedBenefit}`, { lineGap: 2 });
+        doc.moveDown(0.4);
+      }
     }
+
     if (section.sourceData) {
       doc.fontSize(9).fillColor('#666');
       drawRtlText(doc, `מקור: ${section.sourceData}`);
@@ -78,8 +112,24 @@ async function generateExecutiveReportPdf(report) {
     }
   }
 
-  if (agentReport?.whatToDo?.length) {
-    sectionTitle(doc, 'מה כדאי לעשות');
+  const actionPlan = agentReport?.actionPlan?.length
+    ? agentReport.actionPlan
+    : null;
+  if (actionPlan?.length) {
+    sectionTitle(doc, 'תוכנית פעולה');
+    for (const item of actionPlan) {
+      const savings = item.estimatedAnnualSavings != null
+        ? ` · חיסכון שנתי מוערך: ₪${Math.round(item.estimatedAnnualSavings).toLocaleString('he-IL')}`
+        : '';
+      bullet(doc, `[${item.priorityLabelHe || item.priority}] ${item.action}${savings}`);
+      if (item.reason) {
+        doc.fontSize(9).fillColor('#444');
+        drawRtlText(doc, `  סיבה: ${item.reason}`, { lineGap: 2 });
+        doc.fillColor('#000').fontSize(10);
+      }
+    }
+  } else if (agentReport?.whatToDo?.length) {
+    sectionTitle(doc, 'תוכנית פעולה');
     for (const item of agentReport.whatToDo) {
       bullet(doc, `${item.title}: ${item.action}`);
     }
@@ -98,6 +148,11 @@ async function generateExecutiveReportPdf(report) {
 
   doc.end();
   return finished;
+}
+
+function fmtVal(v) {
+  if (v == null || v === '') return '—';
+  return String(v);
 }
 
 function sectionTitle(doc, title) {

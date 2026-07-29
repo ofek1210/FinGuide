@@ -111,6 +111,8 @@ export type UploadDocumentResponse = {
   success: boolean;
   message?: string;
   data?: DocumentItem;
+  /** ההעלאה זוהתה כדוח ביטוח/פנסיה ונותבה לצינור אחר — לא נוצר מסמך תלוש */
+  routedTo?: "insurance" | "pension";
 };
 
 export type DocumentResponse = {

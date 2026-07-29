@@ -14,6 +14,47 @@ export type PreservedRecommendation = {
   confidence: number | null;
 };
 
+export type DecisionVerdict =
+  | "recommend"
+  | "keep"
+  | "consider_replace"
+  | "insufficient_confidence"
+  | "no_action";
+
+export type BestDecision = {
+  agentId: string;
+  kind: string;
+  verdict: DecisionVerdict;
+  verdictLabelHe: string;
+  recommendedProduct: {
+    name: string | null;
+    provider: string | null;
+    track: string | null;
+  } | null;
+  whySelected: string | null;
+  expectedBenefit: string | null;
+  annualSavings: number | null;
+  nextAction: string | null;
+  comparison: {
+    fees: { current: number | string | null; alternative: number | string | null; labelHe?: string };
+    performance: { current: number | string | null; alternative: number | string | null; labelHe?: string };
+    risk: { current: number | string | null; alternative: number | string | null; labelHe?: string };
+  } | null;
+  bullets: string[] | null;
+  confidence: string | number | null;
+  actionable: boolean;
+};
+
+export type ActionPlanItem = {
+  priority: "high" | "medium" | "low";
+  priorityLabelHe: string;
+  action: string;
+  expectedBenefit: string | null;
+  estimatedAnnualSavings: number | null;
+  reason: string;
+  agentId: string;
+};
+
 export type AgentReportSection = {
   agentId: string;
   title: string;
@@ -24,6 +65,7 @@ export type AgentReportSection = {
   dataSummary: { label: string; value: string }[];
   findings: { title: string; explanation: string; severity?: string | null }[];
   recommendations: PreservedRecommendation[];
+  bestDecision?: BestDecision | null;
   plainLanguageExplanation: string | null;
   nextActions: string[];
   sourceData: string | null;
@@ -49,7 +91,15 @@ export type AgentFirstReport = {
       totalEstimatedAnnualExcess: number | null;
     };
   };
-  whatToDo: { title: string; action: string; agentId: string }[];
+  actionPlan?: ActionPlanItem[];
+  whatToDo: {
+    title: string;
+    action: string;
+    agentId: string;
+    priority?: string;
+    estimatedAnnualSavings?: number | null;
+    reason?: string;
+  }[];
   missingData: {
     agentId: string;
     title: string;

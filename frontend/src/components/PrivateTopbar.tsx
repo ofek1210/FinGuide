@@ -8,6 +8,7 @@ import NotificationBell from "./notifications/NotificationBell";
 import { APP_ROUTES } from "../types/navigation";
 import { logoutWithConfirm } from "../utils/logout";
 import { AGENTS, agentForPath } from "../theme/agents";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 
 interface PrivateTopbarProps {
   rightSlot?: ReactNode;
@@ -26,6 +27,8 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
 
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // במובייל ה-topbar חייב מצב קומפקטי — התוכן המלא דורש ~500px וגולש
+  const isMobile = useMediaQuery("(max-width: 640px)");
 
   const assistantRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
@@ -63,7 +66,8 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
       style={{
         position: "sticky", top: 0, zIndex: 100,
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 var(--gutter)",
+        padding: isMobile ? "0 14px" : "0 var(--gutter)",
+        gap: isMobile ? 8 : 16,
         height: 62,
         background: "rgba(251,251,252,.92)",
         backdropFilter: "blur(var(--blur-glass)) saturate(180%)",
@@ -77,7 +81,7 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
         onClick={() => navigate(APP_ROUTES.hub)}
         style={{
           fontFamily: "var(--font-display)",
-          fontSize: 21, fontWeight: 900, letterSpacing: "-0.04em",
+          fontSize: isMobile ? 18 : 21, fontWeight: 900, letterSpacing: "-0.04em",
           background: "var(--grad-brand)",
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
           backgroundClip: "text",
@@ -89,7 +93,7 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
 
       {/* Centre — assistant dropdown */}
       <nav style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }} ref={assistantRef}>
-        {activeAgent && (
+        {activeAgent && !isMobile && (
           <div style={{
             display: "flex", alignItems: "center", gap: 7,
             padding: "5px 13px 5px 11px",
@@ -106,9 +110,10 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
         <button
           type="button"
           onClick={() => setAssistantOpen(o => !o)}
+          aria-label="העוזר הראשי"
           style={{
             display: "flex", alignItems: "center", gap: 7,
-            padding: "8px 16px", borderRadius: "var(--r-btn)",
+            padding: isMobile ? "8px 12px" : "8px 16px", borderRadius: "var(--r-btn)",
             background: assistantOpen ? "var(--agent-soft)" : "var(--surface-card)",
             border: `1px solid ${assistantOpen ? "var(--agent-ring)" : "var(--border-soft)"}`,
             color: "var(--agent)", fontFamily: "inherit",
@@ -118,7 +123,7 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
           }}
         >
           <Sparkles size={14} strokeWidth={2} />
-          העוזר הראשי
+          {!isMobile && "העוזר הראשי"}
           <ChevronDown
             size={13}
             style={{
@@ -303,6 +308,17 @@ export default function PrivateTopbar({ rightSlot }: PrivateTopbarProps) {
                 <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{user?.email ?? ""}</div>
               </div>
               <div style={{ padding: "6px" }}>
+                {user?.role === "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => { setUserMenuOpen(false); navigate(APP_ROUTES.admin); }}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 10, background: "none", border: "none", cursor: "pointer", textAlign: "right", fontFamily: "inherit", fontSize: 13.5, color: "var(--lav-600)", fontWeight: 600, transition: "background var(--dur-fast) var(--ease)" }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent-soft)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "none"; }}
+                  >
+                    מרכז בקרה
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={goToSettings}

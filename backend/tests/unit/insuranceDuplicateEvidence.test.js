@@ -101,6 +101,14 @@ describe('insurance duplicate evidence (regression report)', () => {
     });
     expect(gapWithPension.gapFindings.some(g => g.type === 'disability')).toBe(false);
   });
+
+  it('marks life coverage missing when the user answered that they need it', () => {
+    const withNeed = analyzeCoverageGaps({ needsLifeInsurance: true }, [{ type: 'car' }]);
+    expect(withNeed.missingTypes).toContain('life');
+
+    const withoutNeed = analyzeCoverageGaps({ needsLifeInsurance: false }, [{ type: 'car' }]);
+    expect(withoutNeed.missingTypes).not.toContain('life');
+  });
 });
 
 describe('insuranceCoverageTaxonomy', () => {

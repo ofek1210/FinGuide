@@ -15,8 +15,6 @@ import InsuranceRibbonWave from "../components/insurance/InsuranceRibbonWave";
 import InsuranceImportGuide from "../components/insurance/InsuranceImportGuide";
 import InsuranceUpload from "../components/insurance/InsuranceUpload";
 import InsuranceOnboardingWizard from "../components/insurance/InsuranceOnboardingWizard";
-import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
-import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
 import AIInsightsLoadingState from "../components/ai/AIInsightsLoadingState";
 import {
   getInsuranceAnalysis,
@@ -46,7 +44,6 @@ const fmt = formatCurrencyOrDash;
 
 export default function InsurancePage() {
   const [searchParams] = useSearchParams();
-  const agentOnboarding = useAgentOnboarding("insurance");
 
   function insuranceShell(children: React.ReactNode) {
     return (
@@ -126,9 +123,6 @@ export default function InsurancePage() {
       setStep("guide");
     }
   }, [searchParams, step, setStep]);
-
-  const hasInsuranceDocument = (data?.policies?.length ?? 0) > 0;
-  const needsSmartOnboarding = hasInsuranceDocument && agentOnboarding.needsQuestions;
 
   // When policies exist, route into onboarding or results — not the empty landing upload prompt.
   useEffect(() => {
@@ -242,32 +236,6 @@ export default function InsurancePage() {
       <InsuranceOnboardingWizard
         onBack={() => setStep("upload")}
         onComplete={showResults}
-      />,
-    );
-  }
-
-  if (step === "results" && needsSmartOnboarding) {
-    if (agentOnboarding.loading) {
-      return insuranceShell(
-        <div style={{ textAlign: "center", padding: "80px 24px", color: "var(--peach-ink)" }}>בודקים מה חסר לפני הניתוח...</div>,
-      );
-    }
-    return insuranceShell(
-      <AgentOnboardingStep
-        agentId="insurance"
-        agentLabel="ביטוח"
-        estimatedMinutes={agentOnboarding.state?.estimatedMinutes}
-        questions={agentOnboarding.state?.missingQuestions ?? []}
-        phases={["document", "questions", "analysis"]}
-        activePhase="questions"
-        headline="עוד רגע — נשלים את תמונת הביטוח"
-        subhead="דוח הר הביטוח והשאלון כבר אצלנו. עוד כמה שאלות והסוכן יציג ניתוח, כפילויות והמלצות מלאים."
-        onSkip={agentOnboarding.dismiss}
-        onSubmit={async answers => {
-          const ok = await agentOnboarding.submit(answers);
-          if (ok) await load();
-          return ok;
-        }}
       />,
     );
   }
@@ -482,7 +450,7 @@ function InsuranceLandingScreen({ loading, onImport }: { loading: boolean; onImp
             {/* WHAT THE AGENT CHECKS */}
             <div style={{ marginTop: 64 }}>
               <h2 style={{ fontSize: 13, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".06em", margin: "0 0 20px" }}>מה הסוכן בודק עבורך</h2>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
                 {checks.map((f) => {
                   const Icon = f.icon;
                   return (
@@ -615,35 +583,30 @@ function ResultsStep({
   };
 
   const RC = 2 * Math.PI * 42;
-  const pricingDisclaimer = marketAdvice?.disclaimer
-    ?? "המחירים הם הערכות המבוססות על מדגם נתונים מקומי ואינם הצעות מחיר רשמיות מחברות הביטוח.";
-  const pricingSource = marketAdvice?.pricingSource;
+  // הגילוי הנאות על מקור הטווח מוצג בכותרת המשנה של סעיף ההשוואה,
+  // בנקודה שבה המספר עצמו מופיע — ולא כבאנר נפרד בראש הדף
   const comparisonMatrix = marketAdvice?.comparisonMatrix ?? [];
 
+  // הטווח אינו ממוצע שוק נמדד — הניסוח נמנע מלטעון שהוא כזה
   const premStatusHe: Record<string, string> = {
-    below_market: "מתחת לשוק",
-    fair: "בטווח הוגן",
-    above_market: "מעל הממוצע",
-    high: "גבוה משמעותית",
-    unknown: "לא ידוע",
+    below_market: "מתחת לטווח",
+    fair: "בתוך הטווח",
+    above_market: "מעל הטווח",
+    high: "גבוה מהטווח",
+    unknown: "אין מספיק נתונים",
+  };
+
+  // צבע לפי משמעות — קודם כל הסטטוסים נצבעו באותו כתום ללא קשר למצב
+  const premStatusTone: Record<string, [string, string]> = {
+    below_market: ["var(--mint-soft)", "var(--mint-ink)"],
+    fair: ["var(--mint-soft)", "var(--mint-ink)"],
+    above_market: ["var(--butter-soft)", "var(--butter-ink)"],
+    high: ["var(--peach-soft)", "var(--peach-ink)"],
+    unknown: ["var(--surface-sunken)", "var(--text-muted)"],
   };
 
   return wrap(
     <>
-      {/* pricing source disclaimer */}
-      <div role="note" style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "12px 16px", marginBottom: 20, borderRadius: "var(--r-md)", background: "var(--butter-soft)", border: "1px solid var(--butter)" }}>
-        <AlertCircle size={17} color="var(--butter-ink)" style={{ flex: "none", marginTop: 2 }} />
-        <div style={{ fontSize: 13, lineHeight: 1.55, color: "var(--butter-ink)" }}>
-          <div style={{ fontWeight: 800, marginBottom: 4 }}>{pricingDisclaimer}</div>
-          {pricingSource && (
-            <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
-              מקור: {pricingSource.sourceName} · {pricingSource.sourceDate}
-              {pricingSource.dataCollectionMethod ? ` · ${pricingSource.dataCollectionMethod}` : ""}
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
@@ -728,7 +691,7 @@ function ResultsStep({
 
       {/* market comparison */}
       {comparisonMatrix.length > 0 && (
-        <Section title="השוואת פרמיה לטווח הוגן" sub="מול מדגם מחירים מקומי — לא הצעות מחיר רשמיות">
+        <Section title="הפרמיה שלך מול טווח הערכה" sub="הטווח הוא הערכה מדגמית של FinGuide — לא ממוצע שוק נמדד ולא הצעות מחיר">
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {comparisonMatrix.map(row => (
               <div key={row.policyId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
@@ -741,12 +704,17 @@ function ResultsStep({
                   <div style={{ fontWeight: 900, fontSize: 15 }}>{fmt(row.userCost)}</div>
                 </div>
                 <div style={{ textAlign: "center" }}>
-                  <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>ממוצע שוק</div>
-                  <div style={{ fontWeight: 900, fontSize: 15 }}>{fmt(row.marketAvg)}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>אמצע הטווח</div>
+                  <div style={{ fontWeight: 900, fontSize: 15, color: "var(--text-muted)" }}>~{fmt(row.marketAvg)}</div>
                 </div>
-                <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--peach-ink)", background: "var(--peach-soft)", borderRadius: 999, padding: "4px 10px", flex: "none" }}>
-                  {premStatusHe[row.premiumVsMarket] ?? row.premiumVsMarket}
-                </span>
+                {(() => {
+                  const [bg, fg] = premStatusTone[row.premiumVsMarket] ?? premStatusTone.unknown;
+                  return (
+                    <span style={{ fontSize: 11.5, fontWeight: 800, color: fg, background: bg, borderRadius: 999, padding: "4px 10px", flex: "none" }}>
+                      {premStatusHe[row.premiumVsMarket] ?? row.premiumVsMarket}
+                    </span>
+                  );
+                })()}
               </div>
             ))}
           </div>

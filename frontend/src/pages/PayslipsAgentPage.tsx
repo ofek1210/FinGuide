@@ -23,6 +23,7 @@ import TaxAssistantPanel from "../components/payslips/TaxAssistantPanel";
 import Loader from "../components/ui/Loader";
 import AgentOnboardingStep from "../components/onboarding/AgentOnboardingStep";
 import { useAgentOnboarding } from "../hooks/useAgentOnboarding";
+import { useMediaQuery } from "../hooks/useMediaQuery";
 import { listDocuments, removeDocument, type DocumentItem } from "../api/documents.api";
 import MissingFieldsModal from "../components/payslip-history/MissingFieldsModal";
 import { InsightsPanel } from "../components/ai/InsightsPanel";
@@ -31,6 +32,7 @@ import { getUserProfile, type UserProfileResponseData } from "../api/userProfile
 import {
   MAX_PAYSLIPS,
   uploadFailureMessage,
+  uploadRoutedMessage,
   isAnalyzableUpload,
   uploadPayslipFile,
   unlockPayslipDocument,
@@ -239,11 +241,13 @@ function StepIndicator({ step }: { step: WizardStep }) {
     { label: "העלאת תלושים", state: step === "upload" ? "active" : step === "results" ? "done" : "todo" },
     { label: "תובנות AI", state: step === "results" ? "active" : "todo" },
   ];
+  // במובייל הרוחב לא מספיק לכל התוויות — מציגים עיגולים + תווית השלב הפעיל בלבד
+  const compact = useMediaQuery("(max-width: 640px)");
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 44 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: compact ? 32 : 44 }}>
       {steps.map((s, i) => (
         <div key={s.label} style={{ display: "flex", alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: compact ? 6 : 9 }}>
             <span style={{
               width: 30, height: 30, borderRadius: "50%", display: "grid", placeItems: "center", fontWeight: 800, fontSize: 13, flex: "none",
               background: s.state === "active" ? "var(--ink)" : s.state === "done" ? "var(--lav-100)" : "transparent",
@@ -252,9 +256,11 @@ function StepIndicator({ step }: { step: WizardStep }) {
             }}>
               {s.state === "done" ? <Check size={15} strokeWidth={3} /> : i + 1}
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: s.state === "active" ? "var(--ink)" : "var(--text-faint)" }}>{s.label}</span>
+            {(!compact || s.state === "active") && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: s.state === "active" ? "var(--ink)" : "var(--text-faint)" }}>{s.label}</span>
+            )}
           </div>
-          {i < steps.length - 1 && <div style={{ width: 40, height: 1.5, margin: "0 14px", background: s.state === "done" ? "var(--lav-300)" : "var(--hair)" }} />}
+          {i < steps.length - 1 && <div style={{ width: compact ? 14 : 40, height: 1.5, margin: compact ? "0 6px" : "0 14px", background: s.state === "done" ? "var(--lav-300)" : "var(--hair)" }} />}
         </div>
       ))}
     </div>
@@ -340,6 +346,8 @@ function UploadStep({ intake, onComplete, onBack }: {
     for (const file of fileList) {
       if (!file.name.toLowerCase().endsWith(".pdf")) { errors.push(`${file.name}: רק קובצי PDF נתמכים`); continue; }
       const res = await uploadPayslipFile(file);
+      const routedMsg = uploadRoutedMessage(res, file.name);
+      if (routedMsg) { errors.push(routedMsg); continue; }
       if (!res.success || !res.data) { errors.push(`${file.name}: ${res.message || "שגיאה בהעלאה"}`); continue; }
       const doc = res.data;
       newEntries.push({ id: doc._id || doc.id || `${file.name}-${Date.now()}`, name: file.name, doc });
@@ -565,6 +573,8 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
     setUploading(true); setPasswordDoc(null);
     const res = await uploadPayslipFile(file);
     setUploading(false);
+    const routedMsg = uploadRoutedMessage(res, file.name);
+    if (routedMsg) { setUploadMsg(routedMsg); return; }
     if (res.success && res.data && isAnalyzableUpload(res.data)) { setUploadMsg("התלוש הועלה ועובד בהצלחה!"); await loadAnalysis(); }
     else if (res.success && res.data?.status === "needs_password") { setPasswordDoc(res.data); setUploadMsg("נדרשת סיסמה לפתיחת הקובץ"); }
     else setUploadMsg(res.message || res.data?.processingError || "שגיאה בהעלאה — נסה שוב");
@@ -665,7 +675,7 @@ function ResultsStep({ intake, refreshKey, initialDocs, onEditProfile, onAddMore
 
           {/* salary picture */}
           <ResSection title="תמונת השכר שלך" sub={`ממוצע על פני ${summary.count} תלושים · ברוטו ${fmt(summary.avgGross)} → נטו ${fmt(summary.avgNet)}`}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
               {statTiles.map(s => {
                 const [bg, fg] = TONES[s.tone];
                 const Icon = s.icon;

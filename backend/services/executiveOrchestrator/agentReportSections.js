@@ -2,6 +2,10 @@
 
 const { AGENT_SOURCE_REPORT, SPECIALIST_AGENTS } = require('../../config/executiveReportConfig');
 const { buildManagementFeeSection } = require('./reportCoordinator');
+const {
+  synthesizeAdvisorReport,
+  decisionToRecommendation,
+} = require('./advisorDecisionSynthesizer');
 
 const AGENT_LABELS = {
   pension: 'פנסיה',
@@ -41,9 +45,13 @@ function resolveDataStatus(pkg) {
   return 'missing';
 }
 
-function resolveRecommendationStatus(pkg) {
+function resolveRecommendationStatus(pkg, bestDecision = null) {
   const dataStatus = resolveDataStatus(pkg);
   if (dataStatus !== 'available') return 'unavailable';
+  if (bestDecision) {
+    if (bestDecision.verdict === 'no_action') return 'noRecommendations';
+    return 'hasRecommendations';
+  }
   const financial = (pkg.recommendations || []).filter(r => r.itemKind !== 'missing_data');
   return financial.length > 0 ? 'hasRecommendations' : 'noRecommendations';
 }
@@ -99,33 +107,17 @@ function buildDataSummary(agentId, pkg) {
     if (data.totalMonthlyContribution != null) {
       items.push({ label: 'הפקדה חודשית', value: `₪${Math.round(data.totalMonthlyContribution).toLocaleString('he-IL')}` });
     }
-    for (const f of (data.marketAdvice?.funds || []).slice(0, 5)) {
-      items.push({
-        label: f.productName || 'מוצר',
-        value: [
-          f.companyName,
-          f.userFee != null ? `דמ"נ ${f.userFee}%` : null,
-          f.verdictLabelHe,
-        ].filter(Boolean).join(' · ') || '—',
-      });
-    }
-    for (const a of (data.advisorReport?.accounts || []).slice(0, 3)) {
-      items.push({
-        label: a.productName || a.accountName || 'חשבון',
-        value: a.balance != null ? `₪${Math.round(a.balance).toLocaleString('he-IL')}` : (a.summaryHe || '—'),
-      });
-    }
   }
 
   if (agentId === 'insurance') {
-    if (data.duplicateCount > 0) {
-      items.push({ label: 'כפילויות', value: String(data.duplicateCount) });
-    }
-    if (data.totalMonthlyWaste > 0) {
-      items.push({ label: 'בזבוז חודשי מוערך', value: `₪${Math.round(data.totalMonthlyWaste).toLocaleString('he-IL')}` });
-    }
     if (data.policyCount != null) {
       items.push({ label: 'פוליסות', value: String(data.policyCount) });
+    }
+    if (data.duplicateCount > 0) {
+      items.push({ label: 'כפילויות לבדיקה', value: String(data.duplicateCount) });
+    }
+    if (data.totalMonthlyWaste > 0) {
+      items.push({ label: 'פרמיה חודשית לבדיקה', value: `₪${Math.round(data.totalMonthlyWaste).toLocaleString('he-IL')}` });
     }
   }
 
@@ -135,12 +127,15 @@ function buildDataSummary(agentId, pkg) {
     }
   }
 
-  return items;
+  return items.slice(0, 4);
 }
 
-function specialistFindings(pkg) {
+function specialistFindings(pkg, bestDecision) {
+  // Insurance bullets already cover findings; keep other domains very short.
+  if (bestDecision?.bullets?.length) return [];
   return (pkg.findings || [])
     .filter(f => f.kind !== 'strength')
+    .slice(0, 2)
     .map(f => ({
       title: f.title,
       explanation: f.explanation || '',
@@ -148,28 +143,32 @@ function specialistFindings(pkg) {
     }));
 }
 
-function nextActionsFromRecs(recs) {
-  return recs
-    .map(r => r.expectedBenefit)
-    .filter(Boolean);
-}
-
-function buildAgentSection(agentId, pkg) {
+function buildAgentSection(agentId, pkg, bestDecision = null) {
   const dataStatus = resolveDataStatus(pkg);
-  const recommendationStatus = resolveRecommendationStatus(pkg);
-  const financialRecs = (pkg?.recommendations || [])
-    .filter(r => r.itemKind !== 'missing_data')
-    .map(r => preserveRecommendation(r, agentId));
+  const recommendationStatus = resolveRecommendationStatus(pkg, bestDecision);
 
   let statusMessage = null;
   if (dataStatus === 'missing') statusMessage = MISSING_HE;
   else if (dataStatus === 'error') statusMessage = ERROR_HE;
-  else if (recommendationStatus === 'noRecommendations') statusMessage = NO_RECS_HE;
+  else if (recommendationStatus === 'noRecommendations' && !bestDecision) statusMessage = NO_RECS_HE;
+  else if (bestDecision?.verdict === 'no_action') statusMessage = NO_RECS_HE;
 
   const hint = MISSING_HINTS[agentId];
   const missingDetail = dataStatus === 'missing' && hint
     ? { whatIsMissing: hint.missing, whatEnables: hint.enables }
     : null;
+
+  // Single mirrored recommendation when we have a decision — no long lists.
+  let recommendations = [];
+  if (dataStatus === 'available' && bestDecision) {
+    const mirrored = decisionToRecommendation(bestDecision);
+    if (mirrored) recommendations = [mirrored];
+  } else if (dataStatus === 'available') {
+    recommendations = (pkg?.recommendations || [])
+      .filter(r => r.itemKind !== 'missing_data')
+      .slice(0, 1)
+      .map(r => preserveRecommendation(r, agentId));
+  }
 
   return {
     agentId,
@@ -179,31 +178,36 @@ function buildAgentSection(agentId, pkg) {
     statusMessage,
     missingDetail,
     dataSummary: buildDataSummary(agentId, pkg),
-    findings: dataStatus === 'available' ? specialistFindings(pkg) : [],
-    recommendations: financialRecs,
-    plainLanguageExplanation: dataStatus === 'available' ? (pkg?.humanExplanation || null) : null,
-    nextActions: dataStatus === 'available' ? nextActionsFromRecs(pkg?.recommendations || []) : [],
+    findings: dataStatus === 'available' ? specialistFindings(pkg, bestDecision) : [],
+    recommendations,
+    bestDecision: dataStatus === 'available' ? bestDecision : null,
+    plainLanguageExplanation: null,
+    nextActions: [],
     sourceData: dataStatus === 'available' ? sourceLabel(agentId, pkg) : null,
   };
 }
 
-function buildCombinedSummary(agentSections, packages) {
+function buildCombinedSummary(agentSections, packages, decisionByAgent = {}) {
   const notes = [];
   const fees = buildManagementFeeSection(packages);
 
-  if (fees.products?.length) {
-    const pensionFees = fees.products.filter(p => p.sourceAgent === 'pension');
-    const gemelFees = fees.products.filter(p => p.sourceAgent === 'gemel');
-    if (pensionFees.length && gemelFees.length) {
-      notes.push('נמצאו ממצאים הקשורים לדמי ניהול גם בפנסיה וגם בגמל/השתלמות — כדאי לבחון כל מוצר בנפרד.');
-    } else if (pensionFees.length) {
-      notes.push('נמצאו ממצאים הקשורים לדמי ניהול בפנסיה.');
-    } else if (gemelFees.length) {
-      notes.push('נמצאו ממצאים הקשורים לדמי ניהול בגמל/השתלמות.');
-    }
-    if (fees.totalEstimatedAnnualExcess != null && fees.totalEstimatedAnnualExcess > 0) {
-      notes.push(`סה"כ עודף שנתי מוערך בדמי ניהול (מבוסס על נתוני הסוכנים): ₪${Math.round(fees.totalEstimatedAnnualExcess).toLocaleString('he-IL')}.`);
-    }
+  // Drop fee rows already covered by a pension/gemel decision with savings.
+  const coveredAgents = new Set(
+    Object.values(decisionByAgent)
+      .filter(d => d?.actionable && d.annualSavings != null)
+      .map(d => d.agentId),
+  );
+  const slimProducts = (fees.products || []).filter(p => !coveredAgents.has(p.sourceAgent));
+  const slimFees = {
+    ...fees,
+    products: slimProducts,
+    totalEstimatedAnnualExcess: slimProducts.length
+      ? slimProducts.reduce((s, p) => s + (p.estimatedAnnualExcess || 0), 0) || null
+      : null,
+  };
+
+  if (slimFees.totalEstimatedAnnualExcess != null && slimFees.totalEstimatedAnnualExcess > 0) {
+    notes.push(`סה"כ עודף שנתי מוערך בדמי ניהול: ₪${Math.round(slimFees.totalEstimatedAnnualExcess).toLocaleString('he-IL')}.`);
   }
 
   const payslip = agentSections.find(s => s.agentId === 'payslip');
@@ -212,48 +216,21 @@ function buildCombinedSummary(agentSections, packages) {
     notes.push('קיים ניתוח פנסיה מהמסלקה, אך ללא תלושי שכר — לא ניתן לאמת הפקדות שכר מול התלוש.');
   }
 
-  const insurance = agentSections.find(s => s.agentId === 'insurance');
-  if (insurance?.dataStatus === 'available' && insurance.findings?.some(f => /כפל|כפיל/i.test(f.title))) {
-    notes.push('נמצאו ממצאים ביטוחיים (כפילויות או פערים) — ראו פירוט בסעיף הביטוח.');
-  }
-
-  for (const section of agentSections) {
-    if (section.recommendationStatus === 'hasRecommendations') {
-      const titles = section.recommendations.map(r => r.title).slice(0, 2);
-      if (titles.length) {
-        notes.push(`${section.title}: ${titles.join('; ')}.`);
-      }
-    }
-  }
-
   return {
     notes: [...new Set(notes)],
-    managementFees: fees,
+    managementFees: slimFees,
   };
 }
 
-function buildWhatToDo(agentSections) {
-  const actions = [];
-  for (const section of agentSections) {
-    if (section.dataStatus !== 'available') continue;
-    for (const rec of section.recommendations) {
-      if (rec.expectedBenefit) {
-        actions.push({ title: rec.title, action: rec.expectedBenefit, agentId: section.agentId });
-      }
-    }
-    for (const step of section.nextActions) {
-      if (!actions.some(a => a.action === step && a.agentId === section.agentId)) {
-        actions.push({ title: section.title, action: step, agentId: section.agentId });
-      }
-    }
-  }
-  return actions;
-}
-
-function orderWhatToDoByPriority(whatToDo, scoredItems) {
-  if (!scoredItems?.length || !whatToDo?.length) return whatToDo;
-  const scoreByTitle = new Map(scoredItems.map(s => [s.title, s.priorityScore ?? 0]));
-  return [...whatToDo].sort((a, b) => (scoreByTitle.get(b.title) ?? 0) - (scoreByTitle.get(a.title) ?? 0));
+function actionPlanToWhatToDo(actionPlan) {
+  return (actionPlan || []).map(item => ({
+    title: item.agentId ? (AGENT_LABELS[item.agentId] || item.agentId) : item.action,
+    action: item.action,
+    agentId: item.agentId,
+    priority: item.priority,
+    estimatedAnnualSavings: item.estimatedAnnualSavings,
+    reason: item.reason,
+  }));
 }
 
 function buildMissingDataSection(agentSections) {
@@ -269,14 +246,18 @@ function buildMissingDataSection(agentSections) {
 }
 
 function buildAgentFirstReport(packages, { scoredItems = null } = {}) {
-  const agentSections = SPECIALIST_AGENTS.map(id => buildAgentSection(id, packages[id]));
-  const combinedSummary = buildCombinedSummary(agentSections, packages);
-  const whatToDo = orderWhatToDoByPriority(buildWhatToDo(agentSections), scoredItems);
+  const { decisionByAgent, actionPlan } = synthesizeAdvisorReport(packages, { scoredItems });
+
+  const agentSections = SPECIALIST_AGENTS.map(id =>
+    buildAgentSection(id, packages[id], decisionByAgent[id] || null),
+  );
+  const combinedSummary = buildCombinedSummary(agentSections, packages, decisionByAgent);
+  const whatToDo = actionPlanToWhatToDo(actionPlan);
   const missingData = buildMissingDataSection(agentSections);
 
   const analyzedCount = agentSections.filter(s => s.dataStatus === 'available').length;
   const intro = analyzedCount > 0
-    ? `הדוח מבוסס על ${analyzedCount} מתוך 4 תחומים עם נתונים זמינים.`
+    ? `הדוח מבוסס על ${analyzedCount} מתוך 4 תחומים עם נתונים זמינים — החלטה אחת ברורה לכל תחום.`
     : 'טרם התקבלו נתונים מספיקים לניתוח — ראו «מידע שחסר».';
 
   return {
@@ -284,6 +265,7 @@ function buildAgentFirstReport(packages, { scoredItems = null } = {}) {
     intro,
     agentSections,
     combinedSummary,
+    actionPlan,
     whatToDo,
     missingData,
   };
@@ -295,7 +277,6 @@ module.exports = {
   resolveDataStatus,
   resolveRecommendationStatus,
   preserveRecommendation,
-  orderWhatToDoByPriority,
   AGENT_LABELS,
   NO_RECS_HE,
   MISSING_HE,

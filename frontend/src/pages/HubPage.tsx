@@ -12,10 +12,9 @@ import { useMasterAgent } from "../components/hub/useMasterAgent";
 import { useHubData } from "../components/hub/useHubData";
 import MasterBand, { type LastReportMeta } from "../components/hub/MasterBand";
 import AgentSummaryCard from "../components/hub/AgentSummaryCard";
-import CommandBar from "../components/hub/CommandBar";
 import AgentSyncOverlay from "../components/hub/AgentSyncOverlay";
 import AgentFocusOverlay from "../components/hub/AgentFocusOverlay";
-import { useRegisterPageContext } from "../assistant/AiChatProvider";
+import { useAiChat, useRegisterPageContext } from "../assistant/AiChatProvider";
 import { getLatestExecutiveReport } from "../api/executiveReport.api";
 import HubReadinessPanel from "../components/hub/HubReadinessPanel";
 import HubDocumentCenter from "../components/hub/HubDocumentCenter";
@@ -33,6 +32,7 @@ export default function HubPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { openPanel } = useAiChat();
 
   // An explicit full run should produce a fresh report; the report page reads
   // this flag — without it, it shows the last saved analysis instantly.
@@ -67,15 +67,12 @@ export default function HubPage() {
   const focusDocument = parseHubDocumentParam(new URLSearchParams(location.search).get("document"));
 
   // Deep-link from a domain agent's "chat with the agent" button (/hub?chat=1):
-  // scroll to the master-agent chat and focus its input.
+  // open the floating assistant — the Hub no longer hosts its own chat bar.
   useEffect(() => {
     if (new URLSearchParams(location.search).get("chat") !== "1") return;
-    const t = setTimeout(() => {
-      document.getElementById("agent-chat")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      (document.getElementById("agent-chat-input") as HTMLInputElement | null)?.focus({ preventScroll: true });
-    }, 350);
+    const t = setTimeout(() => openPanel(), 350);
     return () => clearTimeout(t);
-  }, [location.search]);
+  }, [location.search, openPanel]);
 
   const hubContextLabel = data.loading
     ? "לוח בקרה (Hub)"
@@ -171,25 +168,15 @@ export default function HubPage() {
           opportunities={data.opportunities}
           completedDocs={data.completedDocs}
           heroRows={data.heroRows}
+          agentMetric={data.agentMetric}
+          advisorReadiness={data.advisorReadiness}
           onRunFull={master.runFull}
           lastReport={lastReport}
           savedScore={data.healthScore}
         />
 
-        <HubDocumentCenter
-          focusDocument={focusDocument === "clearinghouse" ? focusDocument : null}
-          clearinghouseFundCount={data.totalClearinghouseProducts}
-          onUploadComplete={data.reload}
-        />
-
-        <HubReadinessPanel
-          loading={data.loading}
-          documents={data.documentInventory}
-          advisors={data.advisorReadiness}
-        />
-
         {/* FOUR AGENT CARDS — status readout + gateway into each domain */}
-        <div id="agent-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 20, marginBottom: 46, scrollMarginTop: 90 }}>
+        <div id="agent-cards" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(165px, 1fr))", gap: 14, marginBottom: 20, scrollMarginTop: 90 }}>
           {AGENTS.map((a, i) => {
             const key = AGENT_KEY[a.id];
             return (
@@ -199,6 +186,7 @@ export default function HubPage() {
                 index={i}
                 metric={data.agentMetric[a.id]}
                 readinessDetail={data.advisorReadiness.find(r => r.agentId === a.id)?.detail}
+                readinessPhase={data.advisorReadiness.find(r => r.agentId === a.id)?.phase}
                 spark={data.agentSpark[a.id]}
                 loading={data.loading}
                 agentResult={master.result?.agents?.[key]}
@@ -211,8 +199,18 @@ export default function HubPage() {
           })}
         </div>
 
-        {/* FLOATING COMMAND BAR — talk to the master agent */}
-        <CommandBar busy={master.busy} onRunFocused={master.runFocused} />
+        <HubReadinessPanel
+          loading={data.loading}
+          documents={data.documentInventory}
+          advisors={data.advisorReadiness}
+        />
+
+        <HubDocumentCenter
+          focusDocument={focusDocument === "clearinghouse" ? focusDocument : null}
+          clearinghouseFundCount={data.totalClearinghouseProducts}
+          onUploadComplete={data.reload}
+        />
+
       </main>
 
       <AppFooter variant="private" />
