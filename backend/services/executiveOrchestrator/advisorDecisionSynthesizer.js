@@ -323,6 +323,30 @@ function buildInsuranceDecision(pkg) {
   }
 
   const data = pkg.rawDataSummary || {};
+  const decision = data.decision;
+
+  if (decision?.status) {
+    const bullets = [
+      ...(decision.healthExplanation || []),
+      ...(decision.executiveActions || []).slice(0, 2).map(a => `→ ${a.titleHe}`),
+    ].filter(Boolean).slice(0, 5);
+
+    const actionable = decision.status !== 'healthy';
+    return baseDecision('insurance', {
+      verdict: decision.status === 'healthy' ? VERDICT.KEEP : VERDICT.CONSIDER_REPLACE,
+      verdictLabelHe: decision.statusLabelHe
+        || (decision.status === 'healthy' ? 'תיק ביטוח תקין יחסית' : 'לשקול בדיקה מחדש של התיק'),
+      bullets: bullets.length ? bullets : [decision.statusSummaryHe].filter(Boolean),
+      whySelected: decision.statusSummaryHe || decision.healthLabelHe,
+      expectedBenefit: null,
+      annualSavings: null,
+      nextAction: decision.executiveActions?.[0]?.titleHe
+        || 'אמתו כפילויות ופערי כיסוי מול סוכן מורשה — ללא החלפה על בסיס מחיר.',
+      confidence: 'medium',
+      actionable,
+    });
+  }
+
   const overall = data.marketAdvice?.overallVerdict || null;
   const bullets = [];
   const companyQuality = data.marketAdvice?.companyQuality || data.companyQuality;

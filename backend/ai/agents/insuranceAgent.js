@@ -20,7 +20,8 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
   const startedAt = Date.now();
 
   const analysis = await buildInsuranceAnalysis(userId);
-  const { profile, personal, assets, policies, analysis: coverage, healthCheck, recommendations, marketAdvice } = analysis;
+  const { profile, personal, assets, policies, analysis: coverage, healthCheck, recommendations, marketAdvice, decision } = analysis;
+
 
   const hasData = analysis.hasImportedPolicies || analysis.summary?.hasData;
   if (!hasData && !profile) {
@@ -76,6 +77,17 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
       savings: coverage?.savings,
       hasCriticalGap: coverage?.hasCriticalGap ?? false,
       healthCheck: healthCheck ? { score: healthCheck.score, level: healthCheck.level } : null,
+      decision: decision
+        ? {
+          status: decision.status,
+          statusLabelHe: decision.statusLabelHe,
+          healthScore: decision.healthScore,
+          healthLabelHe: decision.healthLabelHe,
+          healthExplanation: decision.healthExplanation,
+          executiveActions: decision.executiveActions,
+          quickAnswers: decision.quickAnswers,
+        }
+        : null,
       marketAdvice: marketAdvice?.hasData
         ? {
           overallVerdict: marketAdvice.overallVerdict,

@@ -71,6 +71,79 @@ export type InsuranceRecommendationDTO = {
   nextActionHe?: string;
 };
 
+export type InsuranceDecisionStatus = "healthy" | "needs_review" | "action_required";
+
+export type InsuranceExecutiveAction = {
+  id: string;
+  priority: "high" | "medium" | "low";
+  priorityLabelHe: string;
+  titleHe: string;
+  reasonHe: string;
+  expectedBenefitHe: string;
+  evidence?: Record<string, unknown>;
+};
+
+export type InsuranceDecision = {
+  status: InsuranceDecisionStatus;
+  statusLabelHe: string;
+  statusTone: "green" | "yellow" | "red";
+  statusSummaryHe: string;
+  healthScore: number;
+  healthLabelHe: string;
+  healthExplanation: string[];
+  coverageCompleteness: {
+    policyId: string;
+    coverageType: string;
+    coverageTypeLabelHe: string;
+    provider: string | null;
+    completenessScore: number;
+    coverageConfidence: "high" | "medium" | "low";
+    coverageConfidenceLabelHe: string;
+    checks: { id: string; labelHe: string; status: "ok" | "missing" | "unknown" }[];
+    missingInformation: string[];
+    manualReviewRecommended: boolean;
+  }[];
+  companyQuality: {
+    averageServiceIndex: number | null;
+    averageServiceTier: string | null;
+    insurers: {
+      policyId: string;
+      type: string;
+      provider: string | null;
+      serviceScore: number | null;
+      claimPaymentRate: number | null;
+      satisfactionScore: number | null;
+      serviceTier: string;
+      complaintIndicators: number | string | null;
+      complaintIndicatorsLabelHe: string;
+    }[];
+  };
+  profileInsights: {
+    type: string;
+    status: string;
+    needed: boolean | null;
+    titleHe: string;
+    messageHe: string;
+    whyItMatters?: string | null;
+  }[];
+  executiveActions: InsuranceExecutiveAction[];
+  quickAnswers: {
+    portfolioHealth: { status: string; labelHe: string; score: number; scoreLabelHe: string };
+    hasDuplicates: { value: boolean; labelHe: string; tone: string };
+    missingImportant: { value: boolean; labelHe: string; tone: string };
+    possiblyUnnecessary: { value: boolean; labelHe: string; tone: string };
+    companyQuality: { value: boolean; labelHe: string; tone: string };
+  };
+  portfolioOverview?: {
+    policyCount: number;
+    activeCount: number;
+    inactiveCount: number;
+    companies: string[];
+    policyTypes: { type: string; labelHe: string }[];
+  } | null;
+  methodologyHe?: string;
+};
+
 export type InsuranceHealthCheck = {
   score: number | null;
   scoreDisabled?: boolean;
@@ -118,6 +191,7 @@ export type InsuranceMarketAdvice = {
     claimPaymentRate?: number | null;
     satisfactionScore?: number | null;
     serviceTier?: string | null;
+    complaintIndicators?: number | string | null;
     duplicate?: boolean;
     verdict?: string;
     comparisonNoteHe?: string | null;
@@ -127,7 +201,11 @@ export type InsuranceMarketAdvice = {
     coverageType: string;
     coverageTypeLabelHe: string;
     provider: string | null;
-    status: string;
+    status?: string;
+    completenessScore?: number;
+    coverageConfidence?: "high" | "medium" | "low";
+    coverageConfidenceLabelHe?: string;
+    checks?: { id: string; labelHe: string; status: "ok" | "missing" | "unknown" }[];
     missingInformation: string[];
     manualReviewRecommended: boolean;
   }[];
@@ -142,6 +220,7 @@ export type InsuranceMarketAdvice = {
     averageServiceIndex: number | null;
     averageServiceTier: string | null;
     source?: string;
+    insurers?: InsuranceDecision["companyQuality"]["insurers"];
   };
   pricingSource?: InsurancePricingSource | null;
   disclaimer?: string;
@@ -185,6 +264,7 @@ export type InsuranceAnalysisResponse = {
     analysis: InsuranceAnalysisDTO;
     recommendations: InsuranceRecommendationDTO[];
     healthCheck?: InsuranceHealthCheck;
+    decision?: InsuranceDecision;
     summary?: InsuranceAnalysisSummary;
     hasImportedPolicies: boolean;
     marketAdvice?: InsuranceMarketAdvice;

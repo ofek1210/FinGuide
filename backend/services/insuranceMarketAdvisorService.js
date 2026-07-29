@@ -211,6 +211,7 @@ async function buildMarketAdvice(policies, profileDTO, options = {}) {
     satisfactionScore: p.comparisonMatrix.service.satisfactionScore,
     serviceTier: p.comparisonMatrix.service.serviceTier,
     serviceSource: p.comparisonMatrix.service.serviceSource,
+    complaintIndicators: null,
     comparisonQuality: p.comparisonQuality,
     comparisonNoteHe: p.comparisonNoteHe,
     duplicate: p.duplicateCoverage,

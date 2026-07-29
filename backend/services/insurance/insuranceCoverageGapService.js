@@ -82,13 +82,22 @@ function analyzeCoverageGaps(profileDTO, aggregatedPolicies, options = {}) {
         whyItMatters: COVERAGE_WHY_HE.life,
       });
     }
+  } else if (lifeInsuranceNotNeeded(personal, needsLifeInsurance, assets)) {
+    needAssessments.push({
+      type: 'life',
+      needed: false,
+      status: 'possibly_unnecessary',
+      titleHe: 'ביטוח חיים — ייתכן שאינו נחוץ כרגע',
+      messageHe: 'קיים כיסוי חיים בתיק, אך לפי הפרופיל (ללא תלויים / ילדים / משכנתא) אין אינדיקציה חזקה שהוא נדרש כרגע. מומלץ לאמת מול סוכן לפני שינוי.',
+      whyItMatters: COVERAGE_WHY_HE.life,
+    });
   } else {
     needAssessments.push({
       type: 'life',
       needed: true,
       status: 'covered',
       titleHe: 'ביטוח חיים — קיים בתיק',
-      messageHe: 'זוהה כיסוי חיים בפוליסות או בפרופיל.',
+      messageHe: 'זוהה כיסוי חיים בפוליסות או בפרופיל, והפרופיל תומך בצורך.',
       whyItMatters: COVERAGE_WHY_HE.life,
     });
   }
@@ -143,7 +152,7 @@ function analyzeCoverageGaps(profileDTO, aggregatedPolicies, options = {}) {
     gapFindings.push({
       type: 'apartment',
       status: 'missing_needed',
-      messageHe: 'בבעלותך דירה ללא ביטוח דירה מדווח — מומלץ לבדוק כיסוי מבנה/תכולה.',
+      messageHe: 'בבעלותך דירה ללא ביטוח דירה מדווח — מומלץ לבדוק כיסוי מבנה (ולעיתים גם תכולה).',
       whyItMatters: COVERAGE_WHY_HE.apartment,
       confidence: 'high',
     });
@@ -152,10 +161,20 @@ function analyzeCoverageGaps(profileDTO, aggregatedPolicies, options = {}) {
       type: 'apartment',
       needed: false,
       status: 'not_recommended',
-      titleHe: 'ביטוח דירה — לא רלוונטי',
-      messageHe: 'לפי הפרופיל אין דירה בבעלות — אין המלצה אוטומטית לביטוח דירה.',
+      titleHe: 'ביטוח מבנה — לא רלוונטי לשוכר',
+      messageHe: 'לפי הפרופיל אינך בעל/ת דירה — אין המלצה לביטוח מבנה. ביטוח תכולה לשוכרים עשוי להיות רלוונטי בנפרד.',
       whyItMatters: COVERAGE_WHY_HE.apartment,
     });
+    if (!coveredTypes.has('apartment')) {
+      needAssessments.push({
+        type: 'contents',
+        needed: null,
+        status: 'optional_renter',
+        titleHe: 'ביטוח תכולה — אופציונלי לשוכרים',
+        messageHe: 'כשוכר/ת, ביטוח מבנה אינו נחוץ, אך ביטוח תכולה יכול להגן על רכוש אישי. אין חובה אוטומטית לפי הנתונים.',
+        whyItMatters: 'ביטוח תכולה מכסה רכוש אישי (רהיטים, אלקטרוניקה) מפני גניבה, אש ונזקי מים — רלוונטי בעיקר לשוכרים.',
+      });
+    }
   } else if (coveredTypes.has('apartment') || ins.hasApartmentInsurance === true) {
     needAssessments.push({
       type: 'apartment',
@@ -220,15 +239,39 @@ function analyzeCoverageGaps(profileDTO, aggregatedPolicies, options = {}) {
     }
   }
 
-  // ── Travel (informational only — never auto-missing) ──────────────────
-  needAssessments.push({
-    type: 'travel',
-    needed: false,
-    status: 'situational',
-    titleHe: 'ביטוח נסיעות — לפי הצורך',
-    messageHe: 'ביטוח נסיעות לחו״ל אינו חלק קבוע מתיק הביטוח — רלוונטי רק לקראת נסיעה.',
-    whyItMatters: COVERAGE_WHY_HE.travel,
-  });
+  // ── Travel — only when onboarding/goals indicate frequent travel ───────
+  const frequentTravel = profileDTO?.frequentTravel === true
+    || (Array.isArray(profileDTO?.goals) && profileDTO.goals.some(g => g?.type === 'travel'));
+  const hasTravelPolicy = coveredTypes.has('travel');
+
+  if (frequentTravel && !hasTravelPolicy) {
+    needAssessments.push({
+      type: 'travel',
+      needed: true,
+      status: 'recommended',
+      titleHe: 'ביטוח נסיעות — מומלץ לפי הפרופיל',
+      messageHe: 'הפרופיל מצביע על נסיעות / יעד נסיעות — כדאי לוודא כיסוי נסיעות לחו״ל לפני יציאה.',
+      whyItMatters: COVERAGE_WHY_HE.travel,
+    });
+  } else if (frequentTravel && hasTravelPolicy) {
+    needAssessments.push({
+      type: 'travel',
+      needed: true,
+      status: 'covered',
+      titleHe: 'ביטוח נסיעות — קיים',
+      messageHe: 'זוהתה פוליסת נסיעות בתיק.',
+      whyItMatters: COVERAGE_WHY_HE.travel,
+    });
+  } else {
+    needAssessments.push({
+      type: 'travel',
+      needed: false,
+      status: 'not_recommended',
+      titleHe: 'ביטוח נסיעות — אין אינדיקציה לצורך קבוע',
+      messageHe: 'אין בפרופיל אינדיקציה לנסיעות תכופות — אין המלצה אוטומטית לרכוש ביטוח נסיעות כחלק קבוע מהתיק.',
+      whyItMatters: COVERAGE_WHY_HE.travel,
+    });
+  }
 
   const urgency = missing.includes('apartment') || missing.includes('car')
     || gapFindings.some(g => g.type === 'disability' || g.type === 'life')

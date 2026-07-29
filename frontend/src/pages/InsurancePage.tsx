@@ -1,12 +1,12 @@
-/**
+﻿/**
  * InsurancePage — guided Har HaBituach import flow
  */
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
-  Shield, AlertCircle, CheckCircle, Trash2, Loader2,
+  Shield, AlertCircle, Trash2, Loader2,
   FileText, Lock, ShieldCheck, AlertTriangle, BarChart3,
-  Sparkles, RefreshCw, TrendingDown, Lightbulb,
+  RefreshCw,
   type LucideIcon,
 } from "lucide-react";
 import PrivateTopbar from "../components/PrivateTopbar";
@@ -27,6 +27,7 @@ import {
   type InsuranceRecommendationDTO,
   type InsuranceHealthCheck,
   type InsuranceMarketAdvice,
+  type InsuranceDecision,
 } from "../api/insuranceAI.api";
 import { getInsuranceOnboardingSession } from "../api/insuranceOnboarding.api";
 import { formatCurrencyOrDash } from "../utils/formatters";
@@ -152,9 +153,11 @@ export default function InsurancePage() {
 
   const analysis = data?.analysis;
   const healthCheck = data?.healthCheck;
+  const decision = data?.decision;
   const policies = data?.policies ?? [];
   const recs = data?.recommendations ?? [];
   const totalPremium = policies.reduce((s, p) => s + (p.monthlyPremium ?? 0), 0);
+
 
   const insuranceLabel =
     healthCheck?.score != null
@@ -234,6 +237,7 @@ export default function InsurancePage() {
       onRetry={() => void load()}
       analysis={analysis}
       healthCheck={healthCheck}
+      decision={decision}
       marketAdvice={data?.marketAdvice}
       policies={policies}
       recs={recs}
@@ -448,7 +452,7 @@ function InsuranceLandingScreen({ loading, onImport }: { loading: boolean; onImp
 
 function ResultsStep({
   loading, analysisError, onRetry,
-  analysis, healthCheck, marketAdvice,
+  analysis, healthCheck, decision, marketAdvice,
   policies, recs, totalPremium, deletingId, onDelete, onReimport,
 }: {
   loading: boolean;
@@ -456,6 +460,7 @@ function ResultsStep({
   onRetry: () => void;
   analysis: InsuranceAnalysisDTO | null | undefined;
   healthCheck: InsuranceHealthCheck | undefined;
+  decision?: InsuranceDecision;
   marketAdvice?: InsuranceMarketAdvice;
   policies: InsurancePolicyDTO[];
   recs: InsuranceRecommendationDTO[];
@@ -494,7 +499,8 @@ function ResultsStep({
       </div>,
     );
   }
-  const hasAnalysisOutput = Boolean(analysis || healthCheck || marketAdvice || recs.length > 0);
+
+  const hasAnalysisOutput = Boolean(analysis || healthCheck || decision || marketAdvice || recs.length > 0);
   if (policies.length === 0 && !hasAnalysisOutput) {
     return wrap(
       <div style={{ textAlign: "center", padding: "56px 24px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", boxShadow: "var(--shadow-soft)" }}>
@@ -506,212 +512,131 @@ function ResultsStep({
     );
   }
 
-  const premiumUnderReview = analysis?.premiumUnderReviewMonthly ?? analysis?.savings?.premiumUnderReviewMonthly ?? 0;
-  const missing = analysis?.missingCoverage ?? [];
+  const score = decision?.healthScore ?? (healthCheck?.scoreDisabled ? null : healthCheck?.score ?? null);
+  const statusToneMap = {
+    green: { bg: "var(--mint-soft)", fg: "var(--mint-ink)", border: "var(--mint)" },
+    yellow: { bg: "var(--butter-soft)", fg: "var(--butter-ink)", border: "var(--butter)" },
+    red: { bg: "var(--peach-soft)", fg: "var(--peach-ink)", border: "var(--peach)" },
+  } as const;
+  const statusKey = (decision?.statusTone || "yellow") as keyof typeof statusToneMap;
+  const statusColors = statusToneMap[statusKey] || statusToneMap.yellow;
+  const overview = decision?.portfolioOverview || marketAdvice?.portfolioOverview;
+  const quick = decision?.quickAnswers;
+  const actions = decision?.executiveActions?.length
+    ? decision.executiveActions
+    : recs.slice(0, 5).map((r, i) => ({
+      id: `rec_${i}`,
+      priority: r.urgency,
+      priorityLabelHe: r.urgency === "high" ? "גבוהה" : r.urgency === "medium" ? "בינונית" : "נמוכה",
+      titleHe: r.title,
+      reasonHe: r.reason,
+      expectedBenefitHe: r.nextActionHe || r.financialImpact || "שיפור בהירות הכיסוי",
+    }));
+  const completeness = decision?.coverageCompleteness?.length
+    ? decision.coverageCompleteness
+    : (marketAdvice?.coverageSummaries || []);
+  const insurers = decision?.companyQuality?.insurers?.length
+    ? decision.companyQuality.insurers
+    : (marketAdvice?.comparisonMatrix || []).map(row => ({
+      policyId: row.policyId,
+      type: row.type,
+      provider: row.provider,
+      serviceScore: row.serviceScore ?? null,
+      claimPaymentRate: row.claimPaymentRate ?? null,
+      satisfactionScore: row.satisfactionScore ?? null,
+      serviceTier: row.serviceTier || "unknown",
+      complaintIndicators: row.complaintIndicators ?? null,
+      complaintIndicatorsLabelHe: "לא זמין במקור",
+    }));
+  const profileInsights = decision?.profileInsights || analysis?.needAssessments || [];
   const duplicates = analysis?.duplicates ?? [];
-  const scoreDisabled = healthCheck?.scoreDisabled === true;
-  const score = scoreDisabled ? null : healthCheck?.score;
-  const isReportWithoutPolicies = policies.length === 0 && hasAnalysisOutput;
-  const overview = marketAdvice?.portfolioOverview;
-  const companyQuality = marketAdvice?.companyQuality;
-  const coverageSummaries = marketAdvice?.coverageSummaries ?? [];
-  const heroMetric = scoreDisabled
-    ? "—"
-    : isReportWithoutPolicies
-      ? (score != null ? `${score}/100` : String(missing.length))
-      : score != null
-        ? `${score}/100`
-        : String(policies.length);
-  const heroMetricLabel = scoreDisabled
-    ? "מצב התיק הביטוחי"
-    : isReportWithoutPolicies
-      ? (score != null ? "ציון התאמת כיסוי" : "כיסויים חסרים")
-      : score != null
-        ? "ציון בריאות התיק"
-        : "פוליסות בתיק";
-  const heroDescription = scoreDisabled
-    ? (healthCheck?.messageHe ?? "נדרשת השלמת מידע כדי לבדוק כפילויות ופערי כיסוי.")
-    : isReportWithoutPolicies
-      ? "הדוח נקלט, אבל לא נמצאו בו פוליסות פעילות. הניתוח מבוסס על תשובות השאלון ומדגיש כיסויים שכדאי לבדוק."
-      : "בדיקת בריאות תיק — כפילויות, פערי כיסוי ומדד שירות. ללא השוואת פרמיות.";
-
-  const stats: { icon: LucideIcon; label: string; value: string; bg: string; fg: string }[] = [
-    ...(score != null ? [{ icon: ShieldCheck, label: "ציון כיסוי", value: String(score), bg: "var(--peach-soft)", fg: "var(--peach-ink)" }] : []),
-    { icon: AlertTriangle, label: "כיסויים לבדיקה", value: String((analysis?.duplicateCount ?? 0) + missing.length), bg: "var(--butter-soft)", fg: "var(--butter-ink)" },
-    { icon: Lightbulb, label: "המלצות", value: String(recs.length), bg: "var(--mint-soft)", fg: "var(--mint-ink)" },
-    { icon: FileText, label: "פוליסות פעילות בדוח", value: String(policies.length), bg: "var(--lav-100)", fg: "var(--lav-600)" },
-    ...(!isReportWithoutPolicies ? [
-      { icon: Shield, label: "הוצאה חודשית", value: fmt(totalPremium), bg: "var(--peach-soft)", fg: "var(--peach-ink)" },
-      ...(companyQuality?.averageServiceIndex != null
-        ? [{ icon: ShieldCheck, label: "מדד שירות ממוצע", value: String(companyQuality.averageServiceIndex), bg: "var(--mint-soft)", fg: "var(--mint-ink)" }]
-        : []),
-      ...(premiumUnderReview > 0 ? [{ icon: TrendingDown, label: "פרמיה לבדיקה (חפיפה)", value: fmt(premiumUnderReview), bg: "var(--butter-soft)", fg: "var(--butter-ink)" }] : []),
-    ] : []),
-  ].slice(0, isReportWithoutPolicies ? 4 : 6);
-
-  const urgencyMap: Record<string, [string, string, string]> = {
-    high: ["var(--peach-soft)", "var(--peach-ink)", "גבוהה"],
-    medium: ["var(--butter-soft)", "var(--butter-ink)", "בינונית"],
-    low: ["var(--lav-100)", "var(--lav-600)", "נמוכה"],
-  };
-
   const RC = 2 * Math.PI * 42;
-  const comparisonMatrix = marketAdvice?.comparisonMatrix ?? [];
 
-  const serviceTierHe: Record<string, string> = {
-    excellent: "מצוין",
-    fair: "סביר",
-    poor: "נמוך",
-    unknown: "אין נתון",
+  const toneBadge = (tone: string) => {
+    if (tone === "green") return statusToneMap.green;
+    if (tone === "red") return statusToneMap.red;
+    return statusToneMap.yellow;
   };
-  const serviceTierTone: Record<string, [string, string]> = {
-    excellent: ["var(--mint-soft)", "var(--mint-ink)"],
-    fair: ["var(--butter-soft)", "var(--butter-ink)"],
-    poor: ["var(--peach-soft)", "var(--peach-ink)"],
-    unknown: ["var(--surface-sunken)", "var(--text-muted)"],
+
+  const priorityTone = (p: string) => {
+    if (p === "high") return statusToneMap.red;
+    if (p === "medium") return statusToneMap.yellow;
+    return { bg: "var(--lav-100)", fg: "var(--lav-600)", border: "var(--lav-200)" };
   };
 
   return wrap(
     <>
-      {/* header */}
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, flexWrap: "wrap", marginBottom: 22 }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-          <span style={{ width: 46, height: 46, borderRadius: 13, flex: "none", background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center" }}><Shield size={22} /></span>
-          <div>
-            <h1 style={{ margin: 0, fontSize: "clamp(24px,3vw,34px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>
-              {isReportWithoutPolicies ? "בדיקת כיסוי ביטוחי" : "בריאות תיק הביטוח"}
-            </h1>
-            <p style={{ margin: "6px 0 0", fontSize: 15, color: "var(--text-muted)", fontWeight: 500 }}>
-              {isReportWithoutPolicies
-                ? "הדוח תקין, אך לא נמצאו פוליסות פעילות. הנה תמונת מצב לפי השאלון."
-                : `${overview?.activeCount ?? policies.length} פוליסות פעילות`
-                  + (overview?.companies?.length ? ` · ${overview.companies.length} חברות` : "")
-                  + (totalPremium > 0 ? ` · עלות חודשית ${fmt(totalPremium)}` : "")}
-            </p>
-          </div>
+        <div>
+          <h1 style={{ margin: 0, fontSize: "clamp(24px,3vw,34px)", fontWeight: 900, letterSpacing: "-.03em", color: "var(--text-strong)" }}>
+            בדיקת בריאות תיק הביטוח
+          </h1>
+          <p style={{ margin: "6px 0 0", fontSize: 15, color: "var(--text-muted)" }}>
+            {(overview?.activeCount ?? policies.length)} פוליסות
+            {overview?.companies?.length ? ` · ${overview.companies.length} חברות` : ""}
+            {totalPremium > 0 ? ` · ${fmt(totalPremium)} / חודש` : ""}
+          </p>
         </div>
-        <button onClick={onReimport} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: "var(--r-pill)", border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13.5, boxShadow: "var(--shadow-soft)" }}><RefreshCw size={15} /> ייבוא מחדש</button>
+        <button onClick={onReimport} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "10px 18px", borderRadius: "var(--r-pill)", border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 13.5, boxShadow: "var(--shadow-soft)" }}>
+          <RefreshCw size={15} /> ייבוא מחדש
+        </button>
       </div>
 
-      {/* HERO */}
-      <div style={{ position: "relative", overflow: "hidden", borderRadius: "var(--radius)", padding: "32px 30px", marginBottom: 34, background: "linear-gradient(120deg,var(--peach-soft),var(--lav-100) 55%,var(--mint-soft))", border: "1px solid var(--border-soft)", boxShadow: "var(--shadow-card)" }}>
-        <div style={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,.5) 1px,transparent 1px)", backgroundSize: "20px 20px", opacity: 0.5, pointerEvents: "none" }} />
-        <span style={{ position: "absolute", insetInlineStart: 24, top: 22, color: "var(--peach-ink)", animation: "resFloat 4s ease-in-out infinite" }}><Sparkles size={20} /></span>
-        <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 26, flexWrap: "wrap" }}>
-          <div style={{ minWidth: 260 }}>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,.7)", border: "1px solid var(--border-soft)", borderRadius: 999, padding: "6px 14px", marginBottom: 16, fontSize: 12.5, fontWeight: 800, color: "var(--peach-ink)" }}>
-              <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--mint-ink)", boxShadow: "0 0 0 4px rgba(47,156,98,.18)" }} />הניתוח הושלם
+      <div style={{ borderRadius: "var(--radius)", padding: "28px 26px", marginBottom: 28, background: "linear-gradient(120deg,var(--peach-soft),var(--lav-100) 55%,var(--mint-soft))", border: "1px solid var(--border-soft)", boxShadow: "var(--shadow-card)" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 20, flexWrap: "wrap" }}>
+          <div style={{ minWidth: 240 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, background: statusColors.bg, color: statusColors.fg, border: `1px solid ${statusColors.border}`, borderRadius: 999, padding: "6px 14px", fontSize: 13, fontWeight: 800, marginBottom: 12 }}>
+              {decision?.statusLabelHe || healthCheck?.level?.label || "בדיקה"}
+            </span>
+            <div style={{ fontSize: 14, color: "var(--ink-soft)", fontWeight: 600, marginBottom: 4 }}>ציון בריאות התיק</div>
+            <div style={{ fontSize: "clamp(42px,6vw,60px)", fontWeight: 900, letterSpacing: "-.04em", lineHeight: 0.95, color: "var(--ink)" }}>
+              {score != null ? `${score}` : "—"}
+              {score != null ? <span style={{ fontSize: 22, color: "var(--text-muted)", fontWeight: 700 }}>/100</span> : null}
             </div>
-            <div style={{ fontSize: 14.5, color: "var(--ink-soft)", fontWeight: 600, marginBottom: 6 }}>{heroMetricLabel}</div>
-            <div style={{ fontSize: "clamp(42px,6vw,64px)", fontWeight: 900, letterSpacing: "-.045em", lineHeight: 0.95, backgroundImage: "linear-gradient(96deg,var(--peach-ink),var(--lav-600) 55%,var(--mint-ink))", backgroundSize: "220% auto", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent", animation: "resShine 4.5s linear infinite" }}>{heroMetric}</div>
-            <div style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 500, marginTop: 10, maxWidth: 420 }}>{heroDescription}</div>
-            {marketAdvice?.overallVerdictLabelHe ? (
-              <div style={{ marginTop: 12, fontSize: 13.5, fontWeight: 800, color: "var(--text-strong)" }}>
-                {marketAdvice.overallVerdictLabelHe}
-              </div>
-            ) : null}
+            <div style={{ marginTop: 8, fontSize: 15, fontWeight: 800, color: "var(--text-strong)" }}>
+              {decision?.healthLabelHe || ""}
+            </div>
+            <p style={{ margin: "8px 0 0", fontSize: 14, color: "var(--text-muted)", maxWidth: 420, lineHeight: 1.55 }}>
+              {decision?.statusSummaryHe || healthCheck?.messageHe || "סקירה דטרמיניסטית לפי פוליסות, פרופיל ומדד שירות."}
+            </p>
+            {(decision?.healthExplanation || []).slice(0, 3).map((line) => (
+              <div key={line} style={{ marginTop: 6, fontSize: 13, color: "var(--text-body)", fontWeight: 600 }}>• {line}</div>
+            ))}
           </div>
           {score != null && (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "rgba(255,255,255,.62)", backdropFilter: "blur(8px)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "20px 26px" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, background: "rgba(255,255,255,.7)", border: "1px solid var(--border-soft)", borderRadius: "var(--radius)", padding: "18px 22px" }}>
               <div style={{ position: "relative", width: 96, height: 96 }}>
                 <svg width="96" height="96" viewBox="0 0 96 96" style={{ transform: "rotate(-90deg)" }}>
                   <circle cx="48" cy="48" r="42" fill="none" stroke="var(--hair)" strokeWidth="8" />
-                  <circle cx="48" cy="48" r="42" fill="none" stroke="var(--peach-ink)" strokeWidth="8" strokeLinecap="round" strokeDasharray={RC} strokeDashoffset={RC * (1 - Math.min(score, 100) / 100)} style={{ transition: "stroke-dashoffset 1s var(--ease)" }} />
+                  <circle cx="48" cy="48" r="42" fill="none" stroke="var(--peach-ink)" strokeWidth="8" strokeLinecap="round" strokeDasharray={RC} strokeDashoffset={RC * (1 - Math.min(score, 100) / 100)} />
                 </svg>
-                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontSize: 28, fontWeight: 900, letterSpacing: "-.04em", color: "var(--ink)" }}>{score}</div>
+                <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontSize: 26, fontWeight: 900 }}>{score}</div>
               </div>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "var(--peach-ink)" }}>ציון כיסוי</div>
-              {healthCheck?.level?.label && <div style={{ fontSize: 11.5, color: "var(--text-muted)", fontWeight: 600 }}>{healthCheck.level.label}</div>}
             </div>
           )}
         </div>
       </div>
 
-      {isReportWithoutPolicies && (
-        <div role="note" style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: "16px 18px", marginBottom: 28, borderRadius: "var(--r-md)", background: "var(--surface-sunken)", border: "1px solid var(--border-hair)" }}>
-          <FileText size={20} color="var(--peach-ink)" style={{ flex: "none", marginTop: 2 }} />
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 900, color: "var(--text-strong)", marginBottom: 4 }}>לא נמצאו פוליסות פעילות בדוח</div>
-            <p style={{ margin: 0, fontSize: 13.5, lineHeight: 1.6, color: "var(--text-muted)" }}>
-              זה יכול לקרות אם אין לך ביטוחים פרטיים פעילים, אם הדוח הופק ללא פוליסות, או אם קיימים כיסויים דרך קופת חולים/מעסיק שלא מופיעים כדוח פוליסות פעיל.
-              לכן הסוכן מציג המלצות לפי פרופיל הסיכון שמילאת בשאלון.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* stat grid */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 14, marginBottom: 34 }}>
-        {stats.map(s => {
-          const Icon = s.icon;
-          return (
-            <div key={s.label} style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", padding: "18px 16px", boxShadow: "var(--shadow-soft)" }}>
-              <span style={{ width: 36, height: 36, borderRadius: 10, background: s.bg, color: s.fg, display: "grid", placeItems: "center", marginBottom: 12 }}><Icon size={18} /></span>
-              <div style={{ fontSize: 22, fontWeight: 900, letterSpacing: "-.03em", lineHeight: 1, color: "var(--ink)", fontVariantNumeric: "tabular-nums" }}>{s.value}</div>
-              <div style={{ fontSize: 12.5, color: "var(--text-muted)", fontWeight: 600, marginTop: 6 }}>{s.label}</div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* portfolio overview */}
-      {overview && (
-        <Section title="סקירת תיק" sub="פוליסות, חברות וסוגי כיסוי מהדוח">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10, marginBottom: 12 }}>
-            <div style={{ padding: 12, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>סה״כ פוליסות</div>
-              <div style={{ fontWeight: 900, fontSize: 18 }}>{overview.policyCount}</div>
-            </div>
-            <div style={{ padding: 12, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>פעילות</div>
-              <div style={{ fontWeight: 900, fontSize: 18 }}>{overview.activeCount}</div>
-            </div>
-            <div style={{ padding: 12, background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
-              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>לא פעילות</div>
-              <div style={{ fontWeight: 900, fontSize: 18 }}>{overview.inactiveCount}</div>
-            </div>
-          </div>
-          {overview.companies.length > 0 ? (
-            <p style={{ margin: "0 0 8px", fontSize: 14, color: "var(--text-muted)" }}>
-              <strong style={{ color: "var(--text-strong)" }}>חברות: </strong>
-              {overview.companies.join(" · ")}
-            </p>
-          ) : null}
-          {overview.policyTypes.length > 0 ? (
-            <p style={{ margin: 0, fontSize: 14, color: "var(--text-muted)" }}>
-              <strong style={{ color: "var(--text-strong)" }}>סוגי כיסוי: </strong>
-              {overview.policyTypes.map(t => t.labelHe).join(" · ")}
-            </p>
-          ) : null}
-        </Section>
-      )}
-
-      {/* company service quality — not premium vs market */}
-      {comparisonMatrix.length > 0 && (
-        <Section title="איכות שירות של החברות" sub="מדד שירות, תשלום תביעות ושביעות לקוחות — ללא השוואת פרמיות">
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {comparisonMatrix.map(row => {
-              const tier = row.serviceTier || "unknown";
-              const [bg, fg] = serviceTierTone[tier] ?? serviceTierTone.unknown;
+      {quick && (
+        <Section title="תשובות מהירות" sub="מה חשוב לדעת עכשיו">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
+            {([
+              { k: "בריאות התיק", label: `${quick.portfolioHealth.score}/100 · ${quick.portfolioHealth.scoreLabelHe}`, tone: decision?.statusTone || "yellow", ok: decision?.status === "healthy" },
+              { k: "כפילויות", label: quick.hasDuplicates.labelHe, tone: quick.hasDuplicates.tone, ok: !quick.hasDuplicates.value },
+              { k: "כיסוי חסר", label: quick.missingImportant.labelHe, tone: quick.missingImportant.tone, ok: !quick.missingImportant.value },
+              { k: "כיסוי מיותר?", label: quick.possiblyUnnecessary.labelHe, tone: quick.possiblyUnnecessary.tone, ok: !quick.possiblyUnnecessary.value },
+              { k: "איכות חברה", label: quick.companyQuality.labelHe, tone: quick.companyQuality.tone, ok: quick.companyQuality.value },
+            ]).map((card) => {
+              const tone = toneBadge(card.tone);
               return (
-                <div key={row.policyId} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)", flexWrap: "wrap" }}>
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>{row.type}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{row.provider ?? "—"}</div>
+                <div key={card.k} style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", padding: "14px 16px", boxShadow: "var(--shadow-soft)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 12.5, fontWeight: 800, color: "var(--text-muted)" }}>{card.k}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: tone.fg, background: tone.bg, borderRadius: 999, padding: "3px 9px" }}>
+                      {card.ok ? "תקין" : "לבדיקה"}
+                    </span>
                   </div>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>מדד שירות</div>
-                    <div style={{ fontWeight: 900, fontSize: 15 }}>{row.serviceScore ?? "—"}</div>
-                  </div>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 700 }}>תשלום תביעות</div>
-                    <div style={{ fontWeight: 900, fontSize: 15, color: "var(--text-muted)" }}>
-                      {row.claimPaymentRate != null ? `${row.claimPaymentRate}%` : "—"}
-                    </div>
-                  </div>
-                  <span style={{ fontSize: 11.5, fontWeight: 800, color: fg, background: bg, borderRadius: 999, padding: "4px 10px", flex: "none" }}>
-                    {serviceTierHe[tier] ?? tier}
-                  </span>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-strong)", lineHeight: 1.45 }}>{card.label}</div>
                 </div>
               );
             })}
@@ -719,65 +644,115 @@ function ResultsStep({
         </Section>
       )}
 
-      {/* coverage summaries with missing info */}
-      {coverageSummaries.some(c => c.missingInformation?.length || c.manualReviewRecommended) && (
-        <Section title="סיכום כיסויים" sub="מידע חסר שמומלץ להשלים מול המבטח">
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {coverageSummaries.filter(c => c.missingInformation?.length || c.manualReviewRecommended).map(c => (
-              <div key={c.policyId} style={{ padding: "12px 14px", background: "var(--surface-sunken)", borderRadius: "var(--r-md)" }}>
-                <div style={{ fontWeight: 800, fontSize: 14 }}>{c.coverageTypeLabelHe}{c.provider ? ` · ${c.provider}` : ""}</div>
-                <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
-                  חסר: {(c.missingInformation || []).join(", ") || "פרטים נוספים"}
-                  {c.manualReviewRecommended ? " · מומלץ אימות ידני" : ""}
+      {actions.length > 0 && (
+        <Section title="תוכנית פעולה" sub="עד 5 פעולות מעשיות — ללא השוואת מחירים">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {actions.map((a) => {
+              const pt = priorityTone(a.priority);
+              return (
+                <div key={a.id} style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", padding: "16px 18px", boxShadow: "var(--shadow-soft)", borderInlineStart: `3px solid ${pt.fg}` }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+                    <span style={{ fontWeight: 900, fontSize: 15, color: "var(--text-strong)" }}>{a.titleHe}</span>
+                    <span style={{ fontSize: 11, fontWeight: 800, color: pt.fg, background: pt.bg, borderRadius: 999, padding: "3px 9px" }}>עדיפות {a.priorityLabelHe}</span>
+                  </div>
+                  <div style={{ fontSize: 13.5, color: "var(--text-body)", lineHeight: 1.55, marginBottom: 6 }}>{a.reasonHe}</div>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: "var(--mint-ink)" }}>תועלת: {a.expectedBenefitHe}</div>
                 </div>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+
+      {profileInsights.length > 0 && (
+        <Section title="התאמה לפרופיל" sub="מה נחוץ ומה לא — לפי האונבורדינג">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10 }}>
+            {profileInsights.slice(0, 8).map((p) => {
+              const tone = p.status === "not_recommended" || p.status === "possibly_unnecessary"
+                ? statusToneMap.yellow
+                : p.status === "recommended" || p.status === "unverified"
+                  ? statusToneMap.red
+                  : statusToneMap.green;
+              return (
+                <div key={`${p.type}-${p.status}-${p.titleHe}`} style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", padding: "14px 16px" }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: tone.fg, background: tone.bg, borderRadius: 999, padding: "3px 9px" }}>{p.titleHe}</span>
+                  <p style={{ margin: "10px 0 0", fontSize: 13.5, color: "var(--text-body)", lineHeight: 1.5 }}>{p.messageHe}</p>
+                </div>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+
+      {duplicates.length > 0 && (
+        <Section title="כפילויות וחפיפות" sub="כיסויים שכדאי לאמת">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+            {duplicates.map((dup: InsuranceDuplicate, i: number) => (
+              <div key={i} style={{ padding: "14px 16px", background: "var(--card)", border: "1px solid var(--butter)", borderRadius: "var(--r-md)" }}>
+                <div style={{ fontWeight: 800, color: "var(--butter-ink)" }}>{dup.typeLabelHe ?? POLICY_TYPE_LABELS[dup.type] ?? dup.type}</div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 4 }}>{dup.reasonHe ?? `${dup.policyCount ?? dup.policies.length} פוליסות`}</div>
               </div>
             ))}
           </div>
         </Section>
       )}
 
-      {/* health check */}
-      {healthCheck && (healthCheck.scoreDisabled || (healthCheck.categories?.length ?? 0) > 0) && (
-        <Section title={healthCheck.headlineHe ?? "בדיקת בריאות ביטוח"} sub={healthCheck.scoreDisabled ? healthCheck.messageHe : `ציון כולל ${healthCheck.score}/100${healthCheck.level?.label ? ` · ${healthCheck.level.label}` : ""}`}>
-          {healthCheck.scoreDisabled ? (
-            <div style={{ padding: "14px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>
-              {healthCheck.messageHe}
-            </div>
-          ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {healthCheck.categories.map(c => {
-              const [bg, fg] = statusTone(c.status);
-              const ok = c.status === "good" || c.status === "ok" || c.status === "excellent";
-              return (
-                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
-                  <span style={{ width: 34, height: 34, borderRadius: 9, flex: "none", background: bg, color: fg, display: "grid", placeItems: "center" }}>{ok ? <CheckCircle size={17} /> : <AlertTriangle size={17} />}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--ink)" }}>{c.label}</div>
-                    {c.detail && <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{c.detail}</div>}
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 900, color: fg }}>{c.score}</div>
+      {insurers.length > 0 && (
+        <Section title="איכות חברות הביטוח" sub="מדד שירות · תשלום תביעות · שביעות לקוחות">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {insurers.map((row) => (
+              <div key={row.policyId} style={{ display: "grid", gridTemplateColumns: "1.4fr repeat(3, minmax(70px,1fr)) auto", gap: 10, alignItems: "center", padding: "12px 14px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)" }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14 }}>{row.type}</div>
+                  <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{row.provider ?? "—"}</div>
                 </div>
-              );
-            })}
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontWeight: 700 }}>מדד שירות</div>
+                  <div style={{ fontWeight: 900 }}>{row.serviceScore ?? "—"}</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontWeight: 700 }}>תביעות</div>
+                  <div style={{ fontWeight: 900 }}>{row.claimPaymentRate != null ? `${row.claimPaymentRate}%` : "—"}</div>
+                </div>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ fontSize: 10.5, color: "var(--text-faint)", fontWeight: 700 }}>שביעות</div>
+                  <div style={{ fontWeight: 900 }}>{row.satisfactionScore ?? "—"}</div>
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 800, color: "var(--text-muted)", background: "var(--surface-sunken)", borderRadius: 999, padding: "4px 8px" }}>
+                  תלונות: {row.complaintIndicatorsLabelHe || "לא זמין"}
+                </span>
+              </div>
+            ))}
           </div>
-          )}
         </Section>
       )}
 
-      {/* overlaps for review */}
-      {duplicates.length > 0 && (
-        <Section title="כיסויים הדורשים בדיקה" sub="קיימת חפיפה אפשרית — מומלץ אימות מול המבטח">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14 }}>
-            {duplicates.map((dup: InsuranceDuplicate, i: number) => (
-              <div key={i} style={{ position: "relative", overflow: "hidden", padding: "16px 18px", background: "var(--card)", border: "1px solid var(--butter)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
-                <span style={{ position: "absolute", insetInlineStart: 0, top: 0, bottom: 0, width: 3, background: "var(--butter-ink)" }} />
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                  <span style={{ fontWeight: 800, fontSize: 15, color: "var(--butter-ink)" }}>{dup.typeLabelHe ?? POLICY_TYPE_LABELS[dup.type] ?? dup.type}</span>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: "var(--butter-ink)", background: "var(--butter-soft)", borderRadius: 999, padding: "2px 9px" }}>{dup.policyCount ?? dup.policies.length} פוליסות</span>
+      {completeness.length > 0 && (
+        <Section title="שלמות מידע בכיסויים" sub="רמת ביטחון לפי הנתונים שזוהו בדוח">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {completeness.map((c) => (
+              <div key={c.policyId} style={{ padding: "12px 14px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ fontWeight: 800 }}>{c.coverageTypeLabelHe}{c.provider ? ` · ${c.provider}` : ""}</div>
+                  <span style={{ fontSize: 11.5, fontWeight: 800, color: "var(--text-muted)" }}>
+                    ביטחון: {"coverageConfidenceLabelHe" in c && c.coverageConfidenceLabelHe
+                      ? c.coverageConfidenceLabelHe
+                      : (c.manualReviewRecommended ? "נמוכה" : "בינונית")}
+                    {"completenessScore" in c && c.completenessScore != null ? ` · ${c.completenessScore}%` : ""}
+                  </span>
                 </div>
-                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginBottom: 8 }}>{dup.reasonHe ?? (dup.policies.map(p => p.provider).filter(Boolean).join(" · ") || "—")}</div>
-                {(dup.premiumUnderReviewMonthly ?? 0) > 0 && (
-                  <div style={{ fontSize: 13.5, fontWeight: 800, color: "var(--butter-ink)" }}>פרמיה חודשית לבדיקה: {fmt(dup.premiumUnderReviewMonthly ?? 0)}</div>
+                {"checks" in c && Array.isArray(c.checks) ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                    {c.checks.slice(0, 6).map((ch) => (
+                      <span key={ch.id} style={{ fontSize: 11.5, fontWeight: 700, padding: "3px 8px", borderRadius: 999, background: ch.status === "ok" ? "var(--mint-soft)" : "var(--butter-soft)", color: ch.status === "ok" ? "var(--mint-ink)" : "var(--butter-ink)" }}>
+                        {ch.status === "ok" ? "✓" : "⚠"} {ch.labelHe}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 6 }}>
+                    {(c.missingInformation || []).length ? `חסר: ${c.missingInformation.join(", ")}` : "מידע בסיסי זוהה"}
+                  </div>
                 )}
               </div>
             ))}
@@ -785,62 +760,28 @@ function ResultsStep({
         </Section>
       )}
 
-      {/* missing coverage */}
-      {missing.length > 0 && (
-        <Section title="כיסויים חסרים" sub="ביטוחים שכדאי לשקול בהתאם לפרופיל שלך">
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-            {missing.map((cov: string) => (
-              <span key={cov} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 16px", borderRadius: "var(--r-pill)", background: "var(--butter-soft)", border: "1px solid var(--butter)" }}>
-                <AlertTriangle size={15} color="var(--butter-ink)" /><span style={{ fontSize: 13.5, fontWeight: 700, color: "var(--butter-ink)" }}>{POLICY_TYPE_LABELS[cov] ?? cov}</span>
-              </span>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {/* recommendations */}
-      {recs.length > 0 && (
-        <Section title="המלצות הסוכן" sub="פעולות מומלצות לפי נתונים אובייקטיביים — ללא השוואת פרמיות">
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {recs.map((r: InsuranceRecommendationDTO, i: number) => {
-              const [ubg, ufg, ulabel] = urgencyMap[r.urgency] ?? urgencyMap.low;
-              return (
-                <div key={i} style={{ padding: "18px 20px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)", borderInlineStart: `3px solid ${ufg}` }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 7, flexWrap: "wrap" }}>
-                    <span style={{ width: 30, height: 30, borderRadius: 8, flex: "none", background: ubg, color: ufg, display: "grid", placeItems: "center" }}><Lightbulb size={16} /></span>
-                    <span style={{ fontWeight: 800, fontSize: 15.5, color: "var(--text-strong)" }}>{r.title}</span>
-                    <span style={{ fontSize: 10.5, fontWeight: 800, color: ufg, background: ubg, borderRadius: 999, padding: "2px 9px" }}>עדיפות {ulabel}</span>
-                  </div>
-                  <p style={{ margin: "0 0 12px", paddingInlineStart: 39, fontSize: 14, color: "var(--text-body)", lineHeight: 1.6 }}>{r.reason}</p>
-                  {r.financialImpact && <span style={{ display: "inline-flex", alignItems: "center", gap: 6, marginInlineStart: 39, fontSize: 12.5, fontWeight: 800, color: "var(--mint-ink)", background: "var(--mint-soft)", border: "1px solid var(--mint)", borderRadius: 999, padding: "5px 12px" }}>{r.financialImpact}</span>}
-                </div>
-              );
-            })}
-          </div>
-        </Section>
-      )}
-
-      {/* policies */}
       {policies.length > 0 && (
-        <Section title="הפוליסות שלך" sub={`${policies.length} פוליסות · ${fmt(totalPremium)} / חודש`}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {policies.map((p: InsurancePolicyDTO) => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "14px 18px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)", boxShadow: "var(--shadow-soft)" }}>
+        <Section title="הפוליסות שלך" sub={`${policies.length} פוליסות`}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {policies.map((p) => (
+              <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 16px", background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--r-md)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
-                  <span style={{ width: 38, height: 38, borderRadius: 11, flex: "none", background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center" }}><Shield size={17} /></span>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 800, fontSize: 14, color: "var(--text-strong)" }}>{POLICY_TYPE_LABELS[p.type] ?? p.type}</div>
-                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{p.provider ?? "—"}{p.policyNumber ? ` · ${p.policyNumber}` : ""}</div>
+                  <span style={{ width: 36, height: 36, borderRadius: 10, flex: "none", background: "var(--peach-soft)", color: "var(--peach-ink)", display: "grid", placeItems: "center" }}><Shield size={16} /></span>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: 14 }}>{POLICY_TYPE_LABELS[p.type] ?? p.type}</div>
+                    <div style={{ fontSize: 12.5, color: "var(--text-muted)" }}>{p.provider ?? "—"} · {p.status}</div>
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 16, flex: "none" }}>
-                  <div style={{ textAlign: "left" }}>
-                    <div style={{ fontWeight: 900, fontSize: 15.5, color: "var(--ink)" }}>{fmt(p.monthlyPremium)}</div>
-                    <div style={{ fontSize: 11.5, color: "var(--text-faint)" }}>לחודש</div>
-                  </div>
-                  {p.status === "active" ? <CheckCircle size={16} color="var(--mint-ink)" /> : <AlertCircle size={16} color="var(--butter-ink)" />}
-                  <button onClick={() => void onDelete(p.id)} disabled={deletingId === p.id} aria-label="מחק פוליסה" style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid var(--border-soft)", background: "var(--card)", color: "var(--text-faint)", cursor: "pointer", display: "grid", placeItems: "center", flex: "none" }}>
-                    {deletingId === p.id ? <Loader2 size={14} style={{ animation: "spin .8s linear infinite" }} /> : <Trash2 size={14} />}
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{fmt(p.monthlyPremium ?? 0)}</span>
+                  <button
+                    type="button"
+                    disabled={deletingId === p.id}
+                    onClick={() => onDelete(p.id)}
+                    style={{ border: "none", background: "transparent", color: "var(--text-faint)", cursor: "pointer", padding: 4 }}
+                    aria-label="מחק פוליסה"
+                  >
+                    {deletingId === p.id ? <Loader2 size={16} style={{ animation: "spin .8s linear infinite" }} /> : <Trash2 size={16} />}
                   </button>
                 </div>
               </div>
@@ -849,7 +790,9 @@ function ResultsStep({
         </Section>
       )}
 
-      <p style={{ margin: "8px 0 0", textAlign: "center", fontSize: 12, color: "var(--text-faint)" }}>הניתוח מבוסס על נתוני הדוח שיובא ואינו מהווה ייעוץ ביטוחי מקצועי.</p>
+      <p style={{ margin: "8px 0 0", textAlign: "center", fontSize: 12, color: "var(--text-faint)" }}>
+        {decision?.methodologyHe || "הניתוח דטרמיניסטי על בסיס הדוח והפרופיל — אינו ייעוץ ביטוחי."}
+      </p>
     </>,
   );
 }
@@ -864,13 +807,4 @@ function Section({ title, sub, children }: { title: string; sub?: string; childr
       {children}
     </section>
   );
-}
-
-function statusTone(status: string): [string, string] {
-  switch (status) {
-    case "good": case "ok": case "excellent": return ["var(--mint-soft)", "var(--mint-ink)"];
-    case "warning": case "fair": return ["var(--butter-soft)", "var(--butter-ink)"];
-    case "poor": case "bad": case "critical": return ["var(--peach-soft)", "var(--peach-ink)"];
-    default: return ["var(--surface-sunken)", "var(--text-muted)"];
-  }
 }

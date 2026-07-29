@@ -19,19 +19,25 @@ describe('insurancePolicyMergeService', () => {
 });
 
 describe('insuranceHealthCheckService', () => {
-  it('disables numerical score until evidence-backed dimensions exist', () => {
-    const profileDTO = { policies: [{ type: 'life' }, { type: 'life' }] };
-    const analysis = {
-      duplicateCount: 1,
-      totalMonthlyWaste: 300,
-      premiumUnderReviewMonthly: 300,
-      missingCoverage: ['disability'],
-      savings: { annualSavings: 0 },
+  it('returns decision-backed numeric score', () => {
+    const profileDTO = {
+      policies: [{ id: '1', type: 'life', provider: 'הראל', policyNumber: '1', coverageAmount: 100, status: 'active', startDate: '2024-01-01' }],
     };
-    const health = runInsuranceHealthCheck(profileDTO, analysis);
-    expect(health.score).toBeNull();
-    expect(health.scoreDisabled).toBe(true);
-    expect(health.messageHe).toMatch(/השלמת מידע/);
-    expect(health.categories).toHaveLength(0);
+    const analysis = {
+      duplicateCount: 0,
+      duplicates: [],
+      duplicateFindings: [],
+      gapFindings: [],
+      needAssessments: [],
+      premiumUnderReviewMonthly: null,
+      policies: profileDTO.policies,
+    };
+    const health = runInsuranceHealthCheck(profileDTO, analysis, {
+      comparisonMatrix: [{ policyId: '1', type: 'life', provider: 'הראל', serviceScore: 85, serviceTier: 'excellent' }],
+      companyQuality: { averageServiceIndex: 85, averageServiceTier: 'excellent' },
+    });
+    expect(health.score).not.toBeNull();
+    expect(health.scoreDisabled).toBe(false);
+    expect(health.categories.length).toBeGreaterThan(0);
   });
 });
