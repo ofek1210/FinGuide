@@ -23,6 +23,7 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SmartOnboardingPage from "./pages/SmartOnboardingPage";
 import WelcomePage from "./pages/WelcomePage";
 import WelcomePagePreview from "./pages/WelcomePagePreview";
+import SmartOnboardingPreview from "./pages/SmartOnboardingPreview";
 import PensionPage from "./pages/PensionPage";
 import GemelPage from "./pages/GemelPage";
 import ExecutiveReportPage from "./pages/ExecutiveReportPage";
@@ -266,7 +267,10 @@ export default function App() {
         <Route path="/403" element={<Error403 />} />
         <Route path="/500" element={<Error500 />} />
         {import.meta.env.DEV ? (
-          <Route path="/dev/welcome" element={<WelcomePagePreview />} />
+          <>
+            <Route path="/dev/welcome" element={<WelcomePagePreview />} />
+            <Route path="/dev/onboarding" element={<SmartOnboardingPreview />} />
+          </>
         ) : null}
         <Route path="*" element={<Error404 />} />
       </Routes>

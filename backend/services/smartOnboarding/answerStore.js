@@ -59,7 +59,14 @@ function applyAnswerToProfile(profile, questionDef, answer) {
   const [section, field] = questionDef.profilePath.split('.');
   if (section && field) {
     profile[section] = profile[section] || {};
-    profile[section][field] = answer;
+    let value = answer;
+    if (questionDef.type === 'text' && typeof answer === 'string') {
+      value = answer.trim();
+    }
+    if (questionDef.type === 'number') {
+      value = Number(answer);
+    }
+    profile[section][field] = value;
     profile.markModified(section);
   }
 

@@ -1,6 +1,6 @@
 import { apiJson } from "./client";
 
-export type SmartQuestionType = "single" | "multi" | "yesno" | "number";
+export type SmartQuestionType = "single" | "multi" | "yesno" | "number" | "text";
 
 export type SmartQuestionOption = {
   value: string;
@@ -13,6 +13,7 @@ export type SmartQuestionDTO = {
   title: string;
   sub?: string | null;
   options?: SmartQuestionOption[] | null;
+  placeholder?: string | null;
   required?: boolean;
 };
 
