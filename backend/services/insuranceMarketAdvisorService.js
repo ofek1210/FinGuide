@@ -80,14 +80,15 @@ function buildPolicyNarrative(verdict, ctx) {
     alternatives, monthlyOverpay,
   } = ctx;
 
+  // הטווח הוא הערכה מדגמית, לא ממוצע שוק נמדד — הניסוח לא טוען אחרת
   if (verdict === VERDICT.STAY) {
-    return `${typeLabel} אצל ${provider || 'המבטח'} — פרמיה ₪${monthlyPremium}/חודש (ממוצע שוק ₪${baseline.average}), מדד שירות ${serviceIndex}/100, תשלום תביעות ~${claimPaymentRate}%. כיסוי במחיר ובשירות סבירים — מומלץ להישאר.`;
+    return `${typeLabel} אצל ${provider || 'המבטח'} — פרמיה ₪${monthlyPremium}/חודש (טווח הערכה ~₪${baseline.average}), מדד שירות ${serviceIndex}/100, תשלום תביעות ~${claimPaymentRate}%. כיסוי במחיר ובשירות סבירים — מומלץ להישאר.`;
   }
   if (verdict === VERDICT.REVIEW) {
-    return `${typeLabel} אצל ${provider} — פרמיה ₪${monthlyPremium}/חודש גבוהה ב-~₪${Math.round(monthlyOverpay)}/חודש מהממוצע (₪${baseline.average}). מדד השירות ${serviceIndex}/100 — החברה מספקת שירות סביר, אך כדאי לנהל משא ומר או להשוות הצעות.`;
+    return `${typeLabel} אצל ${provider} — פרמיה ₪${monthlyPremium}/חודש גבוהה ב-~₪${Math.round(monthlyOverpay)}/חודש מאמצע טווח ההערכה (~₪${baseline.average}). מדד השירות ${serviceIndex}/100 — החברה מספקת שירות סביר, אך כדאי לנהל משא ומתן או להשוות הצעות.`;
   }
   const altText = (alternatives || []).map(a => `${a.displayName} (מדד ${a.serviceIndex})`).join(', ');
-  return `${typeLabel} אצל ${provider} — מדד שירות ${serviceIndex}/100 ו/או פרמיה מעל השוק. אחוז תשלום תביעות ~${claimPaymentRate}% — נמוך מהמובילים. שקלי: ${altText || 'חברות עם מדד שירות גבוה'}.`;
+  return `${typeLabel} אצל ${provider} — מדד שירות ${serviceIndex}/100 ו/או פרמיה מעל טווח ההערכה. אחוז תשלום תביעות ~${claimPaymentRate}% — נמוך מהמובילים. כדאי לשקול: ${altText || 'חברות עם מדד שירות גבוה'}.`;
 }
 
 function hasComparablePremiumFactors(policy, profileDTO) {
@@ -309,9 +310,9 @@ async function buildMarketAdvice(policies, profileDTO, options = {}) {
       premiumUnderReviewMonthly: premiumUnderReview || null,
     },
     recommendationHe: overallVerdict === VERDICT.STAY
-      ? 'פרופיל הביטוח מאוזן — מחירים ומדד שירות בתוך טווח השוק.'
+      ? 'פרופיל הביטוח מאוזן — הפרמיות ומדד השירות בתוך טווח ההערכה.'
       : overallVerdict === VERDICT.REVIEW
-        ? 'יש מקום לייעול — נהל משא ומר על פרמיות ובדוק כפילויות לפני החלפת מכרז.'
+        ? 'יש מקום לייעול — כדאי לנהל משא ומתן על הפרמיות ולבדוק כפילויות בכיסוי.'
         : 'מומלץ לבחון מחדש חברות עם מדד שירות גבוה יותר — במיוחד אחוז תשלום תביעות.',
     disclaimer: pricingDisclaimer.he,
     disclaimerEn: pricingDisclaimer.en,
