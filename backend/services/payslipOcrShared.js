@@ -81,29 +81,79 @@ function matchAmountFlexible(text, regex, parser = parseMoney) {
 }
 
 function extractMonthFromFilename(filePath) {
-  const base = path.basename(filePath);
-  const match = base.match(/(20\d{2})[-_.](\d{2})/);
-  if (!match) return undefined;
-  return `${match[1]}-${match[2]}`;
+  const base = path.basename(String(filePath || ''));
+  if (!base) return undefined;
+
+  // 2026-06 / 2026_06 / 2026.06
+  const yFirst = base.match(/(20\d{2})[-_.](\d{1,2})(?!\d)/);
+  if (yFirst) {
+    const mm = Number(yFirst[2]);
+    if (mm >= 1 && mm <= 12) return `${yFirst[1]}-${String(mm).padStart(2, '0')}`;
+  }
+
+  // 06-2026 / 6_2026 / 06.2026
+  const mFirst = base.match(/(?<!\d)(\d{1,2})[-_.](20\d{2})(?!\d)/);
+  if (mFirst) {
+    const mm = Number(mFirst[1]);
+    if (mm >= 1 && mm <= 12) return `${mFirst[2]}-${String(mm).padStart(2, '0')}`;
+  }
+
+  // Hebrew month in filename: יוני_2026 / אפריל-2026
+  const heb = base.match(
+    /(ינואר|פברואר|מרץ|מרס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)[-_\s.]*(20\d{2})/,
+  );
+  if (heb) {
+    const mm = HEBREW_MONTHS[heb[1]];
+    if (mm) return `${heb[2]}-${mm}`;
+  }
+
+  return undefined;
 }
 
 function extractMonthYYYYMM(text) {
-  const value = String(text);
+  const value = String(text || '');
+  if (!value.trim()) return undefined;
+
+  // Prefer explicit "תלוש שכר לחודש …" / "לחודש …" near the title
+  const titled = value.match(
+    /(?:תלוש\s*שכר\s*)?לחודש\s*[:=\-]?\s*(?:(ינואר|פברואר|מרץ|מרס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)\s*(20\d{2})|(\d{1,2})[./\-](20\d{2}))/i,
+  );
+  if (titled) {
+    if (titled[1] && titled[2]) {
+      const mm = HEBREW_MONTHS[titled[1]];
+      if (mm) return `${titled[2]}-${mm}`;
+    }
+    if (titled[3] && titled[4]) {
+      const mm = Number(titled[3]);
+      if (mm >= 1 && mm <= 12) return `${titled[4]}-${String(mm).padStart(2, '0')}`;
+    }
+  }
 
   const hebrewMonth = value.match(
-    /(ינואר|פברואר|מרץ|מרס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)\s*(20\d{2})/,
+    /(ינואר|פברואר|מרץ|מרס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)\s*[-/.,]?\s*(20\d{2})/,
   );
   if (hebrewMonth) {
     const mm = HEBREW_MONTHS[hebrewMonth[1]];
     if (mm) return `${hebrewMonth[2]}-${mm}`;
   }
 
-  const monthSlashYear = value.match(/(\d{2})\/(20\d{2})/);
-  if (monthSlashYear) return `${monthSlashYear[2]}-${monthSlashYear[1]}`;
+  // MM/YYYY or M/YYYY (also ., - separators). Avoid matching DD/MM/YYYY by requiring month ≤12
+  // and not being followed by another /dd segment after the year.
+  const monthSlashYear = value.match(/(?<!\d)(\d{1,2})[./\-](20\d{2})(?!\d)/);
+  if (monthSlashYear) {
+    const mm = Number(monthSlashYear[1]);
+    if (mm >= 1 && mm <= 12) {
+      return `${monthSlashYear[2]}-${String(mm).padStart(2, '0')}`;
+    }
+  }
 
-  const lekhodesh = value.match(/לחודש\s+(\d{1,2})\/(20\d{2})/i);
-  if (lekhodesh) {
-    return `${lekhodesh[2]}-${String(lekhodesh[1]).padStart(2, '0')}`;
+  // YYYY-MM / YYYY/MM
+  const yearFirst = value.match(/(20\d{2})[./\-](\d{1,2})(?!\d)/);
+  if (yearFirst) {
+    const mm = Number(yearFirst[2]);
+    if (mm >= 1 && mm <= 12) {
+      return `${yearFirst[1]}-${String(mm).padStart(2, '0')}`;
+    }
   }
 
   const dateRange = value.match(/מ-\d{2}\/(\d{2})\/(\d{2})\s+עד\s+\d{2}\/\1\/\2/);

@@ -7,12 +7,12 @@ function isValidYearMonth(year, month) {
   return year >= 2000 && year <= 2100 && month >= 1 && month <= 12;
 }
 
-/** Parse period.month in YYYY-MM or MM/YYYY (also accepts M/YYYY). */
+/** Parse period.month in YYYY-MM, MM/YYYY, M.YYYY, YYYY/MM, Hebrew "יוני 2026". */
 function parsePeriodMonth(value) {
   if (!value || typeof value !== 'string') return null;
   const trimmed = value.trim();
 
-  const ymd = trimmed.match(/^(\d{4})-(\d{1,2})$/);
+  const ymd = trimmed.match(/^(\d{4})[-/.](\d{1,2})$/);
   if (ymd) {
     const year = Number(ymd[1]);
     const month = Number(ymd[2]);
@@ -20,11 +20,25 @@ function parsePeriodMonth(value) {
     return { year, month };
   }
 
-  const mY = trimmed.match(/^(\d{1,2})\/(\d{4})$/);
+  const mY = trimmed.match(/^(\d{1,2})[-/.](\d{4})$/);
   if (mY) {
     const month = Number(mY[1]);
     const year = Number(mY[2]);
     if (!isValidYearMonth(year, month)) return null;
+    return { year, month };
+  }
+
+  const hebrew = trimmed.match(
+    /^(ינואר|פברואר|מרץ|מרס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)\s+(\d{4})$/,
+  );
+  if (hebrew) {
+    const HEBREW_MONTHS = {
+      ינואר: 1, פברואר: 2, מרץ: 3, מרס: 3, אפריל: 4, מאי: 5, יוני: 6,
+      יולי: 7, אוגוסט: 8, ספטמבר: 9, אוקטובר: 10, נובמבר: 11, דצמבר: 12,
+    };
+    const month = HEBREW_MONTHS[hebrew[1]];
+    const year = Number(hebrew[2]);
+    if (!month || !isValidYearMonth(year, month)) return null;
     return { year, month };
   }
 
@@ -64,9 +78,32 @@ function parseDateLike(value) {
   return null;
 }
 
-/** Sync document.metadata.periodYear/Month from extracted analysis period. */
+/** Sync document.metadata.periodYear/Month from extracted analysis period.
+ *  If analysis missed the month, fall back to the original filename.
+ */
 function syncPayslipPeriodMetadata(document, analysisData = document?.analysisData) {
-  const parsed = parsePeriodMonth(analysisData?.period?.month);
+  let parsed = parsePeriodMonth(analysisData?.period?.month);
+
+  if (!parsed) {
+    try {
+      // eslint-disable-next-line global-require
+      const { extractMonthFromFilename } = require('../services/payslipOcrShared');
+      const fromName = extractMonthFromFilename(
+        document?.originalName || document?.storedName || document?.filename || '',
+      );
+      parsed = parsePeriodMonth(fromName);
+      if (parsed && analysisData && typeof analysisData === 'object') {
+        if (!analysisData.period) analysisData.period = {};
+        analysisData.period.month = monthKey(parsed.year, parsed.month);
+        if (document.analysisData === analysisData || !document.analysisData) {
+          document.analysisData = analysisData;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   if (!parsed) return false;
   if (!document.metadata) document.metadata = {};
   const prevYear = toFiniteNumber(document.metadata.periodYear);
@@ -104,6 +141,25 @@ function resolvePayslipPeriod(document) {
       source: 'summary.date',
       incompletePeriod: false,
     };
+  }
+
+  // Last resort: filename like "payslip_06-2026.pdf" / "יוני_2026.pdf"
+  try {
+    // eslint-disable-next-line global-require
+    const { extractMonthFromFilename } = require('../services/payslipOcrShared');
+    const fromName = extractMonthFromFilename(
+      document?.originalName || document?.storedName || document?.filename || '',
+    );
+    const parsedName = parsePeriodMonth(fromName);
+    if (parsedName) {
+      return {
+        ...parsedName,
+        source: 'filename',
+        incompletePeriod: false,
+      };
+    }
+  } catch {
+    // ignore circular/missing helper
   }
 
   return {

@@ -29,4 +29,17 @@ describe('payslipPeriod', () => {
     expect(doc.metadata.periodYear).toBe(2026);
     expect(doc.metadata.periodMonth).toBe(7);
   });
+
+  it('syncPayslipPeriodMetadata fills period from originalName when OCR missed it', () => {
+    const doc = {
+      originalName: 'תלוש_אפריל_2026.pdf',
+      metadata: { category: 'payslip' },
+      analysisData: { period: {} },
+    };
+    const changed = syncPayslipPeriodMetadata(doc, doc.analysisData);
+    expect(changed).toBe(true);
+    expect(doc.metadata.periodYear).toBe(2026);
+    expect(doc.metadata.periodMonth).toBe(4);
+    expect(doc.analysisData.period.month).toBe('2026-04');
+  });
 });

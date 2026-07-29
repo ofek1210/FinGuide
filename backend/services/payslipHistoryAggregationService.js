@@ -141,20 +141,13 @@ function buildPayslipHistoryIntelligence(documents, { year } = {}) {
     .filter(entry => entry.period.incompletePeriod)
     .map(entry => {
       const missingCritical = [...computeMissingCritical(entry), 'period'];
-      const uploadedAt = entry.doc.uploadedAt ? new Date(entry.doc.uploadedAt) : null;
-      const uploadYear = uploadedAt && !Number.isNaN(uploadedAt.getTime())
-        ? uploadedAt.getFullYear()
-        : null;
-      const uploadMonth = uploadedAt && !Number.isNaN(uploadedAt.getTime())
-        ? uploadedAt.getMonth() + 1
-        : null;
+      // Never invent a salary period from upload date — that mislabels June/April
+      // payslips as "July" when they were uploaded in July.
       return {
         id: entry.doc._id?.toString?.() || entry.doc._id,
-        periodMonth: uploadYear && uploadMonth
-          ? `${uploadYear}-${String(uploadMonth).padStart(2, '0')}`
-          : 'unknown',
-        periodYear: uploadYear,
-        periodMonthNumber: uploadMonth,
+        periodMonth: null,
+        periodYear: null,
+        periodMonthNumber: null,
         grossSalary: entry.summary.grossSalary,
         netSalary: entry.summary.netSalary,
         tax: entry.summary.tax,
@@ -170,8 +163,8 @@ function buildPayslipHistoryIntelligence(documents, { year } = {}) {
         incompletePeriod: true,
         originalName: entry.doc.originalName || null,
       };
-    })
-    .filter(item => allYears || !Number.isFinite(selectedYear) || item.periodYear === selectedYear);
+    });
+  // Always surface incomplete-period payslips for review (no invented month/year).
 
   const mergedItems = [...selectedYearEntries, ...incompleteItems]
     .sort((a, b) => {

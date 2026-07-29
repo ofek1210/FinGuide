@@ -1,13 +1,19 @@
 /**
  * Expected Israeli income-tax credit points from user profile.
  * Compares against payslip OCR credit points to surface savings opportunities.
+ * Locality (סעיף 11) credits use percent-of-income up to an annual cap from the
+ * Monthly Deductions Booklet — not credit points.
  */
 
 const { DEFAULT_ANNUAL_CREDIT_POINT_VALUE } = require('./taxAdjustmentRulesService');
+const {
+  computeLocalityIncomeCredit,
+  lookupQualifyingLocality,
+} = require('./qualifyingLocalitiesTaxCredit');
 
 const MONTHLY_CREDIT_POINT_VALUE = 242;
 
-/** יישובי אזור פיתוח (זיכוי מגורים) — רשימה חלקית, ניתנת להרחבה */
+/** @deprecated Kept for callers/tests that still inspect the old map; prefer qualifyingLocalitiesTaxCredit. */
 const DEVELOPMENT_ZONE_CITIES = new Map([
   ['דימונה', 'אזור פיתוח א׳'],
   ['dimona', 'אזור פיתוח א׳'],
@@ -26,18 +32,8 @@ const DEVELOPMENT_ZONE_CITIES = new Map([
   ['באר-שבע', 'אזור פיתוח ב׳'],
 ]);
 
-const DEVELOPMENT_ZONE_POINTS = {
-  'אזור פיתוח א׳': 1,
-  'אזור פיתוח ב׳': 0.5,
-};
-
 function roundPoints(value) {
   return Math.round(value * 100) / 100;
-}
-
-function normalizeCity(city) {
-  if (typeof city !== 'string') return '';
-  return city.trim().toLowerCase();
 }
 
 function childCreditPoints(age) {
@@ -47,22 +43,11 @@ function childCreditPoints(age) {
   return 0;
 }
 
-function resolveDevelopmentZone(city) {
-  const key = normalizeCity(city);
-  if (!key) return null;
-  const zone = DEVELOPMENT_ZONE_CITIES.get(key);
-  if (!zone) return null;
-  return {
-    zone,
-    points: DEVELOPMENT_ZONE_POINTS[zone] ?? 0,
-    displayCity: city.trim(),
-  };
-}
-
 /**
  * @param {object|null|undefined} profile UserProfile lean document
+ * @param {{ annualWorkIncome?: number|null }} [options]
  */
-function buildExpectedTaxCredits(profile) {
+function buildExpectedTaxCredits(profile, options = {}) {
   const personal = profile?.personal || {};
   const employment = profile?.employment || {};
   const breakdown = [];
@@ -137,17 +122,26 @@ function buildExpectedTaxCredits(profile) {
     missingProfileFields.push('educationLevel');
   }
 
-  const devZone = resolveDevelopmentZone(personal.residenceCity);
-  if (devZone && devZone.points > 0) {
+  const annualWorkIncome = Number.isFinite(options.annualWorkIncome)
+    ? options.annualWorkIncome
+    : null;
+  const localityCredit = computeLocalityIncomeCredit(personal.residenceCity, annualWorkIncome);
+  if (localityCredit.eligible) {
     breakdown.push({
-      id: 'development_zone',
-      label: `מגורים ב${devZone.displayCity} (${devZone.zone})`,
-      points: devZone.points,
-      action: 'בדוק זכאות לזיכוי מגורים באזור פיתוח — עדכן כתובת בטופס 101',
+      id: 'locality_income_credit',
+      label: `זיכוי הכנסה ביישוב מזכה — ${localityCredit.locality.name} (${localityCredit.locality.creditPercent}% עד ₪${localityCredit.locality.annualIncomeCap.toLocaleString('he-IL')})`,
+      points: 0,
+      annualCreditIls: localityCredit.annualCredit,
+      action: 'ודא שכתובת המגורים בטופס 101 מעודכנת — הזיכוי לפי סעיף 11 מחושב מהכנסה מיגיעה אישית עד תקרה שנתית',
     });
+    if (annualWorkIncome == null) {
+      assumptions.push('הכנסה שנתית לא הוערכה — זיכוי היישוב חושב לפי תקרת ההכנסה המלאה');
+    }
   } else if (!personal.residenceCity) {
     missingProfileFields.push('residenceCity');
-    assumptions.push('עיר מגורים לא צוינה — זיכויי פריפריה לא נבדקו');
+    assumptions.push('עיר מגורים לא צוינה — זיכוי יישובים מזכים (סעיף 11) לא נבדק');
+  } else if (!lookupQualifyingLocality(personal.residenceCity)) {
+    assumptions.push(`היישוב "${personal.residenceCity}" אינו ברשימת היישובים המזכים לשנת 2026 (או לא זוהה)`);
   }
 
   const hasChildren = childrenAges.length > 0 || (childrenCount != null && childrenCount > 0);
@@ -176,6 +170,7 @@ function buildExpectedTaxCredits(profile) {
     totalPoints,
     monthlyCreditValue: Math.round(totalPoints * MONTHLY_CREDIT_POINT_VALUE),
     annualCreditValue: Math.round(totalPoints * DEFAULT_ANNUAL_CREDIT_POINT_VALUE),
+    localityIncomeCredit: localityCredit,
     breakdown,
     assumptions,
     missingProfileFields,
@@ -193,14 +188,38 @@ function avgTaxCreditPoints(enrichedList) {
   return roundPoints(points.reduce((a, b) => a + b, 0) / points.length);
 }
 
+function estimateAnnualWorkIncome(enrichedList) {
+  const grosses = (enrichedList || [])
+    .map(e => e.grossSalary ?? e.gross)
+    .filter(v => Number.isFinite(v) && v > 0);
+  if (!grosses.length) return null;
+  const avg = grosses.reduce((a, b) => a + b, 0) / grosses.length;
+  return Math.round(avg * 12);
+}
+
 /**
  * Build actionable tax-credit insights comparing profile vs payslips.
  */
 function buildTaxCreditInsights(profile, enrichedList, options = {}) {
-  const expected = buildExpectedTaxCredits(profile);
+  const annualWorkIncome = options.annualWorkIncome ?? estimateAnnualWorkIncome(enrichedList);
+  const expected = buildExpectedTaxCredits(profile, { annualWorkIncome });
   const actualPoints = avgTaxCreditPoints(enrichedList);
   const insights = [];
   const gapThreshold = 0.25;
+
+  const locality = expected.localityIncomeCredit;
+  if (locality?.eligible && locality.annualCredit > 0) {
+    insights.push({
+      id: 'tax_credit_locality_income',
+      severity: 'info',
+      category: 'payslip',
+      title: `זיכוי יישוב מזכה — ${locality.locality.name}`,
+      description: locality.explanation,
+      recommendation: 'ודא שכתובת המגורים בטופס 101 מעודכנת אצל המעסיק, ושבטופס מופיע היישוב המזכה. הזיכוי הוא אחוז מהכנסה מיגיעה אישית עד תקרה שנתית (לא נקודות זיכוי).',
+      financialImpact: locality.annualCredit,
+      financialImpactLabel: `עד ~₪${locality.annualCredit.toLocaleString('he-IL')}/שנה זיכוי ממס הכנסה`,
+    });
+  }
 
   if (actualPoints == null) {
     insights.push({
@@ -224,7 +243,7 @@ function buildTaxCreditInsights(profile, enrichedList, options = {}) {
     const monthlySaving = Math.round(gap * MONTHLY_CREDIT_POINT_VALUE);
     const annualSaving = Math.round(gap * DEFAULT_ANNUAL_CREDIT_POINT_VALUE);
     const likelyMissing = expected.breakdown
-      .filter(item => !['resident', 'female'].includes(item.id))
+      .filter(item => !['resident', 'female', 'locality_income_credit'].includes(item.id))
       .slice(0, 3)
       .map(item => item.label);
 
@@ -235,7 +254,7 @@ function buildTaxCreditInsights(profile, enrichedList, options = {}) {
       title: `פער בנקודות זיכוי: ${actualPoints} בתלוש מול ~${expected.totalPoints} צפוי`,
       description: `לפי הפרופיל שלך מגיעות בערך ${expected.totalPoints} נקודות זיכוי, אך בתלוש מופיעות ${actualPoints}. ייתכן שאתה משלם יותר מס ממה שצריך.`,
       recommendation: [
-        'עדכן טופס 101 אצל המעסיק עם כל הזכויות (ילדים, תואר, מגורים בפריפריה).',
+        'עדכן טופס 101 אצל המעסיק עם כל הזכויות (ילדים, תואר).',
         likelyMissing.length ? `בדוק במיוחד: ${likelyMissing.join(', ')}.` : null,
         gap >= 1 ? 'אם יש ריבוי מעסיקים — הגש בקשה לתיאום מס (טופס 116).' : null,
       ].filter(Boolean).join(' '),
@@ -255,22 +274,9 @@ function buildTaxCreditInsights(profile, enrichedList, options = {}) {
     });
   }
 
-  // Per-item recommendations for known profile facts not reflected in low credits
   if (gap >= gapThreshold) {
     expected.breakdown.forEach((item) => {
-      if (['resident', 'female'].includes(item.id)) return;
-      if (item.id === 'development_zone' && actualPoints < expected.totalPoints) {
-        insights.push({
-          id: 'tax_credit_development_zone',
-          severity: 'warning',
-          category: 'payslip',
-          title: `זיכוי מגורים ב${item.label.split('(')[0].trim()} — לא מנוצל?`,
-          description: `גרים ביישוב מזכה (${item.label}) — מגיעה בערך ${item.points} נקודת זיכוי. בתלוש מופיעות רק ${actualPoints} נקודות.`,
-          recommendation: item.action || 'עדכן כתובת מגורים בטופס 101 ובדוק שהמעסיק מזין את זיכוי אזור הפיתוח.',
-          financialImpact: null,
-          financialImpactLabel: `~₪${Math.round(item.points * DEFAULT_ANNUAL_CREDIT_POINT_VALUE).toLocaleString('he-IL')}/שנה — כלול בהערכת פער נקודות הזיכוי`,
-        });
-      }
+      if (['resident', 'female', 'locality_income_credit'].includes(item.id)) return;
       if (item.id === 'first_degree' || item.id === 'student') {
         insights.push({
           id: 'tax_credit_education',
@@ -341,7 +347,7 @@ function formatTaxCreditsForLLM(taxAnalysis) {
   const lines = [
     '=== ניתוח נקודות זיכוי מס ===',
     `נקודות צפויות לפי פרופיל: ${expected.totalPoints}`,
-    `ערך חודשי משוער: ₪${expected.monthlyCreditValue.toLocaleString('he-IL')}`,
+    `ערך חודשי משוער (נקודות): ₪${expected.monthlyCreditValue.toLocaleString('he-IL')}`,
   ];
   if (actualPoints != null) {
     lines.push(`נקודות ממוצעות בתלושים: ${actualPoints}`);
@@ -349,8 +355,29 @@ function formatTaxCreditsForLLM(taxAnalysis) {
       lines.push(`פער: ${gap > 0 ? 'חסרות' : 'עודפות'} ${Math.abs(gap)} נקודות`);
     }
   }
+
+  const loc = expected.localityIncomeCredit;
+  if (loc?.eligible) {
+    lines.push(
+      '',
+      '=== זיכוי יישוב מזכה (סעיף 11) — לא נקודות זיכוי ===',
+      `יישוב: ${loc.locality.name}`,
+      `שיעור זיכוי: ${loc.locality.creditPercent}% מהכנסה מיגיעה אישית`,
+      `תקרה שנתית: ₪${loc.locality.annualIncomeCap.toLocaleString('he-IL')}`,
+      `זיכוי שנתי משוער: ₪${loc.annualCredit.toLocaleString('he-IL')}`,
+      loc.explanation,
+      'דוגמה: אם מס הכנסה השנתי המחושב הוא ₪36,366 והזיכוי ₪18,480 — המס לתשלום אחרי זיכוי היישוב הוא ₪17,886. אם הזיכוי גבוה מהמס — המס יורד ל־0.',
+    );
+  } else {
+    lines.push('', 'זיכוי יישוב מזכה: לא זוהתה זכאות לפי עיר המגורים בפרופיל');
+  }
+
   lines.push('', 'פירוט זכאות לפי פרופיל:');
   expected.breakdown.forEach((item) => {
+    if (item.id === 'locality_income_credit') {
+      lines.push(`• ${item.label}: ₪${(item.annualCreditIls || 0).toLocaleString('he-IL')}/שנה${item.action ? ` — ${item.action}` : ''}`);
+      return;
+    }
     lines.push(`• ${item.label}: ${item.points} נקודות${item.action ? ` — ${item.action}` : ''}`);
   });
   if (expected.assumptions.length) {
@@ -366,4 +393,5 @@ module.exports = {
   avgTaxCreditPoints,
   buildTaxCreditInsights,
   formatTaxCreditsForLLM,
+  estimateAnnualWorkIncome,
 };

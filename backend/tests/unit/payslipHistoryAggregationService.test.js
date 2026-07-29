@@ -68,7 +68,24 @@ describe('payslip history aggregation service', () => {
     expect(result.items[0].id).toBe('no-period');
     expect(result.items[0].needsReview).toBe(true);
     expect(result.items[0].missingCritical).toContain('period');
+    expect(result.items[0].periodMonth).toBeNull();
+    expect(result.items[0].incompletePeriod).toBe(true);
     expect(result.incompletePeriods).toHaveLength(1);
+  });
+
+  it('resolves period from filename when OCR missed it', () => {
+    const period = resolvePayslipPeriod({
+      originalName: 'תלוש_יוני_2026.pdf',
+      analysisData: { salary: { gross_total: 10000 } },
+    });
+    expect(period).toEqual(
+      expect.objectContaining({
+        year: 2026,
+        month: 6,
+        source: 'filename',
+        incompletePeriod: false,
+      }),
+    );
   });
 });
 
