@@ -110,7 +110,7 @@ describe('financialAdvisory shared layer', () => {
     expect(parsed.primaryRecommendations).toHaveLength(1);
   });
 
-  it('invalid LLM JSON triggers fallback via orchestrator', async () => {
+  it('three-card engine intentionally bypasses an invalid LLM response', async () => {
     formatFinancialInsightsWithLLM.mockResolvedValueOnce({
       formatted: formatInsightsDeterministically([fromPensionStructuredInsight(PENSION_INSIGHT_RAW)]),
       llm: { used: true, provider: 'ollama', fallbackUsed: true },
@@ -126,11 +126,16 @@ describe('financialAdvisory shared layer', () => {
         matchResults: [{ matchConfidence: 80 }],
       },
     });
-    expect(res.llm.fallbackUsed).toBe(true);
+    expect(formatFinancialInsightsWithLLM).not.toHaveBeenCalled();
+    expect(res.llm).toMatchObject({
+      used: false,
+      fallbackUsed: false,
+      reason: 'three_card_engine',
+    });
     expect(res.primaryRecommendations.length).toBeGreaterThan(0);
   });
 
-  it('missing API key / LLM null triggers fallback', async () => {
+  it('three-card engine does not report a missing LLM as a fallback', async () => {
     formatFinancialInsightsWithLLM.mockResolvedValueOnce({
       formatted: formatInsightsDeterministically([SAMPLE_INSIGHT]),
       llm: { used: false, provider: null, fallbackUsed: true },
@@ -146,7 +151,12 @@ describe('financialAdvisory shared layer', () => {
         matchResults: [{ matchConfidence: 85 }],
       },
     });
-    expect(res.llm.fallbackUsed).toBe(true);
+    expect(formatFinancialInsightsWithLLM).not.toHaveBeenCalled();
+    expect(res.llm).toMatchObject({
+      used: false,
+      fallbackUsed: false,
+      reason: 'three_card_engine',
+    });
     expect(res.structuredInsights.length).toBe(1);
   });
 

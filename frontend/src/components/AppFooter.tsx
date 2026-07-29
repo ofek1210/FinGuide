@@ -34,42 +34,6 @@ export default function AppFooter({ variant }: AppFooterProps) {
       <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", insetInlineStart: -120, bottom: -160, background: "radial-gradient(circle,rgba(155,127,232,.22),transparent 70%)", pointerEvents: "none" }} />
 
       <div style={{ position: "relative" }}>
-        {/* Newsletter strip */}
-        {variant === "guest" && (
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "space-between",
-            flexWrap: "wrap", gap: 16,
-            borderBottom: "1px solid rgba(255,255,255,.1)",
-            paddingBottom: 32, marginBottom: 32,
-          }}>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 16, color: "#fff", marginBottom: 4 }}>הישארו מעודכנים</div>
-              <div style={{ fontSize: 13.5, color: "rgba(255,255,255,.6)" }}>טיפים פיננסיים ועדכוני מוצר ישירות למייל</div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                type="email"
-                placeholder="המייל שלך"
-                style={{
-                  padding: "9px 14px", borderRadius: "var(--r-btn)",
-                  border: "1px solid rgba(255,255,255,.16)",
-                  fontSize: 13.5, fontFamily: "inherit",
-                  background: "rgba(255,255,255,.06)", color: "#fff",
-                  outline: "none", width: 220,
-                }}
-              />
-              <button style={{
-                padding: "9px 18px", borderRadius: "var(--r-btn)",
-                background: "#fff", color: "var(--ink)",
-                border: "none", fontFamily: "inherit",
-                fontWeight: 700, fontSize: 13.5, cursor: "pointer",
-              }}>
-                הרשמה
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Columns */}
         <div style={{
           display: "grid",

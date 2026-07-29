@@ -100,18 +100,20 @@ function loadPricingDataset({ forceReload = false } = {}) {
     throw new Error(`Insurance pricing dataset not found in ${config.dataDir}`);
   }
 
-  const samplesDir = path.join(config.dataDir, config.healthCalculatorSamplesDir);
-  const healthRows = loadHealthCalculatorSamples(samplesDir);
-  if (healthRows.length) {
-    rows = mergePricingRows(rows, healthRows);
-    file = `${file}+${samplesDir}`;
-  }
-
   const calculatorSampleDirs = config.calculatorSampleDirs.map(dir => path.join(config.dataDir, dir));
   const calculatorRows = loadCalculatorSamples(calculatorSampleDirs);
   if (calculatorRows.length) {
     rows = mergePricingRows(rows, calculatorRows);
     file = `${file}+${calculatorSampleDirs.join('+')}`;
+  }
+
+  // Official calculator exports are the most authoritative local source and
+  // must win when a synthetic sample has the same demographic/tier key.
+  const samplesDir = path.join(config.dataDir, config.healthCalculatorSamplesDir);
+  const healthRows = loadHealthCalculatorSamples(samplesDir);
+  if (healthRows.length) {
+    rows = mergePricingRows(rows, healthRows);
+    file = `${file}+${samplesDir}`;
   }
 
   cache = { rows, loadedAt: Date.now(), file };

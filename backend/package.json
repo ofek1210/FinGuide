@@ -8,6 +8,8 @@
     "dev": "nodemon server.js",
     "test": "npm run test:all",
     "test:all": "jest --runInBand",
+    "test:coverage": "jest --runInBand --coverage",
+    "test:live-audit": "jest tests/integration/step5.liveAudit.test.js --runInBand --testTimeout=120000 --runTestsByPath",
     "test:unit": "jest --runInBand --testMatch '**/tests/unit/**/*.test.js' --testMatch '**/__tests__/**/*.test.js'",
     "test:integration": "jest --runInBand --testMatch '**/tests/integration/**/*.test.js'",
     "test:watch": "jest --watch",

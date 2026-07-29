@@ -367,6 +367,7 @@ function InsuranceLandingScreen({ loading, onImport }: { loading: boolean; onImp
                 </p>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <button
+                    type="button"
                     onClick={onImport}
                     style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "15px 28px", borderRadius: "var(--r-btn)", border: "1px solid transparent", cursor: "pointer", fontFamily: "inherit", fontWeight: 800, fontSize: 16, color: "#fff", background: "var(--ink)", boxShadow: "var(--shadow-ink)", transition: "transform .25s var(--ease), box-shadow .25s var(--ease)" }}
                     onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 24px 48px -16px rgba(23,18,33,.8)"; }}
@@ -375,6 +376,8 @@ function InsuranceLandingScreen({ loading, onImport }: { loading: boolean; onImp
                     <FileText size={18} strokeWidth={2} /> ייבוא מהר הביטוח
                   </button>
                   <button
+                    type="button"
+                    onClick={() => document.getElementById("insurance-how-it-works")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                     style={{ padding: "15px 24px", borderRadius: "var(--r-btn)", border: "1px solid var(--glass-border)", background: "var(--glass-bg)", backdropFilter: "blur(var(--blur-glass)) saturate(160%)", WebkitBackdropFilter: "blur(var(--blur-glass)) saturate(160%)", cursor: "pointer", fontFamily: "inherit", fontWeight: 700, fontSize: 15, color: "var(--text-body)", boxShadow: "var(--shadow-soft)", transition: "transform .25s var(--ease), border-color .25s var(--ease)" }}
                     onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.borderColor = "var(--lav-300)"; }}
                     onMouseLeave={e => { e.currentTarget.style.transform = "none"; e.currentTarget.style.borderColor = "var(--glass-border)"; }}
@@ -448,7 +451,7 @@ function InsuranceLandingScreen({ loading, onImport }: { loading: boolean; onImp
             </div>
 
             {/* WHAT THE AGENT CHECKS */}
-            <div style={{ marginTop: 64 }}>
+            <div id="insurance-how-it-works" style={{ marginTop: 64, scrollMarginTop: 96 }}>
               <h2 style={{ fontSize: 13, fontWeight: 800, color: "var(--text-faint)", letterSpacing: ".06em", margin: "0 0 20px" }}>מה הסוכן בודק עבורך</h2>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14 }}>
                 {checks.map((f) => {

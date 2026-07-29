@@ -77,10 +77,13 @@ describe('Pension Har HaKesef upload integration', () => {
       .set('Authorization', `Bearer ${token}`)
       .attach('file', buffer, 'first.xlsx');
 
-    await request(app)
+    const secondBuffer = Buffer.concat([buffer, Buffer.from('\n')]);
+    const secondUpload = await request(app)
       .post('/api/pension/upload-file')
       .set('Authorization', `Bearer ${token}`)
-      .attach('file', buffer, 'second.xlsx');
+      .attach('file', secondBuffer, 'second.xlsx');
+
+    expect(secondUpload.statusCode).toBe(200);
 
     const funds = await PensionFund.find({ user: userId, source: 'har_hakesef' });
     expect(funds).toHaveLength(4);

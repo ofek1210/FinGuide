@@ -48,11 +48,7 @@ export default function App() {
       <Routes>
         <Route
           path={APP_ROUTES.home}
-          element={
-            <RequireGuest>
-              <LandingPage />
-            </RequireGuest>
-          }
+          element={<LandingPage />}
         />
         <Route
           path={APP_ROUTES.login}

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "test": "jest --runInBand --passWithNoTests",
+    "test:coverage": "jest --runInBand --passWithNoTests --coverage",
     "lint": "eslint .",
     "preview": "vite preview"
   },

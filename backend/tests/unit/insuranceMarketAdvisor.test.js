@@ -45,6 +45,7 @@ describe('insuranceMarketAdvisor', () => {
         provider: 'פספורט-כארד',
         monthlyPremium: 550,
         status: 'active',
+        rawData: { productType: 'private_health' },
       }],
     };
 
@@ -53,7 +54,7 @@ describe('insuranceMarketAdvisor', () => {
     expect(advice.policies[0].alternatives.length).toBeGreaterThan(0);
   });
 
-  it('flags duplicate coverage in comparison matrix', async () => {
+  it('does not label two broad health policies as duplicates without evidence', async () => {
     const profileDTO = {
       personal: { age: 30 },
       policies: [
@@ -63,7 +64,7 @@ describe('insuranceMarketAdvisor', () => {
     };
 
     const advice = await buildMarketAdvice(profileDTO.policies, profileDTO);
-    expect(advice.duplicateCount).toBe(1);
-    expect(advice.comparisonMatrix.every(r => r.duplicate)).toBe(true);
+    expect(advice.duplicateCount).toBe(0);
+    expect(advice.comparisonMatrix.every(r => !r.duplicate)).toBe(true);
   });
 });
