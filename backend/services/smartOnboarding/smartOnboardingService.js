@@ -44,6 +44,14 @@ function validateAnswer(questionDef, answer) {
     const n = Number(answer);
     if (!Number.isFinite(n)) throw new ValidationError('יש להזין מספר');
   }
+  if (questionDef.type === 'text') {
+    if (typeof answer !== 'string' || !answer.trim()) {
+      throw new ValidationError('יש להזין טקסט');
+    }
+    if (answer.trim().length > 80) {
+      throw new ValidationError('הטקסט ארוך מדי');
+    }
+  }
 }
 
 async function saveAnswers(userId, layer, answersPayload = {}) {

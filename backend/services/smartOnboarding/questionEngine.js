@@ -18,6 +18,7 @@ async function getMissingQuestions(userId, profile, layer) {
     title: q.title,
     sub: q.sub || null,
     options: q.options || null,
+    placeholder: q.placeholder || null,
     required: q.required !== false,
   }));
 }

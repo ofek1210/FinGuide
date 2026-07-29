@@ -48,7 +48,14 @@ describe('smart onboarding engine', () => {
 
   it('skips questions already in profile (duplicate prevention)', async () => {
     const profile = await UserProfile.findOrCreateForUser(userId);
-    profile.personal = { age: 35, maritalStatus: 'married', hasChildren: true };
+    profile.personal = {
+      age: 35,
+      gender: 'male',
+      residenceCity: 'חיפה',
+      maritalStatus: 'married',
+      hasChildren: true,
+      educationLevel: 'first_degree',
+    };
     profile.financial = {
       riskTolerance: 'medium',
       investmentExperience: 'beginner',
@@ -60,6 +67,8 @@ describe('smart onboarding engine', () => {
     const state = await getState(userId, 'general');
     expect(state.missingQuestions.length).toBeLessThan(GENERAL_QUESTIONS.length);
     expect(state.missingQuestions.find(q => q.id === 'general.age')).toBeUndefined();
+    expect(state.missingQuestions.find(q => q.id === 'general.residenceCity')).toBeUndefined();
+    expect(state.missingQuestions.find(q => q.id === 'general.educationLevel')).toBeUndefined();
     expect(state.missingQuestions.find(q => q.id === 'general.riskTolerance')).toBeUndefined();
   });
 
@@ -80,8 +89,11 @@ describe('smart onboarding engine', () => {
   it('completes general onboarding and sets user flag', async () => {
     await saveAnswers(userId, 'general', {
       'general.age': 30,
+      'general.gender': 'female',
+      'general.residenceCity': 'דימונה',
       'general.maritalStatus': 'married',
       'general.hasChildren': true,
+      'general.educationLevel': 'first_degree',
       'general.employmentStatus': 'employee',
       'general.financialGoals': ['improve_retirement'],
       'general.investmentExperience': 'intermediate',
@@ -90,6 +102,10 @@ describe('smart onboarding engine', () => {
     await completeLayer(userId, 'general');
     const user = await User.findById(userId);
     expect(user.onboarding.completed).toBe(true);
+    const profile = await UserProfile.findOne({ user: userId });
+    expect(profile.personal.residenceCity).toBe('דימונה');
+    expect(profile.personal.educationLevel).toBe('first_degree');
+    expect(profile.personal.gender).toBe('female');
     const state = await getState(userId, 'general');
     expect(state.complete).toBe(true);
   });
