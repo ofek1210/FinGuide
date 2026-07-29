@@ -1,6 +1,7 @@
 'use strict';
 
 const { labelCoverageFamily } = require('./insuranceCoverageTaxonomy');
+const { COVERAGE_WHY_HE } = require('./insuranceCoverageGapService');
 
 const CONFIDENCE_HE = {
   high: 'גבוהה',
@@ -9,8 +10,18 @@ const CONFIDENCE_HE = {
   insufficient: 'לא מספיק נתונים',
 };
 
+const TYPE_LABELS = {
+  life: 'ביטוח חיים',
+  apartment: 'ביטוח דירה',
+  car: 'ביטוח רכב',
+  health_supplement: 'ביטוח בריאות משלים',
+  disability: 'אובדן כושר עבודה',
+  travel: 'ביטוח נסיעות',
+};
+
 /**
- * Build up to 3 primary insurance recommendations (overlap, premium, gap).
+ * Build primary insurance recommendations — portfolio health only.
+ * No premium_review / market-average price switching.
  */
 function buildPrimaryInsuranceRecommendations(analysis, marketAdvice = {}) {
   const recs = [];
@@ -39,12 +50,13 @@ function buildPrimaryInsuranceRecommendations(analysis, marketAdvice = {}) {
       confidenceLabelHe: analysis.vehicleVerificationNeeded ? CONFIDENCE_HE.low : CONFIDENCE_HE.medium,
       nextActionHe: 'השלם את מספר הרכבים ושייך כל פוליסה לרכב המתאים.',
       missingInputs: analysis.vehicleVerificationNeeded ? ['vehiclesOwned'] : ['vehiclePolicyAssignment'],
+      whyItMatters: COVERAGE_WHY_HE.car,
     });
   }
 
   for (const finding of overlapFindings) {
     if (finding.coverageFamily === 'vehicle_packages') continue;
-    if (recs.length >= 3) break;
+    if (recs.length >= 5) break;
 
     recs.push({
       type: 'coverage_overlap_review',
@@ -64,32 +76,36 @@ function buildPrimaryInsuranceRecommendations(analysis, marketAdvice = {}) {
     });
   }
 
-  const comparablePremiums = (marketAdvice.comparisonMatrix || []).filter(
-    row => row.comparisonQuality === 'comparable' && (row.premiumVsMarket === 'above_market' || row.premiumVsMarket === 'high'),
+  // Service quality — objective SWITCH signal (not price)
+  const poorService = (marketAdvice.comparisonMatrix || []).filter(
+    row => row.serviceTier === 'poor' || (row.serviceScore != null && row.serviceScore < 70),
   );
-  if (comparablePremiums.length > 0 && recs.length < 3) {
-    const row = comparablePremiums[0];
+  if (poorService.length > 0 && recs.length < 5) {
+    const row = poorService[0];
     recs.push({
-      type: 'premium_review',
-      category: 'premium',
-      title: `בדיקת פרמיה — ${row.type}`,
-      reason: `הפרמיה שלך (₪${row.userCost}) גבוהה מהממוצע בהשוואה מותאמת (${row.type}).`,
+      type: 'service_quality_review',
+      category: 'service',
+      title: `מדד שירות נמוך — ${row.provider || row.type}`,
+      reason: `מדד השירות של ${row.provider || 'החברה'} הוא ${row.serviceScore}/100`
+        + (row.claimPaymentRate != null ? ` (תשלום תביעות ~${row.claimPaymentRate}%)` : '')
+        + '. זו אינדיקציה אובייקטיבית לבחינת חברה חלופית — לא על בסיס מחיר.',
       urgency: 'medium',
       financialImpact: null,
-      confidenceScore: 0.7,
+      confidenceScore: 0.75,
       confidenceLabelHe: CONFIDENCE_HE.medium,
-      nextActionHe: 'השווה הצעות עם גורם מורשה — לאחר אימות גורמי הסיכון.',
+      nextActionHe: 'השוו מדד שירות ואחוז תשלום תביעות מול חברות אחרות עם סוכן מורשה.',
       missingInputs: [],
     });
   }
 
   const disabilityGap = (analysis.gapFindings || []).find(g => g.type === 'disability');
-  if (disabilityGap && recs.length < 3) {
+  if (disabilityGap && recs.length < 5) {
     recs.push({
       type: 'coverage_gap_review',
       category: 'gap',
       title: 'בדיקת כיסוי אובדן כושר עבודה',
       reason: disabilityGap.messageHe,
+      whyItMatters: disabilityGap.whyItMatters || COVERAGE_WHY_HE.disability,
       urgency: 'medium',
       financialImpact: null,
       confidenceScore: 0.45,
@@ -99,24 +115,60 @@ function buildPrimaryInsuranceRecommendations(analysis, marketAdvice = {}) {
     });
   }
 
-  for (const missing of analysis.missingCoverage || []) {
-    if (recs.length >= 3) break;
-    if (missing === 'disability') continue;
+  for (const gap of (analysis.gapFindings || []).filter(g => g.type !== 'disability')) {
+    if (recs.length >= 5) break;
+    if (gap.status !== 'missing_needed' && gap.status !== 'missing_optional') continue;
     recs.push({
-      type: `missing_${missing}`,
+      type: `missing_${gap.type}`,
       category: 'gap',
-      title: `כיסוי לבדיקה — ${missing}`,
-      reason: 'לפי הפרופיל — מומלץ לבדוק אם הכיסוי קיים במקור אחר.',
-      urgency: analysis.missingUrgency || 'low',
+      title: `כיסוי חסר — ${TYPE_LABELS[gap.type] || gap.type}`,
+      reason: gap.messageHe,
+      whyItMatters: gap.whyItMatters || COVERAGE_WHY_HE[gap.type] || null,
+      urgency: gap.status === 'missing_needed' ? 'medium' : 'low',
       financialImpact: null,
-      confidenceScore: 0.5,
-      confidenceLabelHe: CONFIDENCE_HE.low,
-      nextActionHe: 'אמת מול המעסיק, קופת החולים או סוכן מורשה.',
+      confidenceScore: gap.confidence === 'high' ? 0.8 : 0.55,
+      confidenceLabelHe: CONFIDENCE_HE[gap.confidence] || CONFIDENCE_HE.medium,
+      nextActionHe: 'אמת מול המעסיק, קופת החולים או סוכן מורשה — רק אם הפרופיל מצביע על צורך.',
+      missingInputs: gap.missingInputs || [],
+    });
+  }
+
+  // Explicit "not needed" insights (profile-aware, not generic push)
+  for (const assessment of (analysis.needAssessments || []).filter(a => a.status === 'not_recommended')) {
+    if (recs.length >= 6) break;
+    recs.push({
+      type: `need_assessment_${assessment.type}`,
+      category: 'need_assessment',
+      title: assessment.titleHe,
+      reason: assessment.messageHe,
+      whyItMatters: assessment.whyItMatters || null,
+      urgency: 'low',
+      financialImpact: null,
+      confidenceScore: 0.7,
+      confidenceLabelHe: CONFIDENCE_HE.medium,
+      nextActionHe: 'אין פעולת רכישה מומלצת כרגע — עדכנו את הפרופיל אם המצב השתנה.',
       missingInputs: [],
     });
   }
 
-  return recs.slice(0, 3);
+  // Incomplete coverage summaries
+  const incomplete = (marketAdvice.coverageSummaries || []).filter(c => c.manualReviewRecommended);
+  if (incomplete.length > 0 && recs.length < 6) {
+    recs.push({
+      type: 'coverage_details_review',
+      category: 'data_quality',
+      title: 'פרטי כיסוי חלקיים',
+      reason: `${incomplete.length} פוליסות חסרות מידע (סכום כיסוי / חברה / תוקף) — מומלץ אימות ידני.`,
+      urgency: 'low',
+      financialImpact: null,
+      confidenceScore: 0.6,
+      confidenceLabelHe: CONFIDENCE_HE.medium,
+      nextActionHe: 'פנו למבטח או לסוכן להשלמת פרטי הכיסוי.',
+      missingInputs: ['coverageAmount', 'policyDates'],
+    });
+  }
+
+  return recs.slice(0, 6);
 }
 
 module.exports = {

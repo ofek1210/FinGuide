@@ -251,12 +251,10 @@ export default function InsuranceOnboardingWizard({
               </p>
             </div>
             <div style={{ background: "var(--card)", border: "1px solid var(--border-hair)", borderRadius: "var(--radius)", padding: 20 }}>
-              <h3 style={{ margin: "0 0 12px", fontSize: 17, fontWeight: 800 }}>פרמיה חודשית</h3>
+              <h3 style={{ margin: "0 0 12px", fontSize: 17, fontWeight: 800 }}>פרמיה חודשית בתיק</h3>
               <p style={{ margin: 0, fontSize: 22, fontWeight: 900 }}>₪{Math.round(a.financial.totalMonthlyPremium).toLocaleString("en-US")}</p>
               <p style={{ margin: "8px 0 0", color: "var(--text-muted)", fontSize: 14 }}>
-                {a.financial.premiumAssessment === "high" ? "גבוהה יחסית להכנסה" :
-                  a.financial.premiumAssessment === "low" ? "נמוכה יחסית" :
-                    a.financial.premiumAssessment === "normal" ? "בטווח סביר" : "נדרש מידע נוסף על הכנסה"}
+                סכום מהפוליסות שזוהו — ללא השוואה לממוצע שוק
               </p>
             </div>
             {a.recommendations.slice(0, 3).map(r => (

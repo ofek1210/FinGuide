@@ -52,7 +52,7 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
         marketAdvice,
       });
       const result = await askClaude(
-        'ספק ניתוח ביטוח: מטריצת עלות/שירות/מדד תביעות, כפילויות, ופסק דין STAY/REVIEW/SWITCH — 4-5 משפטים בעברית.',
+        'ספק בדיקת בריאות לתיק הביטוח: כפילויות, פערי כיסוי לפי פרופיל, ומדד שירות — ללא השוואת פרמיות. 4-5 משפטים בעברית.',
         systemPrompt,
         [],
       );
@@ -81,11 +81,16 @@ async function runInsuranceAgent(userId, { skipLLM = false } = {}) {
           overallVerdict: marketAdvice.overallVerdict,
           overallVerdictLabelHe: marketAdvice.overallVerdictLabelHe,
           comparisonMatrix: marketAdvice.comparisonMatrix,
+          coverageSummaries: marketAdvice.coverageSummaries,
+          portfolioOverview: marketAdvice.portfolioOverview,
+          companyQuality: marketAdvice.companyQuality,
           duplicateCount: marketAdvice.duplicateCount,
           dataSource: marketAdvice.dataSource,
-          pricingSource: marketAdvice.pricingSource,
+          pricingSource: null,
         }
         : null,
+      needAssessments: coverage?.needAssessments ?? [],
+      gapFindings: coverage?.gapFindings ?? [],
       bituahAdvice: analysis.bituahAdvice?.hasData
         ? {
           overallVerdict: analysis.bituahAdvice.overallVerdict,

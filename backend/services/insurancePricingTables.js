@@ -1,82 +1,32 @@
 /**
- * Monthly price ranges — delegates to local CSV/Excel dataset (no live scraping).
- * Hardcoded BASE retained as last-resort fallback if dataset file missing.
+ * Premium price-range helpers — DISABLED.
+ * Insurance Agent no longer estimates fair market premiums (underwriting variables
+ * make local CSV benchmarks unreliable). Kept as a null-returning stub so legacy
+ * imports do not crash; do not use for recommendations.
  */
 
-const {
-  getFairPriceRange,
-  getSourceMetadata,
-  getPricingDisclaimer,
-} = require('./insurancePricingDatasetService');
-
-const BASE = {
-  life: { min: 40, average: 120, max: 350 },
-  health: { min: 80, average: 220, max: 600 },
-  disability: { min: 60, average: 180, max: 450 },
-  apartment: { min: 35, average: 90, max: 200 },
-  car: { min: 150, average: 350, max: 900 },
-  pension_increase: { min: 0, average: 0, max: 0 },
-};
-
-function ageMultiplier(age) {
-  if (age == null) return 1;
-  if (age < 30) return 0.85;
-  if (age < 40) return 1;
-  if (age < 50) return 1.25;
-  if (age < 60) return 1.6;
-  return 2.2;
+function getPriceRange() {
+  return null;
 }
 
-function salaryMultiplier(grossMonthly) {
-  if (grossMonthly == null) return 1;
-  if (grossMonthly < 10000) return 0.9;
-  if (grossMonthly < 20000) return 1;
-  if (grossMonthly < 35000) return 1.15;
-  return 1.3;
+function getLegacyPriceRange() {
+  return null;
 }
 
-function scaleRange(base, multiplier) {
-  return {
-    min: Math.round(base.min * multiplier),
-    average: Math.round(base.average * multiplier),
-    max: Math.round(base.max * multiplier),
-    currency: 'ILS',
-  };
+function getSourceMetadata() {
+  return null;
 }
 
-function getLegacyPriceRange(kind, ctx = {}) {
-  const base = BASE[kind];
-  if (!base) return { min: 0, average: 0, max: 0, currency: 'ILS' };
-
-  let multiplier = ageMultiplier(ctx.age) * salaryMultiplier(ctx.grossMonthly);
-  if (kind === 'life' && ctx.childrenCount > 0) {
-    multiplier *= 1 + ctx.childrenCount * 0.15;
-  }
-  if (kind === 'apartment') multiplier *= 1.1;
-
-  return scaleRange(base, multiplier);
-}
-
-function getPriceRange(kind, ctx = {}) {
-  try {
-    return getFairPriceRange(kind, ctx);
-  } catch (err) {
-    console.warn('[insurancePricing] local dataset unavailable, using legacy tables:', err.message);
-    const legacy = getLegacyPriceRange(kind, ctx);
-    return {
-      ...legacy,
-      source: getSourceMetadata(),
-      fallback: true,
-    };
-  }
+function getPricingDisclaimer() {
+  return 'הערכת פרמיה מול שוק הוסרה — אינה אמינה ללא חיתום מלא.';
 }
 
 module.exports = {
-  BASE,
+  BASE: {},
   getPriceRange,
   getLegacyPriceRange,
-  ageMultiplier,
-  salaryMultiplier,
+  ageMultiplier: () => 1,
+  salaryMultiplier: () => 1,
   getSourceMetadata,
   getPricingDisclaimer,
 };

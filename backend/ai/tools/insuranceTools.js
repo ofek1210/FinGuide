@@ -40,6 +40,8 @@ async function getInsuranceProfile(userId) {
       age: profile.personal?.age ?? null,
       maritalStatus: profile.personal?.maritalStatus ?? null,
       childrenCount: profile.personal?.childrenCount ?? null,
+      hasDependents: profile.personal?.hasDependents ?? null,
+      isSmoker: profile.personal?.isSmoker ?? null,
     },
     assets: {
       ownsApartment: profile.assets?.ownsApartment ?? null,
@@ -70,8 +72,13 @@ function analyzeInsuranceCoverage(insuranceProfile, options = {}) {
   );
 
   const flags = [...(gapResult.flags || [])];
-  if (personal?.maritalStatus === 'married' && profile?.hasLifeInsurance === false) {
-    flags.push({ code: 'life_insurance_needed', urgency: 'high', label: 'ביטוח חיים מומלץ לנשואים — יש לבדוק סכומים ומטרה' });
+  // life_insurance_needed only when gap analysis marked life as missing/needed
+  if (gapResult.missingTypes.includes('life')) {
+    flags.push({
+      code: 'life_insurance_needed',
+      urgency: 'high',
+      label: 'ביטוח חיים מומלץ לפי הפרופיל — יש לבדוק סכומים ומטרה',
+    });
   }
 
   return {
@@ -88,6 +95,7 @@ function analyzeInsuranceCoverage(insuranceProfile, options = {}) {
     verifiedSavingMonthly: 0,
     missingCoverage: gapResult.missingTypes,
     gapFindings: gapResult.gapFindings,
+    needAssessments: gapResult.needAssessments || [],
     missingUrgency: gapResult.urgency,
     flags,
     savings: {
@@ -98,7 +106,7 @@ function analyzeInsuranceCoverage(insuranceProfile, options = {}) {
       verified: false,
       premiumUnderReviewMonthly: aggResult.premiumUnderReviewMonthly,
     },
-    hasCriticalGap: gapResult.gapFindings.some(g => g.type === 'disability'),
+    hasCriticalGap: gapResult.gapFindings.some(g => g.type === 'disability' || g.type === 'life'),
     disabilityCheckedSources: gapResult.disabilityCheckedSources,
   };
 }

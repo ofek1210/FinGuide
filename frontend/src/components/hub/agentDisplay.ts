@@ -57,10 +57,12 @@ export function agentStats(id: AgentId, result: AgentResult | undefined): Array<
   if (id === "insurance") {
     const policies = asNumber(d.policyCount);
     const dups = asNumber(d.duplicateCount);
-    const waste = asNumber(d.totalMonthlyWaste);
+    const missing = Array.isArray(d.missingCoverage) ? d.missingCoverage.length : null;
+    const service = asNumber((d.marketAdvice as { companyQuality?: { averageServiceIndex?: number } } | null)?.companyQuality?.averageServiceIndex);
     if (policies != null) stats.push({ k: "פוליסות", v: String(policies) });
     if (dups != null && dups > 0) stats.push({ k: "כפילויות", v: String(dups) });
-    if (waste != null && waste > 0) stats.push({ k: "בזבוז חודשי", v: nis(waste) });
+    else if (missing != null && missing > 0) stats.push({ k: "פערי כיסוי", v: String(missing) });
+    else if (service != null) stats.push({ k: "מדד שירות", v: String(service) });
   }
 
   if (id === "pension") {

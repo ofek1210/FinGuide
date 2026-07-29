@@ -13,7 +13,7 @@ export const POLICY_TYPE_LABELS: Record<string, string> = {
 export const UPLOAD_PROGRESS_STEPS = [
   "מפרסר קובץ Excel...",
   "מזהה כפילויות...",
-  "מחשב חיסכון אפשרי...",
+  "בודק פערי כיסוי ומדד שירות...",
 ];
 
 export { HEALTH_STATUS_ICON } from "./healthDisplay";

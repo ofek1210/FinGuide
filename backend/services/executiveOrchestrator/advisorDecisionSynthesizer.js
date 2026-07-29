@@ -325,73 +325,93 @@ function buildInsuranceDecision(pkg) {
   const data = pkg.rawDataSummary || {};
   const overall = data.marketAdvice?.overallVerdict || null;
   const bullets = [];
+  const companyQuality = data.marketAdvice?.companyQuality || data.companyQuality;
 
-  if (data.duplicateCount > 0) {
-    bullets.push(`זוהו ${data.duplicateCount} ממצאי כפילות או חפיפה אפשריים לבדיקה.`);
-  }
-  if (data.totalMonthlyWaste > 0) {
-    bullets.push(`פרמיה חודשית לבדיקה: ${formatIls(data.totalMonthlyWaste)}.`);
-  }
-  const missing = data.missingCoverage || [];
-  if (missing.length) {
-    const labels = missing.slice(0, 3).map(m => (typeof m === 'string' ? m : m.title || m.type || m.area)).filter(Boolean);
-    if (labels.length) bullets.push(`כיסויים חסרים שזוהו: ${labels.join(', ')}.`);
-  }
-  if (data.hasCriticalGap) {
-    bullets.push('קיים פער כיסוי קריטי שמומלץ לטפל בו בהקדם.');
+  if (!(data.duplicateCount > 0)) {
+    bullets.push('✓ לא זוהו כפילויות מאומתות בתיק.');
+  } else {
+    bullets.push(`⚠ זוהו ${data.duplicateCount} ממצאי כפילות או חפיפה אפשריים לבדיקה.`);
   }
 
-  for (const row of (data.marketAdvice?.comparisonMatrix || []).slice(0, 2)) {
-    if (row.comparisonNoteHe) bullets.push(row.comparisonNoteHe);
-    else if (row.premiumVsMarket === 'high' || row.verdict === 'SWITCH' || row.verdict === 'REVIEW') {
-      bullets.push(`${row.displayName || row.policyType || 'פוליסה'}: עלות מעל ממוצע השוק — ${row.verdictLabelHe || row.verdict || 'לבדיקה'}.`);
+  if (companyQuality?.averageServiceIndex != null) {
+    const tier = companyQuality.averageServiceTier;
+    if (tier === 'excellent' || (companyQuality.averageServiceIndex >= 82)) {
+      bullets.push(`✓ מדד שירות ממוצע ${companyQuality.averageServiceIndex}/100 — מעל הסף.`);
+    } else if (tier === 'poor' || companyQuality.averageServiceIndex < 70) {
+      bullets.push(`⚠ מדד שירות ממוצע ${companyQuality.averageServiceIndex}/100 — נמוך; בחינה מול חברות אחרות לפי מדד שירות בלבד.`);
+    } else {
+      bullets.push(`מדד שירות ממוצע ${companyQuality.averageServiceIndex}/100.`);
     }
   }
 
-  for (const rec of (pkg.recommendations || []).slice(0, 3)) {
+  const missing = data.missingCoverage || [];
+  if (missing.length) {
+    const labels = missing.slice(0, 3).map(m => (typeof m === 'string' ? m : m.title || m.type || m.area)).filter(Boolean);
+    if (labels.length) bullets.push(`⚠ כיסויים חסרים לפי הפרופיל: ${labels.join(', ')}.`);
+  } else {
+    bullets.push('✓ לא זוהו פערי כיסוי מהותיים לפי הפרופיל הזמין.');
+  }
+
+  const incomplete = (data.marketAdvice?.coverageSummaries || []).filter(c => c.manualReviewRecommended);
+  if (incomplete.length) {
+    bullets.push(`⚠ ${incomplete.length} פוליסות עם מידע חלקי — מומלץ אימות ידני.`);
+  }
+
+  for (const row of (data.marketAdvice?.comparisonMatrix || []).slice(0, 2)) {
+    if (row.serviceTier === 'poor' || (row.serviceScore != null && row.serviceScore < 70)) {
+      bullets.push(`⚠ ${row.provider || row.type}: מדד שירות ${row.serviceScore}/100.`);
+    }
+  }
+
+  for (const rec of (pkg.recommendations || []).slice(0, 2)) {
     if (rec.itemKind === 'missing_data') continue;
-    const line = rec.reason || rec.explanation || rec.title;
-    if (line && !bullets.includes(line)) bullets.push(line.length > 120 ? `${line.slice(0, 117)}…` : line);
+    if (/פרמיה|ממוצע שוק|טווח הערכה|חיסכון שנתי/i.test(`${rec.title} ${rec.explanation}`)) continue;
+    const line = rec.whyItMatters || rec.explanation || rec.title;
+    if (line && !bullets.some(b => b.includes(String(line).slice(0, 40)))) {
+      bullets.push(line.length > 120 ? `${line.slice(0, 117)}…` : line);
+    }
   }
 
   const trimmed = bullets.slice(0, 5);
-  const isKeep = overall === 'STAY' || (!overall && trimmed.length === 0 && !(data.duplicateCount > 0) && !missing.length);
-  const isReplace = overall === 'SWITCH' || overall === 'REVIEW'
-    || data.duplicateCount > 0
+  const hasIssues = data.duplicateCount > 0
     || missing.length > 0
     || data.hasCriticalGap
-    || (pkg.recommendations || []).some(r => r.itemKind !== 'missing_data');
+    || incomplete.length > 0
+    || overall === 'SWITCH'
+    || overall === 'REVIEW';
 
-  if (isKeep && !isReplace) {
+  if (!hasIssues) {
     return baseDecision('insurance', {
       verdict: VERDICT.KEEP,
-      verdictLabelHe: 'להשאיר את הפוליסות הנוכחיות',
-      bullets: trimmed.length ? trimmed : ['לא זוהו כפילויות או פערים מהותיים כרגע.'],
-      whySelected: data.marketAdvice?.overallVerdictLabelHe || 'הכיסוי הנוכחי סביר ביחס לשוק.',
-      nextAction: 'עקבו אחרי חידושים ופרמיות מדי שנה.',
+      verdictLabelHe: 'תיק ביטוח תקין יחסית — להשאיר ולבקר מדי שנה',
+      bullets: trimmed,
+      whySelected: data.marketAdvice?.overallVerdictLabelHe
+        || 'לא זוהו כפילויות, פערי כיסוי או מדד שירות נמוך.',
+      nextAction: 'עקבו אחרי חידושים והשלימו פרטי כיסוי חסרים במידת הצורך.',
       confidence: 'medium',
       actionable: false,
+      annualSavings: null,
+      expectedBenefit: null,
     });
   }
 
-  const annual = data.totalMonthlyWaste > 0 ? data.totalMonthlyWaste * 12 : null;
-  const topRec = (pkg.recommendations || []).find(r => r.itemKind !== 'missing_data');
+  const topRec = (pkg.recommendations || []).find(r =>
+    r.itemKind !== 'missing_data' && !/פרמיה|ממוצע שוק|טווח/i.test(`${r.title} ${r.explanation}`),
+  );
 
   return baseDecision('insurance', {
-    verdict: VERDICT.CONSIDER_REPLACE,
-    verdictLabelHe: overall === 'SWITCH' ? 'לשקול החלפת כיסוי' : 'לשקול בדיקה מחדש של הכיסוי',
-    bullets: trimmed.length
-      ? trimmed
-      : ['מומלץ לבחון מחדש את הפוליסות מול צרכים ועלות.'],
+    verdict: overall === 'SWITCH' ? VERDICT.CONSIDER_REPLACE : VERDICT.CONSIDER_REPLACE,
+    verdictLabelHe: overall === 'SWITCH'
+      ? 'לשקול בדיקת חברה — לפי מדד שירות (לא מחיר)'
+      : 'לשקול בדיקה מחדש של התיק',
+    bullets: trimmed,
     whySelected: data.marketAdvice?.overallVerdictLabelHe
       || topRec?.whyItMatters
-      || 'נמצאו ממצאים שמצדיקים בדיקה.',
-    expectedBenefit: annual != null
-      ? `פוטנציאל חיסכון שנתי מוערך: ${formatIls(annual)}`
-      : (topRec?.expectedBenefit || null),
-    annualSavings: annual,
+      || 'נמצאו ממצאים אובייקטיביים (כפילות / פער / שירות).',
+    expectedBenefit: null,
+    annualSavings: null,
     nextAction: topRec?.expectedBenefit
-      || 'עברו על הכפילויות והפערים ופנו לסוכן ביטוח לבדיקה.',
+      || 'אמתו כפילויות ופערי כיסוי מול סוכן מורשה — ללא החלפה על בסיס מחיר.',
     confidence: 'medium',
     actionable: true,
   });

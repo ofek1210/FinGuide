@@ -43,6 +43,14 @@ export type InsuranceAnalysisDTO = {
   missingCoverage: string[];
   missingUrgency: string;
   flags: { code: string; urgency: string; label: string }[];
+  needAssessments?: {
+    type: string;
+    needed: boolean | null;
+    status: string;
+    titleHe: string;
+    messageHe: string;
+    whyItMatters?: string;
+  }[];
   savings: {
     totalSavings: number;
     annualSavings: number;
@@ -103,12 +111,39 @@ export type InsuranceMarketAdvice = {
     policyId: string;
     type: string;
     provider: string | null;
-    userCost: number | null;
-    marketAvg: number;
-    premiumVsMarket: string;
+    userCost?: number | null;
+    marketAvg?: number | null;
+    premiumVsMarket?: string | null;
+    serviceScore?: number | null;
+    claimPaymentRate?: number | null;
+    satisfactionScore?: number | null;
+    serviceTier?: string | null;
+    duplicate?: boolean;
     verdict?: string;
+    comparisonNoteHe?: string | null;
   }[];
-  pricingSource?: InsurancePricingSource;
+  coverageSummaries?: {
+    policyId: string;
+    coverageType: string;
+    coverageTypeLabelHe: string;
+    provider: string | null;
+    status: string;
+    missingInformation: string[];
+    manualReviewRecommended: boolean;
+  }[];
+  portfolioOverview?: {
+    policyCount: number;
+    activeCount: number;
+    inactiveCount: number;
+    companies: string[];
+    policyTypes: { type: string; labelHe: string }[];
+  };
+  companyQuality?: {
+    averageServiceIndex: number | null;
+    averageServiceTier: string | null;
+    source?: string;
+  };
+  pricingSource?: InsurancePricingSource | null;
   disclaimer?: string;
   disclaimerEn?: string;
   dataSource?: string;

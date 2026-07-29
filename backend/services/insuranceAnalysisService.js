@@ -88,9 +88,7 @@ async function buildInsuranceAnalysis(userId) {
       title: `מסלול השקעה — ${f.verdictLabelHe}`,
       reason: f.summaryHe,
       urgency: f.verdict === 'SWITCH' ? 'high' : 'medium',
-      financialImpact: f.annualSavingsEstimate
-        ? `~₪${f.annualSavingsEstimate.toLocaleString('he-IL')}/שנה`
-        : null,
+      financialImpact: null,
       confidenceScore: 0.76,
     }));
 

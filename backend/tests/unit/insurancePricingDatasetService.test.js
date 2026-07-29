@@ -1,121 +1,29 @@
 'use strict';
 
-const path = require('path');
 const {
-  parsePricingCsv,
   getFairPriceRange,
   compareUserPremium,
-  compareUserPolicies,
-  classifyPremium,
+  buildPricingComparisons,
   getSourceMetadata,
-  getPricingDisclaimer,
-  clearPricingCache,
 } = require('../../services/insurancePricingDatasetService');
 
-describe('insurancePricingDatasetService', () => {
-  beforeEach(() => {
-    clearPricingCache();
+describe('insurancePricingDatasetService — premium benchmarking disabled', () => {
+  it('getFairPriceRange returns null (no market estimate)', () => {
+    expect(getFairPriceRange('health', { age: 35, gender: 'male' })).toBeNull();
   });
 
-  it('parsePricingCsv reads benchmark rows', () => {
-    const csv = require('fs').readFileSync(
-      path.join(__dirname, '../../data/insurance/pricing-benchmark.csv'),
-      'utf8',
-    );
-    const rows = parsePricingCsv(csv);
-    expect(rows.length).toBeGreaterThan(10);
-    expect(rows.some(r => r.insuranceType === 'health')).toBe(true);
-  });
-
-  it('getFairPriceRange returns min/avg/max for health by age', () => {
-    const range = getFairPriceRange('health', { age: 35, gender: 'male' });
-    expect(range.min).toBeGreaterThan(0);
-    expect(range.average).toBeGreaterThan(range.min);
-    expect(range.max).toBeGreaterThanOrEqual(range.average);
-    expect(range.sampleCount).toBeGreaterThan(0);
-    expect(range.source.sourceName).toBeTruthy();
-    expect(range.source.dataCollectionMethod).toBeTruthy();
-  });
-
-  it('keeps coverage tiers separated for calculator samples', () => {
-    const basic = getFairPriceRange('car', { age: 26, gender: 'male', coverageTier: 'basic' });
-    const standard = getFairPriceRange('car', { age: 26, gender: 'male', coverageTier: 'standard' });
-    const enhanced = getFairPriceRange('car', { age: 26, gender: 'male', coverageTier: 'enhanced' });
-
-    expect(standard.average).toBeGreaterThan(basic.average);
-    expect(enhanced.average).toBeGreaterThan(standard.average);
-  });
-
-  it('uses nearest same-tier calculator band when an exact age band is missing', () => {
-    const standard = getFairPriceRange('car', { age: 35, gender: 'female', coverageTier: 'standard' });
-    const enhanced = getFairPriceRange('car', { age: 35, gender: 'female', coverageTier: 'enhanced' });
-
-    expect(enhanced.average).toBeGreaterThan(standard.average);
-    expect(enhanced.coverageTier).toBe('enhanced');
-    expect(enhanced.requestedCoverageTier).toBe('enhanced');
-  });
-
-  it('prefers official health calculator exports across available age bands', () => {
-    const young = getFairPriceRange('health', { age: 26, gender: 'female', coverageTier: 'enhanced' });
-    const adult = getFairPriceRange('health', { age: 35, gender: 'female', coverageTier: 'enhanced' });
-    const senior = getFairPriceRange('health', { age: 70, gender: 'female', coverageTier: 'enhanced' });
-
-    expect(young.average).toBe(22);
-    expect(adult.average).toBe(42);
-    expect(senior.average).toBe(153);
-    expect(adult.average).toBeGreaterThan(young.average);
-    expect(senior.average).toBeGreaterThan(adult.average);
-  });
-
-  it('compareUserPremium classifies above-market premium', () => {
+  it('compareUserPremium does not classify above/below market', () => {
     const cmp = compareUserPremium(2000, 'health', { age: 35 });
-    expect(['high', 'very_high']).toContain(cmp.assessment);
-    expect(cmp.fairRange.average).toBeGreaterThan(0);
-    expect(cmp.monthlyDeltaVsAvg).toBeGreaterThan(0);
-    expect(cmp.disclaimerEn).toMatch(/not official quotes/i);
+    expect(cmp.fairRange).toBeNull();
+    expect(cmp.assessment).toBe('unavailable');
+    expect(cmp.premiumVsMarket).toBeNull();
   });
 
-  it('compareUserPolicies maps each active policy', () => {
-    const rows = compareUserPolicies(
-      [
-        { id: '1', type: 'health', provider: 'הראל', monthlyPremium: 200, status: 'active' },
-        { id: '2', type: 'life', provider: 'מגדל', monthlyPremium: 120, status: 'cancelled' },
-      ],
-      { personal: { age: 40, gender: 'female', childrenCount: 1 } },
-    );
-    expect(rows).toHaveLength(1);
-    expect(rows[0].policyId).toBe('1');
-    expect(rows[0].fairRange).toBeDefined();
+  it('buildPricingComparisons returns empty', () => {
+    expect(buildPricingComparisons([{ type: 'health', monthlyPremium: 200 }], { age: 35 })).toEqual([]);
   });
 
-  it('classifyPremium handles edge cases', () => {
-    expect(classifyPremium(null, { average: 100 })).toBe('unknown');
-    expect(classifyPremium(50, { min: 60, average: 100, max: 150 })).toBe('low');
-    expect(classifyPremium(105, { min: 60, average: 100, max: 150 })).toBe('normal');
-  });
-
-  it('getSourceMetadata exposes required fields', () => {
-    const meta = getSourceMetadata();
-    expect(meta).toMatchObject({
-      sourceName: expect.any(String),
-      sourceDate: expect.any(String),
-      dataCollectionMethod: expect.any(String),
-    });
-    expect(meta).toHaveProperty('sourceUrl');
-  });
-
-  it('getPricingDisclaimer includes Hebrew and English text', () => {
-    const d = getPricingDisclaimer();
-    expect(d.he).toMatch(/הערכה|הערכות/);
-    expect(d.en).toMatch(/not official quotes/i);
-    expect(d.source.sourceName).toBeTruthy();
-  });
-
-  // אין מאגר ציבורי של פרמיות ביטוח לצרכן, ולכן אסור שהמוצר יציג את
-  // הטווח המדגמי כ"ממוצע שוק" — הטסט נועל את הניסוח הכן
-  it('never presents the sampled range as a measured market average', () => {
-    const d = getPricingDisclaimer();
-    expect(d.he).toMatch(/לא ממוצע שוק/);
-    expect(d.source.dataCollectionMethod).toMatch(/לא.*ממוצע שוק/);
+  it('getSourceMetadata returns null', () => {
+    expect(getSourceMetadata()).toBeNull();
   });
 });
