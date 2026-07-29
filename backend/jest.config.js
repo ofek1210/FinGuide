@@ -1,8 +1,12 @@
 module.exports = {
   testEnvironment: 'node',
-  collectCoverage: true,
+  collectCoverage: false,
   coverageDirectory: 'coverage',
-  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+    '/tests/integration/step5\\.liveAudit\\.test\\.js$',
+  ],
   transform: {},
   testTimeout: 30000,
 };

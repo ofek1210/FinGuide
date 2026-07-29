@@ -55,11 +55,14 @@ describe('insurancePricingDatasetService', () => {
     expect(enhanced.requestedCoverageTier).toBe('enhanced');
   });
 
-  it('keeps synthetic health calculator age bands ordered by risk', () => {
+  it('prefers official health calculator exports across available age bands', () => {
     const young = getFairPriceRange('health', { age: 26, gender: 'female', coverageTier: 'enhanced' });
-    const adult = getFairPriceRange('health', { age: 45, gender: 'female', coverageTier: 'enhanced' });
+    const adult = getFairPriceRange('health', { age: 35, gender: 'female', coverageTier: 'enhanced' });
     const senior = getFairPriceRange('health', { age: 70, gender: 'female', coverageTier: 'enhanced' });
 
+    expect(young.average).toBe(22);
+    expect(adult.average).toBe(42);
+    expect(senior.average).toBe(153);
     expect(adult.average).toBeGreaterThan(young.average);
     expect(senior.average).toBeGreaterThan(adult.average);
   });

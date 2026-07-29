@@ -374,6 +374,7 @@
 .fg-landing .qa.open .pm{background:var(--lav-100);}
 .fg-landing .qa.open .pm svg{transform:rotate(45deg);}
 .fg-landing .qa .ans{max-height:0;overflow:hidden;transition:max-height .4s var(--ease);}
+.fg-landing .qa.open .ans{max-height:220px;}
 .fg-landing .qa .ans p{padding:0 4px 26px;margin:0;font-size:16px;line-height:1.65;color:var(--muted);font-weight:500;max-width:680px;}
 
 /* ---------- final CTA with card fan ---------- */

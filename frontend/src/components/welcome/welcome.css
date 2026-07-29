@@ -516,6 +516,13 @@
   background: var(--lav-50, #faf7ff);
 }
 
+.welcome-cta-error {
+  margin: 12px 0 0;
+  color: #ffd2cc;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
 .welcome-cta-fineprint {
   margin: 16px 0 0;
   font-size: 0.85rem;

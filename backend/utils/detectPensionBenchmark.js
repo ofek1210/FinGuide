@@ -17,6 +17,20 @@ const PENSION_CONFIG = {
     title: 'ציון בריאות פנסיונית נמוך',
     findingKind: 'pension_health_low',
   },
+  extraFindings: analysis => (analysis.recommendationCards || []).map((card, index) => {
+    const kindBySlot = {
+      management_fees: 'fee_above_market',
+      track_suitability: 'risk_wrong_for_age',
+      market_comparison: 'track_underperforming',
+    };
+    return {
+      id: `pension_card_${card.slot || index}`,
+      title: card.title || 'בדיקת פנסיה',
+      severity: card.cardOutcome === 'actionable' ? 'warning' : 'info',
+      details: card.summary || card.recommendation || '',
+      meta: { findingKind: kindBySlot[card.slot] || 'pension_review' },
+    };
+  }),
   fromRecommendations: {
     filter: rec => ['fee_above_market', 'risk_wrong_for_age', 'track_underperforming'].includes(rec.type),
     kindMap: {

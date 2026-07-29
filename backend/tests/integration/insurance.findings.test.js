@@ -27,7 +27,7 @@ describe('Insurance findings integration', () => {
 
     expectFindingsIncludeKinds(
       res,
-      ['insurance_health_low', 'insurance_duplicate', 'insurance_missing_coverage'],
+      ['insurance_health_low', 'insurance_duplicate', 'insurance_overlap_review', 'insurance_missing_coverage', 'insurance_premium_review'],
       /ביטוח|כפילות|כיסוי/,
     );
   });

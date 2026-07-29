@@ -35,8 +35,18 @@ const INSURANCE_CONFIG = {
     }];
   },
   fromRecommendations: {
-    filter: rec => rec.type === 'duplicate_insurance' || rec.type.startsWith('missing_'),
-    kindMap: { duplicate_insurance: 'insurance_duplicate' },
+    filter: rec => [
+      'duplicate_insurance',
+      'coverage_overlap_review',
+      'coverage_gap_review',
+      'premium_review',
+    ].includes(rec.type) || rec.type.startsWith('missing_'),
+    kindMap: {
+      duplicate_insurance: 'insurance_duplicate',
+      coverage_overlap_review: 'insurance_overlap_review',
+      coverage_gap_review: 'insurance_missing_coverage',
+      premium_review: 'insurance_premium_review',
+    },
     defaultKind: 'insurance_missing_coverage',
   },
 };

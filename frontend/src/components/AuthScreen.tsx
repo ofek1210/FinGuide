@@ -259,7 +259,10 @@ export default function AuthScreen({
       // on /hub renders the loader (correct place), instead of RequireGuest
       // unmounting AuthScreen mid-flight on /login.
       emitAuthChanged();
-      navigate(APP_ROUTES.hub);
+      // Do not leave the auth form behind the Hub in browser history. Otherwise
+      // Back lands on /login or /register, whose guest guard redirects straight
+      // to /hub and creates a navigation loop.
+      navigate(APP_ROUTES.hub, { replace: true });
     },
     [navigate],
   );
@@ -805,4 +808,3 @@ export default function AuthScreen({
     </div>
   );
 }
-

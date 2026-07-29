@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { APP_ROUTES } from "../types/navigation";
 import { useLandingAnimations } from "./landing/useLandingAnimations";
@@ -14,6 +14,7 @@ import "./landing/landing.css";
 export default function LandingPage() {
   const navigate = useNavigate();
   const rootRef = useRef<HTMLDivElement>(null);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   useLandingAnimations(rootRef);
 
   const toRegister = () => navigate(APP_ROUTES.register);
@@ -768,9 +769,13 @@ export default function LandingPage() {
                 q: "זה מחליף יועץ פנסיוני?",
                 a: "FinGuide נותן לך את הכלים והמידע להבין בדיוק מה קורה עם הכסף שלך — בשקיפות מלאה ובלי אינטרסים. בהחלטות מורכבות תמיד נמליץ להתייעץ גם עם בעל רישיון.",
               },
-            ].map((item) => (
-              <div className="qa" key={item.q}>
-                <button>
+            ].map((item, index) => (
+              <div className={`qa${openFaq === index ? " open" : ""}`} key={item.q}>
+                <button
+                  type="button"
+                  aria-expanded={openFaq === index}
+                  onClick={() => setOpenFaq(current => current === index ? null : index)}
+                >
                   {item.q}
                   <span className="pm">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
@@ -778,7 +783,7 @@ export default function LandingPage() {
                     </svg>
                   </span>
                 </button>
-                <div className="ans">
+                <div className="ans" aria-hidden={openFaq !== index}>
                   <p>{item.a}</p>
                 </div>
               </div>

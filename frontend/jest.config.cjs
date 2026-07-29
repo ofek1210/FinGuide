@@ -1,6 +1,6 @@
 module.exports = {
   testEnvironment: 'jsdom',
-  collectCoverage: true,
+  collectCoverage: false,
   coverageDirectory: 'coverage',
   setupFiles: ['<rootDir>/jest.setup.cjs'],
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
@@ -12,6 +12,9 @@ module.exports = {
         tsconfig: '<rootDir>/tsconfig.jest.json',
       },
     ],
+  },
+  moduleNameMapper: {
+    '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx', 'json', 'node'],
 };

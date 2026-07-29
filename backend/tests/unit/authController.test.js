@@ -99,6 +99,7 @@ describe('authController - register', () => {
       id: 'user-id-1',
       name: 'Test User',
       email: 'test@test.com',
+      role: 'user',
       onboardingCompleted: false,
       welcomeShown: false,
     });
@@ -228,6 +229,7 @@ describe('authController - googleLogin', () => {
           name: 'Existing User',
           email: 'existing@example.com',
           avatarUrl: null,
+          role: 'user',
           onboardingCompleted: false,
           welcomeShown: true,
         },
@@ -277,6 +279,7 @@ describe('authController - googleLogin', () => {
           name: 'New User',
           email: 'new@example.com',
           avatarUrl: null,
+          role: 'user',
           onboardingCompleted: false,
           welcomeShown: false,
         },

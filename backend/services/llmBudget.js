@@ -94,6 +94,14 @@ async function canSpend(userId) {
  * @param {{ input_tokens?: number, output_tokens?: number }} usage
  */
 async function record(userId, usage) {
+  // Backward compatibility for process-scoped callers that historically used
+  // record(usage). Without this overload the usage object is treated as a Mongo
+  // user id, causing a rejected async query after the caller has already ended.
+  if (usage === undefined && userId && typeof userId === 'object') {
+    usage = userId;
+    userId = null;
+  }
+
   const addTokens = (usage?.input_tokens || 0) + (usage?.output_tokens || 0);
 
   if (!userId) {

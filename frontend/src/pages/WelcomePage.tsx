@@ -52,20 +52,27 @@ export default function WelcomePage() {
   const firstName = useMemo(() => extractFirstName(auth.user?.name), [auth.user?.name]);
 
   const [isContinuing, setIsContinuing] = useState(false);
+  const [continueError, setContinueError] = useState("");
 
   const handleContinue = useCallback(async () => {
     if (isContinuing) return;
     setIsContinuing(true);
+    setContinueError("");
     try {
       const res = await markWelcomeShown();
+      if (!res.success || !res.data?.user) {
+        setContinueError(res.message || "לא הצלחנו לשמור את ההתקדמות. נסו שוב.");
+        return;
+      }
       await auth.refresh();
-      const onboardingIncomplete =
-        res.success && res.data?.user?.onboardingCompleted === false;
+      const onboardingIncomplete = res.data.user.onboardingCompleted === false;
       navigate(onboardingIncomplete ? APP_ROUTES.onboarding : APP_ROUTES.hub, {
         replace: true,
       });
     } catch {
-      navigate(APP_ROUTES.hub, { replace: true });
+      setContinueError("לא הצלחנו לשמור את ההתקדמות. נסו שוב.");
+    } finally {
+      setIsContinuing(false);
     }
   }, [auth, isContinuing, navigate]);
 
@@ -145,6 +152,9 @@ export default function WelcomePage() {
                 </>
               )}
             </button>
+            {continueError ? (
+              <p className="welcome-cta-error" role="alert">{continueError}</p>
+            ) : null}
             <p className="welcome-cta-fineprint">תראו את המסך הזה רק פעם אחת. ברוכים הבאים.</p>
           </div>
         </section>
