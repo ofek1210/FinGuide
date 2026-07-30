@@ -27,7 +27,24 @@ function scoreVisionPageResult(result) {
   if (Number.isFinite(gross) && gross >= 8000 && gross <= 80000) score += 4;
   else if (Number.isFinite(gross) && gross >= 3000) score += 1;
 
-  if (Number.isFinite(net) && net >= 3000 && net <= 60000) score += 3;
+  const netLooksLikeYear =
+    Number.isFinite(net) &&
+    net >= 1990 &&
+    net <= 2099 &&
+    Math.abs(net - Math.round(net)) < 0.001;
+
+  if (netLooksLikeYear) {
+    score -= 5;
+  } else if (Number.isFinite(net) && net >= 3000 && net <= 60000) {
+    score += 3;
+  }
+
+  if (Number.isFinite(gross) && Number.isFinite(net) && gross > 0 && !netLooksLikeYear) {
+    const ratio = net / gross;
+    if (ratio >= 0.45 && ratio <= 0.85) score += 2;
+    else if (ratio < 0.2) score -= 4;
+  }
+
   if (Number.isFinite(pension.employee) && pension.employee >= 200) score += 2;
   if (Number.isFinite(pension.employer) && pension.employer >= 500) score += 3;
   if (Number.isFinite(study.employee) && study.employee >= 100) score += 1;
@@ -90,7 +107,7 @@ function applySanityAndSummary(data, audit) {
  *
  * @returns {Promise<{ data: object }>}
  */
-async function extractPayslipViaVision(inputPath, { password, bypassCache = false } = {}) {
+async function extractPayslipViaVision(inputPath, { password, bypassCache = false, userId, excludeDocumentId } = {}) {
   const abs = path.resolve(inputPath);
   const pages = await renderPayslipPages(abs, { password });
 
@@ -117,6 +134,36 @@ async function extractPayslipViaVision(inputPath, { password, bypassCache = fals
     fromCache: best.fromCache,
     pagesProcessed: pagesToProcess.length,
   });
+
+  if (userId) {
+    try {
+      const {
+        loadSalaryBaselineForUser,
+        sanitizeResolvedSalaryAgainstBaseline,
+      } = require('./payslipSalaryBaseline');
+      const baseline = await loadSalaryBaselineForUser(userId, { excludeDocumentId });
+      const sanitized = sanitizeResolvedSalaryAgainstBaseline(
+        data.salary?.gross_total,
+        data.salary?.net_payable,
+        baseline,
+      );
+      if (data.salary) {
+        if (sanitized.gross !== data.salary.gross_total) {
+          data.salary.gross_total = sanitized.gross;
+        }
+        if (sanitized.net !== data.salary.net_payable) {
+          data.salary.net_payable = sanitized.net;
+        }
+      }
+      if (sanitized.warnings.length) {
+        data.quality = data.quality || {};
+        data.quality.warnings = [...(data.quality.warnings || []), ...sanitized.warnings];
+        data.quality.confidence = 'low';
+      }
+    } catch {
+      // non-fatal
+    }
+  }
 
   data.raw = {
     ...data.raw,

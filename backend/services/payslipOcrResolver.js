@@ -17,6 +17,7 @@ const {
   isCumulativeLine,
   isLikelyCumulativeZoneLine,
   isLikelyTaxBaseNoiseLine,
+  isImplausibleSalaryAmount,
   isPayslipPeriodNoise,
   match1,
   parseMoney,
@@ -211,13 +212,21 @@ function sortCandidatesByScore(candidates = []) {
   });
 }
 
-function isReasonableFieldValue(field, value) {
+function isReasonableFieldValue(field, value, lineText = '') {
   const limits = NUMERIC_FIELD_LIMITS[field];
   if (!limits || !Number.isFinite(value)) {
     return false;
   }
 
-  return value >= limits.min && value <= limits.max;
+  if (value < limits.min || value > limits.max) {
+    return false;
+  }
+
+  if (isImplausibleSalaryAmount(field, value, lineText)) {
+    return false;
+  }
+
+  return true;
 }
 
 function rankFieldAmounts(field, amounts, lineText) {
@@ -225,7 +234,8 @@ function rankFieldAmounts(field, amounts, lineText) {
     ...new Set(
       amounts.filter(
         value =>
-          isReasonableFieldValue(field, value) && !isPayslipPeriodNoise(value, lineText),
+          isReasonableFieldValue(field, value, lineText) &&
+          !isPayslipPeriodNoise(value, lineText),
       ),
     ),
   ];
@@ -739,8 +749,15 @@ function resolveGrossAndNetCandidates(grossCandidates, netCandidates, warnings) 
 
       if (grossCandidate && netCandidate) {
         const netRatio = grossCandidate.value > 0 ? netCandidate.value / grossCandidate.value : 0;
-        if (netRatio < 0.25) {
-          score -= 0.08;
+        // Israeli monthly net is rarely below ~35% of gross (years/allowance codes fail here)
+        if (netRatio < 0.2) {
+          score -= 0.85;
+        } else if (netRatio < 0.35) {
+          score -= 0.45;
+        } else if (netRatio < 0.45) {
+          score -= 0.12;
+        } else if (netRatio >= 0.5 && netRatio <= 0.85) {
+          score += 0.06;
         }
       }
 

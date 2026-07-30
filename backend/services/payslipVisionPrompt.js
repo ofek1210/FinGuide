@@ -13,9 +13,10 @@ CRITICAL RULES:
 1. NEVER guess or calculate unstated values. If not clearly visible, return -1 for numbers or "" for text.
 2. Use ONLY the CURRENT MONTH column (נוכחי / rightmost amount). Ignore קודם / prior month / cumulative columns.
 3. Dates like 01.06.26, 03/2034, seniority codes are NOT amounts — ignore them.
-4. Hebrew payslips are RTL. Do not swap employee vs employer columns.
-5. Set confidence per group 0–1. Use <0.6 when ambiguous.
-6. Return -1 for missing numbers. Use 0 only when payslip explicitly shows zero.
+4. Years embedded in allowance NAMES are NOT amounts. Example: "תוספת הסכם 2009" / "תוספת_הסכם_2009" — the 2009 is the agreement year in the label; read the row's money amount (e.g. 793.97) only if extracting that line item. NEVER put 2009 into net_payable or gross_total.
+5. Hebrew payslips are RTL. Do not swap employee vs employer columns.
+6. Set confidence per group 0–1. Use <0.6 when ambiguous.
+7. Return -1 for missing numbers. Use 0 only when payslip explicitly shows zero.
 
 IDENTITY (must extract carefully — high priority):
 | Field | Where to read |
@@ -28,7 +29,7 @@ FIELD LOCATIONS — IDF / צה"ל (צבא הגנה לישראל):
 | Field | Where to read |
 | period_month | Payslip TITLE only: "תלוש שכר לחודש MM/YYYY" at page top (e.g. 07/2026 = July). NEVER: ותק dates (01.06.26), תחילת עבודה, print date, seniority, or נתונים גולמיים row dates. |
 | gross_total | Bottom "סה\\"כ תשלומים שוטפים" CURRENT-month total row. If absent, metadata "ברוטו לפנסיה". NOT a single allowance line. |
-| net_payable | Bottom line "שכר חודשי נטו" (typically 8,000–25,000 ₪) |
+| net_payable | Bottom-left box "שכר חודשי נטו" only (typically 8,000–25,000 ₪). NEVER a year from an allowance name (2009). NEVER a single תוספת line amount. |
 | income_tax | ניכויים שוטפים → "מס הכנסה" current column |
 | national_insurance | ניכויים שוטפים → "ביטוח לאומי" current column |
 | health_insurance | ניכויים שוטפים → "ביטוח בריאות ממלכתי" current column |

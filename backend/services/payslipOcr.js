@@ -220,7 +220,19 @@ function hasCriticalSalaryFields(data, fullText = '') {
     return false;
   }
 
+  // Calendar years (e.g. "תוספת הסכם 2009") must never pass as net/gross
+  if (
+    (gross >= 1990 && gross <= 2099 && Math.abs(gross - Math.round(gross)) < 0.001) ||
+    (net >= 1990 && net <= 2099 && Math.abs(net - Math.round(net)) < 0.001)
+  ) {
+    return false;
+  }
+
   if (Math.abs(gross - net) < 0.01) {
+    return false;
+  }
+
+  if (gross > 0 && net / gross < 0.2) {
     return false;
   }
 
@@ -348,7 +360,10 @@ async function applyLlmAdjudication({
   return { candidate: adjudicated, llm: result };
 }
 
-async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson, expectedEmployeeName } = {}) {
+async function extractPayslipFinancialEN(
+  ocrInput,
+  { sourcePath, ocrJson, expectedEmployeeName, salaryBaseline } = {},
+) {
   const warnings = [];
   const sourcePayload =
     typeof ocrInput === 'string'
@@ -369,6 +384,11 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson, expect
   const rawCoreFieldCandidates = collectCoreFieldCandidates(normalizedDoc);
   const reconciliation = reconcileCoreCandidates(rawCoreFieldCandidates);
   const coreFieldCandidates = reconciliation.refined;
+
+  if (salaryBaseline) {
+    const { applySalaryBaselineToCandidates } = require('./payslipSalaryBaseline');
+    applySalaryBaselineToCandidates(coreFieldCandidates, salaryBaseline);
+  }
 
   // Preserve the existing observability contract: when the reconciler rejects
   // a net candidate that exceeded gross, surface the legacy conflict warning
@@ -448,7 +468,17 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson, expect
     gross_total,
     mandatory_total,
   });
-  const net_payable = netCandidate?.value;
+  let net_payable = netCandidate?.value;
+
+  if (salaryBaseline) {
+    const { sanitizeResolvedSalaryAgainstBaseline } = require('./payslipSalaryBaseline');
+    const sanitized = sanitizeResolvedSalaryAgainstBaseline(gross_total, net_payable, salaryBaseline);
+    warnings.push(...sanitized.warnings);
+    if (sanitized.net !== net_payable) {
+      net_payable = sanitized.net;
+      netCandidate = sanitized.net === undefined ? undefined : netCandidate;
+    }
+  }
 
   const base_salary = resolveBestNumericCandidate(
     'base_salary',
@@ -857,10 +887,22 @@ async function extractPayslipFileLegacy(inputPath, options = {}) {
     expectedEmployeeName = await getExpectedEmployeeNameForUser(userId);
   }
 
+  let salaryBaseline = options.salaryBaseline;
+  if (!salaryBaseline && userId) {
+    try {
+      const { loadSalaryBaselineForUser } = require('./payslipSalaryBaseline');
+      salaryBaseline = await loadSalaryBaselineForUser(userId, {
+        excludeDocumentId: options.excludeDocumentId,
+      });
+    } catch {
+      salaryBaseline = null;
+    }
+  }
+
   const abs = path.resolve(inputPath);
   const ext = path.extname(abs).toLowerCase();
   let extractionMethod = 'ocr';
-  const extractionOptions = { sourcePath: abs, expectedEmployeeName };
+  const extractionOptions = { sourcePath: abs, expectedEmployeeName, salaryBaseline };
 
   const workDir = path.join(process.cwd(), '.work');
   await fs.mkdir(workDir, { recursive: true });
