@@ -2,10 +2,30 @@
 
 const { resolvePayslipPeriod, monthKey, compareYearMonth, selectLatestDoc } = require('./payslipPeriod');
 
+const NON_PAYSLIP_CATEGORIES = new Set(['tax_report', 'form_106', 'invoice', 'pension_report']);
+
+function looksLikePayslipAnalysis(doc) {
+  const analysis = doc?.analysisData;
+  if (!analysis || typeof analysis !== 'object') return false;
+  return Boolean(
+    analysis.salary?.gross_total
+      || analysis.salary?.net_payable
+      || analysis.summary?.grossSalary
+      || analysis.summary?.netSalary
+      || analysis.period?.month,
+  );
+}
+
 function isPayslipCategory(doc) {
   const cat = doc?.metadata?.category;
-  if (cat && cat !== 'payslip') return false;
-  return true;
+  if (!cat || cat === 'payslip') {
+    return cat === 'payslip' || looksLikePayslipAnalysis(doc) || !cat;
+  }
+  if (cat === 'other') {
+    return looksLikePayslipAnalysis(doc);
+  }
+  if (NON_PAYSLIP_CATEGORIES.has(cat)) return false;
+  return looksLikePayslipAnalysis(doc);
 }
 
 function isAnalyzablePayslip(doc) {

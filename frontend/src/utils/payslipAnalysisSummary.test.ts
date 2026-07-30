@@ -74,4 +74,11 @@ describe("selectRecentPayslipDocuments", () => {
     expect(summary.count).toBe(1);
     expect(summary.rows[0]?.id).toBe("ok");
   });
+
+  it("includes category=other when analysis looks like a payslip", () => {
+    const doc = makePayslipDoc("other", "2025-04", "2025-05-01T10:00:00Z", {
+      metadata: { category: "other" },
+    });
+    expect(isAnalyzablePayslip(doc)).toBe(true);
+  });
 });

@@ -19,10 +19,13 @@ const SEV_TONE: Record<TaxIssueSeverity, { bg: string; ink: string; Icon: Lucide
 const MONTHS = ["ינו", "פבר", "מרץ", "אפר", "מאי", "יונ", "יול", "אוג", "ספט", "אוק", "נוב", "דצמ"];
 const fmt = (v: number) => new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 }).format(v);
 
-const buildYearOptions = (centerYear: number) => {
-  const years: number[] = [];
-  for (let y = centerYear + 1; y >= centerYear - 4; y -= 1) years.push(y);
-  return years;
+const buildYearOptions = (centerYear: number, availableYears: number[] = []) => {
+  const years = new Set<number>();
+  for (let y = centerYear + 1; y >= centerYear - 4; y -= 1) years.add(y);
+  for (const y of availableYears) {
+    if (Number.isFinite(y)) years.add(y);
+  }
+  return [...years].sort((a, b) => b - a);
 };
 
 function useCountUp(target: number, run: boolean, dur = 1200) {
@@ -58,12 +61,18 @@ const explain = (issue: TaxAssistantIssue) => {
 export default function TaxAssistantPanel() {
   const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
-  const yearOptions = useMemo(() => buildYearOptions(currentYear), [currentYear]);
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [availableYears, setAvailableYears] = useState<number[]>([]);
+  const [yearTouched, setYearTouched] = useState(false);
   const [data, setData] = useState<TaxAssistantPayload | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [seen, setSeen] = useState(false);
+
+  const yearOptions = useMemo(
+    () => buildYearOptions(currentYear, availableYears),
+    [currentYear, availableYears],
+  );
 
   const loadSummary = useCallback(async (year: number) => {
     setIsLoading(true);
@@ -71,14 +80,29 @@ export default function TaxAssistantPanel() {
     setSeen(false);
     const response = await getTaxAssistantSummary(year);
     if (response.success && response.data) {
-      setData(response.data);
+      const payload = response.data;
+      setData(payload);
+      if (Array.isArray(payload.availableYears)) {
+        setAvailableYears(payload.availableYears);
+      }
+      // If the default calendar year has no slips but another year does, jump once.
+      if (
+        !yearTouched
+        && (payload.summary?.totalSalaryDocuments ?? 0) === 0
+        && payload.suggestedYear
+        && payload.suggestedYear !== year
+      ) {
+        setSelectedYear(payload.suggestedYear);
+        setIsLoading(false);
+        return;
+      }
       setTimeout(() => setSeen(true), 60);
     } else {
       setData(null);
       setError(response.message || "לא הצלחנו לטעון את ניתוח המס.");
     }
     setIsLoading(false);
-  }, []);
+  }, [yearTouched]);
 
   useEffect(() => { void loadSummary(selectedYear); }, [loadSummary, selectedYear]);
 
@@ -115,7 +139,14 @@ export default function TaxAssistantPanel() {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 12 }}>
           <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>
             שנת מס
-            <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} style={{ padding: "8px 12px", borderRadius: "var(--r-btn)", border: "1px solid var(--border-soft)", background: "var(--card)", fontFamily: "inherit", fontWeight: 800, fontSize: 14, color: "var(--ink)", cursor: "pointer" }}>
+            <select
+              value={selectedYear}
+              onChange={e => {
+                setYearTouched(true);
+                setSelectedYear(Number(e.target.value));
+              }}
+              style={{ padding: "8px 12px", borderRadius: "var(--r-btn)", border: "1px solid var(--border-soft)", background: "var(--card)", fontFamily: "inherit", fontWeight: 800, fontSize: 14, color: "var(--ink)", cursor: "pointer" }}
+            >
               {yearOptions.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
           </label>
