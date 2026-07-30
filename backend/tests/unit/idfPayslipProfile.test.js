@@ -159,6 +159,82 @@ describe('idfPayslipProfile', () => {
     expect(result.salary.gross_total).toBe(16528.41);
     expect(result.salary.net_payable).toBe(12734.43);
   });
+
+  it('repairs OCR amounts that dropped the decimal point (21653250 → 21653.25)', () => {
+    const { repairIdfOcrAmount } = require('../../services/idfPayslipProfile');
+    expect(repairIdfOcrAmount(21653250)).toBe(21653.25);
+    expect(repairIdfOcrAmount(4229320)).toBe(4229.32);
+    expect(repairIdfOcrAmount(21653.25)).toBe(21653.25);
+  });
+
+  it('recovers Feb-style IDF gross/net when OCR drops gross decimal', async () => {
+    const text = [
+      'צבא הגנה לישראל',
+      'תלוש שכר לחודש 02/2025',
+      'סה"כ תשלומים שוטפים 21653250',
+      'סה"כ ניכויים שוטפים 4229.320',
+      'שכר חודשי נטו17423.930',
+    ].join('\n');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'paycheck-02-2025-2.pdf',
+    });
+
+    expect(result.salary.gross_total).toBe(21653.25);
+    expect(result.salary.net_payable).toBe(17423.93);
+  });
+
+  it('peels OCR נטו codes 101/102 glued onto net amount', async () => {
+    const text = [
+      'צבא הגנה לישראל',
+      'תלוש שכר לחודש 02/2025',
+      'סה"כ תשלומים שוטפים 21653.250',
+      'סה"כ ניכויים שוטפים 4229.320',
+      'שכר חודשי 10217423.930',
+    ].join('\n');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'paycheck-02-2025-2.pdf',
+    });
+
+    expect(result.salary.gross_total).toBe(21653.25);
+    expect(result.salary.net_payable).toBe(17423.93);
+  });
+
+  it('does not treat dual-column gross as deductions total', async () => {
+    const text = [
+      'צבא הגנה לישראל',
+      'תלוש שכר לחודש 07/2025',
+      "סה''כ תשלומים שוטפים 26528.410 סה''כ ניכויים שוטפים0",
+      'שכר חודשי )10122717.380',
+    ].join('\n');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'paycheck-07-2025-2.pdf',
+    });
+
+    expect(result.salary.gross_total).toBe(26528.41);
+    expect(result.salary.net_payable).toBe(22717.38);
+    expect(result.salary.gross_total).not.toBe(49245.79);
+  });
+
+  it('rejects sick-day balance 23501.01 as gross', async () => {
+    const text = [
+      'צבא הגנה לישראל',
+      'תלוש שכר לחודש 09/2025',
+      'יתרת ימי מחלה לניצול 23501.01.24',
+      "סה''כ תשלומים שוטפים 23400.000 סה''כ ניכויים שוטפים 3951.720",
+      'שכר חודשי נטו 19448.280',
+    ].join('\n');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'paycheck-09-2025-2.pdf',
+    });
+
+    expect(result.salary.gross_total).toBe(23400);
+    expect(result.salary.gross_total).not.toBe(23501.01);
+    expect(result.salary.net_payable).toBe(19448.28);
+  });
 });
 
 describe('IDF payslip contribution extraction across months', () => {

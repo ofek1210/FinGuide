@@ -134,6 +134,9 @@ function applyNetArithmetic(candidates, gross, mandatory, violations) {
   if (!Array.isArray(candidates)) return;
   if (!Number.isFinite(gross) || gross <= 0) return;
   if (!Number.isFinite(mandatory) || mandatory < 0) return;
+  // Dual-column OCR often labels the gross amount as ניכויים — never use that
+  // to kill a valid net (upperBound would collapse near zero).
+  if (mandatory >= gross * 0.45) return;
 
   const upperBound = gross - mandatory;
   const slack = upperBound * NET_ROUNDING_SLACK;

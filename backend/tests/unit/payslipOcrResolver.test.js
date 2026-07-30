@@ -63,4 +63,28 @@ describe('payslipOcrResolver', () => {
 
     expect(ranked.map(candidate => candidate.psm)).toEqual([4, 6, 3]);
   });
+
+  it('prefers OCR pass whose gross reconciles with net + mandatory deductions', () => {
+    const ranked = rankExtractionCandidates([
+      {
+        psm: 6,
+        data: {
+          salary: { gross_total: 20799.54, net_payable: 7423.93 },
+          deductions: { mandatory: { total: 3913.18 } },
+          quality: { resolution_score: 16, confidence: 0.95, warnings: [] },
+        },
+      },
+      {
+        psm: 4,
+        data: {
+          salary: { gross_total: 21653.25, net_payable: 17423.93 },
+          deductions: { mandatory: { total: 4229.32 } },
+          quality: { resolution_score: 14, confidence: 0.85, warnings: [] },
+        },
+      },
+    ]);
+
+    expect(ranked[0].psm).toBe(4);
+    expect(ranked[0].data.salary.gross_total).toBe(21653.25);
+  });
 });
