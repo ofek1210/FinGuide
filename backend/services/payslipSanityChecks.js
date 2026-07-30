@@ -70,6 +70,23 @@ function runPayslipSanityChecks(data) {
     flaggedInconsistencies.push(`net_payable (${net}) exceeds gross_total (${gross})`);
   }
 
+  if (
+    Number.isFinite(net) &&
+    net >= 1990 &&
+    net <= 2099 &&
+    Math.abs(net - Math.round(net)) < 0.001
+  ) {
+    flaggedInconsistencies.push(
+      `net_payable (${net}) looks like a calendar year (e.g. agreement label), not monthly net`,
+    );
+  }
+
+  if (Number.isFinite(gross) && Number.isFinite(net) && gross > 0 && net / gross < 0.2) {
+    flaggedInconsistencies.push(
+      `net_payable (${net}) is implausibly low vs gross_total (${gross}) — ratio ${(net / gross).toFixed(3)}`,
+    );
+  }
+
   if (Number.isFinite(gross) && Number.isFinite(mandatory) && mandatory > gross * 1.005) {
     flaggedInconsistencies.push(`mandatory_total (${mandatory}) exceeds gross_total (${gross})`);
   }

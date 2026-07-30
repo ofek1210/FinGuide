@@ -3,7 +3,8 @@
   "schema_version": "1.9",
   "period": { "month": "2026-05" },
   "salary": {
-    "gross_total": 24963.93
+    "gross_total": 24963.93,
+    "net_payable": 16454.93
   },
   "deductions": {
     "mandatory": {

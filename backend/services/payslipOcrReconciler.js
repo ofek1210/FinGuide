@@ -140,6 +140,35 @@ function applyNetArithmetic(candidates, gross, mandatory, violations) {
 
   for (const candidate of candidates) {
     if (!candidate || !Number.isFinite(candidate.value)) continue;
+
+    // Calendar years (agreement labels like "תוספת הסכם 2009") are never net
+    if (
+      candidate.value >= 1990 &&
+      candidate.value <= 2099 &&
+      Math.abs(candidate.value - Math.round(candidate.value)) < 0.001
+    ) {
+      candidate.score = clamp(candidate.score - 0.9);
+      violations.push({
+        field: 'net_payable',
+        rule: 'calendar_year_token',
+        value: candidate.value,
+        source: candidate.source,
+      });
+      continue;
+    }
+
+    const netRatio = candidate.value / gross;
+    if (netRatio < 0.2) {
+      candidate.score = clamp(candidate.score - 0.75);
+      violations.push({
+        field: 'net_payable',
+        rule: 'implausible_net_gross_ratio',
+        value: candidate.value,
+        ratio: Number(netRatio.toFixed(3)),
+        source: candidate.source,
+      });
+    }
+
     if (candidate.value > slack) {
       candidate.score = clamp(candidate.score - ARITHMETIC_PENALTY);
       violations.push({

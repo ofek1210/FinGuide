@@ -285,24 +285,61 @@ function dedupeStrings(values) {
 const PAYSLIP_PERIOD_LINE_REGEX =
   /(?:לחודש|חודש|תקופה|תלוש\s+שכר|שנת)\s*[^\n]{0,24}\d{1,2}\s*\/\s*20\d{2}|\d{1,2}\s*\/\s*20\d{2}/i;
 
+/** IDF / collective-agreement line labels that embed a year as a name, not an amount. */
+const AGREEMENT_YEAR_LINE_REGEX =
+  /(?:תוספת[_\s-]*הסכם|תוספת[_\s-]*אחוזית|תוספת[_\s-]*שקלית|תוספת[_\s-]*ייעודית|השתתפות\s+זמנית)\s*[_\s-]*((?:19|20)\d{2})\b/i;
+
+/**
+ * Reject calendar years / agreement-year tokens that OCR often promotes to
+ * salary amounts (e.g. "תוספת הסכם 2009 793.97" → false net_payable=2009).
+ */
 function isPayslipPeriodNoise(value, lineText) {
-  if (!Number.isFinite(value) || !lineText) {
+  if (!Number.isFinite(value)) {
     return false;
   }
 
-  const text = String(lineText);
-  if (!PAYSLIP_PERIOD_LINE_REGEX.test(text)) {
+  const text = String(lineText || '');
+  const asInt = Math.round(value);
+  const looksLikeYear = asInt === value && asInt >= 1990 && asInt <= 2099;
+
+  if (looksLikeYear) {
+    if (AGREEMENT_YEAR_LINE_REGEX.test(text)) {
+      return true;
+    }
+    if (PAYSLIP_PERIOD_LINE_REGEX.test(text)) {
+      return true;
+    }
+    // Bare 4-digit year token next to agreement / tenure / date context
+    if (/(?:הסכם|ותק|תאריך|לחודש|שנת|\/\s*20\d{2}|20\d{2}\s*\/)/i.test(text)) {
+      return true;
+    }
+    // No line context — still treat bare calendar years as OCR noise
+    if (!text.trim()) {
+      return true;
+    }
+  }
+
+  if (!text) {
     return false;
   }
 
-  if (value >= 2000 && value <= 2099) {
+  if (PAYSLIP_PERIOD_LINE_REGEX.test(text) && value >= 1 && value <= 12) {
     return true;
   }
 
-  if (value >= 1 && value <= 12) {
-    return true;
-  }
+  return false;
+}
 
+/**
+ * Extra guard for salary fields: years and tiny integers must not become net/gross.
+ */
+function isImplausibleSalaryAmount(field, value, lineText) {
+  if (!Number.isFinite(value)) return true;
+  if (isPayslipPeriodNoise(value, lineText)) return true;
+  if ((field === 'net_payable' || field === 'gross_total') && value >= 1990 && value <= 2099) {
+    // Even with decimals like 2009.0 — still a year collision risk
+    if (Math.abs(value - Math.round(value)) < 0.001) return true;
+  }
   return false;
 }
 
@@ -322,6 +359,7 @@ module.exports = {
   isLikelyCumulativeZoneLine,
   isLikelyTaxBaseNoiseLine,
   isPayslipPeriodNoise,
+  isImplausibleSalaryAmount,
   linesOf,
   match1,
   normalizeHebrewLine,

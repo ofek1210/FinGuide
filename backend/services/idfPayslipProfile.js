@@ -554,14 +554,17 @@ function extractIdfSalaryFromFullText(fullText, store, pushCandidate) {
   if (netMatch) {
     const net = parseMoney(netMatch[1]);
     if (Number.isFinite(net) && net >= 500 && net <= 250000) {
-      pushCandidate(store, 'net_payable', net, {
-        source: 'idf_salary_text_regex',
-        lineIndex: null,
-        score: 0.98,
-        reason: 'תלוש צה"ל — שכר חודשי נטו (regex)',
-        section: 'summary',
-        evidenceCategory: 'idf_column',
-      });
+      // Never promote agreement-year tokens (e.g. תוספת הסכם 2009)
+      if (!(net >= 1990 && net <= 2099 && Math.abs(net - Math.round(net)) < 0.001)) {
+        pushCandidate(store, 'net_payable', net, {
+          source: 'idf_salary_text_regex',
+          lineIndex: null,
+          score: 0.98,
+          reason: 'תלוש צה"ל — שכר חודשי נטו (regex)',
+          section: 'summary',
+          evidenceCategory: 'idf_column',
+        });
+      }
     }
   }
 }
