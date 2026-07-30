@@ -88,7 +88,49 @@ describe('taxAssistantService', () => {
     expect(types).toContain('missing_payslips');
     expect(types).toContain('missing_form_106');
     expect(result.summary.totalSalaryDocuments).toBe(2);
+    expect(result.availableYears).toEqual([2026]);
+    expect(result.suggestedYear).toBe(2026);
     expect(result.disclaimer).toContain('הערכה בלבד');
+  });
+
+  it('suggests the latest year that actually has payslips', async () => {
+    const Document = require('../../models/Document');
+    const userId = new mongoose.Types.ObjectId();
+
+    await Document.insertMany([
+      {
+        ...payslipDoc(5),
+        user: userId,
+        metadata: { category: 'payslip', periodMonth: 5, periodYear: 2025 },
+        analysisData: {
+          ...payslipDoc(5).analysisData,
+          period: { month: '2025-05' },
+        },
+      },
+    ]);
+
+    const emptyCurrent = await buildTaxAssistantSummary(userId, 2026);
+    expect(emptyCurrent.summary.totalSalaryDocuments).toBe(0);
+    expect(emptyCurrent.availableYears).toEqual([2025]);
+    expect(emptyCurrent.suggestedYear).toBe(2025);
+
+    const for2025 = await buildTaxAssistantSummary(userId, 2025);
+    expect(for2025.summary.totalSalaryDocuments).toBe(1);
+  });
+
+  it('includes needs_review payslips tagged as category other when analysis looks like a payslip', async () => {
+    const Document = require('../../models/Document');
+    const userId = new mongoose.Types.ObjectId();
+
+    await Document.create({
+      ...payslipDoc(3),
+      user: userId,
+      status: 'needs_review',
+      metadata: { category: 'other', periodMonth: 3, periodYear: 2026 },
+    });
+
+    const result = await buildTaxAssistantSummary(userId, 2026);
+    expect(result.summary.totalSalaryDocuments).toBe(1);
   });
 
   it('detects multiple employers and unusual tax', async () => {

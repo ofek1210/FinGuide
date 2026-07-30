@@ -274,9 +274,27 @@ const detectMissingForm106 = (year, documents, payslipCount) => {
   };
 };
 
+/** Years that have at least one payslip with a resolvable salary period. */
+const collectAvailablePayslipYears = documents => {
+  const years = new Set();
+  for (const doc of documents || []) {
+    if (!isPayslipDocument(doc)) continue;
+    const period = resolvePayslipPeriod(doc);
+    if (!period.incompletePeriod && Number.isFinite(period.year)) {
+      years.add(period.year);
+    }
+  }
+  return [...years].sort((a, b) => b - a);
+};
+
 const buildTaxAssistantSummary = async (userId, yearInput) => {
-  const year = Number(yearInput) || new Date().getFullYear();
   const documents = await Document.find({ user: userId }).sort('-uploadedAt').lean();
+  const availableYears = collectAvailablePayslipYears(documents);
+
+  const requestedYear = Number(yearInput);
+  const year = Number.isFinite(requestedYear) && requestedYear > 0
+    ? requestedYear
+    : (availableYears[0] || new Date().getFullYear());
 
   const { history, entries } = buildYearEntries(documents, year);
   const yearStats = history.selectedYearStats;
@@ -304,6 +322,8 @@ const buildTaxAssistantSummary = async (userId, yearInput) => {
 
   return {
     year,
+    availableYears,
+    suggestedYear: availableYears[0] || year,
     issues,
     summary: {
       totalSalaryDocuments: entries.length,
@@ -326,5 +346,6 @@ module.exports = {
   getEmployerName,
   isPayslipDocument,
   isForm106Document,
+  collectAvailablePayslipYears,
   HEBREW_MONTHS,
 };

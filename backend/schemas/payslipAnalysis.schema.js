@@ -17,8 +17,8 @@
 const { z } = require('zod');
 
 const periodMonthSchema = z.string().regex(
-  /^(?:\d{4}[-/]\d{1,2}|\d{1,2}[-/]\d{4})$/,
-  'period.month must look like YYYY-MM or MM/YYYY',
+  /^(?:\d{4}[-/.]\d{1,2}|\d{1,2}[-/.]\d{4})$/,
+  'period.month must look like YYYY-MM, MM/YYYY, or dotted variants',
 );
 
 const positiveAmount = z.number()

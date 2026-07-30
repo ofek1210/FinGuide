@@ -77,8 +77,25 @@ function docUploadTime(doc: DocumentItem): number {
 export function isAnalyzablePayslip(doc: DocumentItem): boolean {
   if (!isPayslipDocument(doc)) return false;
   const cat = doc.metadata?.category;
-  if (cat && cat !== "payslip") return false;
-  return true;
+  if (cat === "tax_report" || cat === "form_106" || cat === "invoice" || cat === "pension_report") {
+    return false;
+  }
+  if (cat === "payslip" || !cat) return true;
+  // category "other" / unknown — accept when analysis looks like a payslip
+  const analysis = doc.analysisData as
+    | {
+        salary?: { gross_total?: number; net_payable?: number };
+        summary?: { grossSalary?: number; netSalary?: number };
+        period?: { month?: string };
+      }
+    | undefined;
+  return Boolean(
+    analysis?.salary?.gross_total
+      || analysis?.salary?.net_payable
+      || analysis?.summary?.grossSalary
+      || analysis?.summary?.netSalary
+      || analysis?.period?.month,
+  );
 }
 
 /**

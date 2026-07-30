@@ -26,6 +26,8 @@ export type TaxAssistantSummary = {
 
 export type TaxAssistantPayload = {
   year: number;
+  availableYears?: number[];
+  suggestedYear?: number;
   issues: TaxAssistantIssue[];
   summary: TaxAssistantSummary;
   disclaimer: string;

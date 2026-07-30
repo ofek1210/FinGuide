@@ -101,6 +101,21 @@ const applyExtractionToDocument = async (document, { password, userId } = {}) =>
     } else {
       document.status = 'needs_review';
       document.processingError = validation.message;
+      // Still tag as payslip when extraction produced payslip-shaped data so
+      // tax assistant / monthly analysis / insights don't drop the document.
+      if (!document.metadata) document.metadata = {};
+      const looksLikePayslip = Boolean(
+        data?.salary?.gross_total
+          || data?.salary?.net_payable
+          || data?.summary?.grossSalary
+          || data?.period?.month,
+      );
+      if (
+        looksLikePayslip
+        && (!document.metadata.category || document.metadata.category === 'other')
+      ) {
+        document.metadata.category = 'payslip';
+      }
     }
     await document.save();
 
