@@ -60,7 +60,7 @@ const PAYSLIP_VISION_RESPONSE_SCHEMA = {
     },
     employer_name: { type: 'string', description: 'Employer e.g. צבא הגנה לישראל' },
     employee_name: { type: 'string', description: 'Employee full name from header' },
-    employee_id: { type: 'string', description: 'Israeli ID ת.ז. digits only' },
+    employee_id: { type: 'string', description: 'Israeli ID ת.ז. digits only (strip dashes: 205-506-975 → 205506975)' },
     tax_credit_points: {
       type: 'number',
       description: 'Tax credit points (נקודות זיכוי / סך נקודות זיכוי / מספר נקודות זיכוי) — typically 2.25 for resident male. Return -1 if not visible.',

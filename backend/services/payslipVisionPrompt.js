@@ -3,7 +3,7 @@
 function buildPayslipVisionPrompt({ dualCrop = false } = {}) {
   const imageGuide = dualCrop
     ? `You receive TWO images from the same payslip page:
-IMAGE 1 (top): metadata / "נתונים גולמיים" — read employer pension ("השתתפות בקרן הפנסיה"), employer study fund ("השתתפות בקרן ההשתלמות"), ברוטו לפנסיה, period header.
+IMAGE 1 (top): metadata / "נתונים גולמיים" / identity header — read employee name, ת.ז, employer, pension/study participation, period header.
 IMAGE 2 (bottom): payment tables — "תשלומים שוטפים", "ניכויים שוטפים", "שכר חודשי נטו".`
     : 'You receive ONE full-page payslip image.';
 
@@ -17,10 +17,17 @@ CRITICAL RULES:
 5. Set confidence per group 0–1. Use <0.6 when ambiguous.
 6. Return -1 for missing numbers. Use 0 only when payslip explicitly shows zero.
 
+IDENTITY (must extract carefully — high priority):
+| Field | Where to read |
+| employee_name | Employee full Hebrew name near "שם עובד" / "שם:" / after "לכבוד" / header next to ת.ז. Example: "שגב פרטוש". NOT the employer. |
+| employee_id | Israeli ID "ת.ז" / "תעודת זהות" / "מספר זהות" — 9 digits. Strip dashes/spaces (205-506-975 → "205506975"). NOT employer tax file, ZIP, or short employee number. |
+| employer_name | Company / צה"ל / מעסיק — NOT the employee. |
+| period_month | Payslip TITLE only: "תלוש שכר לחודש MM/YYYY" or Hebrew month+year (יוני 2026). Format MM/YYYY or YYYY-MM. NEVER: ותק, תחילת עבודה, print date. |
+
 FIELD LOCATIONS — IDF / צה"ל (צבא הגנה לישראל):
 | Field | Where to read |
 | period_month | Payslip TITLE only: "תלוש שכר לחודש MM/YYYY" at page top (e.g. 07/2026 = July). NEVER: ותק dates (01.06.26), תחילת עבודה, print date, seniority, or נתונים גולמיים row dates. |
-| gross_total | Bottom "סה\"כ תשלומים שוטפים" CURRENT-month total row. If absent, metadata "ברוטו לפנסיה". NOT a single allowance line. |
+| gross_total | Bottom "סה\\"כ תשלומים שוטפים" CURRENT-month total row. If absent, metadata "ברוטו לפנסיה". NOT a single allowance line. |
 | net_payable | Bottom line "שכר חודשי נטו" (typically 8,000–25,000 ₪) |
 | income_tax | ניכויים שוטפים → "מס הכנסה" current column |
 | national_insurance | ניכויים שוטפים → "ביטוח לאומי" current column |
@@ -37,8 +44,10 @@ ANTI-PATTERNS (do NOT use these as amounts or period_month):
 - "נתונים גולמיים" row dates as period_month
 - תחילת עבודה / employment start dates as period_month
 - Single line items in תשלומים שוטפים as gross_total (gross is the TOTAL row or ברוטו לפנסיה)
+- Employer tax-file numbers / תיק ניכויים as employee_id
 
 STANDARD (non-IDF) PAYSLIPS:
+- employee_name / employee_id / period_month: same identity rules as above
 - gross_total: סך תשלומים שוטף / ברוטו שוטף
 - net_payable: סכום בבנק / לתשלום / שכר חודשי נטו
 - pension_employee: ניכוי לקרן הפנסיה; pension_employer: הפרשת מעסיק / השתתפות
