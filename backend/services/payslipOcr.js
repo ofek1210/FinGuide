@@ -96,7 +96,7 @@ const { PdfPasswordRequiredError, isPdfPasswordError } = require('../utils/pdfPa
 
 let pdfParse;
 
-const OCR_PDF_PAGES_MODE = (process.env.OCR_PDF_PAGES_MODE || 'all').toLowerCase();
+const OCR_PDF_PAGES_MODE = (process.env.OCR_PDF_PAGES_MODE || 'first').toLowerCase();
 const MIN_PDF_TEXT_LENGTH =
   Number(process.env.OCR_PDF_MIN_TEXT_LENGTH) && Number(process.env.OCR_PDF_MIN_TEXT_LENGTH) > 0
     ? Number(process.env.OCR_PDF_MIN_TEXT_LENGTH)
