@@ -7,11 +7,8 @@
  *   legacy (default) — regex/heuristic pipeline in payslipOcr.js
  *   vision           — single-call Claude vision extraction
  *
- * When legacy misses identity fields (name / ת.ז / period), Vision runs as
- * fallback if ANTHROPIC_API_KEY is set (see PAYSLIP_VISION_IDENTITY_FALLBACK).
- *
- * TODO(cleanup-2026-08-15): Remove legacy regex pipeline once vision path
- * passes all golden fixtures and runs in production for ~2 weeks.
+ * Vision is opt-in only. Set PAYSLIP_EXTRACTION_MODE=vision and/or
+ * PAYSLIP_VISION_IDENTITY_FALLBACK=true explicitly when you want Claude Vision.
  */
 
 const EXTRACTION_MODE = (process.env.PAYSLIP_EXTRACTION_MODE || 'legacy').toLowerCase();
@@ -32,8 +29,8 @@ const VISION_CONFIDENCE_THRESHOLD = Number(process.env.PAYSLIP_VISION_CONFIDENCE
   ? Number(process.env.PAYSLIP_VISION_CONFIDENCE_THRESHOLD)
   : 0.65;
 
-/** When true (default), legacy OCR that misses name/ID/period triggers Vision fill-in. */
-const VISION_IDENTITY_FALLBACK = process.env.PAYSLIP_VISION_IDENTITY_FALLBACK !== 'false';
+/** Off by default — enable with PAYSLIP_VISION_IDENTITY_FALLBACK=true. */
+const VISION_IDENTITY_FALLBACK = process.env.PAYSLIP_VISION_IDENTITY_FALLBACK === 'true';
 
 function isVisionExtractionMode() {
   return EXTRACTION_MODE === 'vision';
