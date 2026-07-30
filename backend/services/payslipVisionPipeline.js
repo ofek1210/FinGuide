@@ -90,7 +90,7 @@ function applySanityAndSummary(data, audit) {
  *
  * @returns {Promise<{ data: object }>}
  */
-async function extractPayslipViaVision(inputPath, { password } = {}) {
+async function extractPayslipViaVision(inputPath, { password, bypassCache = false } = {}) {
   const abs = path.resolve(inputPath);
   const pages = await renderPayslipPages(abs, { password });
 
@@ -105,6 +105,7 @@ async function extractPayslipViaVision(inputPath, { password } = {}) {
       pageIndex: page.pageIndex,
       metadataCrop: page.metadataCrop,
       paymentsCrop: page.paymentsCrop,
+      bypassCache,
     });
     pageResults.push(result);
   }

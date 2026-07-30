@@ -294,14 +294,17 @@ async function extractPayslipFromImage(
     pageIndex = 0,
     metadataCrop = null,
     paymentsCrop = null,
+    bypassCache = false,
   } = {},
 ) {
   const model = VISION_MODEL;
   const sha = buildVisionCacheSha(imageBuffer, imageSha256, metadataCrop, paymentsCrop);
 
-  const cached = visionCache.get(sha, model);
-  if (cached) {
-    return { ...cached, fromCache: true };
+  if (!bypassCache) {
+    const cached = visionCache.get(sha, model);
+    if (cached) {
+      return { ...cached, fromCache: true };
+    }
   }
 
   const client = getAnthropicClient();

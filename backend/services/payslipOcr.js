@@ -742,11 +742,63 @@ async function extractPayslipFile(inputPath, options = {}) {
     isVisionExtractionMode,
     shouldFallbackVisionForIdentity,
   } = require('../config/payslipExtractionConfig');
+  const {
+    needsIdentityVisionFallback,
+    mergeIdentityFromVision,
+    getMissingIdentityFields,
+  } = require('./payslipIdentityVisionFallback');
+
+  // MODE=vision: Claude first. If identity still missing, retry Vision (no cache)
+  // then fill remaining gaps from legacy OCR.
   if (isVisionExtractionMode()) {
     const { extractPayslipViaVision } = require('./payslipVisionPipeline');
-    return extractPayslipViaVision(inputPath, options);
+    const result = await extractPayslipViaVision(inputPath, options);
+
+    if (needsIdentityVisionFallback(result.data) && shouldFallbackVisionForIdentity()) {
+      const missing = getMissingIdentityFields(result.data);
+      // eslint-disable-next-line no-console
+      console.warn('[payslipOcr] vision missed identity — retrying Vision + OCR fill', {
+        missing,
+        sourcePath: path.basename(String(inputPath || '')),
+      });
+
+      try {
+        const retry = await extractPayslipViaVision(inputPath, { ...options, bypassCache: true });
+        mergeIdentityFromVision(result.data, retry.data);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.warn('[payslipOcr] vision identity retry failed:', error.message);
+      }
+
+      if (needsIdentityVisionFallback(result.data)) {
+        try {
+          const ocrResult = await extractPayslipFileLegacy(inputPath, options);
+          // Reuse merge helper: fill target gaps from OCR source
+          mergeIdentityFromVision(result.data, ocrResult.data);
+          if (result.data.raw) {
+            result.data.raw.identity_ocr_fill = true;
+          }
+        } catch (error) {
+          // eslint-disable-next-line no-console
+          console.warn('[payslipOcr] OCR identity fill after vision failed:', error.message);
+        }
+      }
+
+      try {
+        const { buildPayslipSummary } = require('./payslipOcrSummary');
+        result.data.summary = buildPayslipSummary(
+          result.data,
+          result.data.raw?.rawText || result.data.raw?.ocr_text || '',
+        );
+      } catch {
+        // non-fatal
+      }
+    }
+
+    return result;
   }
 
+  // MODE=legacy (default): OCR/PDF text first, Vision fills missing identity.
   const result = await extractPayslipFileLegacy(inputPath, options);
   return enrichIdentityViaVisionIfNeeded(inputPath, result, options, shouldFallbackVisionForIdentity);
 }
