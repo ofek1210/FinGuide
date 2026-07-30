@@ -18,6 +18,7 @@ const {
   isLikelyCumulativeZoneLine,
   isLikelyTaxBaseNoiseLine,
   isImplausibleSalaryAmount,
+  isLikelyLeaveBalanceNoiseLine,
   isPayslipPeriodNoise,
   match1,
   parseMoney,
@@ -261,6 +262,13 @@ function isFieldBlockedByNoise(field, rawLine, entry) {
     ['gross_total', 'mandatory_total', 'base_salary', 'global_overtime', 'travel_expenses']
       .includes(field) &&
     isLikelyTaxBaseNoiseLine(rawLine)
+  ) {
+    return true;
+  }
+
+  if (
+    ['gross_total', 'net_payable', 'base_salary'].includes(field) &&
+    isLikelyLeaveBalanceNoiseLine(rawLine)
   ) {
     return true;
   }

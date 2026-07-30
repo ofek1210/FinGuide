@@ -84,18 +84,19 @@ function extractMonthFromFilename(filePath) {
   const base = path.basename(String(filePath || ''));
   if (!base) return undefined;
 
+  // Prefer MM-YYYY (paycheck-05-2025-2.pdf) BEFORE YYYY-M, otherwise the
+  // trailing download copy suffix "-2" is misread as February (2025-2).
+  const mFirst = base.match(/(?<!\d)(\d{1,2})[-_.](20\d{2})(?!\d)/);
+  if (mFirst) {
+    const mm = Number(mFirst[1]);
+    if (mm >= 1 && mm <= 12) return `${mFirst[2]}-${String(mm).padStart(2, '0')}`;
+  }
+
   // 2026-06 / 2026_06 / 2026.06
   const yFirst = base.match(/(20\d{2})[-_.](\d{1,2})(?!\d)/);
   if (yFirst) {
     const mm = Number(yFirst[2]);
     if (mm >= 1 && mm <= 12) return `${yFirst[1]}-${String(mm).padStart(2, '0')}`;
-  }
-
-  // 06-2026 / 6_2026 / 06.2026
-  const mFirst = base.match(/(?<!\d)(\d{1,2})[-_.](20\d{2})(?!\d)/);
-  if (mFirst) {
-    const mm = Number(mFirst[1]);
-    if (mm >= 1 && mm <= 12) return `${mFirst[2]}-${String(mm).padStart(2, '0')}`;
   }
 
   // Hebrew month in filename: יוני_2026 / אפריל-2026
@@ -116,7 +117,7 @@ function extractMonthYYYYMM(text) {
 
   // Prefer explicit "תלוש שכר לחודש …" / "לחודש …" near the title
   const titled = value.match(
-    /(?:תלוש\s*שכר\s*)?לחודש\s*[:=\-]?\s*(?:(ינואר|פברואר|מרץ|מרס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)\s*(20\d{2})|(\d{1,2})[./\-](20\d{2}))/i,
+    /(?:תלוש\s*שכר\s*)?לחודש\s*[:=\-]?\s*(?:(ינואר|פברואר|מרץ|מרס|אפריל|מאי|יוני|יולי|אוגוסט|ספטמבר|אוקטובר|נובמבר|דצמבר)\s*(20\d{2})|(\d{1,2})\s*[./\-]\s*(20\d{2}))/i,
   );
   if (titled) {
     if (titled[1] && titled[2]) {
@@ -139,7 +140,7 @@ function extractMonthYYYYMM(text) {
 
   // MM/YYYY or M/YYYY (also ., - separators). Avoid matching DD/MM/YYYY by requiring month ≤12
   // and not being followed by another /dd segment after the year.
-  const monthSlashYear = value.match(/(?<!\d)(\d{1,2})[./\-](20\d{2})(?!\d)/);
+  const monthSlashYear = value.match(/(?<!\d)(\d{1,2})\s*[./\-]\s*(20\d{2})(?!\d)/);
   if (monthSlashYear) {
     const mm = Number(monthSlashYear[1]);
     if (mm >= 1 && mm <= 12) {
@@ -206,6 +207,11 @@ function isLikelyBrokenHebrew(text) {
 
 function isLikelyTaxBaseNoiseLine(line) {
   return /(שכר\s*חייב|הכנסה\s*חייבת|ברוטו\s*למס|לב\.?\s*לאומי|ב\.?\s*ל\.?|מס\s*מצטבר)/i.test(line);
+}
+
+/** Leave / sick-day balances — OCR often glues them to dates (235 + 01.01.24 → 23501.01). */
+function isLikelyLeaveBalanceNoiseLine(line) {
+  return /(?:יתרת\s*ימי|ימי\s*מחלה|ימי\s*חופשה|ניצול\s*שנתי|לניצול)/i.test(String(line || ''));
 }
 
 function isCumulativeLine(line) {
@@ -357,6 +363,7 @@ module.exports = {
   isCumulativeLine,
   isLikelyBrokenHebrew,
   isLikelyCumulativeZoneLine,
+  isLikelyLeaveBalanceNoiseLine,
   isLikelyTaxBaseNoiseLine,
   isPayslipPeriodNoise,
   isImplausibleSalaryAmount,
