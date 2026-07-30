@@ -108,17 +108,74 @@ const IDF_GROSS_LINE_REGEX =
   /סה\s*["״'']?כ[^\n]{0,40}תשלומים[^\n]{0,20}שוטפים|תשלומים\s+שוטפים|תשלו[^\n]{0,12}מים\s+שוטפים/i;
 
 const IDF_NET_HEADER_REGEX = /שכר\s+חודשי\s+נטו/i;
+const IDF_NET_HEADER_LOOSE_REGEX = /שכר[_\s]*חודשי/i;
 
 const IDF_GROSS_TEXT_REGEXES = [
-  /סה[_\s"״'']*כ[_\s]*תשלומים[_\s]*שוטפים[^\d\n]{0,40}(\d[\d,.\s₪]+)/i,
-  /(\d[\d,.\s₪]+)[^\d\n]{0,40}סה[_\s"״'']*כ[_\s]*תשלומים[_\s]*שוטפים/i,
-  /תשלומים[_\s]*שוטפים[^\d\n]{0,40}(\d[\d,.\s₪]+)/i,
+  /סה[_\s"״'']*כ[_\s]*תשלומים[_\s]*שוטפים[^\d\n]{0,80}(\d[\d,.\s₪]+)/i,
+  /(\d[\d,.\s₪]+)[^\d\n]{0,80}סה[_\s"״'']*כ[_\s]*תשלומים[_\s]*שוטפים/i,
+  /תשלומים[_\s]*שוטפים[^\d\n]{0,80}(\d[\d,.\s₪]+)/i,
 ];
 
-const IDF_NET_TEXT_REGEX =
-  /שכר[_\s]*חודשי[_\s]*נטו[^\d\n]*(\d[\d,.\s₪]+)/i;
+/** OCR often mangles "נטו" into a tiny code like 101 / )10 glued onto the amount. */
+const IDF_NET_TEXT_REGEXES = [
+  /שכר[_\s]*חודשי[_\s]*נטו[^\d\n]*(\d[\d,.\s₪]+)/i,
+  /שכר[_\s]*חודשי[^\n]{0,24}?((?:101|10)?[1-9]\d{3,}(?:[.,]\d+)?)/i,
+];
+
+const IDF_DEDUCTIONS_TEXT_REGEXES = [
+  /סה[_\s"״'']*כ[_\s]*ניכויים[_\s]*שוטפים[^\d\n]{0,80}(\d[\d,.\s₪]+)/i,
+  /(\d[\d,.\s₪]+)[^\d\n]{0,80}סה[_\s"״'']*כ[_\s]*ניכויים[_\s]*שוטפים/i,
+];
 
 const normalizeIdfLine = normalizeHebrewLine;
+
+function isCalendarYearAmount(value) {
+  return (
+    Number.isFinite(value) &&
+    value >= 1990 &&
+    value <= 2099 &&
+    Math.abs(value - Math.round(value)) < 0.001
+  );
+}
+
+function isLeaveBalanceNoiseLine(text) {
+  return /(?:יתרת\s*ימי|ימי\s*מחלה|ימי\s*חופשה|ניצול\s*שנתי|לניצול)/i.test(String(text || ''));
+}
+
+/**
+ * Repair OCR glitches like ")1012734.430" / "1012734.430" where "נטו"→101
+ * was glued onto the real net amount 12734.430.
+ */
+function repairIdfGluedNetAmount(rawToken) {
+  const digits = String(rawToken || '').replace(/[^\d.]/g, '');
+  const glued101 = digits.match(/^101([1-9]\d{3,4}(?:\.\d+)?)$/);
+  if (glued101) {
+    const peeled = parseMoney(glued101[1]);
+    if (Number.isFinite(peeled) && peeled >= 3000 && peeled <= 80000) {
+      return peeled;
+    }
+  }
+  const glued10 = digits.match(/^10([1-9]\d{4}(?:\.\d+)?)$/);
+  if (glued10) {
+    const peeled = parseMoney(glued10[1]);
+    if (Number.isFinite(peeled) && peeled >= 10000 && peeled <= 80000) {
+      return peeled;
+    }
+  }
+  const direct = parseMoney(rawToken);
+  if (Number.isFinite(direct) && direct >= 3000 && direct <= 250000 && !isCalendarYearAmount(direct)) {
+    return direct;
+  }
+  return null;
+}
+
+function pickIdfNetAmountFromTokens(amounts) {
+  const salaryLike = (amounts || []).filter(
+    value => Number.isFinite(value) && value >= 3000 && value <= 250000 && !isCalendarYearAmount(value),
+  );
+  if (!salaryLike.length) return null;
+  return Math.max(...salaryLike);
+}
 
 function lineMatchesIdfColumn(raw, column) {
   const text = String(raw || '');
@@ -138,7 +195,22 @@ function lineMatchesIdfColumn(raw, column) {
 }
 
 function isIdfNetHeaderText(text) {
-  return IDF_NET_HEADER_REGEX.test(normalizeIdfLine(text)) || IDF_NET_HEADER_REGEX.test(String(text || ''));
+  const raw = String(text || '');
+  const normalized = normalizeIdfLine(raw);
+  if (IDF_NET_HEADER_REGEX.test(normalized) || IDF_NET_HEADER_REGEX.test(raw)) {
+    return true;
+  }
+  if (!IDF_NET_HEADER_LOOSE_REGEX.test(normalized) && !IDF_NET_HEADER_LOOSE_REGEX.test(raw)) {
+    return false;
+  }
+  if (/נטו/i.test(normalized) || /נטו/i.test(raw)) {
+    return true;
+  }
+  // "שכר חודשי 101 12734.430" — OCR replaced נטו with a tiny integer code
+  const amounts = extractAllNumericTokens(raw);
+  const tinyCodes = amounts.filter(value => value >= 50 && value <= 250 && Number.isInteger(value));
+  const salaryLike = pickIdfNetAmountFromTokens(amounts);
+  return Boolean(tinyCodes.length && salaryLike);
 }
 
 function isIdfGrossLabelText(text) {
@@ -183,7 +255,7 @@ function pushIdfGrossCandidate(store, pushCandidate, amount, lineIndex, source, 
 }
 
 function pushIdfNetCandidate(store, pushCandidate, amount, lineIndex, source, adjacent) {
-  if (!Number.isFinite(amount) || amount < 500 || amount > 250000) {
+  if (!Number.isFinite(amount) || amount < 500 || amount > 250000 || isCalendarYearAmount(amount)) {
     return;
   }
   pushCandidate(store, 'net_payable', amount, {
@@ -226,15 +298,21 @@ function extractIdfTableRowSalary(entries, store, pushCandidate) {
       value => value >= 500 && value <= 250000,
     );
 
-    if (hasNetHeader && !hasGrossHeader && amounts.length === 1) {
-      pushIdfNetCandidate(
-        store,
-        pushCandidate,
-        amounts[0],
-        entries[index].index,
-        'idf_salary_table_row',
-        false,
-      );
+    if (hasNetHeader && !hasGrossHeader) {
+      const netAmount =
+        amounts.length === 1 && amounts[0] >= 3000
+          ? amounts[0]
+          : pickIdfNetAmountFromTokens(amounts);
+      if (Number.isFinite(netAmount)) {
+        pushIdfNetCandidate(
+          store,
+          pushCandidate,
+          netAmount,
+          entries[index].index,
+          'idf_salary_table_row',
+          false,
+        );
+      }
       continue;
     }
 
@@ -342,12 +420,15 @@ function extractIdfGrossFromLabelWindow(entries, store, pushCandidate) {
       if (!neighbor || neighborMatchesExcludedColumn(neighbor.raw, ['net_payable'])) {
         continue;
       }
+      if (isLeaveBalanceNoiseLine(neighbor.raw)) {
+        continue;
+      }
       if (findIdfSalaryColumnForLine(neighbor.raw)?.field === 'net_payable') {
         continue;
       }
 
       const amounts = extractAllNumericTokens(neighbor.raw).filter(
-        value => value >= 5000 && value <= 250000,
+        value => value >= 5000 && value <= 250000 && !isCalendarYearAmount(value),
       );
       if (amounts.length === 1) {
         pushIdfGrossCandidate(
@@ -360,7 +441,8 @@ function extractIdfGrossFromLabelWindow(entries, store, pushCandidate) {
         );
         return;
       }
-      if (amounts.length > 1) {
+      if (amounts.length > 1 && isIdfGrossLabelText(neighbor.raw)) {
+        // Prefer the amount sitting on the gross total line itself
         pushIdfGrossCandidate(
           store,
           pushCandidate,
@@ -469,6 +551,9 @@ function pickIdfColumnAmount(entry, entries, column) {
       if (!neighbor) {
         continue;
       }
+      if (isLeaveBalanceNoiseLine(neighbor.raw)) {
+        continue;
+      }
       if (neighborMatchesExcludedColumn(neighbor.raw, excludedNeighborFields)) {
         continue;
       }
@@ -478,7 +563,7 @@ function pickIdfColumnAmount(entry, entries, column) {
 
       const neighborMin = isAmountOnlyNeighbor(neighbor.raw) ? 1 : min;
       const neighborNums = extractAllNumericTokens(neighbor.raw).filter(
-        value => value >= neighborMin && value <= max,
+        value => value >= neighborMin && value <= max && !isCalendarYearAmount(value),
       );
       if (neighborNums.length === 1) {
         return { amount: neighborNums[0], lineIndex: neighbor.index, adjacent: true };
@@ -550,17 +635,54 @@ function extractIdfSalaryFromFullText(fullText, store, pushCandidate) {
     extractIdfGrossLooseFromFullText(fullText, store, pushCandidate);
   }
 
-  const netMatch = fullText.match(IDF_NET_TEXT_REGEX);
-  if (netMatch) {
-    const net = parseMoney(netMatch[1]);
-    if (Number.isFinite(net) && net >= 500 && net <= 250000) {
-      // Never promote agreement-year tokens (e.g. תוספת הסכם 2009)
-      if (!(net >= 1990 && net <= 2099 && Math.abs(net - Math.round(net)) < 0.001)) {
-        pushCandidate(store, 'net_payable', net, {
-          source: 'idf_salary_text_regex',
+  let netFound = false;
+  for (const pattern of IDF_NET_TEXT_REGEXES) {
+    const netMatch = fullText.match(pattern);
+    if (!netMatch) continue;
+    const net = repairIdfGluedNetAmount(netMatch[1]);
+    if (Number.isFinite(net) && net >= 3000 && net <= 250000 && !isCalendarYearAmount(net)) {
+      pushCandidate(store, 'net_payable', net, {
+        source: 'idf_salary_text_regex',
+        lineIndex: null,
+        score: 0.98,
+        reason: 'תלוש צה"ל — שכר חודשי נטו (regex)',
+        section: 'summary',
+        evidenceCategory: 'idf_column',
+      });
+      netFound = true;
+      break;
+    }
+  }
+
+  let deductionsTotal;
+  for (const pattern of IDF_DEDUCTIONS_TEXT_REGEXES) {
+    const match = fullText.match(pattern);
+    if (!match) continue;
+    const amount = parseMoney(match[1]);
+    if (Number.isFinite(amount) && amount >= 100 && amount <= 100000) {
+      deductionsTotal = amount;
+      pushCandidate(store, 'mandatory_total', amount, {
+        source: 'idf_deductions_text_regex',
+        lineIndex: null,
+        score: 0.9,
+        reason: 'תלוש צה"ל — סה"כ ניכויים שוטפים (regex)',
+        section: 'deductions',
+        evidenceCategory: 'idf_column',
+      });
+      break;
+    }
+  }
+
+  if (!netFound) {
+    const gross = (store.gross_total || []).sort((a, b) => b.score - a.score)[0]?.value;
+    if (Number.isFinite(gross) && Number.isFinite(deductionsTotal)) {
+      const derived = Number((gross - deductionsTotal).toFixed(2));
+      if (derived >= 500 && derived < gross * 0.98) {
+        pushCandidate(store, 'net_payable', derived, {
+          source: 'idf_derived_gross_minus_deductions',
           lineIndex: null,
-          score: 0.98,
-          reason: 'תלוש צה"ל — שכר חודשי נטו (regex)',
+          score: 0.92,
+          reason: 'תלוש צה"ל — נטו מחושב: תשלומים שוטפים − ניכויים שוטפים',
           section: 'summary',
           evidenceCategory: 'idf_column',
         });
@@ -578,17 +700,28 @@ function extractIdfGrossLooseFromFullText(fullText, store, pushCandidate) {
     for (let offset = 0; offset <= 3; offset += 1) {
       for (const sign of [0, 1, -1]) {
         const line = lines[index + sign * offset];
-        if (!line) {
+        if (!line || isLeaveBalanceNoiseLine(line)) {
           continue;
         }
         const amounts = extractAllNumericTokens(line).filter(
-          value => value >= 5000 && value <= 250000,
+          value => value >= 5000 && value <= 250000 && !isCalendarYearAmount(value),
         );
         if (amounts.length === 1) {
           pushIdfGrossCandidate(
             store,
             pushCandidate,
             amounts[0],
+            index + sign * offset,
+            'idf_gross_text_window',
+            offset > 0,
+          );
+          return;
+        }
+        if (amounts.length > 1 && isIdfGrossLabelText(line)) {
+          pushIdfGrossCandidate(
+            store,
+            pushCandidate,
+            Math.max(...amounts),
             index + sign * offset,
             'idf_gross_text_window',
             offset > 0,
@@ -611,6 +744,14 @@ function prioritizeIdfSalaryCandidates(store) {
       String(candidate.source || '').startsWith('idf_'),
     );
     if (idfCandidates.length > 0) {
+      for (const candidate of idfCandidates) {
+        const source = String(candidate.source || '');
+        if (source.includes('text_regex')) {
+          candidate.score = Math.min(1, (candidate.score || 0) + 0.04);
+        } else if (source.includes('window') || source.includes('adjacent')) {
+          candidate.score = Math.max(0.01, (candidate.score || 0) - 0.08);
+        }
+      }
       store[field] = idfCandidates.sort((a, b) => b.score - a.score);
     }
   }

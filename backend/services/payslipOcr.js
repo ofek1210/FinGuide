@@ -147,7 +147,10 @@ async function preprocessImage(inPath) {
   }
 
   const outPath = `${inPath}.prep.png`;
-  await sharp(inPath).rotate().grayscale().normalize().threshold(170).png().toFile(outPath);
+  // Soft preprocess only. Hard binarization (threshold ~170) destroys dense
+  // IDF dual-column tables — e.g. sick-day balance "235" + date "01.01.24"
+  // becomes "23501.01.24" and is then promoted to a fake gross_total.
+  await sharp(inPath).rotate().grayscale().normalize().sharpen().png().toFile(outPath);
   return outPath;
 }
 

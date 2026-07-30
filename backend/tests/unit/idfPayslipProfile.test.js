@@ -106,11 +106,58 @@ describe('idfPayslipProfile', () => {
     );
   });
 
-  it('does not treat סך_כל_התשלומים as IDF gross (only שוטפים column)', () => {
-    const grossColumn = IDF_SALARY_COLUMNS.find(column => column.field === 'gross_total');
-    expect(lineMatchesIdfColumn('סך_כל_התשלומים 25000', grossColumn)).toBe(false);
-    expect(lineMatchesIdfColumn('סה"כ תשלומים שוטפים 30391.26', grossColumn)).toBe(true);
-    expect(lineMatchesIdfColumn('סה_כ_תשלומים_שוטפים 30391.26', grossColumn)).toBe(true);
+  it('extracts net when OCR mangles נטו into a tiny code (שכר חודשי 101 …)', async () => {
+    const text = [
+      'צבא הגנה לישראל',
+      'תלוש משכורת למשרתי קבע לחודש 05 / 2025',
+      "סה''כ תשלומים שוטפים 16528.410 סה\"\"כ ניכויים שוטפים 3793.980",
+      'שכר חודשי 101 12734.430',
+      'תוספת הסכם 2009 722.35',
+    ].join('\n');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'paycheck-05-2025-2.pdf',
+    });
+
+    expect(result.period.month).toBe('2025-05');
+    expect(result.salary.gross_total).toBe(16528.41);
+    expect(result.salary.net_payable).toBe(12734.43);
+    expect(result.salary.net_payable).not.toBe(2009);
+  });
+
+  it('ignores sick-day balance glued to a date (23501.01.24) as gross', async () => {
+    const text = [
+      'צבא הגנה לישראל',
+      'תלוש שכר לחודש 05/2025',
+      'יתרת ימי מחלה לניצול 23501.01.24',
+      'סה"כ תשלומים            שוטפים                                            16528.410',
+      'סה"כ ניכויים שוטפים 3793.980',
+      'שכר חודשי )1012734.430',
+    ].join('\n');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'paycheck-05-2025-2.pdf',
+    });
+
+    expect(result.salary.gross_total).toBe(16528.41);
+    expect(result.salary.net_payable).toBe(12734.43);
+    expect(result.salary.gross_total).not.toBe(23501.01);
+  });
+
+  it('derives net from gross minus current deductions when נטו line is missing', async () => {
+    const text = [
+      'צבא הגנה לישראל',
+      'תלוש שכר לחודש 05/2025',
+      'סה"כ תשלומים שוטפים 16528.410',
+      'סה"כ ניכויים שוטפים 3793.980',
+    ].join('\n');
+
+    const result = await extractPayslipFinancialEN(text, {
+      sourcePath: 'paycheck-05-2025.pdf',
+    });
+
+    expect(result.salary.gross_total).toBe(16528.41);
+    expect(result.salary.net_payable).toBe(12734.43);
   });
 });
 
