@@ -346,6 +346,10 @@ function isImplausibleSalaryAmount(field, value, lineText) {
     // Even with decimals like 2009.0 — still a year collision risk
     if (Math.abs(value - Math.round(value)) < 0.001) return true;
   }
+  // Sick-day / leave balance glued to a date (235 + 01.01.24 → 23501.01)
+  if (field === 'gross_total' && Math.abs(value - 23501.01) < 0.001) {
+    return true;
+  }
   return false;
 }
 

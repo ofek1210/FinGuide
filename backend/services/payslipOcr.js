@@ -3,7 +3,6 @@ const fs = require('fs/promises');
 const path = require('path');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
-const sharp = require('sharp');
 const crypto = require('crypto');
 
 const { extractFromLinesByLabelMap, extractAmountFromLine } = require('./payslipOcrLabelMap');
@@ -146,12 +145,10 @@ async function preprocessImage(inPath) {
     return inPath;
   }
 
-  const outPath = `${inPath}.prep.png`;
-  // Soft preprocess only. Hard binarization (threshold ~170) destroys dense
-  // IDF dual-column tables — e.g. sick-day balance "235" + date "01.01.24"
-  // becomes "23501.01.24" and is then promoted to a fake gross_total.
-  await sharp(inPath).rotate().grayscale().normalize().sharpen().png().toFile(outPath);
-  return outPath;
+  // Re-encoding IDF dual-column PNGs through sharp (even grayscale-only, and
+  // especially normalize/sharpen) often zeros out "סה״כ תשלומים שוטפים" while
+  // leaving a glued net like ")1017423.930". Use the pdftoppm/raw image as-is.
+  return inPath;
 }
 
 async function ocrWithTesseract(imagePath, { psm = '6' } = {}) {
