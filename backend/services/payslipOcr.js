@@ -738,12 +738,66 @@ async function extractPayslipFinancialEN(ocrInput, { sourcePath, ocrJson, expect
 }
 
 async function extractPayslipFile(inputPath, options = {}) {
-  const { isVisionExtractionMode } = require('../config/payslipExtractionConfig');
+  const {
+    isVisionExtractionMode,
+    shouldFallbackVisionForIdentity,
+  } = require('../config/payslipExtractionConfig');
   if (isVisionExtractionMode()) {
     const { extractPayslipViaVision } = require('./payslipVisionPipeline');
     return extractPayslipViaVision(inputPath, options);
   }
 
+  const result = await extractPayslipFileLegacy(inputPath, options);
+  return enrichIdentityViaVisionIfNeeded(inputPath, result, options, shouldFallbackVisionForIdentity);
+}
+
+async function enrichIdentityViaVisionIfNeeded(inputPath, result, options, shouldFallback) {
+  const data = result?.data;
+  if (!data || typeof shouldFallback !== 'function' || !shouldFallback()) {
+    return result;
+  }
+
+  const {
+    needsIdentityVisionFallback,
+    mergeIdentityFromVision,
+    getMissingIdentityFields,
+  } = require('./payslipIdentityVisionFallback');
+
+  if (!needsIdentityVisionFallback(data)) {
+    return result;
+  }
+
+  const missingBefore = getMissingIdentityFields(data);
+  // eslint-disable-next-line no-console
+  console.warn('[payslipOcr] identity fields missing after OCR — trying Vision fallback', {
+    missing: missingBefore,
+    sourcePath: path.basename(String(inputPath || '')),
+  });
+
+  try {
+    const { extractPayslipViaVision } = require('./payslipVisionPipeline');
+    const visionResult = await extractPayslipViaVision(inputPath, options);
+    const { filled } = mergeIdentityFromVision(data, visionResult?.data);
+    if (filled.length) {
+      // eslint-disable-next-line no-console
+      console.warn('[payslipOcr] Vision identity fallback filled', { filled });
+      // Refresh summary so employeeName / employeeId appear in UI helpers
+      try {
+        const { buildPayslipSummary } = require('./payslipOcrSummary');
+        data.summary = buildPayslipSummary(data, data.raw?.rawText || data.raw?.ocr_text || '');
+      } catch {
+        // non-fatal
+      }
+    }
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.warn('[payslipOcr] Vision identity fallback failed:', error.message);
+  }
+
+  return result;
+}
+
+async function extractPayslipFileLegacy(inputPath, options = {}) {
   const { password, userId } = options;
   let { expectedEmployeeName } = options;
   if (!expectedEmployeeName && userId) {
@@ -905,5 +959,7 @@ async function extractPayslipFile(inputPath, options = {}) {
 module.exports = {
   extractPayslipFinancialEN,
   extractPayslipFile,
+  extractPayslipFileLegacy,
+  enrichIdentityViaVisionIfNeeded,
   splitPayslipSections,
 };

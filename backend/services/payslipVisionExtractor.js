@@ -185,7 +185,12 @@ function normalizeVisionExtraction(raw, { imageSha256, model, audit } = {}) {
     parties: {
       employer_name: toStringOrNull(raw.employer_name) ?? undefined,
       employee_name: toStringOrNull(raw.employee_name) ?? undefined,
-      employee_id: toStringOrNull(raw.employee_id) ?? undefined,
+      employee_id: (() => {
+        const rawId = toStringOrNull(raw.employee_id);
+        if (!rawId) return undefined;
+        const digits = rawId.replace(/\D/g, '');
+        return /^\d{7,9}$/.test(digits) ? digits : rawId;
+      })(),
     },
     insurances: {
       hmo: toStringOrNull(raw.hmo) ?? undefined,

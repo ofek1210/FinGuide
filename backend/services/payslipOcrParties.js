@@ -6,10 +6,17 @@ const {
 } = require('./payslipOcrShared');
 const { pushCandidate, sortCandidatesByScore } = require('./payslipOcrResolver');
 
-const EMPLOYEE_LABEL_REGEX = /(?:שם\s+עובד|שם\s+העובד|Employee\s+Name)[:\s-]+([^\n]+)/i;
+const EMPLOYEE_LABEL_REGEX =
+  /(?:שם\s+עובד|שם\s+העובד|שם\s+העובד\/ת|שם\s*פרטי\s*ומשפחה|Employee\s+Name|שם\s*[:：])[:\s-]+([^\n]+)/i;
 const EMPLOYER_LABEL_REGEX = /(?:שם\s+מעסיק|שם\s+מעביד|שם\s+החברה|Employer\s+Name)[:\s-]+([^\n]+)/i;
-const EMPLOYEE_ID_LABEL_REGEX = /(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ת["״']?ז["״']?|ID)[:\s-]*(\d{7,9})/i;
-const EMPLOYEE_ID_LABEL_ONLY_REGEX = /^(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ת["״']?ז["״']?|ID)[:\s-]*$/i;
+/** Captures 7–9 digits, optionally with Israeli-style separators: 205-506-975 / 205 506 975 */
+const EMPLOYEE_ID_DIGITS_CAPTURE = '(\\d{7,9}|\\d{3}[-\\s]?\\d{2,3}[-\\s]?\\d{3}|\\d{1,3}[-\\s]?\\d{3}[-\\s]?\\d{3})';
+const EMPLOYEE_ID_LABEL_REGEX = new RegExp(
+  `(?:ת\\.?\\s*ז\\.?|תעודת\\s+זהות|מספר\\s+זהות|מס['׳]?\\s*זהות|ת["״']?ז["״']?|TZ|ID)[:\\s-]*${EMPLOYEE_ID_DIGITS_CAPTURE}`,
+  'i',
+);
+const EMPLOYEE_ID_LABEL_ONLY_REGEX =
+  /^(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|מס['׳]?\s*זהות|ת["״']?ז["״']?|TZ|ID)[:\s-]*$/i;
 const HEADER_EMPLOYER_PATTERNS = [
   { pattern: /צבא\s*הגנה\s*לישראל/i, name: 'צבא הגנה לישראל', score: 0.96 },
   { pattern: /צה["״']?ל/i, name: 'צבא הגנה לישראל', score: 0.9 },
@@ -21,7 +28,17 @@ const CONTRIBUTION_CONTEXT_REGEX =
 const MICHPAL_COMPANY_REGEX = /חברה:\s*\d+\s*-\s*(.+?)$/;
 
 function normalizeEmployeeName(value) {
-  return String(value).replace(/\s+/g, ' ').trim();
+  return String(value)
+    .replace(/[\u200e\u200f\u202a\u202b\u202c\u202d\u202e]/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[:=\-–—]\s*/, '')
+    .trim();
+}
+
+/** Strip dashes/spaces from ת.ז so 205-506-975 → 205506975 */
+function normalizeEmployeeId(value) {
+  if (value == null) return '';
+  return String(value).replace(/[^\d]/g, '');
 }
 
 function normalizeEmployerName(value) {
@@ -81,14 +98,14 @@ function isValidEmployerName(value) {
 }
 
 function isValidEmployeeId(value) {
-  return /^\d{7,9}$/.test(String(value || '').trim());
+  return /^\d{7,9}$/.test(normalizeEmployeeId(value));
 }
 
 // Israeli teudat-zehut checksum: 9 digits, weighted [1,2,1,2,...], digit-sum
 // of each product, total divisible by 10. Helps distinguish a real ID
 // (322819145 ✓) from a 7-digit ZIP code that just happens to be nearby.
 function isLikelyIsraeliId(value) {
-  const digits = String(value || '').trim();
+  const digits = normalizeEmployeeId(value);
   if (!/^\d{9}$/.test(digits)) return false;
   let total = 0;
   for (let i = 0; i < 9; i += 1) {
@@ -223,7 +240,8 @@ function collectPartyCandidates(context, { expectedEmployeeName } = {}) {
     }
 
     if (!isEmployerContextLine(entry.raw) && !contributionContext) {
-      const employeeId = match1(entry.raw, EMPLOYEE_ID_LABEL_REGEX);
+      const employeeIdRaw = match1(entry.raw, EMPLOYEE_ID_LABEL_REGEX);
+      const employeeId = normalizeEmployeeId(employeeIdRaw);
       if (employeeId && isValidEmployeeId(employeeId)) {
         pushCandidate(store, 'employee_id', employeeId, {
           source: 'employee_id_label',
@@ -234,7 +252,7 @@ function collectPartyCandidates(context, { expectedEmployeeName } = {}) {
           evidenceCategory: 'label',
         });
       } else if (EMPLOYEE_ID_LABEL_ONLY_REGEX.test(entry.raw.trim())) {
-        const nextIdLine = context.lines[entry.index + 1]?.raw?.trim();
+        const nextIdLine = normalizeEmployeeId(context.lines[entry.index + 1]?.raw);
         if (nextIdLine && isValidEmployeeId(nextIdLine)) {
           pushCandidate(store, 'employee_id', nextIdLine, {
             source: 'employee_id_label_next_line',
@@ -269,24 +287,29 @@ function collectPartyCandidates(context, { expectedEmployeeName } = {}) {
       continue;
     }
 
-    const sameLine = entry.raw.match(/([A-Za-zא-ת][A-Za-zא-ת\s'"-]{2,40})\s*(\d{7,9})\b/);
-    if (sameLine && isValidEmployeeName(sameLine[1]) && isValidEmployeeId(sameLine[2])) {
-      pushCandidate(store, 'employee_name', normalizeEmployeeName(sameLine[1]), {
-        source: 'heuristic_name_id_same_line',
-        lineIndex: entry.index,
-        score: 0.34,
-        reason: 'Low-confidence name+ID fallback from the same line.',
-        section: 'identity',
-        evidenceCategory: 'heuristic',
-      });
-      pushCandidate(store, 'employee_id', sameLine[2], {
-        source: 'heuristic_name_id_same_line',
-        lineIndex: entry.index,
-        score: 0.34,
-        reason: 'Low-confidence name+ID fallback from the same line.',
-        section: 'identity',
-        evidenceCategory: 'heuristic',
-      });
+    const sameLine = entry.raw.match(
+      /([A-Za-zא-ת][A-Za-zא-ת\s'"-]{2,40})\s+(\d{7,9}|\d{3}[-\s]?\d{2,3}[-\s]?\d{3})\b/,
+    );
+    if (sameLine) {
+      const sameLineId = normalizeEmployeeId(sameLine[2]);
+      if (isValidEmployeeName(sameLine[1]) && isValidEmployeeId(sameLineId)) {
+        pushCandidate(store, 'employee_name', normalizeEmployeeName(sameLine[1]), {
+          source: 'heuristic_name_id_same_line',
+          lineIndex: entry.index,
+          score: isLikelyIsraeliId(sameLineId) ? 0.55 : 0.34,
+          reason: 'Name+ID fallback from the same line.',
+          section: 'identity',
+          evidenceCategory: 'heuristic',
+        });
+        pushCandidate(store, 'employee_id', sameLineId, {
+          source: 'heuristic_name_id_same_line',
+          lineIndex: entry.index,
+          score: isLikelyIsraeliId(sameLineId) ? 0.55 : 0.34,
+          reason: 'Name+ID fallback from the same line.',
+          section: 'identity',
+          evidenceCategory: 'heuristic',
+        });
+      }
     }
 
     // Chilan/Check Point format: "בלנקי אמילי 23370" or "בלנקי אמילי23370" — name + 4-6 digit employee number
@@ -304,26 +327,27 @@ function collectPartyCandidates(context, { expectedEmployeeName } = {}) {
       }
     }
 
-    const nextLine = context.lines[entry.index + 1]?.raw;
+    const nextLineRaw = context.lines[entry.index + 1]?.raw;
+    const nextLineId = normalizeEmployeeId(nextLineRaw);
     if (
-      nextLine &&
-      !isEmployerContextLine(nextLine) &&
+      nextLineId &&
+      !isEmployerContextLine(nextLineRaw) &&
       isValidEmployeeName(entry.raw) &&
-      isValidEmployeeId(nextLine)
+      isValidEmployeeId(nextLineId)
     ) {
       pushCandidate(store, 'employee_name', normalizeEmployeeName(entry.raw), {
         source: 'heuristic_name_before_id',
         lineIndex: entry.index,
-        score: 0.3,
-        reason: 'Low-confidence name+ID fallback from adjacent lines.',
+        score: isLikelyIsraeliId(nextLineId) ? 0.5 : 0.3,
+        reason: 'Name+ID fallback from adjacent lines.',
         section: 'identity',
         evidenceCategory: 'heuristic',
       });
-      pushCandidate(store, 'employee_id', nextLine.trim(), {
+      pushCandidate(store, 'employee_id', nextLineId, {
         source: 'heuristic_name_before_id',
         lineIndex: entry.index + 1,
-        score: 0.3,
-        reason: 'Low-confidence name+ID fallback from adjacent lines.',
+        score: isLikelyIsraeliId(nextLineId) ? 0.5 : 0.3,
+        reason: 'Name+ID fallback from adjacent lines.',
         section: 'identity',
         evidenceCategory: 'heuristic',
       });
@@ -331,16 +355,22 @@ function collectPartyCandidates(context, { expectedEmployeeName } = {}) {
   }
 
   const idNearIdentityLabel = full.match(
-    /(?:ת\.?\s*ז\.?|תעודת\s+זהות|מספר\s+זהות|ת["״']?ז["״']?|ID)[:\s-]*[\s\S]{0,40}?(\d{7,9})/i,
+    new RegExp(
+      `(?:ת\\.?\\s*ז\\.?|תעודת\\s+זהות|מספר\\s+זהות|מס['׳]?\\s*זהות|ת["״']?ז["״']?|TZ|ID)[:\\s-]*[\\s\\S]{0,60}?${EMPLOYEE_ID_DIGITS_CAPTURE}`,
+      'i',
+    ),
   );
-  if (idNearIdentityLabel && isValidEmployeeId(idNearIdentityLabel[1])) {
-    pushCandidate(store, 'employee_id', idNearIdentityLabel[1], {
-      source: 'employee_id_near_label',
-      score: 0.9,
-      reason: 'Matched employee ID near an identity label.',
-      section: 'identity',
-      evidenceCategory: 'label_proximity',
-    });
+  if (idNearIdentityLabel) {
+    const nearId = normalizeEmployeeId(idNearIdentityLabel[1]);
+    if (isValidEmployeeId(nearId)) {
+      pushCandidate(store, 'employee_id', nearId, {
+        source: 'employee_id_near_label',
+        score: 0.9,
+        reason: 'Matched employee ID near an identity label.',
+        section: 'identity',
+        evidenceCategory: 'label_proximity',
+      });
+    }
   }
 
   // ---- Michpal: "לכבוד\nFirstName LastName\nAddress" pattern ----
@@ -493,6 +523,7 @@ module.exports = {
   isValidEmployeeName,
   isValidEmployerName,
   namesRoughlyMatch,
+  normalizeEmployeeId,
   normalizeEmployeeName,
   normalizeEmployerName,
   pickBestEmployeeId,
