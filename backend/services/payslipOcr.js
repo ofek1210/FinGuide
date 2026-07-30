@@ -12,7 +12,7 @@ const {
   collectCoreFieldCandidates,
   collectPeriodMonthCandidates,
   collectSupplementalFieldCandidates,
-  rankExtractionCandidates,
+  selectBestExtractionCandidate,
   resolveBestNumericCandidate,
   resolveGrossAndNetCandidates,
   resolveMandatoryTotalCandidate,
@@ -97,6 +97,10 @@ const { PdfPasswordRequiredError, isPdfPasswordError } = require('../utils/pdfPa
 let pdfParse;
 
 const OCR_PDF_PAGES_MODE = (process.env.OCR_PDF_PAGES_MODE || 'first').toLowerCase();
+const OCR_PDF_DPI = (() => {
+  const parsed = Number(process.env.OCR_PDF_DPI);
+  return Number.isFinite(parsed) && parsed >= 200 && parsed <= 600 ? Math.round(parsed) : 350;
+})();
 const MIN_PDF_TEXT_LENGTH =
   Number(process.env.OCR_PDF_MIN_TEXT_LENGTH) && Number(process.env.OCR_PDF_MIN_TEXT_LENGTH) > 0
     ? Number(process.env.OCR_PDF_MIN_TEXT_LENGTH)
@@ -151,7 +155,7 @@ async function preprocessImage(inPath) {
   return inPath;
 }
 
-async function ocrWithTesseract(imagePath, { psm = '6' } = {}) {
+async function ocrWithTesseract(imagePath, { psm = '6', preserveInterwordSpaces = true } = {}) {
   const args = [
     imagePath,
     'stdout',
@@ -161,9 +165,10 @@ async function ocrWithTesseract(imagePath, { psm = '6' } = {}) {
     '1',
     '--psm',
     String(psm),
-    '-c',
-    'preserve_interword_spaces=1',
   ];
+  if (preserveInterwordSpaces) {
+    args.push('-c', 'preserve_interword_spaces=1');
+  }
 
   try {
     const { stdout } = await execFileAsync('tesseract', args);
@@ -249,7 +254,8 @@ function hasCriticalSalaryFields(data, fullText = '') {
 async function pdfToPngs(pdfPath, outDir, { password } = {}) {
   const prefix = path.join(outDir, 'page');
   const passwordArgs = password ? ['-upw', password] : [];
-  const pngArgs = [...passwordArgs, '-png', '-r', '300', pdfPath, prefix];
+  const dpi = String(OCR_PDF_DPI);
+  const pngArgs = [...passwordArgs, '-png', '-r', dpi, pdfPath, prefix];
   let pngSupported = true;
 
   try {
@@ -276,7 +282,7 @@ async function pdfToPngs(pdfPath, outDir, { password } = {}) {
       );
       pngSupported = false;
       try {
-        await execFileAsync('pdftoppm', [...passwordArgs, '-r', '300', pdfPath, prefix]);
+        await execFileAsync('pdftoppm', [...passwordArgs, '-r', dpi, pdfPath, prefix]);
       } catch (fallbackError) {
         if (isPdfPasswordError(fallbackError) && !password) {
           throw new PdfPasswordRequiredError();
@@ -984,14 +990,22 @@ async function extractPayslipFileLegacy(inputPath, options = {}) {
   extractionMethod = 'ocr';
   let lastOcrError;
 
-  for (const psm of [6, 4, 3]) {
+  // PSM 6/4/3 with spaces + PSM 4 without spaces (helps dual-column IDF nets).
+  const ocrPasses = [
+    { psm: 6, preserveInterwordSpaces: true },
+    { psm: 4, preserveInterwordSpaces: true },
+    { psm: 3, preserveInterwordSpaces: true },
+    { psm: 4, preserveInterwordSpaces: false },
+  ];
+
+  for (const pass of ocrPasses) {
     let fullText = '';
 
     try {
       for (const imagePath of pagesToProcess) {
         const prepped = await preprocessImage(imagePath);
         try {
-          const text = await ocrWithTesseract(prepped, { psm });
+          const text = await ocrWithTesseract(prepped, pass);
           fullText += `\n${text}`;
         } finally {
           if (prepped !== imagePath) {
@@ -1004,7 +1018,8 @@ async function extractPayslipFileLegacy(inputPath, options = {}) {
         // eslint-disable-next-line no-console
         console.warn('[payslipOcr] OCR produced empty text', {
           sourcePath: path.basename(abs),
-          psm,
+          psm: pass.psm,
+          preserveInterwordSpaces: pass.preserveInterwordSpaces,
         });
         continue;
       }
@@ -1013,7 +1028,7 @@ async function extractPayslipFileLegacy(inputPath, options = {}) {
       logExtractionResult({
         sourcePath: abs,
         extractionMethod,
-        psm,
+        psm: pass.psm,
         data,
       });
       data.raw = {
@@ -1021,14 +1036,20 @@ async function extractPayslipFileLegacy(inputPath, options = {}) {
         rawText: fullText,
         rawLines: toRawLines(fullText),
         extractionMethod,
+        ocrPass: pass,
       };
-      candidates.push({ psm, data });
+      candidates.push({
+        psm: pass.psm,
+        preserveInterwordSpaces: pass.preserveInterwordSpaces,
+        data,
+      });
     } catch (error) {
       lastOcrError = error;
       // eslint-disable-next-line no-console
       console.warn('[payslipOcr] OCR pass failed', {
         sourcePath: path.basename(abs),
-        psm,
+        psm: pass.psm,
+        preserveInterwordSpaces: pass.preserveInterwordSpaces,
         error: error.message,
       });
     }
@@ -1047,7 +1068,7 @@ async function extractPayslipFileLegacy(inputPath, options = {}) {
     await fs.rm(path.dirname(imagePaths[0]), { recursive: true, force: true }).catch(() => {});
   }
 
-  return rankExtractionCandidates(candidates)[0];
+  return selectBestExtractionCandidate(candidates);
 }
 
 module.exports = {

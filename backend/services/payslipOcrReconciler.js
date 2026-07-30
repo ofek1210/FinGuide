@@ -107,6 +107,10 @@ function biasMandatoryTowardComponentSum(candidates, components, violations) {
 
   for (const candidate of candidates) {
     if (!candidate || !Number.isFinite(candidate.value) || candidate.value <= 0) continue;
+    // IDF labeled deductions total includes pension/study — don't force it toward tax+NI+health.
+    if (String(candidate.source || '').includes('idf_deductions')) {
+      continue;
+    }
     const ratio = Math.abs(candidate.value - sum) / sum;
     if (ratio <= 0.05) {
       candidate.score = clamp(candidate.score + COMPONENT_MATCH_BOOST);
