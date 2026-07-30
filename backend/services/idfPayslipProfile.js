@@ -126,6 +126,8 @@ const IDF_DEDUCTIONS_TEXT_REGEXES = [
   // Prefer amount AFTER the ניכויים label. Never use the amount-before variant on a
   // dual-column line — it often captures סה״כ תשלומים שוטפים instead.
   /סה[_\s"״'']*כ[_\s]*ניכויים[_\s]*שוטפים[^\d\n]{0,40}(\d[\d,.\s₪]+)/i,
+  // OCR often drops "סה״כ" → "ניכויים שוטפים6031.410" / "ניכויים שוטפים 4229.320"
+  /ניכויים[_\s]*שוטפים[^\d\n]{0,12}(\d[\d,.\s₪]+)/i,
 ];
 
 function isLikelyLeaveBalanceAmount(value) {
@@ -724,6 +726,11 @@ function extractIdfSalaryFromFullText(fullText, store, pushCandidate) {
     if (!Number.isFinite(amount) || amount < 200 || amount > 100000) {
       continue;
     }
+    // Dual-column trap: OCR sometimes emits the gross token as "700" / "200"
+    // right before סה״כ ניכויים — reject tiny totals that can't be mandatory deductions.
+    if (amount < 1000) {
+      continue;
+    }
     const knownGross = (store.gross_total || []).some(
       candidate => Math.abs(candidate.value - amount) < 0.05,
     );
@@ -762,14 +769,19 @@ function extractIdfSalaryFromFullText(fullText, store, pushCandidate) {
 
   // When OCR drops the gross decimal (21653250) or picks a wrong nearby amount,
   // recover gross from net + current deductions — exact on IDF Mofet slips.
-  // Never derive when deductions equal a labeled gross candidate (dual-column OCR trap).
+  // Never derive when deductions equal a labeled gross candidate (dual-column OCR trap),
+  // unless that "gross" is impossible (≤ net) — then it was the deductions column.
   if (Number.isFinite(deductionsTotal)) {
     const bestNet = (store.net_payable || []).sort((a, b) => b.score - a.score)[0]?.value;
     const bestGross = (store.gross_total || [])
       .filter(candidate => !String(candidate.source || '').includes('derived'))
       .sort((a, b) => b.score - a.score)[0]?.value;
+    const grossIsImpossible =
+      Number.isFinite(bestNet) && Number.isFinite(bestGross) && bestGross <= bestNet;
     const deductionsLooksLikeGross =
-      Number.isFinite(bestGross) && Math.abs(bestGross - deductionsTotal) < 0.05;
+      Number.isFinite(bestGross) &&
+      Math.abs(bestGross - deductionsTotal) < 0.05 &&
+      !grossIsImpossible;
     if (Number.isFinite(bestNet) && !deductionsLooksLikeGross) {
       const derivedGross = Number((bestNet + deductionsTotal).toFixed(2));
       if (
@@ -779,12 +791,14 @@ function extractIdfSalaryFromFullText(fullText, store, pushCandidate) {
       ) {
         const closeEnough =
           Number.isFinite(bestGross) &&
-          Math.abs(bestGross - derivedGross) <= Math.max(5, derivedGross * 0.01);
+          !grossIsImpossible &&
+          Math.abs(bestGross - derivedGross) <= 1;
         if (!closeEnough) {
+          // Prefer the identity when OCR gross is garbled (e.g. "200" / adjacent noise).
           pushCandidate(store, 'gross_total', derivedGross, {
             source: 'idf_derived_net_plus_deductions',
             lineIndex: null,
-            score: 0.97,
+            score: 0.995,
             reason: 'תלוש צה"ל — ברוטו מחושב: נטו + ניכויים שוטפים',
             section: 'earnings',
             evidenceCategory: 'idf_column',
@@ -860,21 +874,56 @@ function prioritizeIdfSalaryCandidates(store) {
     }
   }
 
+  const bestNet = (store.net_payable || [])
+    .slice()
+    .sort((a, b) => (b.score || 0) - (a.score || 0))[0]?.value;
+  const idfDeductions = (store.mandatory_total || []).filter(candidate =>
+    String(candidate.source || '').includes('idf_deductions'),
+  );
+
+  // Dual-column trap: OCR often places סה״כ ניכויים under the payments column,
+  // so 6031.41 becomes a high-scoring "gross" while true gross OCR is garbled.
+  if (Array.isArray(store.gross_total) && store.gross_total.length) {
+    for (const candidate of store.gross_total) {
+      if (!Number.isFinite(candidate?.value)) continue;
+      if (Number.isFinite(bestNet) && candidate.value <= bestNet) {
+        candidate.score = Math.max(0.01, (candidate.score || 0) - 0.55);
+      }
+      for (const deduction of idfDeductions) {
+        if (Math.abs(candidate.value - deduction.value) < 0.05) {
+          candidate.score = Math.max(0.01, (candidate.score || 0) - 0.55);
+        }
+      }
+    }
+    store.gross_total = store.gross_total.slice().sort((a, b) => (b.score || 0) - (a.score || 0));
+  }
+
   const bestGross = (store.gross_total || [])
     .slice()
     .sort((a, b) => (b.score || 0) - (a.score || 0))[0]?.value;
+  const plausibleGross =
+    Number.isFinite(bestGross) && (!Number.isFinite(bestNet) || bestGross > bestNet)
+      ? bestGross
+      : null;
 
   // Drop dual-column misreads where סה״כ תשלומים was collected as ניכויים,
-  // and OCR zeros like "שוטפים0".
+  // and OCR zeros like "שוטפים0". Keep idf deductions even when a bogus gross
+  // equals them (that gross was the deductions column).
   if (Array.isArray(store.mandatory_total) && store.mandatory_total.length) {
     store.mandatory_total = store.mandatory_total.filter(candidate => {
       if (!Number.isFinite(candidate?.value) || candidate.value < 200) {
         return false;
       }
-      if (Number.isFinite(bestGross) && Math.abs(candidate.value - bestGross) < 0.05) {
+      if (
+        Number.isFinite(plausibleGross) &&
+        Math.abs(candidate.value - plausibleGross) < 0.05
+      ) {
         return false;
       }
-      if (Number.isFinite(bestGross) && candidate.value >= bestGross * 0.95) {
+      if (
+        Number.isFinite(plausibleGross) &&
+        candidate.value >= plausibleGross * 0.95
+      ) {
         return false;
       }
       return true;
@@ -884,32 +933,50 @@ function prioritizeIdfSalaryCandidates(store) {
   const deductionsTotal = (store.mandatory_total || [])
     .slice()
     .sort((a, b) => (b.score || 0) - (a.score || 0))[0]?.value;
-  const bestNet = (store.net_payable || [])
-    .slice()
-    .sort((a, b) => (b.score || 0) - (a.score || 0))[0]?.value;
-  if (
-    Number.isFinite(deductionsTotal) &&
-    Number.isFinite(bestNet) &&
-    Array.isArray(store.gross_total) &&
-    store.gross_total.length
-  ) {
+  if (Number.isFinite(deductionsTotal) && Number.isFinite(bestNet)) {
     const expectedGross = Number((bestNet + deductionsTotal).toFixed(2));
-    for (const candidate of store.gross_total) {
-      const delta = Math.abs(candidate.value - expectedGross);
-      if (delta <= Math.max(5, expectedGross * 0.01)) {
-        candidate.score = Math.min(1, (candidate.score || 0) + 0.15);
-      } else {
-        candidate.score = Math.max(0.01, (candidate.score || 0) - 0.25);
+    if (
+      expectedGross >= 5000 &&
+      expectedGross <= 250000 &&
+      !isLikelyLeaveBalanceAmount(expectedGross)
+    ) {
+      const hasCloseGross = (store.gross_total || []).some(
+        candidate => Math.abs(candidate.value - expectedGross) <= 1,
+      );
+      if (!hasCloseGross) {
+        store.gross_total = store.gross_total || [];
+        store.gross_total.push({
+          key: `gross_total|idf_derived_net_plus_deductions|null|${expectedGross}`,
+          field: 'gross_total',
+          value: expectedGross,
+          source: 'idf_derived_net_plus_deductions',
+          lineIndex: null,
+          score: 0.995,
+          reason: 'תלוש צה"ל — ברוטו מחושב: נטו + ניכויים שוטפים',
+          section: 'earnings',
+          evidenceCategory: 'idf_column',
+        });
       }
     }
-    store.gross_total = store.gross_total.slice().sort((a, b) => {
-      if ((b.score || 0) !== (a.score || 0)) {
-        return (b.score || 0) - (a.score || 0);
+
+    if (Array.isArray(store.gross_total) && store.gross_total.length) {
+      for (const candidate of store.gross_total) {
+        const delta = Math.abs(candidate.value - expectedGross);
+        if (delta <= 1) {
+          candidate.score = Math.min(1, (candidate.score || 0) + 0.15);
+        } else {
+          candidate.score = Math.max(0.01, (candidate.score || 0) - 0.25);
+        }
       }
-      const aDerived = String(a.source || '').includes('derived') ? 1 : 0;
-      const bDerived = String(b.source || '').includes('derived') ? 1 : 0;
-      return bDerived - aDerived;
-    });
+      store.gross_total = store.gross_total.slice().sort((a, b) => {
+        if ((b.score || 0) !== (a.score || 0)) {
+          return (b.score || 0) - (a.score || 0);
+        }
+        const aDerived = String(a.source || '').includes('derived') ? 1 : 0;
+        const bDerived = String(b.source || '').includes('derived') ? 1 : 0;
+        return bDerived - aDerived;
+      });
+    }
   }
 
   const grossCandidates = store.gross_total || [];

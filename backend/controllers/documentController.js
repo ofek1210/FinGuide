@@ -309,20 +309,12 @@ exports.updateDocumentFields = async (req, res, next) => {
 
 exports.deleteDocument = async (req, res, next) => {
   try {
-    const document = await Document.findOne({
-      _id: req.params.id,
-      user: req.user.id,
-    });
+    const { purgeUserDocumentById } = require('../services/documentPurgeService');
+    const document = await purgeUserDocumentById(req.user.id, req.params.id);
 
     if (!document) {
       return next(new NotFoundError('מסמך לא נמצא'));
     }
-
-    await unlink(document.filePath).catch(err => {
-      console.error('שגיאה במחיקת קובץ:', err);
-    });
-
-    await document.deleteOne();
 
     res.status(200).json({
       success: true,
@@ -333,16 +325,11 @@ exports.deleteDocument = async (req, res, next) => {
   }
 };
 
-// DELETE /api/documents/all — remove every document (and file) for the user
+// DELETE /api/documents/all — remove every document (and linked artifacts) for the user
 exports.deleteAllDocuments = async (req, res, next) => {
   try {
-    const documents = await Document.find({ user: req.user.id });
-    await Promise.all(
-      documents.map(doc =>
-        unlink(doc.filePath).catch(err => console.error('שגיאה במחיקת קובץ:', err)),
-      ),
-    );
-    const result = await Document.deleteMany({ user: req.user.id });
+    const { purgeAllUserDocuments } = require('../services/documentPurgeService');
+    const result = await purgeAllUserDocuments(req.user.id);
     res.status(200).json({
       success: true,
       message: 'כל המסמכים נמחקו בהצלחה',

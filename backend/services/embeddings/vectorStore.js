@@ -132,6 +132,24 @@ function clearStore() {
 }
 
 /**
+ * Remove RAG chunks that belong to a payslip/document id.
+ * @param {string|import('mongoose').Types.ObjectId} documentId
+ * @returns {number} number of removed chunks
+ */
+function removeChunksByDocumentId(documentId) {
+  if (documentId == null || documentId === '') return 0;
+  const id = String(documentId);
+  const s = loadStore();
+  const before = s.chunks.length;
+  s.chunks = s.chunks.filter(chunk => String(chunk.metadata?.documentId || '') !== id);
+  const removed = before - s.chunks.length;
+  if (removed > 0) {
+    saveStore();
+  }
+  return removed;
+}
+
+/**
  * Reload store from disk (if modified externally).
  */
 function reload() {
@@ -139,4 +157,4 @@ function reload() {
   return loadStore();
 }
 
-module.exports = { addChunk, addChunks, search, getStats, clearStore, reload };
+module.exports = { addChunk, addChunks, search, getStats, clearStore, removeChunksByDocumentId, reload };

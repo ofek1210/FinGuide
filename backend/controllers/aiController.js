@@ -516,6 +516,14 @@ function putCachedUserContext(userId, ctx, heavy) {
   });
 }
 
+function clearUserContextCache(userId) {
+  if (userId == null || userId === '') {
+    userContextCache.clear();
+    return;
+  }
+  userContextCache.delete(String(userId));
+}
+
 function stripHeavyContext(ctx) {
   return {
     ...ctx,
@@ -1740,5 +1748,6 @@ module.exports = {
   resolveOwnedConversationId,
   touchConversation,
   titleFromMessage,
+  clearUserContextCache,
 };
 
